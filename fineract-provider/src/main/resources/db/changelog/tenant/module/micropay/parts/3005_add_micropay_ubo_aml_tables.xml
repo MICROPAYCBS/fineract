@@ -20,12 +20,12 @@
 
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
-  <!-- Sequence is starting from 3000 for Micropay CBS custom domain tables -->
-  <include relativeToChangelogFile="true" file="parts/3001_add_micropay_custom_domain_tables.xml"/>
-  <include relativeToChangelogFile="true" file="parts/3002_add_micropay_sector_industry_tables.xml"/>
-  <include relativeToChangelogFile="true" file="parts/3003_add_micropay_campaign_channel_tables.xml"/>
-  <include relativeToChangelogFile="true" file="parts/3004_add_micropay_customer_prospect_blacklist_tables.xml"/>
-  <include relativeToChangelogFile="true" file="parts/3005_add_micropay_ubo_aml_tables.xml"/>
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+    <changeSet id="3005-postgresql" author="micropay" context="postgresql">
+        <sqlFile path="V3005__add_micropay_ubo_aml_tables.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    <changeSet id="3005-mysql" author="micropay" context="mysql">
+        <sqlFile path="V3005__add_micropay_ubo_aml_tables.mysql.sql" relativeToChangelogFile="true"/>
+    </changeSet>
 </databaseChangeLog>
