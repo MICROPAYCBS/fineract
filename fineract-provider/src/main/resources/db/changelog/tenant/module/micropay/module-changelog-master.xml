@@ -28,4 +28,8 @@
   <include relativeToChangelogFile="true" file="parts/3003_add_micropay_campaign_channel_tables.xml"/>
   <include relativeToChangelogFile="true" file="parts/3004_add_micropay_customer_prospect_blacklist_tables.xml"/>
   <include relativeToChangelogFile="true" file="parts/3005_add_micropay_ubo_aml_tables.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3006_enable_address_global_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3007_add_micropay_address_type_code_values.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3008_add_micropay_national_id_type.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3009_add_micropay_gender_code_values.xml"/>
 </databaseChangeLog>

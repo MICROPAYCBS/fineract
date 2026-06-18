@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3007-1" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1) FROM m_code_value cv
+                JOIN m_code c ON cv.code_id = c.id
+                WHERE c.code_name = 'ADDRESS_TYPE' AND cv.code_value = 'Residential/Home'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE')"/>
+            <column name="code_value" value="Residential/Home"/>
+            <column name="code_description" value="Residential or home address"/>
+            <column name="order_position" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3007-2" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1) FROM m_code_value cv
+                JOIN m_code c ON cv.code_id = c.id
+                WHERE c.code_name = 'ADDRESS_TYPE' AND cv.code_value = 'Permanent'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE')"/>
+            <column name="code_value" value="Permanent"/>
+            <column name="code_description" value="Permanent address"/>
+            <column name="order_position" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3007-3" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1) FROM m_code_value cv
+                JOIN m_code c ON cv.code_id = c.id
+                WHERE c.code_name = 'ADDRESS_TYPE' AND cv.code_value = 'Mailing/Postal'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE')"/>
+            <column name="code_value" value="Mailing/Postal"/>
+            <column name="code_description" value="Mailing or postal address"/>
+            <column name="order_position" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3007-4" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1) FROM m_code_value cv
+                JOIN m_code c ON cv.code_id = c.id
+                WHERE c.code_name = 'ADDRESS_TYPE' AND cv.code_value = 'Business/Employer'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'ADDRESS_TYPE')"/>
+            <column name="code_value" value="Business/Employer"/>
+            <column name="code_description" value="Business or employer address"/>
+            <column name="order_position" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
