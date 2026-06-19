@@ -43,6 +43,9 @@ public final class ResultsetColumnHeaderData implements Serializable {
     private final boolean isColumnIndexed;
     private final List<ResultsetColumnValueData> columnValues;
     private final String columnCode;
+    private final String validationRegex;
+    private final String validationExample;
+    private final String validationMessage;
 
     public static ResultsetColumnHeaderData basic(final String columnName, final String columnType, DatabaseType dialect) {
         final Long columnLength = null;
@@ -53,19 +56,45 @@ public final class ResultsetColumnHeaderData implements Serializable {
         final boolean columnIsUnique = false;
         final boolean columnIsIndexed = false;
         return new ResultsetColumnHeaderData(columnName, columnType, columnLength, columnNullable, columnIsPrimaryKey, columnValues,
-                columnCode, columnIsUnique, columnIsIndexed, dialect);
+                columnCode, columnIsUnique, columnIsIndexed, dialect, null, null, null);
     }
 
     public static ResultsetColumnHeaderData detailed(final String columnName, final String columnType, final Long columnLength,
             final boolean columnNullable, final boolean columnIsPrimaryKey, final List<ResultsetColumnValueData> columnValues,
             final String columnCode, final boolean columnIsUnique, final boolean columnIsIndexed, DatabaseType dialect) {
         return new ResultsetColumnHeaderData(columnName, columnType, columnLength, columnNullable, columnIsPrimaryKey, columnValues,
-                columnCode, columnIsUnique, columnIsIndexed, dialect);
+                columnCode, columnIsUnique, columnIsIndexed, dialect, null, null, null);
+    }
+
+    public ResultsetColumnHeaderData withValidation(final DatatableColumnValidationData validation) {
+        if (validation == null || !validation.hasRules()) {
+            return this;
+        }
+        return new ResultsetColumnHeaderData(this, validation.getValidationRegex(), validation.getValidationExample(),
+                validation.getValidationMessage());
+    }
+
+    private ResultsetColumnHeaderData(final ResultsetColumnHeaderData source, final String validationRegex, final String validationExample,
+            final String validationMessage) {
+        this.columnName = source.columnName;
+        this.columnLength = source.columnLength;
+        this.isColumnNullable = source.isColumnNullable;
+        this.isColumnPrimaryKey = source.isColumnPrimaryKey;
+        this.columnValues = source.columnValues;
+        this.columnCode = source.columnCode;
+        this.isColumnUnique = source.isColumnUnique;
+        this.isColumnIndexed = source.isColumnIndexed;
+        this.columnType = source.columnType;
+        this.columnDisplayType = source.columnDisplayType;
+        this.validationRegex = validationRegex;
+        this.validationExample = validationExample;
+        this.validationMessage = validationMessage;
     }
 
     private ResultsetColumnHeaderData(final String columnName, String columnType, final Long columnLength, final boolean columnNullable,
             final boolean columnIsPrimaryKey, final List<ResultsetColumnValueData> columnValues, final String columnCode,
-            final boolean columnIsUnique, final boolean columnIsIndexed, DatabaseType dialect) {
+            final boolean columnIsUnique, final boolean columnIsIndexed, DatabaseType dialect, final String validationRegex,
+            final String validationExample, final String validationMessage) {
         this.columnName = columnName;
         this.columnLength = columnLength;
         this.isColumnNullable = columnNullable;
@@ -79,6 +108,9 @@ public final class ResultsetColumnHeaderData implements Serializable {
         this.columnType = JdbcJavaType.getByTypeName(dialect, adjustColumnType(columnType), true);
 
         this.columnDisplayType = calcDisplayType();
+        this.validationRegex = validationRegex;
+        this.validationExample = validationExample;
+        this.validationMessage = validationMessage;
     }
 
     public boolean isNamed(final String columnName) {

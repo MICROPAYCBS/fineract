@@ -65,6 +65,7 @@ public class GenericDataServiceImpl implements GenericDataService {
     private final DatabaseIndependentQueryService databaseIndependentQueryService;
     private final DatatableKeywordGenerator datatableKeywordGenerator;
     private final DatabaseTypeResolver databaseTypeResolver;
+    private final DatatableColumnValidationReadService datatableColumnValidationReadService;
 
     @Override
     public GenericResultsetData fillGenericResultSet(final String sql) {
@@ -157,7 +158,7 @@ public class GenericDataServiceImpl implements GenericDataService {
                     columnValues, codeName, columnIsUnique, columnIsIndexed, dialect));
         }
 
-        return columnHeaders;
+        return datatableColumnValidationReadService.enrichColumnHeaders(tableName, columnHeaders);
     }
 
     @NonNull

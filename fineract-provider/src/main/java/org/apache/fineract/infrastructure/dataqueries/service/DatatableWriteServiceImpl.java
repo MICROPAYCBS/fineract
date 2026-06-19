@@ -1124,6 +1124,7 @@ public class DatatableWriteServiceImpl implements DatatableWriteService {
             if (!isUserInsertable(entityTable, columnHeader)) {
                 continue;
             }
+            DatatableColumnValidationValidator.validateStringValue(columnHeader, entry.getValue());
             insertColumns.add(columnHeader.getColumnName());
             Object valueParam = searchUtil.parseJdbcColumnValue(columnHeader, entry.getValue(), dateFormat, dateTimeFormat, locale, false,
                     sqlGenerator);
@@ -1243,6 +1244,7 @@ public class DatatableWriteServiceImpl implements DatatableWriteService {
             if (!isUserUpdatable(entityTable, columnHeader)) {
                 continue;
             }
+            DatatableColumnValidationValidator.validateStringValue(columnHeader, entry.getValue());
             String columnName = columnHeader.getColumnName();
             Object existingValue = valuesByHeader.get(columnHeader);
             Object columnValue = searchUtil.parseColumnValue(columnHeader, entry.getValue(), dateFormat, dateTimeFormat, locale, false,
