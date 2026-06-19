@@ -174,6 +174,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final String mobileNo = command.stringValueOfParameterNamed("mobileNo");
             throw new PlatformDataIntegrityException("error.msg.client.duplicate.mobileNo",
                     "Client with mobileNo `" + mobileNo + "` already exists", "mobileNo", mobileNo);
+        } else if (realCause.getMessage().contains("tax_identification_number")) {
+            final String taxIdentificationNumber = command
+                    .stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
+            throw new PlatformDataIntegrityException("error.msg.client.duplicate.taxIdentificationNumber",
+                    "Client with taxIdentificationNumber `" + taxIdentificationNumber + "` already exists", "taxIdentificationNumber",
+                    taxIdentificationNumber);
         }
 
         logAsErrorUnexpectedDataIntegrityException(dve);
@@ -251,6 +257,8 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final String accountNo = command.stringValueOfParameterNamed(ClientApiConstants.accountNoParamName);
             final String mobileNo = command.stringValueOfParameterNamed(ClientApiConstants.mobileNoParamName);
             final String emailAddress = command.stringValueOfParameterNamed(ClientApiConstants.emailAddressParamName);
+            final String taxIdentificationNumber = command
+                    .stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -287,6 +295,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     lastname, fullname, activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate,
                     savingsProductId, savingsAccountId, dataOfBirth, gender, clientType, clientClassification, legalForm.getValue(),
                     isStaff);
+            if (StringUtils.isNotBlank(taxIdentificationNumber)) {
+                newClient.setTaxIdentificationNumber(taxIdentificationNumber.trim());
+            }
 
             // Account Number generation
             this.clientRepository.saveAndFlush(newClient);
@@ -445,6 +456,13 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.emailAddressParamName);
                 changes.put(ClientApiConstants.emailAddressParamName, newValue);
                 clientForUpdate.setEmailAddress(StringUtils.defaultIfEmpty(newValue, null));
+            }
+
+            if (command.isChangeInStringParameterNamed(ClientApiConstants.taxIdentificationNumberParamName,
+                    clientForUpdate.getTaxIdentificationNumber())) {
+                final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
+                changes.put(ClientApiConstants.taxIdentificationNumberParamName, newValue);
+                clientForUpdate.setTaxIdentificationNumber(StringUtils.defaultIfEmpty(newValue, null));
             }
 
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {

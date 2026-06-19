@@ -107,6 +107,9 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "email_address", length = 50, unique = true)
     private String emailAddress;
 
+    @Column(name = "tax_identification_number", length = 50, unique = true)
+    private String taxIdentificationNumber;
+
     @Column(name = "is_staff", nullable = false)
     private boolean isStaff;
 

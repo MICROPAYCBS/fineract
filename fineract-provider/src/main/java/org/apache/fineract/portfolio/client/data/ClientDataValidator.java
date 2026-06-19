@@ -168,6 +168,13 @@ public final class ClientDataValidator {
                     .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.taxIdentificationNumberParamName, element)) {
+            final String taxIdentificationNumber = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.taxIdentificationNumberParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.taxIdentificationNumberParamName).value(taxIdentificationNumber)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {
@@ -452,6 +459,14 @@ public final class ClientDataValidator {
             final String mobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.mobileNoParamName, element);
             baseDataValidator.reset().parameter(ClientApiConstants.mobileNoParamName).value(mobileNo).ignoreIfNull()
                     .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.taxIdentificationNumberParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String taxIdentificationNumber = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.taxIdentificationNumberParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.taxIdentificationNumberParamName).value(taxIdentificationNumber)
+                    .ignoreIfNull().notExceedingLengthOf(50);
         }
 
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
