@@ -34,4 +34,5 @@
   <include relativeToChangelogFile="true" file="parts/3009_add_micropay_gender_code_values.xml"/>
   <include relativeToChangelogFile="true" file="parts/3010_add_micropay_client_type_code_values.xml"/>
   <include relativeToChangelogFile="true" file="parts/3011_add_micropay_client_classification_code_values.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3012_configure_micropay_address_geographic_fields.xml"/>
 </databaseChangeLog>
