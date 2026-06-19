@@ -67,6 +67,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private String mobileNo;
     private String emailAddress;
     private String taxIdentificationNumber;
+    private String alternativeMobileNo;
+    private String alternativeEmailAddress;
     private LocalDate dateOfBirth;
     private CodeValueData gender;
     private CodeValueData clientType;
@@ -302,6 +304,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final String mobileNo = null;
         final String emailAddress = null;
         final String taxIdentificationNumber = null;
+        final String alternativeMobileNo = null;
+        final String alternativeEmailAddress = null;
         final LocalDate dateOfBirth = null;
         final CodeValueData gender = null;
         final Long imageId = null;
@@ -320,7 +324,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final ClientNonPersonData clientNonPersonDetails = null;
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
-                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber, dateOfBirth, gender, joinedDate, imageId,
+                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
+                alternativeMobileNo, alternativeEmailAddress, dateOfBirth, gender, joinedDate, imageId,
                 staffId, staffName, officeOptions, groups, staffOptions, narrations, genderOptions, timeline, savingProductOptions,
                 savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType, clientClassification,
                 clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
@@ -334,7 +339,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         return new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId, clientData.officeName,
                 clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname, clientData.middlename,
                 clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId, clientData.mobileNo,
-                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
+                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
+                clientData.alternativeEmailAddress, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
                 clientData.staffId, clientData.staffName, templateData.officeOptions, clientData.groups, templateData.staffOptions,
                 templateData.narrations, templateData.genderOptions, clientData.timeline, templateData.savingProductOptions,
                 clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId, clientData.savingAccountOptions,
@@ -352,7 +358,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         return new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId, clientData.officeName,
                 clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname, clientData.middlename,
                 clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId, clientData.mobileNo,
-                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
+                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
+                clientData.alternativeEmailAddress, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
                 clientData.staffId, clientData.staffName, clientData.officeOptions, clientData.groups, clientData.staffOptions,
                 clientData.narrations, clientData.genderOptions, clientData.timeline, clientData.savingProductOptions,
                 clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId, savingAccountOptions,
@@ -369,7 +376,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         return new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId, clientData.officeName,
                 clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname, clientData.middlename,
                 clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId, clientData.mobileNo,
-                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
+                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
+                clientData.alternativeEmailAddress, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
                 clientData.staffId, clientData.staffName, clientData.officeOptions, parentGroups, clientData.staffOptions, null, null,
                 clientData.timeline, clientData.savingProductOptions, clientData.savingsProductId, clientData.savingsProductName,
                 clientData.savingsAccountId, clientData.savingAccountOptions, clientData.clientType, clientData.clientClassification,
@@ -389,6 +397,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final String mobileNo = null;
         final String emailAddress = null;
         final String taxIdentificationNumber = null;
+        final String alternativeMobileNo = null;
+        final String alternativeEmailAddress = null;
         final LocalDate dateOfBirth = null;
         final CodeValueData gender = null;
         final LocalDate activationDate = null;
@@ -421,7 +431,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final ClientNonPersonData clientNonPerson = null;
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
-                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber, dateOfBirth, gender, activationDate,
+                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
+                alternativeMobileNo, alternativeEmailAddress, dateOfBirth, gender, activationDate,
                 imageId, staffId, staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline,
                 savingProductOptions, savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType,
                 clientClassification, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
@@ -443,6 +454,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final String mobileNo = null;
         final String emailAddress = null;
         final String taxIdentificationNumber = null;
+        final String alternativeMobileNo = null;
+        final String alternativeEmailAddress = null;
         final LocalDate dateOfBirth = null;
         final CodeValueData gender = null;
         final LocalDate activationDate = null;
@@ -473,7 +486,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final ClientNonPersonData clientNonPerson = null;
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
-                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber, dateOfBirth, gender, activationDate,
+                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
+                alternativeMobileNo, alternativeEmailAddress, dateOfBirth, gender, activationDate,
                 imageId, staffId, staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline,
                 savingProductOptions, savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType,
                 clientClassification, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
@@ -492,7 +506,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
             final Long officeId, final String officeName, final Long transferToOfficeId, final String transferToOfficeName, final Long id,
             final String firstname, final String middlename, final String lastname, final String fullname, final String displayName,
             final ExternalId externalId, final String mobileNo, final String emailAddress, final String taxIdentificationNumber,
-            final LocalDate dateOfBirth,
+            final String alternativeMobileNo, final String alternativeEmailAddress, final LocalDate dateOfBirth,
             final CodeValueData gender, final LocalDate activationDate, final Long imageId, final Long staffId, final String staffName,
             final ClientTimelineData timeline, final Long savingsProductId, final String savingsProductName, final Long savingsAccountId,
             final CodeValueData clientType, final CodeValueData clientClassification, final EnumOptionData legalForm,
@@ -511,7 +525,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final List<EnumOptionData> clientLegalFormOptions = null;
         final ClientFamilyMembersData familyMemberOptions = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
-                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber, dateOfBirth, gender, activationDate,
+                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
+                alternativeMobileNo, alternativeEmailAddress, dateOfBirth, gender, activationDate,
                 imageId, staffId, staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline,
                 savingProductOptions, savingsProductId, savingsProductName, savingsAccountId, null, clientType, clientClassification,
                 clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
@@ -523,7 +538,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
             final String officeName, final Long transferToOfficeId, final String transferToOfficeName, final Long id,
             final String firstname, final String middlename, final String lastname, final String fullname, final String displayName,
             final ExternalId externalId, final String mobileNo, final String emailAddress, final String taxIdentificationNumber,
-            final LocalDate dateOfBirth,
+            final String alternativeMobileNo, final String alternativeEmailAddress, final LocalDate dateOfBirth,
             final CodeValueData gender, final LocalDate activationDate, final Long imageId, final Long staffId, final String staffName,
             final Collection<OfficeData> allowedOffices, final Collection<GroupGeneralData> groups,
             final Collection<StaffData> staffOptions, final Collection<CodeValueData> narrations,
@@ -559,6 +574,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         this.mobileNo = StringUtils.defaultIfEmpty(mobileNo, null);
         this.emailAddress = StringUtils.defaultIfEmpty(emailAddress, null);
         this.taxIdentificationNumber = StringUtils.defaultIfEmpty(taxIdentificationNumber, null);
+        this.alternativeMobileNo = StringUtils.defaultIfEmpty(alternativeMobileNo, null);
+        this.alternativeEmailAddress = StringUtils.defaultIfEmpty(alternativeEmailAddress, null);
         this.activationDate = activationDate;
         this.dateOfBirth = dateOfBirth;
         this.gender = gender;

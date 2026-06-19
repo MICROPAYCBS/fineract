@@ -175,6 +175,20 @@ public final class ClientDataValidator {
                     .ignoreIfNull().notExceedingLengthOf(50);
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeMobileNoParamName, element)) {
+            final String alternativeMobileNo = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.alternativeMobileNoParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
+                    .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeEmailAddressParamName, element)) {
+            final String alternativeEmailAddress = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.alternativeEmailAddressParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeEmailAddressParamName).value(alternativeEmailAddress)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {
@@ -466,6 +480,22 @@ public final class ClientDataValidator {
             final String taxIdentificationNumber = this.fromApiJsonHelper
                     .extractStringNamed(ClientApiConstants.taxIdentificationNumberParamName, element);
             baseDataValidator.reset().parameter(ClientApiConstants.taxIdentificationNumberParamName).value(taxIdentificationNumber)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeMobileNoParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String alternativeMobileNo = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.alternativeMobileNoParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
+                    .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeEmailAddressParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String alternativeEmailAddress = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.alternativeEmailAddressParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeEmailAddressParamName).value(alternativeEmailAddress)
                     .ignoreIfNull().notExceedingLengthOf(50);
         }
 

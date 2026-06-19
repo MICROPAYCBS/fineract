@@ -259,6 +259,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final String emailAddress = command.stringValueOfParameterNamed(ClientApiConstants.emailAddressParamName);
             final String taxIdentificationNumber = command
                     .stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
+            final String alternativeMobileNo = command
+                    .stringValueOfParameterNamed(ClientApiConstants.alternativeMobileNoParamName);
+            final String alternativeEmailAddress = command
+                    .stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -297,6 +301,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     isStaff);
             if (StringUtils.isNotBlank(taxIdentificationNumber)) {
                 newClient.setTaxIdentificationNumber(taxIdentificationNumber.trim());
+            }
+            if (StringUtils.isNotBlank(alternativeMobileNo)) {
+                newClient.setAlternativeMobileNo(alternativeMobileNo.trim());
+            }
+            if (StringUtils.isNotBlank(alternativeEmailAddress)) {
+                newClient.setAlternativeEmailAddress(alternativeEmailAddress.trim());
             }
 
             // Account Number generation
@@ -463,6 +473,20 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
                 changes.put(ClientApiConstants.taxIdentificationNumberParamName, newValue);
                 clientForUpdate.setTaxIdentificationNumber(StringUtils.defaultIfEmpty(newValue, null));
+            }
+
+            if (command.isChangeInStringParameterNamed(ClientApiConstants.alternativeMobileNoParamName,
+                    clientForUpdate.getAlternativeMobileNo())) {
+                final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.alternativeMobileNoParamName);
+                changes.put(ClientApiConstants.alternativeMobileNoParamName, newValue);
+                clientForUpdate.setAlternativeMobileNo(StringUtils.defaultIfEmpty(newValue, null));
+            }
+
+            if (command.isChangeInStringParameterNamed(ClientApiConstants.alternativeEmailAddressParamName,
+                    clientForUpdate.getAlternativeEmailAddress())) {
+                final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
+                changes.put(ClientApiConstants.alternativeEmailAddressParamName, newValue);
+                clientForUpdate.setAlternativeEmailAddress(StringUtils.defaultIfEmpty(newValue, null));
             }
 
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {
