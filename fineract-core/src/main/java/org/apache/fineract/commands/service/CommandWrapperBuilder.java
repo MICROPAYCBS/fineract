@@ -186,6 +186,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER_LOAN_PRODUCT_ATTRIBUTE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FAMILYMEMBERS;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COMPLIANCEPROFILE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITACCOUNT;
@@ -426,6 +427,14 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_INCOMESOURCES;
         this.href = "/clients/" + clientId + "/incomesources";
         this.entityId = incomeSourceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateComplianceProfile(final long clientId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_COMPLIANCEPROFILE;
+        this.href = "/clients/" + clientId + "/complianceprofile";
+        this.clientId = clientId;
         return this;
     }
 

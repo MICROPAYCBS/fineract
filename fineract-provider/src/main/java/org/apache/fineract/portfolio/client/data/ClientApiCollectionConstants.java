@@ -26,7 +26,7 @@ import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 public class ClientApiCollectionConstants extends ClientApiConstants {
 
     protected static final Set<String> CLIENT_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(familyMembers, incomeSources,
-            clientIdentifiers, address,
+            complianceProfile, clientIdentifiers, address,
             localeParamName, dateFormatParamName, groupIdParamName, accountNoParamName, externalIdParamName, mobileNoParamName,
             emailAddressParamName, taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
             subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,

@@ -122,6 +122,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final AddressWritePlatformService addressWritePlatformService;
     private final ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService;
     private final ClientIncomeSourcesWritePlatformService clientIncomeSourcesWritePlatformService;
+    private final ClientComplianceProfileWritePlatformService clientComplianceProfileWritePlatformService;
     private final ClientIdentifierWritePlatformService clientIdentifierWritePlatformService;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
@@ -363,6 +364,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed(ClientApiConstants.incomeSources) != null) {
                 this.clientIncomeSourcesWritePlatformService.addClientIncomeSources(newClient, command);
+            }
+
+            if (command.parameterExists(ClientApiConstants.complianceProfile)) {
+                this.clientComplianceProfileWritePlatformService.saveComplianceProfile(newClient, command);
             }
 
             if (command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers) != null) {
