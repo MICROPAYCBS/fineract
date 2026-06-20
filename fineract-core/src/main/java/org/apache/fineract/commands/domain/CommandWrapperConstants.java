@@ -166,6 +166,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_CREDITBUREAU_CONFIGURATION = "CREDITBUREAU_CONFIGURATION";
     public static final String ENTITY_ADDRESS = "ADDRESS";
     public static final String ENTITY_FAMILYMEMBERS = "FAMILYMEMBERS";
+    public static final String ENTITY_INCOMESOURCES = "INCOMESOURCES";
     public static final String ENTITY_CONFIGURATION = "CONFIGURATION";
     public static final String ENTITY_PERMISSION = "PERMISSION";
     public static final String ENTITY_ROLE = "ROLE";

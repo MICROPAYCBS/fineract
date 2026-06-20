@@ -121,6 +121,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final FromJsonHelper fromApiJsonHelper;
     private final AddressWritePlatformService addressWritePlatformService;
     private final ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService;
+    private final ClientIncomeSourcesWritePlatformService clientIncomeSourcesWritePlatformService;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
@@ -347,6 +348,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed("familyMembers") != null) {
                 this.clientFamilyMembersWritePlatformService.addClientFamilyMember(newClient, command);
+            }
+
+            if (command.arrayOfParameterNamed(ClientApiConstants.incomeSources) != null) {
+                this.clientIncomeSourcesWritePlatformService.addClientIncomeSources(newClient, command);
             }
 
             if (command.parameterExists(ClientApiConstants.datatables)) {

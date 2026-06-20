@@ -186,6 +186,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER_LOAN_PRODUCT_ATTRIBUTE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FAMILYMEMBERS;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITPRODUCT;
@@ -401,6 +402,30 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_FAMILYMEMBERS;
         this.href = "/clients/" + clientId + "/familymembers";
         this.entityId = familyMemberId;
+        return this;
+    }
+
+    public CommandWrapperBuilder addIncomeSources(final long clientId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_INCOMESOURCES;
+        this.href = "/clients/" + clientId + "/incomesources";
+        this.clientId = clientId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateIncomeSources(final long incomeSourceId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_INCOMESOURCES;
+        this.href = "/clients/" + clientId + "/incomesources";
+        this.entityId = incomeSourceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteIncomeSources(final long incomeSourceId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_INCOMESOURCES;
+        this.href = "/clients/" + clientId + "/incomesources";
+        this.entityId = incomeSourceId;
         return this;
     }
 

@@ -39,4 +39,7 @@
   <include relativeToChangelogFile="true" file="parts/3014_add_client_alternative_contact_fields.xml"/>
   <include relativeToChangelogFile="true" file="parts/3015_add_datatable_column_validation_metadata.xml"/>
   <include relativeToChangelogFile="true" file="parts/3016_add_client_sub_industry_and_seed_sectors.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3017_add_client_income_source_code_values.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3018_add_client_income_source_table.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3019_add_client_income_source_permissions.xml"/>
 </databaseChangeLog>
