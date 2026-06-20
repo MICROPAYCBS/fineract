@@ -207,6 +207,13 @@ public final class ClientDataValidator {
                     .integerGreaterThanZero();
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.customerRiskProfileIdParamName, element)) {
+            final Long customerRiskProfileId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.customerRiskProfileIdParamName,
+                    element);
+            baseDataValidator.reset().parameter(ClientApiConstants.customerRiskProfileIdParamName).value(customerRiskProfileId)
+                    .ignoreIfNull().integerGreaterThanZero();
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {

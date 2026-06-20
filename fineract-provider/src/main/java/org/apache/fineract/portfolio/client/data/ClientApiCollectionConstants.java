@@ -42,7 +42,7 @@ public class ClientApiCollectionConstants extends ClientApiConstants {
     protected static final Set<String> CLIENT_UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(localeParamName,
             dateFormatParamName, accountNoParamName, externalIdParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName, subIndustryIdParamName,
-            titleIdParamName, nationalityCountryIdParamName, firstnameParamName,
+            titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, firstnameParamName,
             middlenameParamName,
 
             lastnameParamName, fullnameParamName, activeParamName, activationDateParamName, staffIdParamName, savingsProductIdParamName,

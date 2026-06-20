@@ -535,6 +535,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 changes.put(ClientApiConstants.nationalityCountryIdParamName, newValue);
             }
 
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.customerRiskProfileIdParamName,
+                    clientForUpdate.customerRiskProfileId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
+                changes.put(ClientApiConstants.customerRiskProfileIdParamName, newValue);
+            }
+
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
                 changes.put(ClientApiConstants.firstnameParamName, newValue);
@@ -678,6 +684,16 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                             newValue);
                 }
                 clientForUpdate.updateNationality(nationality);
+            }
+
+            if (changes.containsKey(ClientApiConstants.customerRiskProfileIdParamName)) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
+                CodeValue customerRiskProfile = null;
+                if (newValue != null) {
+                    customerRiskProfile = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                            ClientApiConstants.CUSTOMER_RISK_PROFILE, newValue);
+                }
+                clientForUpdate.updateCustomerRiskProfile(customerRiskProfile);
             }
 
             if (changes.containsKey(ClientApiConstants.savingsProductIdParamName)) {

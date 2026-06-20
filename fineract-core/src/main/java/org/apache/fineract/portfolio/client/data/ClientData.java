@@ -72,6 +72,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Long subIndustryId;
     private CodeValueData title;
     private CodeValueData nationality;
+    private CodeValueData customerRiskProfile;
     private LocalDate dateOfBirth;
     private CodeValueData gender;
     private CodeValueData clientType;
@@ -108,6 +109,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Collection<CodeValueData> genderOptions;
     private Collection<CodeValueData> titleOptions;
     private Collection<CodeValueData> nationalityOptions;
+    private Collection<CodeValueData> customerRiskProfileOptions;
     private Collection<CodeValueData> clientTypeOptions;
     private Collection<CodeValueData> clientClassificationOptions;
     private Collection<CodeValueData> clientNonPersonConstitutionOptions;

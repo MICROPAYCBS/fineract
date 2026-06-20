@@ -45,6 +45,7 @@ public interface ClientMapper {
     @Mapping(target = "gender", source = "source", qualifiedByName = "clientGenderCode")
     @Mapping(target = "title", source = "source", qualifiedByName = "clientTitleCode")
     @Mapping(target = "nationality", source = "source", qualifiedByName = "clientNationalityCode")
+    @Mapping(target = "customerRiskProfile", source = "source", qualifiedByName = "clientCustomerRiskProfileCode")
     @Mapping(target = "imageId", source = "imageId")
     @Mapping(target = "staffId", source = "staff.id")
     @Mapping(target = "staffName", source = "staff.displayName")
@@ -65,6 +66,7 @@ public interface ClientMapper {
     @Mapping(target = "genderOptions", ignore = true)
     @Mapping(target = "titleOptions", ignore = true)
     @Mapping(target = "nationalityOptions", ignore = true)
+    @Mapping(target = "customerRiskProfileOptions", ignore = true)
     @Mapping(target = "clientTypeOptions", ignore = true)
     @Mapping(target = "clientClassificationOptions", ignore = true)
     @Mapping(target = "clientNonPersonConstitutionOptions", ignore = true)
@@ -134,6 +136,15 @@ public interface ClientMapper {
     @Named("clientNationalityCode")
     default CodeValueData clientNationalityCode(Client client) {
         final CodeValue code = client.getNationality();
+        if (code == null) {
+            return null;
+        }
+        return CodeValueData.instance(code.getId(), code.getLabel());
+    }
+
+    @Named("clientCustomerRiskProfileCode")
+    default CodeValueData clientCustomerRiskProfileCode(Client client) {
+        final CodeValue code = client.getCustomerRiskProfile();
         if (code == null) {
             return null;
         }

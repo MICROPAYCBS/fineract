@@ -17,38 +17,38 @@
 -- under the License.
 --
 
--- MICROPAY CBS: client title lookup (Mr, Mrs, Ms, Miss, Other) — PostgreSQL
+-- MICROPAY CBS: customer risk profile lookup (bank use / AML tier) — MySQL / MariaDB
 
 INSERT INTO m_code (code_name, is_system_defined)
-SELECT 'ClientTitle', false
-WHERE NOT EXISTS (SELECT 1 FROM m_code WHERE code_name = 'ClientTitle');
+SELECT 'CustomerRiskProfile', 0
+WHERE NOT EXISTS (SELECT 1 FROM m_code WHERE code_name = 'CustomerRiskProfile');
 
 INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active, is_mandatory)
-SELECT c.id, 'Mr', 'Mr', 1, true, false
+SELECT c.id, 'Very High', 'Very High', 1, 1, 0
 FROM m_code c
-WHERE c.code_name = 'ClientTitle'
-  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Mr');
+WHERE c.code_name = 'CustomerRiskProfile'
+  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Very High');
 
 INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active, is_mandatory)
-SELECT c.id, 'Mrs', 'Mrs', 2, true, false
+SELECT c.id, 'High', 'High', 2, 1, 0
 FROM m_code c
-WHERE c.code_name = 'ClientTitle'
-  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Mrs');
+WHERE c.code_name = 'CustomerRiskProfile'
+  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'High');
 
 INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active, is_mandatory)
-SELECT c.id, 'Ms', 'Ms', 3, true, false
+SELECT c.id, 'Medium', 'Medium', 3, 1, 0
 FROM m_code c
-WHERE c.code_name = 'ClientTitle'
-  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Ms');
+WHERE c.code_name = 'CustomerRiskProfile'
+  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Medium');
 
 INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active, is_mandatory)
-SELECT c.id, 'Miss', 'Miss', 4, true, false
+SELECT c.id, 'Low', 'Low', 4, 1, 0
 FROM m_code c
-WHERE c.code_name = 'ClientTitle'
-  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Miss');
+WHERE c.code_name = 'CustomerRiskProfile'
+  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Low');
 
 INSERT INTO m_code_value (code_id, code_value, code_description, order_position, is_active, is_mandatory)
-SELECT c.id, 'Other', 'Other', 5, true, false
+SELECT c.id, 'Very Low', 'Very Low', 5, 1, 0
 FROM m_code c
-WHERE c.code_name = 'ClientTitle'
-  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Other');
+WHERE c.code_name = 'CustomerRiskProfile'
+  AND NOT EXISTS (SELECT 1 FROM m_code_value cv WHERE cv.code_id = c.id AND cv.code_value = 'Very Low');

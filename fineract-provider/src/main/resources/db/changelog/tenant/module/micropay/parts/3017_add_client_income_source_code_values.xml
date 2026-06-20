@@ -24,8 +24,11 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
 
     <!-- Lookup codes for m_client_income_source (tenant-manageable via System → Manage Codes). -->
-    <changeSet id="3017-seed-client-income-source-codes" author="micropay">
+    <changeSet id="3017-seed-client-income-source-codes-postgresql" author="micropay" context="postgresql">
         <sqlFile path="V3017__seed_client_income_source_code_values.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    <changeSet id="3017-seed-client-income-source-codes-mysql" author="micropay" context="mysql">
+        <sqlFile path="V3017__seed_client_income_source_code_values.mysql.sql" relativeToChangelogFile="true"/>
     </changeSet>
 
 </databaseChangeLog>

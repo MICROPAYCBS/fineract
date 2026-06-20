@@ -57,6 +57,7 @@ public class ClientApiConstants {
 
     public static final String GENDER = "Gender";
     public static final String CLIENT_TITLE = "ClientTitle";
+    public static final String CUSTOMER_RISK_PROFILE = "CustomerRiskProfile";
     public static final String COUNTRY = "Country";
     public static final String CLIENT_TYPE = "ClientType";
     public static final String CLIENT_CLASSIFICATION = "ClientClassification";
@@ -90,6 +91,7 @@ public class ClientApiConstants {
     public static final String subIndustryIdParamName = "subIndustryId";
     public static final String titleIdParamName = "titleId";
     public static final String nationalityCountryIdParamName = "nationalityCountryId";
+    public static final String customerRiskProfileIdParamName = "customerRiskProfileId";
     public static final String firstnameParamName = "firstname";
     public static final String middlenameParamName = "middlename";
     public static final String lastnameParamName = "lastname";
@@ -204,7 +206,7 @@ public class ClientApiConstants {
             externalIdParamName, statusParamName, activeParamName, activationDateParamName, firstnameParamName, middlenameParamName,
             lastnameParamName, fullnameParamName, displayNameParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, officeIdParamName,
+            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, officeIdParamName,
             officeNameParamName, transferToOfficeIdParamName, transferToOfficeNameParamName, hierarchyParamName, imageIdParamName,
             imagePresentParamName, staffIdParamName, staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName,
             staffOptionsParamName, dateOfBirthParamName, genderParamName, clientTypeParamName, clientClassificationParamName,

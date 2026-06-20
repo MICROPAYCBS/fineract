@@ -49,6 +49,7 @@ import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.bulkimport.service.BulkImportWorkbookPopulatorService;
 import org.apache.fineract.infrastructure.bulkimport.service.BulkImportWorkbookService;
+import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.UploadRequest;
@@ -441,12 +442,27 @@ public class ClientsApiResource {
     private ClientData retrieveClientData(final Long clientId, final boolean staffInSelectedOfficeOnly, final boolean isTemplate) {
         ClientData clientData = clientReadPlatformService.retrieveOne(clientId);
         if (isTemplate) {
+            final CodeValueData title = clientData.getTitle();
+            final CodeValueData nationality = clientData.getNationality();
+            final CodeValueData customerRiskProfile = clientData.getCustomerRiskProfile();
             final ClientData templateData = clientTemplateReadPlatformService.retrieveTemplate(clientData.getOfficeId(),
                     staffInSelectedOfficeOnly);
             clientData = ClientData.templateOnTop(clientData, templateData);
+            clientData.setTitle(title);
+            clientData.setNationality(nationality);
+            clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setTitleOptions(templateData.getTitleOptions());
+            clientData.setNationalityOptions(templateData.getNationalityOptions());
+            clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
             Collection<SavingsAccountData> savingAccountOptions = savingsAccountReadPlatformService.retrieveForLookup(clientId, null);
             if (savingAccountOptions != null && savingAccountOptions.size() > 0) {
                 clientData = ClientData.templateWithSavingAccountOptions(clientData, savingAccountOptions);
+                clientData.setTitle(title);
+                clientData.setNationality(nationality);
+                clientData.setCustomerRiskProfile(customerRiskProfile);
+                clientData.setTitleOptions(templateData.getTitleOptions());
+                clientData.setNationalityOptions(templateData.getNationalityOptions());
+                clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
             }
         }
         return clientData;

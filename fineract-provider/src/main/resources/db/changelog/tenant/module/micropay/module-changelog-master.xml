@@ -45,4 +45,5 @@
   <include relativeToChangelogFile="true" file="parts/3020_add_client_title_and_nationality.xml"/>
   <include relativeToChangelogFile="true" file="parts/3021_add_client_compliance_profile_tables.xml"/>
   <include relativeToChangelogFile="true" file="parts/3022_add_client_compliance_profile_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3023_add_client_customer_risk_profile.xml"/>
 </databaseChangeLog>
