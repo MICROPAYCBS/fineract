@@ -189,6 +189,12 @@ public final class ClientDataValidator {
                     .ignoreIfNull().notExceedingLengthOf(50);
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.subIndustryIdParamName, element)) {
+            final Long subIndustryId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.subIndustryIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.subIndustryIdParamName).value(subIndustryId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {

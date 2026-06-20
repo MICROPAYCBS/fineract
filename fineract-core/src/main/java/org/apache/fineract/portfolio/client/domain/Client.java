@@ -116,6 +116,9 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "alternative_email_address", length = 50)
     private String alternativeEmailAddress;
 
+    @Column(name = "sub_industry_id")
+    private Long subIndustryId;
+
     @Column(name = "is_staff", nullable = false)
     private boolean isStaff;
 

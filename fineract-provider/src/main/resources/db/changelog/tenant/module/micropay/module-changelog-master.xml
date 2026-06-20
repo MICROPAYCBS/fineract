@@ -38,4 +38,5 @@
   <include relativeToChangelogFile="true" file="parts/3013_add_client_tax_identification_number.xml"/>
   <include relativeToChangelogFile="true" file="parts/3014_add_client_alternative_contact_fields.xml"/>
   <include relativeToChangelogFile="true" file="parts/3015_add_datatable_column_validation_metadata.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3016_add_client_sub_industry_and_seed_sectors.xml"/>
 </databaseChangeLog>

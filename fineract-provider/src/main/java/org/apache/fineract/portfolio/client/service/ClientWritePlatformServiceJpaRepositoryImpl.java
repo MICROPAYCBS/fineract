@@ -263,6 +263,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     .stringValueOfParameterNamed(ClientApiConstants.alternativeMobileNoParamName);
             final String alternativeEmailAddress = command
                     .stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
+            final Long subIndustryId = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -307,6 +308,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
             if (StringUtils.isNotBlank(alternativeEmailAddress)) {
                 newClient.setAlternativeEmailAddress(alternativeEmailAddress.trim());
+            }
+            if (subIndustryId != null) {
+                newClient.setSubIndustryId(subIndustryId);
             }
 
             // Account Number generation
@@ -487,6 +491,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
                 changes.put(ClientApiConstants.alternativeEmailAddressParamName, newValue);
                 clientForUpdate.setAlternativeEmailAddress(StringUtils.defaultIfEmpty(newValue, null));
+            }
+
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.subIndustryIdParamName, clientForUpdate.getSubIndustryId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
+                changes.put(ClientApiConstants.subIndustryIdParamName, newValue);
+                clientForUpdate.setSubIndustryId(newValue);
             }
 
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {
