@@ -122,6 +122,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final AddressWritePlatformService addressWritePlatformService;
     private final ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService;
     private final ClientIncomeSourcesWritePlatformService clientIncomeSourcesWritePlatformService;
+    private final ClientIdentifierWritePlatformService clientIdentifierWritePlatformService;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
@@ -265,6 +266,8 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final String alternativeEmailAddress = command
                     .stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
             final Long subIndustryId = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
+            final Long titleId = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
+            final Long nationalityCountryId = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -313,6 +316,14 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (subIndustryId != null) {
                 newClient.setSubIndustryId(subIndustryId);
             }
+            if (titleId != null) {
+                newClient.setTitle(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                        ClientApiConstants.CLIENT_TITLE, titleId));
+            }
+            if (nationalityCountryId != null) {
+                newClient.setNationality(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                        ClientApiConstants.COUNTRY, nationalityCountryId));
+            }
 
             // Account Number generation
             this.clientRepository.saveAndFlush(newClient);
@@ -352,6 +363,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed(ClientApiConstants.incomeSources) != null) {
                 this.clientIncomeSourcesWritePlatformService.addClientIncomeSources(newClient, command);
+            }
+
+            if (command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers) != null) {
+                this.clientIdentifierWritePlatformService.addClientIdentifiers(newClient, command);
             }
 
             if (command.parameterExists(ClientApiConstants.datatables)) {
@@ -504,6 +519,17 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 clientForUpdate.setSubIndustryId(newValue);
             }
 
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.titleIdParamName, clientForUpdate.titleId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
+                changes.put(ClientApiConstants.titleIdParamName, newValue);
+            }
+
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.nationalityCountryIdParamName,
+                    clientForUpdate.nationalityCountryId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
+                changes.put(ClientApiConstants.nationalityCountryIdParamName, newValue);
+            }
+
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
                 changes.put(ClientApiConstants.firstnameParamName, newValue);
@@ -627,6 +653,26 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     gender = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.GENDER, newValue);
                 }
                 clientForUpdate.updateGender(gender);
+            }
+
+            if (changes.containsKey(ClientApiConstants.titleIdParamName)) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
+                CodeValue title = null;
+                if (newValue != null) {
+                    title = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.CLIENT_TITLE,
+                            newValue);
+                }
+                clientForUpdate.updateTitle(title);
+            }
+
+            if (changes.containsKey(ClientApiConstants.nationalityCountryIdParamName)) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
+                CodeValue nationality = null;
+                if (newValue != null) {
+                    nationality = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.COUNTRY,
+                            newValue);
+                }
+                clientForUpdate.updateNationality(nationality);
             }
 
             if (changes.containsKey(ClientApiConstants.savingsProductIdParamName)) {

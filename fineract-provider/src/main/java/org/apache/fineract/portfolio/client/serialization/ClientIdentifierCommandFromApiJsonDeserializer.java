@@ -72,8 +72,11 @@ public final class ClientIdentifierCommandFromApiJsonDeserializer extends Abstra
         final JsonElement element = this.fromApiJsonHelper.parse(json);
         final Long documentTypeId = this.fromApiJsonHelper.extractLongNamed(DOCUMENT_TYPE_ID, element);
         final String documentKey = this.fromApiJsonHelper.extractStringNamed(DOCUMENT_KEY, element);
-        final String documentDescription = this.fromApiJsonHelper.extractStringNamed(DOCUMENT_DESCRIPTION, element);
+        String description = this.fromApiJsonHelper.extractStringNamed(DESCRIPTION, element);
+        if (description == null) {
+            description = this.fromApiJsonHelper.extractStringNamed(DOCUMENT_DESCRIPTION, element);
+        }
         final String statusString = this.fromApiJsonHelper.extractStringNamed(STATUS, element);
-        return new ClientIdentifierCommand(documentTypeId, documentKey, statusString, documentDescription);
+        return new ClientIdentifierCommand(documentTypeId, documentKey, statusString, description);
     }
 }

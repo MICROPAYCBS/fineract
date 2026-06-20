@@ -119,6 +119,14 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "sub_industry_id")
     private Long subIndustryId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "title_cv_id")
+    private CodeValue title;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nationality_country_id")
+    private CodeValue nationality;
+
     @Column(name = "is_staff", nullable = false)
     private boolean isStaff;
 
@@ -660,6 +668,30 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public void updateGender(CodeValue gender) {
         this.gender = gender;
+    }
+
+    public Long titleId() {
+        Long titleId = null;
+        if (this.title != null) {
+            titleId = this.title.getId();
+        }
+        return titleId;
+    }
+
+    public Long nationalityCountryId() {
+        Long nationalityCountryId = null;
+        if (this.nationality != null) {
+            nationalityCountryId = this.nationality.getId();
+        }
+        return nationalityCountryId;
+    }
+
+    public void updateTitle(CodeValue title) {
+        this.title = title;
+    }
+
+    public void updateNationality(CodeValue nationality) {
+        this.nationality = nationality;
     }
 
     public LocalDate dateOfBirth() {

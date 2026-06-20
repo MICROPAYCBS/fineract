@@ -99,6 +99,12 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         final List<CodeValueData> genderOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.GENDER));
 
+        final List<CodeValueData> titleOptions = new ArrayList<>(
+                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CLIENT_TITLE));
+
+        final List<CodeValueData> nationalityOptions = new ArrayList<>(
+                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.COUNTRY));
+
         final List<CodeValueData> clientTypeOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CLIENT_TYPE));
 
@@ -116,10 +122,13 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         final List<DatatableData> datatableTemplates = this.entityDatatableChecksReadService.retrieveTemplates(StatusEnum.CREATE.getValue(),
                 EntityTables.CLIENT.getName(), null);
 
-        return ClientData.template(defaultOfficeId, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), offices, staffOptions, null,
+        final ClientData templateData = ClientData.template(defaultOfficeId, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), offices, staffOptions, null,
                 genderOptions, savingsProductDatas, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
                 clientNonPersonMainBusinessLineOptions, clientLegalFormOptions, familyMemberOptions,
                 new ArrayList<AddressData>(Arrays.asList(address)), isAddressEnabled, datatableTemplates);
+        templateData.setTitleOptions(titleOptions);
+        templateData.setNationalityOptions(nationalityOptions);
+        return templateData;
     }
 
     private Long defaultToUsersOfficeIfNull(final Long officeId) {

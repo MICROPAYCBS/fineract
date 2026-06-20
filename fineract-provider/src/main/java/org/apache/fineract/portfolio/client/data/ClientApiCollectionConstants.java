@@ -25,22 +25,24 @@ import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 
 public class ClientApiCollectionConstants extends ClientApiConstants {
 
-    protected static final Set<String> CLIENT_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(familyMembers, incomeSources, address,
+    protected static final Set<String> CLIENT_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(familyMembers, incomeSources,
+            clientIdentifiers, address,
             localeParamName, dateFormatParamName, groupIdParamName, accountNoParamName, externalIdParamName, mobileNoParamName,
             emailAddressParamName, taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,
+            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,
             activeParamName, activationDateParamName, staffIdParamName, submittedOnDateParamName, savingsProductIdParamName,
             dateOfBirthParamName, genderIdParamName, clientTypeIdParamName, clientClassificationIdParamName,
             clientNonPersonDetailsParamName, displaynameParamName, legalFormIdParamName, datatables, isStaffParamName));
 
     protected static final Set<String> CLIENT_NON_PERSON_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(familyMembers, incomeSources, address, localeParamName, dateFormatParamName, incorpNumberParamName, remarksParamName,
-                    incorpValidityTillParamName, constitutionIdParamName, mainBusinessLineIdParamName, datatables));
+            Arrays.asList(familyMembers, incomeSources, clientIdentifiers, address, localeParamName, dateFormatParamName,
+                    incorpNumberParamName, remarksParamName, incorpValidityTillParamName, constitutionIdParamName,
+                    mainBusinessLineIdParamName, datatables));
 
     protected static final Set<String> CLIENT_UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(localeParamName,
             dateFormatParamName, accountNoParamName, externalIdParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName, subIndustryIdParamName,
-            firstnameParamName,
+            titleIdParamName, nationalityCountryIdParamName, firstnameParamName,
             middlenameParamName,
 
             lastnameParamName, fullnameParamName, activeParamName, activationDateParamName, staffIdParamName, savingsProductIdParamName,

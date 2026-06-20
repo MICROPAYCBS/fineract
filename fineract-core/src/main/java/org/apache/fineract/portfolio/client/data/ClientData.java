@@ -69,7 +69,9 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private String taxIdentificationNumber;
     private String alternativeMobileNo;
     private String alternativeEmailAddress;
-  private Long subIndustryId;
+    private Long subIndustryId;
+    private CodeValueData title;
+    private CodeValueData nationality;
     private LocalDate dateOfBirth;
     private CodeValueData gender;
     private CodeValueData clientType;
@@ -104,6 +106,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Collection<SavingsProductData> savingProductOptions;
     private Collection<SavingsAccountData> savingAccountOptions;
     private Collection<CodeValueData> genderOptions;
+    private Collection<CodeValueData> titleOptions;
+    private Collection<CodeValueData> nationalityOptions;
     private Collection<CodeValueData> clientTypeOptions;
     private Collection<CodeValueData> clientClassificationOptions;
     private Collection<CodeValueData> clientNonPersonConstitutionOptions;

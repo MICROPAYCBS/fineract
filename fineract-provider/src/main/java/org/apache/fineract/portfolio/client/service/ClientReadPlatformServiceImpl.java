@@ -310,6 +310,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("c.alternative_mobile_no as alternativeMobileNo, ");
             sqlBuilder.append("c.alternative_email_address as alternativeEmailAddress, ");
             sqlBuilder.append("c.sub_industry_id as subIndustryId, ");
+            sqlBuilder.append("c.title_cv_id as titleId, ");
+            sqlBuilder.append("cvTitle.code_value as titleValue, ");
+            sqlBuilder.append("c.nationality_country_id as nationalityCountryId, ");
+            sqlBuilder.append("cvNationality.code_value as nationalityValue, ");
             sqlBuilder.append("c.date_of_birth as dateOfBirth, ");
             sqlBuilder.append("c.gender_cv_id as genderId, ");
             sqlBuilder.append("cv.code_value as genderValue, ");
@@ -357,6 +361,8 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("left join m_appuser acu on acu.id = c.activatedon_userid ");
             sqlBuilder.append("left join m_appuser clu on clu.id = c.closedon_userid ");
             sqlBuilder.append("left join m_code_value cv on cv.id = c.gender_cv_id ");
+            sqlBuilder.append("left join m_code_value cvTitle on cvTitle.id = c.title_cv_id ");
+            sqlBuilder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
             sqlBuilder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
             sqlBuilder.append("left join m_code_value cvclassification on cvclassification.id = c.client_classification_cv_id ");
             sqlBuilder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
@@ -408,6 +414,12 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Long genderId = JdbcSupport.getLong(rs, "genderId");
             final String genderValue = rs.getString("genderValue");
             final CodeValueData gender = CodeValueData.instance(genderId, genderValue);
+            final Long titleId = JdbcSupport.getLong(rs, "titleId");
+            final String titleValue = rs.getString("titleValue");
+            final CodeValueData title = CodeValueData.instance(titleId, titleValue);
+            final Long nationalityCountryId = JdbcSupport.getLong(rs, "nationalityCountryId");
+            final String nationalityValue = rs.getString("nationalityValue");
+            final CodeValueData nationality = CodeValueData.instance(nationalityCountryId, nationalityValue);
 
             final Long clienttypeId = JdbcSupport.getLong(rs, "clienttypeId");
             final String clienttypeValue = rs.getString("clienttypeValue");
@@ -464,11 +476,14 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
                     submittedByLastname, activationDate, activatedByUsername, activatedByFirstname, activatedByLastname, closedOnDate,
                     closedByUsername, closedByFirstname, closedByLastname);
 
-            return ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id,
-                    firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
-                    alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender,
+            final ClientData clientData = ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId,
+                    transferToOfficeName, id, firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress,
+                    taxIdentificationNumber, alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender,
                     activationDate, imageId, staffId, staffName, timeline, savingsProductId, savingsProductName, savingsAccountId,
                     clienttype, classification, legalForm, clientNonPerson, isStaff);
+            clientData.setTitle(title);
+            clientData.setNationality(nationality);
+            return clientData;
 
         }
     }
@@ -602,6 +617,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("c.alternative_mobile_no as alternativeMobileNo, ");
             builder.append("c.alternative_email_address as alternativeEmailAddress, ");
             builder.append("c.sub_industry_id as subIndustryId, ");
+            builder.append("c.title_cv_id as titleId, ");
+            builder.append("cvTitle.code_value as titleValue, ");
+            builder.append("c.nationality_country_id as nationalityCountryId, ");
+            builder.append("cvNationality.code_value as nationalityValue, ");
             builder.append("c.date_of_birth as dateOfBirth, ");
             builder.append("c.gender_cv_id as genderId, ");
             builder.append("cv.code_value as genderValue, ");
@@ -648,6 +667,8 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("left join m_appuser acu on acu.id = c.activatedon_userid ");
             builder.append("left join m_appuser clu on clu.id = c.closedon_userid ");
             builder.append("left join m_code_value cv on cv.id = c.gender_cv_id ");
+            builder.append("left join m_code_value cvTitle on cvTitle.id = c.title_cv_id ");
+            builder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
             builder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
             builder.append("left join m_code_value cvclassification on cvclassification.id = c.client_classification_cv_id ");
             builder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
@@ -699,6 +720,12 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Long genderId = JdbcSupport.getLong(rs, "genderId");
             final String genderValue = rs.getString("genderValue");
             final CodeValueData gender = CodeValueData.instance(genderId, genderValue);
+            final Long titleId = JdbcSupport.getLong(rs, "titleId");
+            final String titleValue = rs.getString("titleValue");
+            final CodeValueData title = CodeValueData.instance(titleId, titleValue);
+            final Long nationalityCountryId = JdbcSupport.getLong(rs, "nationalityCountryId");
+            final String nationalityValue = rs.getString("nationalityValue");
+            final CodeValueData nationality = CodeValueData.instance(nationalityCountryId, nationalityValue);
 
             final Long clienttypeId = JdbcSupport.getLong(rs, "clienttypeId");
             final String clienttypeValue = rs.getString("clienttypeValue");
@@ -754,11 +781,14 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
                     submittedByLastname, activationDate, activatedByUsername, activatedByFirstname, activatedByLastname, closedOnDate,
                     closedByUsername, closedByFirstname, closedByLastname);
 
-            return ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id,
-                    firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
-                    alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender,
+            final ClientData clientData = ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId,
+                    transferToOfficeName, id, firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress,
+                    taxIdentificationNumber, alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender,
                     activationDate, imageId, staffId, staffName, timeline, savingsProductId, savingsProductName, savingsAccountId,
                     clienttype, classification, legalForm, clientNonPerson, isStaff);
+            clientData.setTitle(title);
+            clientData.setNationality(nationality);
+            return clientData;
 
         }
     }

@@ -29,6 +29,9 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.command.ClientIdentifierCommand;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
@@ -205,5 +208,26 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {
         LOG.error("Error occured.", dve);
+    }
+
+    @Transactional
+    @Override
+    public void addClientIdentifiers(final Client client, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final JsonArray identifiers = command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers);
+        if (identifiers == null) {
+            return;
+        }
+        for (JsonElement element : identifiers) {
+            final ClientIdentifierCommand clientIdentifierCommand = this.clientIdentifierCommandFromApiJsonDeserializer
+                    .commandFromApiJson(element.toString());
+            clientIdentifierCommand.validateForCreate();
+            final CodeValue documentType = this.codeValueRepository
+                    .findOneWithNotFoundDetection(clientIdentifierCommand.getDocumentTypeId());
+            final ClientIdentifier clientIdentifier = ClientIdentifier.create(client, documentType,
+                    clientIdentifierCommand.getDocumentKey(), clientIdentifierCommand.getStatus(),
+                    clientIdentifierCommand.getDescription());
+            this.clientIdentifierRepository.saveAndFlush(clientIdentifier);
+        }
     }
 }

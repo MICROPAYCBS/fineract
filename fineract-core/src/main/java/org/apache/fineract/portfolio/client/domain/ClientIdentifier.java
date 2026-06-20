@@ -64,6 +64,11 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         return new ClientIdentifier(client, documentType, documentKey, status, description);
     }
 
+    public static ClientIdentifier create(final Client client, final CodeValue documentType, final String documentKey,
+            final String status, final String description) {
+        return new ClientIdentifier(client, documentType, documentKey, status, description);
+    }
+
     protected ClientIdentifier() {
         //
     }

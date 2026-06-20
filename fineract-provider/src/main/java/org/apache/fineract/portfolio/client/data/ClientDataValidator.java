@@ -195,6 +195,18 @@ public final class ClientDataValidator {
                     .integerGreaterThanZero();
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.titleIdParamName, element)) {
+            final Long titleId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.titleIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.titleIdParamName).value(titleId).ignoreIfNull().integerGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.nationalityCountryIdParamName, element)) {
+            final Long nationalityCountryId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.nationalityCountryIdParamName,
+                    element);
+            baseDataValidator.reset().parameter(ClientApiConstants.nationalityCountryIdParamName).value(nationalityCountryId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {

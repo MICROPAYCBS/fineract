@@ -42,4 +42,5 @@
   <include relativeToChangelogFile="true" file="parts/3017_add_client_income_source_code_values.xml"/>
   <include relativeToChangelogFile="true" file="parts/3018_add_client_income_source_table.xml"/>
   <include relativeToChangelogFile="true" file="parts/3019_add_client_income_source_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3020_add_client_title_and_nationality.xml"/>
 </databaseChangeLog>

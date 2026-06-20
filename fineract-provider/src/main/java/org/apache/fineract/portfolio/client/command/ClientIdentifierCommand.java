@@ -54,6 +54,10 @@ public class ClientIdentifierCommand {
         return this.description;
     }
 
+    public String getStatus() {
+        return this.status;
+    }
+
     public void validateForCreate() {
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
 

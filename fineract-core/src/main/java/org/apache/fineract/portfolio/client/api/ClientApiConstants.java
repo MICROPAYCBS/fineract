@@ -56,6 +56,8 @@ public class ClientApiConstants {
     public static final String CLIENT_WITHDRAW_REASON = "ClientWithdrawReason";
 
     public static final String GENDER = "Gender";
+    public static final String CLIENT_TITLE = "ClientTitle";
+    public static final String COUNTRY = "Country";
     public static final String CLIENT_TYPE = "ClientType";
     public static final String CLIENT_CLASSIFICATION = "ClientClassification";
 
@@ -68,6 +70,7 @@ public class ClientApiConstants {
     public static final String address = "address";
     public static final String familyMembers = "familyMembers";
     public static final String incomeSources = "incomeSources";
+    public static final String clientIdentifiers = "clientIdentifiers";
     public static final String MARITALSTATUS = "MARITALSTATUS";
     public static final String maritalStatusIdParamName = "maritalStatusId";
 
@@ -84,6 +87,8 @@ public class ClientApiConstants {
     public static final String alternativeMobileNoParamName = "alternativeMobileNo";
     public static final String alternativeEmailAddressParamName = "alternativeEmailAddress";
     public static final String subIndustryIdParamName = "subIndustryId";
+    public static final String titleIdParamName = "titleId";
+    public static final String nationalityCountryIdParamName = "nationalityCountryId";
     public static final String firstnameParamName = "firstname";
     public static final String middlenameParamName = "middlename";
     public static final String lastnameParamName = "lastname";
@@ -198,7 +203,7 @@ public class ClientApiConstants {
             externalIdParamName, statusParamName, activeParamName, activationDateParamName, firstnameParamName, middlenameParamName,
             lastnameParamName, fullnameParamName, displayNameParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, officeIdParamName,
+            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, officeIdParamName,
             officeNameParamName, transferToOfficeIdParamName, transferToOfficeNameParamName, hierarchyParamName, imageIdParamName,
             imagePresentParamName, staffIdParamName, staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName,
             staffOptionsParamName, dateOfBirthParamName, genderParamName, clientTypeParamName, clientClassificationParamName,
