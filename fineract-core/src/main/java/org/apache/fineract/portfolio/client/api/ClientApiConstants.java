@@ -119,6 +119,9 @@ public class ClientApiConstants {
     public static final String dateOfBirthParamName = "dateOfBirth";
     public static final String genderIdParamName = "genderId";
     public static final String genderParamName = "gender";
+    public static final String titleParamName = "title";
+    public static final String nationalityParamName = "nationality";
+    public static final String customerRiskProfileParamName = "customerRiskProfile";
     public static final String clientTypeIdParamName = "clientTypeId";
     public static final String clientTypeParamName = "clientType";
     public static final String clientClassificationIdParamName = "clientClassificationId";
@@ -189,6 +192,10 @@ public class ClientApiConstants {
     // template related part of response
     public static final String officeOptionsParamName = "officeOptions";
     public static final String staffOptionsParamName = "staffOptions";
+    public static final String genderOptionsParamName = "genderOptions";
+    public static final String titleOptionsParamName = "titleOptions";
+    public static final String nationalityOptionsParamName = "nationalityOptions";
+    public static final String customerRiskProfileOptionsParamName = "customerRiskProfileOptions";
 
     public static final String datatables = "datatables";
     public static final String obligeeData = "ObligeeDetails";
@@ -206,11 +213,13 @@ public class ClientApiConstants {
             externalIdParamName, statusParamName, activeParamName, activationDateParamName, firstnameParamName, middlenameParamName,
             lastnameParamName, fullnameParamName, displayNameParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, officeIdParamName,
-            officeNameParamName, transferToOfficeIdParamName, transferToOfficeNameParamName, hierarchyParamName, imageIdParamName,
-            imagePresentParamName, staffIdParamName, staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName,
-            staffOptionsParamName, dateOfBirthParamName, genderParamName, clientTypeParamName, clientClassificationParamName,
-            legalFormParamName, clientNonPersonDetailsParamName, isStaffParamName, legalFormParamName));
+            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, titleParamName,
+            nationalityParamName, customerRiskProfileParamName, officeIdParamName, officeNameParamName, transferToOfficeIdParamName,
+            transferToOfficeNameParamName, hierarchyParamName, imageIdParamName, imagePresentParamName, staffIdParamName,
+            staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName, staffOptionsParamName, genderOptionsParamName,
+            titleOptionsParamName, nationalityOptionsParamName, customerRiskProfileOptionsParamName, dateOfBirthParamName,
+            genderParamName, clientTypeParamName, clientClassificationParamName, legalFormParamName, clientNonPersonDetailsParamName,
+            isStaffParamName, legalFormParamName));
 
     protected static final Set<String> CLIENT_CHARGES_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(chargeIdParamName,
             clientIdParamName, chargeNameParamName, penaltyParamName, chargeTimeTypeParamName, dueAsOfDateParamName,

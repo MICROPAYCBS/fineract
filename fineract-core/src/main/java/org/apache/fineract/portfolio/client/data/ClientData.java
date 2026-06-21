@@ -344,56 +344,71 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
 
     public static ClientData templateOnTop(final ClientData clientData, final ClientData templateData) {
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
-        return new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId, clientData.officeName,
-                clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname, clientData.middlename,
-                clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId, clientData.mobileNo,
-                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
-                clientData.alternativeEmailAddress, clientData.subIndustryId, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
-                clientData.staffId, clientData.staffName, templateData.officeOptions, clientData.groups, templateData.staffOptions,
-                templateData.narrations, templateData.genderOptions, clientData.timeline, templateData.savingProductOptions,
-                clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId, clientData.savingAccountOptions,
-                clientData.clientType, clientData.clientClassification, templateData.clientTypeOptions,
+        final ClientData merged = new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId,
+                clientData.officeName, clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname,
+                clientData.middlename, clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId,
+                clientData.mobileNo, clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
+                clientData.alternativeEmailAddress, clientData.subIndustryId, clientData.dateOfBirth, clientData.gender,
+                clientData.activationDate, clientData.imageId, clientData.staffId, clientData.staffName, templateData.officeOptions,
+                clientData.groups, templateData.staffOptions, templateData.narrations, templateData.genderOptions, clientData.timeline,
+                templateData.savingProductOptions, clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId,
+                clientData.savingAccountOptions, clientData.clientType, clientData.clientClassification, templateData.clientTypeOptions,
                 templateData.clientClassificationOptions, templateData.clientNonPersonConstitutionOptions,
                 templateData.clientNonPersonMainBusinessLineOptions, clientData.clientNonPersonDetails, templateData.clientLegalFormOptions,
                 templateData.familyMemberOptions, clientData.legalForm, clientData.address, clientData.isAddressEnabled, null,
                 clientData.isStaff, clientCollateralManagements);
-
+        copyProfileCodeValues(clientData, merged);
+        merged.setTitleOptions(templateData.getTitleOptions());
+        merged.setNationalityOptions(templateData.getNationalityOptions());
+        merged.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
+        return merged;
     }
 
     public static ClientData templateWithSavingAccountOptions(final ClientData clientData,
             final Collection<SavingsAccountData> savingAccountOptions) {
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
-        return new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId, clientData.officeName,
-                clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname, clientData.middlename,
-                clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId, clientData.mobileNo,
-                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
-                clientData.alternativeEmailAddress, clientData.subIndustryId, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
-                clientData.staffId, clientData.staffName, clientData.officeOptions, clientData.groups, clientData.staffOptions,
-                clientData.narrations, clientData.genderOptions, clientData.timeline, clientData.savingProductOptions,
-                clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId, savingAccountOptions,
-                clientData.clientType, clientData.clientClassification, clientData.clientTypeOptions,
+        final ClientData merged = new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId,
+                clientData.officeName, clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname,
+                clientData.middlename, clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId,
+                clientData.mobileNo, clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
+                clientData.alternativeEmailAddress, clientData.subIndustryId, clientData.dateOfBirth, clientData.gender,
+                clientData.activationDate, clientData.imageId, clientData.staffId, clientData.staffName, clientData.officeOptions,
+                clientData.groups, clientData.staffOptions, clientData.narrations, clientData.genderOptions, clientData.timeline,
+                clientData.savingProductOptions, clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId,
+                savingAccountOptions, clientData.clientType, clientData.clientClassification, clientData.clientTypeOptions,
                 clientData.clientClassificationOptions, clientData.clientNonPersonConstitutionOptions,
                 clientData.clientNonPersonMainBusinessLineOptions, clientData.clientNonPersonDetails, clientData.clientLegalFormOptions,
                 clientData.familyMemberOptions, clientData.legalForm, clientData.address, clientData.isAddressEnabled, null,
                 clientData.isStaff, clientCollateralManagements);
-
+        copyProfileCodeValues(clientData, merged);
+        merged.setTitleOptions(clientData.getTitleOptions());
+        merged.setNationalityOptions(clientData.getNationalityOptions());
+        merged.setCustomerRiskProfileOptions(clientData.getCustomerRiskProfileOptions());
+        return merged;
     }
 
     public static ClientData setParentGroups(final ClientData clientData, final Collection<GroupGeneralData> parentGroups,
             final Set<ClientCollateralManagementData> clientCollateralManagements) {
-        return new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId, clientData.officeName,
-                clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname, clientData.middlename,
-                clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId, clientData.mobileNo,
-                clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
-                clientData.alternativeEmailAddress, clientData.subIndustryId, clientData.dateOfBirth, clientData.gender, clientData.activationDate, clientData.imageId,
-                clientData.staffId, clientData.staffName, clientData.officeOptions, parentGroups, clientData.staffOptions, null, null,
-                clientData.timeline, clientData.savingProductOptions, clientData.savingsProductId, clientData.savingsProductName,
-                clientData.savingsAccountId, clientData.savingAccountOptions, clientData.clientType, clientData.clientClassification,
-                clientData.clientTypeOptions, clientData.clientClassificationOptions, clientData.clientNonPersonConstitutionOptions,
-                clientData.clientNonPersonMainBusinessLineOptions, clientData.clientNonPersonDetails, clientData.clientLegalFormOptions,
-                clientData.familyMemberOptions, clientData.legalForm, clientData.address, clientData.isAddressEnabled, null,
-                clientData.isStaff, clientCollateralManagements);
+        final ClientData merged = new ClientData(clientData.accountNo, clientData.status, clientData.subStatus, clientData.officeId,
+                clientData.officeName, clientData.transferToOfficeId, clientData.transferToOfficeName, clientData.id, clientData.firstname,
+                clientData.middlename, clientData.lastname, clientData.fullname, clientData.displayName, clientData.externalId,
+                clientData.mobileNo, clientData.emailAddress, clientData.taxIdentificationNumber, clientData.alternativeMobileNo,
+                clientData.alternativeEmailAddress, clientData.subIndustryId, clientData.dateOfBirth, clientData.gender,
+                clientData.activationDate, clientData.imageId, clientData.staffId, clientData.staffName, clientData.officeOptions,
+                parentGroups, clientData.staffOptions, null, null, clientData.timeline, clientData.savingProductOptions,
+                clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId, clientData.savingAccountOptions,
+                clientData.clientType, clientData.clientClassification, clientData.clientTypeOptions, clientData.clientClassificationOptions,
+                clientData.clientNonPersonConstitutionOptions, clientData.clientNonPersonMainBusinessLineOptions,
+                clientData.clientNonPersonDetails, clientData.clientLegalFormOptions, clientData.familyMemberOptions, clientData.legalForm,
+                clientData.address, clientData.isAddressEnabled, null, clientData.isStaff, clientCollateralManagements);
+        copyProfileCodeValues(clientData, merged);
+        return merged;
+    }
 
+    private static void copyProfileCodeValues(final ClientData source, final ClientData target) {
+        target.setTitle(source.getTitle());
+        target.setNationality(source.getNationality());
+        target.setCustomerRiskProfile(source.getCustomerRiskProfile());
     }
 
     public static ClientData clientIdentifier(final Long id, final String accountNo, final String firstname, final String middlename,
