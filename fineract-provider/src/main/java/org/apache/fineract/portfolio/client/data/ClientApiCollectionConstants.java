@@ -29,7 +29,7 @@ public class ClientApiCollectionConstants extends ClientApiConstants {
             complianceProfile, clientIdentifiers, address,
             localeParamName, dateFormatParamName, groupIdParamName, accountNoParamName, externalIdParamName, mobileNoParamName,
             emailAddressParamName, taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,
+            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,
             activeParamName, activationDateParamName, staffIdParamName, submittedOnDateParamName, savingsProductIdParamName,
             dateOfBirthParamName, genderIdParamName, clientTypeIdParamName, clientClassificationIdParamName,
             clientNonPersonDetailsParamName, displaynameParamName, legalFormIdParamName, datatables, isStaffParamName));

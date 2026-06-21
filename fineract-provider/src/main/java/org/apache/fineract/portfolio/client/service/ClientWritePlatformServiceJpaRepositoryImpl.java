@@ -269,6 +269,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final Long subIndustryId = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
             final Long titleId = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
             final Long nationalityCountryId = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
+            final Long customerRiskProfileId = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -324,6 +325,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (nationalityCountryId != null) {
                 newClient.setNationality(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
                         ClientApiConstants.COUNTRY, nationalityCountryId));
+            }
+            if (customerRiskProfileId != null) {
+                newClient.updateCustomerRiskProfile(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                        ClientApiConstants.CUSTOMER_RISK_PROFILE, customerRiskProfileId));
             }
 
             // Account Number generation
