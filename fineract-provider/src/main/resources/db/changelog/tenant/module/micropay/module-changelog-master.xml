@@ -49,4 +49,5 @@
   <include relativeToChangelogFile="true" file="parts/3024_add_family_member_email_and_address.xml"/>
   <include relativeToChangelogFile="true" file="parts/3025_add_income_source_employer_address.xml"/>
   <include relativeToChangelogFile="true" file="parts/3026_add_country_nationality_code_values.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3027_add_family_member_relationship_code_values.xml"/>
 </databaseChangeLog>
