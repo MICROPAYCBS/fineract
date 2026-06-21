@@ -46,6 +46,7 @@ public final class ClientIncomeSourceCommandFromApiJsonDeserializer {
     public static final String INCOME_SOURCE_TYPE_ID = "incomeSourceTypeId";
     public static final String SOURCE_OF_FUNDS_ID = "sourceOfFundsId";
     public static final String EMPLOYER_BUSINESS_NAME = "employerBusinessName";
+    public static final String EMPLOYER_ADDRESS = "employerAddress";
     public static final String OCCUPATION = "occupation";
     public static final String SUB_INDUSTRY_ID = "subIndustryId";
     public static final String MONTHLY_INCOME = "monthlyIncome";
@@ -64,7 +65,7 @@ public final class ClientIncomeSourceCommandFromApiJsonDeserializer {
     public static final String RESOURCE = "IncomeSources";
 
     private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(INCOME_SOURCE_TYPE_ID, SOURCE_OF_FUNDS_ID,
-            EMPLOYER_BUSINESS_NAME, OCCUPATION, SUB_INDUSTRY_ID, MONTHLY_INCOME, INCOME_CURRENCY_CODE, INCOME_FREQUENCY_ID, START_DATE,
+            EMPLOYER_BUSINESS_NAME, EMPLOYER_ADDRESS, OCCUPATION, SUB_INDUSTRY_ID, MONTHLY_INCOME, INCOME_CURRENCY_CODE, INCOME_FREQUENCY_ID, START_DATE,
             END_DATE, IS_PRIMARY_SOURCE, VERIFICATION_STATUS_ID, SUPPORTING_DOCUMENT, REMARKS, STATUS, LOCALE, DATE_FORMAT, INCOME_SOURCES,
             "id", "clientId"));
 
@@ -124,6 +125,11 @@ public final class ClientIncomeSourceCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.parameterExists(EMPLOYER_BUSINESS_NAME, element)) {
             final String value = this.fromApiJsonHelper.extractStringNamed(EMPLOYER_BUSINESS_NAME, element);
             baseDataValidator.reset().parameter(EMPLOYER_BUSINESS_NAME).value(value).ignoreIfNull().notExceedingLengthOf(200);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(EMPLOYER_ADDRESS, element)) {
+            final String value = this.fromApiJsonHelper.extractStringNamed(EMPLOYER_ADDRESS, element);
+            baseDataValidator.reset().parameter(EMPLOYER_ADDRESS).value(value).ignoreIfNull().notExceedingLengthOf(500);
         }
 
         if (this.fromApiJsonHelper.parameterExists(OCCUPATION, element)) {

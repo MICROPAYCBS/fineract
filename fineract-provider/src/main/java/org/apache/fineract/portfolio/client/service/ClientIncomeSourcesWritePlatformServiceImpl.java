@@ -144,6 +144,10 @@ public class ClientIncomeSourcesWritePlatformServiceImpl implements ClientIncome
             incomeSource.setEmployerBusinessName(
                     StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_BUSINESS_NAME).getAsString()));
         }
+        if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_ADDRESS)) {
+            incomeSource.setEmployerAddress(
+                    StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_ADDRESS).getAsString()));
+        }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.OCCUPATION)) {
             incomeSource.setOccupation(
                     StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.OCCUPATION).getAsString()));

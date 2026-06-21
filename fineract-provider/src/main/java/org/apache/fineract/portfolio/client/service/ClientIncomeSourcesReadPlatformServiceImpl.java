@@ -49,7 +49,8 @@ public class ClientIncomeSourcesReadPlatformServiceImpl implements ClientIncomeS
             return " cis.id AS id, cis.client_id AS clientId,"
                     + " cis.income_source_type_id AS incomeSourceTypeId, ist.code_value AS incomeSourceType,"
                     + " cis.source_of_funds_id AS sourceOfFundsId, sof.code_value AS sourceOfFunds,"
-                    + " cis.employer_business_name AS employerBusinessName, cis.occupation AS occupation,"
+                    + " cis.employer_business_name AS employerBusinessName, cis.employer_address AS employerAddress,"
+                    + " cis.occupation AS occupation,"
                     + " cis.sub_industry_id AS subIndustryId, si.sub_industry_name AS subIndustryName,"
                     + " cis.monthly_income AS monthlyIncome, cis.income_currency_code AS incomeCurrencyCode,"
                     + " cis.income_frequency_id AS incomeFrequencyId, ifreq.code_value AS incomeFrequency,"
@@ -74,7 +75,8 @@ public class ClientIncomeSourcesReadPlatformServiceImpl implements ClientIncomeS
                     .incomeSourceTypeId(JdbcSupport.getLong(rs, "incomeSourceTypeId"))
                     .incomeSourceType(rs.getString("incomeSourceType"))
                     .sourceOfFundsId(JdbcSupport.getLong(rs, "sourceOfFundsId")).sourceOfFunds(rs.getString("sourceOfFunds"))
-                    .employerBusinessName(rs.getString("employerBusinessName")).occupation(rs.getString("occupation"))
+                    .employerBusinessName(rs.getString("employerBusinessName")).employerAddress(rs.getString("employerAddress"))
+                    .occupation(rs.getString("occupation"))
                     .subIndustryId(JdbcSupport.getLong(rs, "subIndustryId")).subIndustryName(rs.getString("subIndustryName"))
                     .monthlyIncome(rs.getBigDecimal("monthlyIncome")).incomeCurrencyCode(rs.getString("incomeCurrencyCode"))
                     .incomeFrequencyId(JdbcSupport.getLong(rs, "incomeFrequencyId"))

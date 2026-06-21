@@ -46,4 +46,7 @@
   <include relativeToChangelogFile="true" file="parts/3021_add_client_compliance_profile_tables.xml"/>
   <include relativeToChangelogFile="true" file="parts/3022_add_client_compliance_profile_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/3023_add_client_customer_risk_profile.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3024_add_family_member_email_and_address.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3025_add_income_source_employer_address.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3026_add_country_nationality_code_values.xml"/>
 </databaseChangeLog>

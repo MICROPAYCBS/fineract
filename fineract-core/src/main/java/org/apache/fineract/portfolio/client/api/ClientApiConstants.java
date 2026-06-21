@@ -58,7 +58,7 @@ public class ClientApiConstants {
     public static final String GENDER = "Gender";
     public static final String CLIENT_TITLE = "ClientTitle";
     public static final String CUSTOMER_RISK_PROFILE = "CustomerRiskProfile";
-    public static final String COUNTRY = "Country";
+    public static final String COUNTRY = "COUNTRY";
     public static final String CLIENT_TYPE = "ClientType";
     public static final String CLIENT_CLASSIFICATION = "ClientClassification";
 

@@ -39,6 +39,7 @@ public final class ClientIncomeSourceData implements Serializable {
     private final Long sourceOfFundsId;
     private final String sourceOfFunds;
     private final String employerBusinessName;
+    private final String employerAddress;
     private final String occupation;
     private final Long subIndustryId;
     private final String subIndustryName;

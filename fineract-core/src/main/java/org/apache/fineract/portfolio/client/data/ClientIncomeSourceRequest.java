@@ -41,6 +41,7 @@ public class ClientIncomeSourceRequest implements Serializable {
     private Long incomeSourceTypeId;
     private Long sourceOfFundsId;
     private String employerBusinessName;
+    private String employerAddress;
     private String occupation;
     private Long subIndustryId;
     private BigDecimal monthlyIncome;

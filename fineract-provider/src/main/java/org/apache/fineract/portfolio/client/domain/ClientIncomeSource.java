@@ -53,6 +53,9 @@ public class ClientIncomeSource extends AbstractAuditableWithUTCDateTimeCustom<L
     @Column(name = "employer_business_name", length = 200)
     private String employerBusinessName;
 
+    @Column(name = "employer_address", length = 500)
+    private String employerAddress;
+
     @Column(name = "occupation", length = 100)
     private String occupation;
 

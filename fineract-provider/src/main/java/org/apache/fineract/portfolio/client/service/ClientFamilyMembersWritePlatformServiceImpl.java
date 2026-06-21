@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.DateTimeParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepository;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -80,6 +81,8 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
         String lastName = "";
         String qualification = "";
         String mobileNumber = "";
+        String emailAddress = null;
+        String address = null;
         Long age = null;
         Boolean isDependent = false;
         LocalDate dateOfBirth = null;
@@ -93,6 +96,8 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
         lastName = command.stringValueOfParameterNamed("lastName");
         qualification = command.stringValueOfParameterNamed("qualification");
         mobileNumber = command.stringValueOfParameterNamed("mobileNumber");
+        emailAddress = StringUtils.defaultIfBlank(command.stringValueOfParameterNamed("emailAddress"), null);
+        address = StringUtils.defaultIfBlank(command.stringValueOfParameterNamed("address"), null);
         age = command.longValueOfParameterNamed("age");
         isDependent = command.booleanObjectValueOfParameterNamed("isDependent");
 
@@ -119,7 +124,7 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
         dateOfBirth = command.localDateValueOfParameterNamed("dateOfBirth");
 
         ClientFamilyMembers clientFamilyMembers = ClientFamilyMembers.fromJson(client, firstName, middleName, lastName, qualification,
-                mobileNumber, age, isDependent, relationship, maritalStatus, gender, dateOfBirth, profession);
+                mobileNumber, emailAddress, address, age, isDependent, relationship, maritalStatus, gender, dateOfBirth, profession);
 
         this.clientFamilyRepository.saveAndFlush(clientFamilyMembers);
 
@@ -147,6 +152,8 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
         String qualification = "";
         LocalDate dateOfBirth = null;
         String mobileNumber = "";
+        String emailAddress = null;
+        String address = null;
         Long age = null;
         Boolean isDependent = false;
 
@@ -185,6 +192,14 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
 
             if (member.get("mobileNumber") != null) {
                 mobileNumber = member.get("mobileNumber").getAsString();
+            }
+
+            if (member.get("emailAddress") != null) {
+                emailAddress = StringUtils.defaultIfBlank(member.get("emailAddress").getAsString(), null);
+            }
+
+            if (member.get("address") != null) {
+                address = StringUtils.defaultIfBlank(member.get("address").getAsString(), null);
             }
 
             if (member.get("age") != null) {
@@ -233,8 +248,8 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
 
             }
 
-            familyMember = ClientFamilyMembers.fromJson(client, firstName, middleName, lastName, qualification, mobileNumber, age,
-                    isDependent, relationship, maritalStatus, gender, dateOfBirth, profession);
+            familyMember = ClientFamilyMembers.fromJson(client, firstName, middleName, lastName, qualification, mobileNumber, emailAddress,
+                    address, age, isDependent, relationship, maritalStatus, gender, dateOfBirth, profession);
 
             this.clientFamilyRepository.saveAndFlush(familyMember);
 
@@ -264,6 +279,8 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
         String qualification = "";
         LocalDate dateOfBirth = null;
         String mobileNumber = "";
+        String emailAddress = null;
+        String address = null;
         Long age = null;
         Boolean isDependent = false;
         // long clientFamilyMemberId=0;
@@ -305,6 +322,16 @@ public class ClientFamilyMembersWritePlatformServiceImpl implements ClientFamily
         if (command.stringValueOfParameterNamed("mobileNumber") != null) {
             mobileNumber = command.stringValueOfParameterNamed("mobileNumber");
             clientFamilyMember.setMobileNumber(mobileNumber);
+        }
+
+        if (command.hasParameter("emailAddress")) {
+            emailAddress = StringUtils.defaultIfBlank(command.stringValueOfParameterNamed("emailAddress"), null);
+            clientFamilyMember.setEmailAddress(emailAddress);
+        }
+
+        if (command.hasParameter("address")) {
+            address = StringUtils.defaultIfBlank(command.stringValueOfParameterNamed("address"), null);
+            clientFamilyMember.setAddress(address);
         }
 
         if (command.longValueOfParameterNamed("age") != null) {

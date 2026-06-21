@@ -49,6 +49,8 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
     public static final String LAST_NAME = "lastName";
     public static final String QUALIFICATION = "qualification";
     public static final String MOBILE_NUMBER = "mobileNumber";
+    public static final String EMAIL_ADDRESS = "emailAddress";
+    public static final String ADDRESS = "address";
     public static final String AGE = "age";
     public static final String IS_DEPENDENT = "isDependent";
     public static final String RELATIONSHIP_ID = "relationshipId";
@@ -60,8 +62,9 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
     public static final String DATE_FORMAT = "dateFormat";
     public static final String FAMILY_MEMBERS = "familyMembers";
     private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
-            Arrays.asList(ID, CLIENT_ID, FIRST_NAME, MIDDLE_NAME, LAST_NAME, QUALIFICATION, MOBILE_NUMBER, AGE, IS_DEPENDENT,
-                    RELATIONSHIP_ID, MARITAL_STATUS_ID, GENDER_ID, DATE_OF_BIRTH, PROFESSION_ID, LOCALE, DATE_FORMAT, FAMILY_MEMBERS));
+            Arrays.asList(ID, CLIENT_ID, FIRST_NAME, MIDDLE_NAME, LAST_NAME, QUALIFICATION, MOBILE_NUMBER, EMAIL_ADDRESS, ADDRESS, AGE,
+                    IS_DEPENDENT, RELATIONSHIP_ID, MARITAL_STATUS_ID, GENDER_ID, DATE_OF_BIRTH, PROFESSION_ID, LOCALE, DATE_FORMAT,
+                    FAMILY_MEMBERS));
     public static final String FAMILY_MEMBERS1 = "FamilyMembers";
     public static final String RELATION_SHIP_ID = "relationShipId";
     private final FromJsonHelper fromApiJsonHelper;
@@ -141,6 +144,16 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.extractStringNamed(MOBILE_NUMBER, element) != null) {
             final String mobileNumber = this.fromApiJsonHelper.extractStringNamed(MOBILE_NUMBER, element);
             baseDataValidator.reset().parameter(MOBILE_NUMBER).value(mobileNumber).notNull().notBlank().notExceedingLengthOf(100);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(EMAIL_ADDRESS, element)) {
+            final String emailAddress = this.fromApiJsonHelper.extractStringNamed(EMAIL_ADDRESS, element);
+            baseDataValidator.reset().parameter(EMAIL_ADDRESS).value(emailAddress).ignoreIfNull().notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ADDRESS, element)) {
+            final String address = this.fromApiJsonHelper.extractStringNamed(ADDRESS, element);
+            baseDataValidator.reset().parameter(ADDRESS).value(address).ignoreIfNull().notExceedingLengthOf(500);
         }
 
         if (this.fromApiJsonHelper.extractBooleanNamed(IS_DEPENDENT, element) != null) {
@@ -226,6 +239,21 @@ public final class ClientFamilyMemberCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.extractStringNamed(QUALIFICATION, element) != null) {
             final String qualification = this.fromApiJsonHelper.extractStringNamed(QUALIFICATION, element);
             baseDataValidator.reset().parameter(QUALIFICATION).value(qualification).notNull().notBlank().notExceedingLengthOf(100);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(MOBILE_NUMBER, element)) {
+            final String mobileNumber = this.fromApiJsonHelper.extractStringNamed(MOBILE_NUMBER, element);
+            baseDataValidator.reset().parameter(MOBILE_NUMBER).value(mobileNumber).ignoreIfNull().notExceedingLengthOf(100);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(EMAIL_ADDRESS, element)) {
+            final String emailAddress = this.fromApiJsonHelper.extractStringNamed(EMAIL_ADDRESS, element);
+            baseDataValidator.reset().parameter(EMAIL_ADDRESS).value(emailAddress).ignoreIfNull().notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ADDRESS, element)) {
+            final String address = this.fromApiJsonHelper.extractStringNamed(ADDRESS, element);
+            baseDataValidator.reset().parameter(ADDRESS).value(address).ignoreIfNull().notExceedingLengthOf(500);
         }
 
         if (this.fromApiJsonHelper.extractLongNamed(RELATION_SHIP_ID, element) != null) {
