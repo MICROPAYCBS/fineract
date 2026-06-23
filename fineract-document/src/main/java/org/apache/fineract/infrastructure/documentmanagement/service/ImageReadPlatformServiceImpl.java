@@ -19,6 +19,7 @@
 package org.apache.fineract.infrastructure.documentmanagement.service;
 
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FilenameUtils;
@@ -28,7 +29,6 @@ import org.apache.fineract.infrastructure.contentstore.service.ContentStoreServi
 import org.apache.fineract.infrastructure.documentmanagement.adapter.EntityImageIdAdapter;
 import org.apache.fineract.infrastructure.documentmanagement.data.DocumentContent;
 import org.apache.fineract.infrastructure.documentmanagement.domain.ImageRepository;
-import org.apache.fineract.infrastructure.documentmanagement.exception.DocumentNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -43,7 +43,7 @@ public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
     private final ContentDetectorManager contentDetectorManager;
 
     @Override
-    public DocumentContent retrieveImage(final String entityType, final Long entityId) {
+    public Optional<DocumentContent> retrieveImage(final String entityType, final Long entityId) {
         return imageIdAdapters.stream().filter(imageIdAdapter -> imageIdAdapter.accept(entityType)).findFirst()
                 .flatMap(imageIdAdapter -> imageIdAdapter.get(entityId))
                 .flatMap(imageIdResult -> imageRepository.findById(imageIdResult.getId()).map(image -> DocumentContent.builder()
@@ -52,7 +52,6 @@ public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
                         .contentType(contentDetectorManager
                                 .detect(ContentDetectorContext.builder().fileName(FilenameUtils.getName(image.getLocation())).build())
                                 .getMimeType())
-                        .stream(storeService.download(image.getLocation())).build()))
-                .orElseThrow(() -> new DocumentNotFoundException(entityType, entityId, -1L));
+                        .stream(storeService.download(image.getLocation())).build()));
     }
 }

@@ -101,7 +101,7 @@ public class AddressReadPlatformServiceImpl implements AddressReadPlatformServic
     private static final class AddMapper implements RowMapper<AddressData> {
 
         public String schema() {
-            return "cv2.code_value as addressType,ca.client_id as client_id,addr.id as id,ca.address_type_id as addresstyp,ca.is_active as is_active,ca.is_primary as is_primary,addr.street as street,addr.address_line_1 as address_line_1,addr.address_line_2 as address_line_2,"
+            return "cv2.code_value as addressType,ca.client_id as client_id,ca.id as client_address_id,addr.id as id,ca.address_type_id as addresstyp,ca.is_active as is_active,ca.is_primary as is_primary,addr.street as street,addr.address_line_1 as address_line_1,addr.address_line_2 as address_line_2,"
                     + "addr.address_line_3 as address_line_3,addr.town_village as town_village, addr.city as city,addr.county_district as county_district,"
                     + "addr.state_province_id as state_province_id,cv.code_value as state_name, addr.country_id as country_id,c.code_value as country_name,addr.postal_code as postal_code,addr.latitude as latitude,"
                     + "addr.longitude as longitude,addr.created_by as created_by,addr.created_on as created_on,addr.updated_by as updated_by,"
@@ -118,6 +118,8 @@ public class AddressReadPlatformServiceImpl implements AddressReadPlatformServic
             final long addressId = rs.getLong("id");
 
             final long client_id = rs.getLong("client_id");
+
+            final long client_address_id = rs.getLong("client_address_id");
 
             final String street = rs.getString("street");
 
@@ -165,9 +167,10 @@ public class AddressReadPlatformServiceImpl implements AddressReadPlatformServic
 
             final LocalDate update_on_local_date = updated_on != null ? updated_on.toLocalDate() : null;
 
-            return AddressData.instance(addressType, client_id, addressId, address_type_id, is_active, is_primary, street, address_line_1,
-                    address_line_2, address_line_3, town_village, city, county_district, state_province_id, country_id, state_name,
-                    country_name, postal_code, latitude, longitude, created_by, created_on_local_date, updated_by, update_on_local_date);
+            return AddressData.instance(addressType, client_id, addressId, client_address_id, address_type_id, is_active, is_primary, street,
+                    address_line_1, address_line_2, address_line_3, town_village, city, county_district, state_province_id, country_id,
+                    state_name, country_name, postal_code, latitude, longitude, created_by, created_on_local_date, updated_by,
+                    update_on_local_date);
 
         }
     }

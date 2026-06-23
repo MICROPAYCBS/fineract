@@ -107,7 +107,11 @@ public class ImagesApiResource {
             @HeaderParam(ACCEPT) String acceptHeader) {
 
         // TODO: pass resize information here and do all the processing in the service
-        final var content = imageReadPlatformService.retrieveImage(entityName, entityId);
+        final var contentOptional = imageReadPlatformService.retrieveImage(entityName, entityId);
+        if (contentOptional.isEmpty()) {
+            return Response.status(Response.Status.NOT_FOUND).build();
+        }
+        final var content = contentOptional.get();
 
         String dispositionType = null;
         ContentProcessorContext ctx = new ContentProcessorContext(content.getStream());

@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.infrastructure.documentmanagement.service;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -29,7 +29,6 @@ import org.apache.fineract.infrastructure.contentstore.detector.ContentDetectorM
 import org.apache.fineract.infrastructure.contentstore.service.ContentStoreService;
 import org.apache.fineract.infrastructure.documentmanagement.adapter.EntityImageIdAdapter;
 import org.apache.fineract.infrastructure.documentmanagement.domain.ImageRepository;
-import org.apache.fineract.infrastructure.documentmanagement.exception.DocumentNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,7 +56,7 @@ class ImageReadPlatformServiceImplTest {
     }
 
     @Test
-    void testRetrieveImage_NotFound_ThrowsDocumentNotFoundException() {
+    void testRetrieveImage_NotFound_ReturnsEmpty() {
         // Arrange
         String entityType = "clients";
         Long entityId = 1L;
@@ -66,8 +65,6 @@ class ImageReadPlatformServiceImplTest {
         when(imageIdAdapter.get(entityId)).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThrows(DocumentNotFoundException.class, () -> {
-            imageReadPlatformService.retrieveImage(entityType, entityId);
-        });
+        assertTrue(imageReadPlatformService.retrieveImage(entityType, entityId).isEmpty());
     }
 }

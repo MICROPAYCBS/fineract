@@ -81,7 +81,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
-                .withEntityId(clientAddress.getId()) //
+                .withEntityId(address.getId()) //
                 .build();
     }
 
@@ -199,10 +199,10 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
      * Clears primary on all other addresses for the client and flushes each change before the new primary is saved,
      * so the partial unique index on (client_id) WHERE is_primary is not violated during flush ordering.
      */
-    private void clearOtherPrimaryAddresses(final Long clientId, final Long exceptAddressId) {
+    private void clearOtherPrimaryAddresses(final Long clientId, final Long exceptClientAddressId) {
         final List<ClientAddress> existingPrimary = this.clientAddressRepository.findByClient_IdAndIsPrimary(clientId, true);
         for (ClientAddress other : existingPrimary) {
-            if (exceptAddressId == null || !other.getId().equals(exceptAddressId)) {
+            if (exceptClientAddressId == null || !other.getId().equals(exceptClientAddressId)) {
                 other.setPrimary(false);
                 this.clientAddressRepository.saveAndFlush(other);
             }
@@ -342,8 +342,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
 
         }
 
-        final Boolean testActive = command.booleanPrimitiveValueOfParameterNamed("isActive");
-        if (testActive != null) {
+        if (command.parameterExists("isActive")) {
             final boolean active = command.booleanPrimitiveValueOfParameterNamed("isActive");
             if (!active && clientAddressObj.isPrimary()) {
                 clientAddressObj.setPrimary(false);
