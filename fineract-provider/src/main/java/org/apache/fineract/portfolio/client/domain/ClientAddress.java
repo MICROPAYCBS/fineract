@@ -44,11 +44,16 @@ public class ClientAddress extends AbstractPersistableCustom<Long> {
     @Column(name = "is_active")
     private boolean isActive;
 
-    private ClientAddress(final Client client, final Address address, final CodeValue addressType, final boolean isActive) {
+    @Column(name = "is_primary", nullable = false)
+    private boolean isPrimary;
+
+    private ClientAddress(final Client client, final Address address, final CodeValue addressType, final boolean isActive,
+            final boolean isPrimary) {
         this.client = client;
         this.address = address;
         this.addressType = addressType;
         this.isActive = isActive;
+        this.isPrimary = isPrimary;
 
     }
 
@@ -56,9 +61,10 @@ public class ClientAddress extends AbstractPersistableCustom<Long> {
 
     }
 
-    public static ClientAddress fromJson(final boolean isActive, final Client client, final Address address, final CodeValue address_type) {
+    public static ClientAddress fromJson(final boolean isActive, final boolean isPrimary, final Client client, final Address address,
+            final CodeValue address_type) {
 
-        return new ClientAddress(client, address, address_type, isActive);
+        return new ClientAddress(client, address, address_type, isActive, isPrimary);
     }
 
     public Client getClient() {
@@ -91,6 +97,14 @@ public class ClientAddress extends AbstractPersistableCustom<Long> {
 
     public void setIs_active(final boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public boolean isPrimary() {
+        return this.isPrimary;
+    }
+
+    public void setPrimary(final boolean isPrimary) {
+        this.isPrimary = isPrimary;
     }
 
 }

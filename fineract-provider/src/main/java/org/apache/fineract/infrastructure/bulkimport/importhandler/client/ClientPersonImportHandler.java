@@ -174,7 +174,7 @@ public class ClientPersonImportHandler implements ImportHandler {
                 }
             }
             addressDataObj = new AddressData(addressTypeId, street, addressLine1, addressLine2, addressLine3, city, postalCode,
-                    isActiveAddress, stateProvinceId, countryId);
+                    isActiveAddress, true, stateProvinceId, countryId);
             addressList = new ArrayList<>(List.of(addressDataObj));
         }
         return ClientData.importClientPersonInstance(legalFormId, row.getRowNum(), firstName, lastName, middleName, submittedOn,

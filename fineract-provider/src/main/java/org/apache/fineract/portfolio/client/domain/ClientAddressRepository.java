@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.client.domain;
 
+import java.util.List;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
@@ -32,4 +33,10 @@ public interface ClientAddressRepository extends JpaRepository<ClientAddress, Lo
 
     @Query("SELECT clientAddress FROM ClientAddress clientAddress WHERE clientAddress.client.id = :clientId AND clientAddress.address.id = :addressId ")
     ClientAddress findByClientIdAndAddressId(@Param("clientId") long clientId, @Param("addressId") long addressId);
+
+    List<ClientAddress> findByClient_Id(Long clientId);
+
+    List<ClientAddress> findByClient_IdAndIsPrimary(Long clientId, boolean isPrimary);
+
+    long countByClient_Id(Long clientId);
 }
