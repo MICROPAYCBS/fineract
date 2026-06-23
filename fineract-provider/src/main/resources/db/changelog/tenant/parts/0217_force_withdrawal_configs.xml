@@ -24,6 +24,7 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
 
     <changeSet author="fineract" id="1">
+        <validCheckSum>9:d4af539185f42bc656795b5c94bbefe5</validCheckSum>
         <insert tableName="c_configuration">
             <column name="name" value="allow-force-withdrawal-on-savings-account"/>
             <column name="value" valueNumeric="0"/>
