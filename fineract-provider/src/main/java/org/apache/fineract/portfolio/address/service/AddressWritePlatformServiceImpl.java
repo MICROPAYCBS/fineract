@@ -171,7 +171,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
         for (ClientAddress address : addresses) {
             if (address.isPrimary() && !address.isIs_active()) {
                 address.setPrimary(false);
-                this.clientAddressRepository.save(address);
+                this.clientAddressRepository.saveAndFlush(address);
             }
         }
         final boolean hasActivePrimary = addresses.stream().anyMatch(a -> a.isPrimary() && a.isIs_active());
@@ -179,7 +179,7 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
             final Optional<ClientAddress> firstActive = addresses.stream().filter(ClientAddress::isIs_active).findFirst();
             if (firstActive.isPresent()) {
                 applyPrimaryAddress(firstActive.get().getClient(), firstActive.get(), true);
-                this.clientAddressRepository.save(firstActive.get());
+                this.clientAddressRepository.saveAndFlush(firstActive.get());
             }
         }
     }
@@ -191,14 +191,22 @@ public class AddressWritePlatformServiceImpl implements AddressWritePlatformServ
         if (!clientAddress.isIs_active()) {
             throwInactiveAddressCannotBePrimaryValidationError();
         }
-        final List<ClientAddress> existingPrimary = this.clientAddressRepository.findByClient_IdAndIsPrimary(client.getId(), true);
+        clearOtherPrimaryAddresses(client.getId(), clientAddress.getId());
+        clientAddress.setPrimary(true);
+    }
+
+    /**
+     * Clears primary on all other addresses for the client and flushes each change before the new primary is saved,
+     * so the partial unique index on (client_id) WHERE is_primary is not violated during flush ordering.
+     */
+    private void clearOtherPrimaryAddresses(final Long clientId, final Long exceptAddressId) {
+        final List<ClientAddress> existingPrimary = this.clientAddressRepository.findByClient_IdAndIsPrimary(clientId, true);
         for (ClientAddress other : existingPrimary) {
-            if (clientAddress.getId() == null || !other.getId().equals(clientAddress.getId())) {
+            if (exceptAddressId == null || !other.getId().equals(exceptAddressId)) {
                 other.setPrimary(false);
-                this.clientAddressRepository.save(other);
+                this.clientAddressRepository.saveAndFlush(other);
             }
         }
-        clientAddress.setPrimary(true);
     }
 
     private Address createAddress(JsonObject jsonObject) {
