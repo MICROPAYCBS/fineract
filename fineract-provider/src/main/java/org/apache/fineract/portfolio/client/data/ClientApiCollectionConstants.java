@@ -29,7 +29,7 @@ public class ClientApiCollectionConstants extends ClientApiConstants {
             complianceProfile, clientIdentifiers, address,
             localeParamName, dateFormatParamName, groupIdParamName, accountNoParamName, externalIdParamName, mobileNoParamName,
             emailAddressParamName, taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,
+            subIndustryIdParamName, customerClassIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, firstnameParamName, middlenameParamName, lastnameParamName, fullnameParamName, officeIdParamName,
             activeParamName, activationDateParamName, staffIdParamName, submittedOnDateParamName, savingsProductIdParamName,
             dateOfBirthParamName, genderIdParamName, clientTypeIdParamName, clientClassificationIdParamName,
             clientNonPersonDetailsParamName, displaynameParamName, legalFormIdParamName, datatables, isStaffParamName));
@@ -42,7 +42,7 @@ public class ClientApiCollectionConstants extends ClientApiConstants {
     protected static final Set<String> CLIENT_UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(localeParamName,
             dateFormatParamName, accountNoParamName, externalIdParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName, subIndustryIdParamName,
-            titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, firstnameParamName,
+            customerClassIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, firstnameParamName,
             middlenameParamName,
 
             lastnameParamName, fullnameParamName, activeParamName, activationDateParamName, staffIdParamName, savingsProductIdParamName,

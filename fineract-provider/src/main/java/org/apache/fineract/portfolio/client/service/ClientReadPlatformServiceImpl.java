@@ -55,6 +55,7 @@ import org.apache.fineract.portfolio.client.domain.ClientStatus;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.mapper.ClientMapper;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
+import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -310,6 +311,9 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("c.alternative_mobile_no as alternativeMobileNo, ");
             sqlBuilder.append("c.alternative_email_address as alternativeEmailAddress, ");
             sqlBuilder.append("c.sub_industry_id as subIndustryId, ");
+            sqlBuilder.append("c.customer_class_id as customerClassId, ");
+            sqlBuilder.append("cc.class_code as customerClassCode, ");
+            sqlBuilder.append("cc.class_name as customerClassName, ");
             sqlBuilder.append("c.title_cv_id as titleId, ");
             sqlBuilder.append("cvTitle.code_value as titleValue, ");
             sqlBuilder.append("c.nationality_country_id as nationalityCountryId, ");
@@ -371,6 +375,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
             sqlBuilder.append("left join m_code_value cvConstitution on cvConstitution.id = cnp.constitution_cv_id ");
             sqlBuilder.append("left join m_code_value cvMainBusinessLine on cvMainBusinessLine.id = cnp.main_business_line_cv_id ");
+            sqlBuilder.append("left join m_customer_class cc on cc.id = c.customer_class_id ");
 
             this.schema = sqlBuilder.toString();
         }
@@ -490,6 +495,12 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             clientData.setTitle(title);
             clientData.setNationality(nationality);
             clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setCustomerClassId(JdbcSupport.getLong(rs, "customerClassId"));
+            final Long customerClassId = clientData.getCustomerClassId();
+            if (customerClassId != null) {
+                clientData.setCustomerClass(CustomerClassData.builder().id(customerClassId)
+                        .classCode(rs.getString("customerClassCode")).className(rs.getString("customerClassName")).build());
+            }
             return clientData;
 
         }
@@ -624,6 +635,9 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("c.alternative_mobile_no as alternativeMobileNo, ");
             builder.append("c.alternative_email_address as alternativeEmailAddress, ");
             builder.append("c.sub_industry_id as subIndustryId, ");
+            builder.append("c.customer_class_id as customerClassId, ");
+            builder.append("cc.class_code as customerClassCode, ");
+            builder.append("cc.class_name as customerClassName, ");
             builder.append("c.title_cv_id as titleId, ");
             builder.append("cvTitle.code_value as titleValue, ");
             builder.append("c.nationality_country_id as nationalityCountryId, ");
@@ -684,6 +698,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
             builder.append("left join m_code_value cvConstitution on cvConstitution.id = cnp.constitution_cv_id ");
             builder.append("left join m_code_value cvMainBusinessLine on cvMainBusinessLine.id = cnp.main_business_line_cv_id ");
+            builder.append("left join m_customer_class cc on cc.id = c.customer_class_id ");
 
             this.schema = builder.toString();
         }
@@ -802,6 +817,12 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             clientData.setTitle(title);
             clientData.setNationality(nationality);
             clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setCustomerClassId(JdbcSupport.getLong(rs, "customerClassId"));
+            final Long customerClassId = clientData.getCustomerClassId();
+            if (customerClassId != null) {
+                clientData.setCustomerClass(CustomerClassData.builder().id(customerClassId)
+                        .classCode(rs.getString("customerClassCode")).className(rs.getString("customerClassName")).build());
+            }
             return clientData;
 
         }

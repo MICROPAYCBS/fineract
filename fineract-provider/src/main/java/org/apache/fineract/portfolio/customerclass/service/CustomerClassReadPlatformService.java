@@ -29,4 +29,6 @@ public interface CustomerClassReadPlatformService {
     CustomerClassData retrieveOne(Long customerClassId);
 
     CustomerClassTemplateData retrieveTemplate();
+
+    List<CustomerClassData> retrieveActiveForClientDropdown();
 }

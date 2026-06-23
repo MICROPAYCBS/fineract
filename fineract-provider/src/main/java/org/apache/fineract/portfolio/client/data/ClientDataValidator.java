@@ -195,6 +195,12 @@ public final class ClientDataValidator {
                     .integerGreaterThanZero();
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.customerClassIdParamName, element)) {
+            final Long customerClassId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.customerClassIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.customerClassIdParamName).value(customerClassId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.titleIdParamName, element)) {
             final Long titleId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.titleIdParamName, element);
             baseDataValidator.reset().parameter(ClientApiConstants.titleIdParamName).value(titleId).ignoreIfNull().integerGreaterThanZero();

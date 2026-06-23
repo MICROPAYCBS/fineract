@@ -38,6 +38,7 @@ import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.staff.data.StaffData;
 import org.apache.fineract.portfolio.address.data.AddressData;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
+import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 
@@ -70,6 +71,8 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private String alternativeMobileNo;
     private String alternativeEmailAddress;
     private Long subIndustryId;
+    private Long customerClassId;
+    private CustomerClassData customerClass;
     private CodeValueData title;
     private CodeValueData nationality;
     private CodeValueData customerRiskProfile;
@@ -110,6 +113,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Collection<CodeValueData> titleOptions;
     private Collection<CodeValueData> nationalityOptions;
     private Collection<CodeValueData> customerRiskProfileOptions;
+    private List<CustomerClassData> customerClassOptions;
     private Collection<CodeValueData> clientTypeOptions;
     private Collection<CodeValueData> clientClassificationOptions;
     private Collection<CodeValueData> clientNonPersonConstitutionOptions;

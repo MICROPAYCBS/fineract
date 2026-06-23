@@ -40,8 +40,10 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
@@ -72,6 +74,9 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientStatus;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.apache.fineract.portfolio.client.exception.ClientActiveForUpdateException;
+import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
+import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepository;
+import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
 import org.apache.fineract.portfolio.client.exception.ClientActivationRequiresProfileImageException;
 import org.apache.fineract.portfolio.client.exception.ClientHasNoStaffException;
 import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeDeletedException;
@@ -128,6 +133,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
+    private final CustomerClassRepository customerClassRepository;
 
     @Transactional
     @Override
@@ -268,6 +274,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final String alternativeEmailAddress = command
                     .stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
             final Long subIndustryId = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
+            final Long customerClassId = command.longValueOfParameterNamed(ClientApiConstants.customerClassIdParamName);
             final Long titleId = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
             final Long nationalityCountryId = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
             final Long customerRiskProfileId = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
@@ -318,6 +325,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
             if (subIndustryId != null) {
                 newClient.setSubIndustryId(subIndustryId);
+            }
+            if (customerClassId != null) {
+                validateActiveCustomerClassForAssignment(customerClassId);
+                newClient.setCustomerClassId(customerClassId);
             }
             if (titleId != null) {
                 newClient.setTitle(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
@@ -528,6 +539,16 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
                 changes.put(ClientApiConstants.subIndustryIdParamName, newValue);
                 clientForUpdate.setSubIndustryId(newValue);
+            }
+
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.customerClassIdParamName,
+                    clientForUpdate.getCustomerClassId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerClassIdParamName);
+                changes.put(ClientApiConstants.customerClassIdParamName, newValue);
+                if (newValue != null) {
+                    validateActiveCustomerClassForAssignment(newValue);
+                }
+                clientForUpdate.setCustomerClassId(newValue);
             }
 
             if (command.isChangeInLongParameterNamed(ClientApiConstants.titleIdParamName, clientForUpdate.titleId())) {
@@ -1224,6 +1245,17 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 .withEntityId(entityId) //
                 .withEntityExternalId(client.getExternalId()) //
                 .build();
+    }
+
+    private void validateActiveCustomerClassForAssignment(final Long customerClassId) {
+        final CustomerClass customerClass = this.customerClassRepository.findById(customerClassId)
+                .orElseThrow(() -> new CustomerClassNotFoundException(customerClassId));
+        if (!"ACTIVE".equalsIgnoreCase(customerClass.getStatus())) {
+            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.client.customerClassId.inactive",
+                    "Only an active customer class can be assigned to a client.", ClientApiConstants.customerClassIdParamName,
+                    customerClassId);
+            throw new PlatformApiDataValidationException(List.of(error));
+        }
     }
 
 }

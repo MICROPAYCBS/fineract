@@ -89,6 +89,7 @@ public class ClientApiConstants {
     public static final String alternativeMobileNoParamName = "alternativeMobileNo";
     public static final String alternativeEmailAddressParamName = "alternativeEmailAddress";
     public static final String subIndustryIdParamName = "subIndustryId";
+    public static final String customerClassIdParamName = "customerClassId";
     public static final String titleIdParamName = "titleId";
     public static final String nationalityCountryIdParamName = "nationalityCountryId";
     public static final String customerRiskProfileIdParamName = "customerRiskProfileId";
@@ -196,6 +197,8 @@ public class ClientApiConstants {
     public static final String titleOptionsParamName = "titleOptions";
     public static final String nationalityOptionsParamName = "nationalityOptions";
     public static final String customerRiskProfileOptionsParamName = "customerRiskProfileOptions";
+    public static final String customerClassParamName = "customerClass";
+    public static final String customerClassOptionsParamName = "customerClassOptions";
 
     public static final String datatables = "datatables";
     public static final String obligeeData = "ObligeeDetails";
@@ -213,8 +216,9 @@ public class ClientApiConstants {
             externalIdParamName, statusParamName, activeParamName, activationDateParamName, firstnameParamName, middlenameParamName,
             lastnameParamName, fullnameParamName, displayNameParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
-            subIndustryIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName, titleParamName,
-            nationalityParamName, customerRiskProfileParamName, officeIdParamName, officeNameParamName, transferToOfficeIdParamName,
+            subIndustryIdParamName, customerClassIdParamName, titleIdParamName, nationalityCountryIdParamName,
+            customerRiskProfileIdParamName, titleParamName, nationalityParamName, customerRiskProfileParamName, customerClassParamName,
+            customerClassOptionsParamName, officeIdParamName, officeNameParamName, transferToOfficeIdParamName,
             transferToOfficeNameParamName, hierarchyParamName, imageIdParamName, imagePresentParamName, staffIdParamName,
             staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName, staffOptionsParamName, genderOptionsParamName,
             titleOptionsParamName, nationalityOptionsParamName, customerRiskProfileOptionsParamName, dateOfBirthParamName,

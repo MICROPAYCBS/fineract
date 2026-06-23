@@ -67,6 +67,8 @@ public interface ClientMapper {
     @Mapping(target = "titleOptions", ignore = true)
     @Mapping(target = "nationalityOptions", ignore = true)
     @Mapping(target = "customerRiskProfileOptions", ignore = true)
+    @Mapping(target = "customerClass", ignore = true)
+    @Mapping(target = "customerClassOptions", ignore = true)
     @Mapping(target = "clientTypeOptions", ignore = true)
     @Mapping(target = "clientClassificationOptions", ignore = true)
     @Mapping(target = "clientNonPersonConstitutionOptions", ignore = true)

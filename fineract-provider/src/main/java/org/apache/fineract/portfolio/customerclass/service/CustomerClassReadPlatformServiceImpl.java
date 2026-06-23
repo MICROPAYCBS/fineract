@@ -108,4 +108,11 @@ public class CustomerClassReadPlatformServiceImpl implements CustomerClassReadPl
                 .riskLevelOptions(List.of("LOW", "MEDIUM", "HIGH")).kycLevelOptions(List.of("BASIC", "STANDARD", "ENHANCED"))
                 .statusOptions(List.of("ACTIVE", "INACTIVE")).restrictionOptions(restrictionOptions).build();
     }
+
+    @Override
+    public List<CustomerClassData> retrieveActiveForClientDropdown() {
+        this.context.authenticatedUser();
+        final CustomerClassMapper mapper = new CustomerClassMapper();
+        return this.jdbcTemplate.query("SELECT " + mapper.schema() + " WHERE cc.status = 'ACTIVE' ORDER BY cc.class_name", mapper);
+    }
 }

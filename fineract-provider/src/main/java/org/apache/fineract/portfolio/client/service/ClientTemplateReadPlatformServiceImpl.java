@@ -45,6 +45,7 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientFamilyMembersData;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
+import org.apache.fineract.portfolio.customerclass.service.CustomerClassReadPlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
 import org.springframework.stereotype.Service;
@@ -65,6 +66,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
     private final AddressReadPlatformService addressReadPlatformService;
     private final ClientFamilyMembersReadPlatformService clientFamilyMembersReadPlatformService;
     private final ConfigurationDomainService configurationDomainService;
+    private final CustomerClassReadPlatformService customerClassReadPlatformService;
 
     @Override
     public ClientData retrieveTemplate(final Long officeId, final boolean staffInSelectedOfficeOnly) {
@@ -132,6 +134,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         templateData.setTitleOptions(titleOptions);
         templateData.setNationalityOptions(nationalityOptions);
         templateData.setCustomerRiskProfileOptions(customerRiskProfileOptions);
+        templateData.setCustomerClassOptions(this.customerClassReadPlatformService.retrieveActiveForClientDropdown());
         return templateData;
     }
 
