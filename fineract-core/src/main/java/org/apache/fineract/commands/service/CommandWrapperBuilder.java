@@ -187,6 +187,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER_LOAN_PRODUCT_ATTRIBUTE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FAMILYMEMBERS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COMPLIANCEPROFILE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITACCOUNT;
@@ -435,6 +436,29 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_COMPLIANCEPROFILE;
         this.href = "/clients/" + clientId + "/complianceprofile";
         this.clientId = clientId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createCustomerClass() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_CUSTOMERCLASS;
+        this.href = "/customerclasses";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateCustomerClass(final long customerClassId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_CUSTOMERCLASS;
+        this.href = "/customerclasses/" + customerClassId;
+        this.entityId = customerClassId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteCustomerClass(final long customerClassId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_CUSTOMERCLASS;
+        this.href = "/customerclasses/" + customerClassId;
+        this.entityId = customerClassId;
         return this;
     }
 

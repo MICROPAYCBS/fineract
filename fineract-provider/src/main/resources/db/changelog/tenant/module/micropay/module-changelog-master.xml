@@ -52,4 +52,5 @@
   <include relativeToChangelogFile="true" file="parts/3027_add_family_member_relationship_code_values.xml"/>
   <include relativeToChangelogFile="true" file="parts/3028_add_client_address_primary_flag.xml"/>
   <include relativeToChangelogFile="true" file="parts/3029_seed_product_accounting_gl_accounts.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3030_add_customer_class_permissions.xml"/>
 </databaseChangeLog>
