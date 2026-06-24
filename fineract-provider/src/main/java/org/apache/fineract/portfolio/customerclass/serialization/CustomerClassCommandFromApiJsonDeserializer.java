@@ -34,6 +34,7 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -43,6 +44,7 @@ public final class CustomerClassCommandFromApiJsonDeserializer {
     public static final String CLASS_CODE = "classCode";
     public static final String CLASS_NAME = "className";
     public static final String DESCRIPTION = "description";
+    public static final String LEGAL_FORM_ID = "legalFormId";
     public static final String CUSTOMER_TYPE = "customerType";
     public static final String RISK_LEVEL = "riskLevel";
     public static final String KYC_LEVEL = "kycLevel";
@@ -60,11 +62,14 @@ public final class CustomerClassCommandFromApiJsonDeserializer {
     public static final String STATUS = "status";
     public static final String RESOURCE = "CustomerClass";
 
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(CLASS_CODE, CLASS_NAME, DESCRIPTION, CUSTOMER_TYPE,
-            RISK_LEVEL, KYC_LEVEL, LOAN_ELIGIBLE, RESTRICTION_ID, OVERDRAFT_ALLOWED, ENHANCED_DUE_DILIGENCE, RECLASSIFICATION_ALLOWED,
-            MIN_AGE, MAX_AGE, ENFORCE_CUST_PHOTO, ENFORCE_CUST_SIGNATURE, ENFORCE_CUST_DOCUMENT, AUTO_CREATE_ACCOUNT, STATUS));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(CLASS_CODE, CLASS_NAME, DESCRIPTION, LEGAL_FORM_ID,
+            CUSTOMER_TYPE, RISK_LEVEL, KYC_LEVEL, LOAN_ELIGIBLE, RESTRICTION_ID, OVERDRAFT_ALLOWED, ENHANCED_DUE_DILIGENCE,
+            RECLASSIFICATION_ALLOWED, MIN_AGE, MAX_AGE, ENFORCE_CUST_PHOTO, ENFORCE_CUST_SIGNATURE, ENFORCE_CUST_DOCUMENT,
+            AUTO_CREATE_ACCOUNT, STATUS));
 
+    private static final List<Integer> LEGAL_FORM_IDS = List.of(LegalForm.PERSON.getValue(), LegalForm.ENTITY.getValue());
     private static final List<String> CUSTOMER_TYPES = List.of("INDIVIDUAL", "CORPORATE", "GROUP", "JOINT");
+    private static final List<String> SEGMENT_CUSTOMER_TYPES = List.of("GROUP", "JOINT");
     private static final List<String> RISK_LEVELS = List.of("LOW", "MEDIUM", "HIGH");
     private static final List<String> KYC_LEVELS = List.of("BASIC", "STANDARD", "ENHANCED");
     private static final List<String> STATUSES = List.of("ACTIVE", "INACTIVE");
@@ -103,9 +108,14 @@ public final class CustomerClassCommandFromApiJsonDeserializer {
             final String description = this.fromApiJsonHelper.extractStringNamed(DESCRIPTION, element);
             baseDataValidator.reset().parameter(DESCRIPTION).value(description).ignoreIfNull().notExceedingLengthOf(255);
         }
+        if (create || this.fromApiJsonHelper.parameterExists(LEGAL_FORM_ID, element)) {
+            final Integer legalFormId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(LEGAL_FORM_ID, element);
+            baseDataValidator.reset().parameter(LEGAL_FORM_ID).value(legalFormId).notNull().isOneOfTheseValues(LEGAL_FORM_IDS);
+        }
         if (this.fromApiJsonHelper.parameterExists(CUSTOMER_TYPE, element)) {
             final String customerType = this.fromApiJsonHelper.extractStringNamed(CUSTOMER_TYPE, element);
-            baseDataValidator.reset().parameter(CUSTOMER_TYPE).value(customerType).ignoreIfNull().isOneOfTheseStringValues(CUSTOMER_TYPES);
+            baseDataValidator.reset().parameter(CUSTOMER_TYPE).value(customerType).ignoreIfNull()
+                    .isOneOfTheseStringValues(create ? SEGMENT_CUSTOMER_TYPES : CUSTOMER_TYPES);
         }
         if (this.fromApiJsonHelper.parameterExists(RISK_LEVEL, element)) {
             final String riskLevel = this.fromApiJsonHelper.extractStringNamed(RISK_LEVEL, element);
@@ -140,6 +150,29 @@ public final class CustomerClassCommandFromApiJsonDeserializer {
             baseDataValidator.reset().parameter(STATUS).value(status).ignoreIfNull().isOneOfTheseStringValues(STATUSES);
         }
         validateAgeRange(element, baseDataValidator);
+        validateAgeForLegalForm(element, baseDataValidator);
+    }
+
+    private void validateAgeForLegalForm(final JsonElement element, final DataValidatorBuilder baseDataValidator) {
+        if (!this.fromApiJsonHelper.parameterExists(LEGAL_FORM_ID, element)) {
+            return;
+        }
+        final Integer legalFormId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(LEGAL_FORM_ID, element);
+        if (!LegalForm.ENTITY.getValue().equals(legalFormId)) {
+            return;
+        }
+        if (this.fromApiJsonHelper.parameterExists(MIN_AGE, element)) {
+            final Integer minAge = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(MIN_AGE, element);
+            if (minAge != null) {
+                baseDataValidator.reset().parameter(MIN_AGE).failWithCode("not.supported.for.entity.legal.form");
+            }
+        }
+        if (this.fromApiJsonHelper.parameterExists(MAX_AGE, element)) {
+            final Integer maxAge = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(MAX_AGE, element);
+            if (maxAge != null) {
+                baseDataValidator.reset().parameter(MAX_AGE).failWithCode("not.supported.for.entity.legal.form");
+            }
+        }
     }
 
     private void validateAgeRange(final JsonElement element, final DataValidatorBuilder baseDataValidator) {

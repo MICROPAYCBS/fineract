@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3034-add-client-title-id-gender-enum" author="micropay">
+        <addColumn tableName="m_client">
+            <column name="title_id" type="BIGINT"/>
+            <column name="gender_enum" type="INT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="3034-migrate-client-gender-title-postgresql" author="micropay" context="postgresql">
+        <sqlFile path="V3034__migrate_client_gender_title.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    <changeSet id="3034-migrate-client-gender-title-mysql" author="micropay" context="mysql">
+        <sqlFile path="V3034__migrate_client_gender_title.mysql.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+    <changeSet id="3034-fk-client-title-id" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_client"
+                                 baseColumnNames="title_id"
+                                 constraintName="FK_m_client_title_id"
+                                 referencedTableName="m_client_title"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="3034-drop-client-title-cv-id" author="micropay">
+        <dropForeignKeyConstraint baseTableName="m_client" constraintName="FK_m_client_title_cv_id"/>
+        <dropColumn tableName="m_client" columnName="title_cv_id"/>
+    </changeSet>
+
+    <changeSet id="3034-drop-client-gender-cv-id" author="micropay">
+        <dropForeignKeyConstraint baseTableName="m_client" constraintName="FK1_m_client_gender_m_code_value"/>
+        <dropColumn tableName="m_client" columnName="gender_cv_id"/>
+    </changeSet>
+
+</databaseChangeLog>

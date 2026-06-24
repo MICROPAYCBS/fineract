@@ -43,6 +43,9 @@ public class CustomerClass extends AbstractAuditableWithUTCDateTimeCustom<Long> 
     @Column(name = "description", length = 255)
     private String description;
 
+    @Column(name = "legal_form_enum", nullable = false)
+    private Integer legalFormEnum = 1;
+
     @Column(name = "customer_type", length = 20)
     private String customerType;
 

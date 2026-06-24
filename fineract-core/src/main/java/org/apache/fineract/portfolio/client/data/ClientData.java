@@ -111,6 +111,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Collection<SavingsAccountData> savingAccountOptions;
     private Collection<CodeValueData> genderOptions;
     private Collection<CodeValueData> titleOptions;
+    private List<ClientTitleData> clientTitleOptions;
     private Collection<CodeValueData> nationalityOptions;
     private Collection<CodeValueData> customerRiskProfileOptions;
     private List<CustomerClassData> customerClassOptions;

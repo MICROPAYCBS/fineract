@@ -153,13 +153,13 @@ public class InteropServiceImpl implements InteropService {
         }
 
         public String schema() {
-            return " country.code_value as nationality, c.date_of_birth as dateOfBirth, c.mobile_no as contactPhone, gender.code_value as gender, c.email_address as email, "
+            return " country.code_value as nationality, c.date_of_birth as dateOfBirth, c.mobile_no as contactPhone, "
+                    + "CASE c.gender_enum WHEN 1 THEN 'Male' WHEN 2 THEN 'Female' ELSE NULL END as gender, c.email_address as email, "
                     + "kyc.code_value as idType, ci.document_key as idNo, ci." + sqlGenerator.escape("description") + " as description, "
                     + "country.code_value as country, a.`address_line_1`, a.`address_line_2`, "
                     + "a.city, state.code_value as stateProvince, a.postal_code as postalCode, c.firstname as firstName, c.middlename as middleName,"
                     + "c.lastname as lastName, c.display_name as displayName" + " from " + "m_client c "
                     + "left join m_client_address ca on c.id=ca.client_id " + "left join m_address a on a.id = ca.address_id "
-                    + "inner join m_code_value gender on gender.id=c.gender_cv_id "
                     + "left join m_code_value country on country.id=a.country_id "
                     + "left join m_code_value state on state.id = a.state_province_id "
                     + "left join m_client_identifier ci on c.id=ci.client_id "

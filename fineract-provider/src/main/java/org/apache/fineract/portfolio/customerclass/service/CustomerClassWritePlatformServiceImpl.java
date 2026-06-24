@@ -31,6 +31,7 @@ import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
 import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepository;
 import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
 import org.apache.fineract.portfolio.customerclass.serialization.CustomerClassCommandFromApiJsonDeserializer;
+import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -111,6 +112,13 @@ public class CustomerClassWritePlatformServiceImpl implements CustomerClassWrite
                     this.fromApiJsonHelper.extractStringNamed(CustomerClassCommandFromApiJsonDeserializer.CLASS_NAME, json));
         }
         patchString(json, CustomerClassCommandFromApiJsonDeserializer.DESCRIPTION, customerClass::setDescription);
+        if (create || json.has(CustomerClassCommandFromApiJsonDeserializer.LEGAL_FORM_ID)) {
+            final Integer legalFormId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(
+                    CustomerClassCommandFromApiJsonDeserializer.LEGAL_FORM_ID, json);
+            customerClass.setLegalFormEnum(legalFormId != null ? legalFormId : LegalForm.PERSON.getValue());
+        } else if (create) {
+            customerClass.setLegalFormEnum(LegalForm.PERSON.getValue());
+        }
         patchString(json, CustomerClassCommandFromApiJsonDeserializer.CUSTOMER_TYPE, customerClass::setCustomerType);
         patchString(json, CustomerClassCommandFromApiJsonDeserializer.RISK_LEVEL, customerClass::setRiskLevel);
         patchString(json, CustomerClassCommandFromApiJsonDeserializer.KYC_LEVEL, customerClass::setKycLevel);

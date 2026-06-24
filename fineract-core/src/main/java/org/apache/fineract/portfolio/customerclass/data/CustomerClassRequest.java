@@ -37,6 +37,7 @@ public class CustomerClassRequest implements Serializable {
     private String classCode;
     private String className;
     private String description;
+    private Integer legalFormId;
     private String customerType;
     private String riskLevel;
     private String kycLevel;

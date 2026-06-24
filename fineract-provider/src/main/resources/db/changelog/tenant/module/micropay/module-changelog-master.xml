@@ -54,4 +54,8 @@
   <include relativeToChangelogFile="true" file="parts/3029_seed_product_accounting_gl_accounts.xml"/>
   <include relativeToChangelogFile="true" file="parts/3030_add_customer_class_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/3031_add_client_customer_class_id.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3032_add_customer_class_legal_form_enum.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3033_create_m_client_title.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3034_migrate_client_gender_title.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3035_add_client_title_permissions.xml"/>
 </databaseChangeLog>

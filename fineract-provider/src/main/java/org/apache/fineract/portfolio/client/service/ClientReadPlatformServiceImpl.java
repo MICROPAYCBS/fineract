@@ -52,6 +52,7 @@ import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientStatus;
+import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.mapper.ClientMapper;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
@@ -314,15 +315,14 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("c.customer_class_id as customerClassId, ");
             sqlBuilder.append("cc.class_code as customerClassCode, ");
             sqlBuilder.append("cc.class_name as customerClassName, ");
-            sqlBuilder.append("c.title_cv_id as titleId, ");
-            sqlBuilder.append("cvTitle.code_value as titleValue, ");
+            sqlBuilder.append("c.title_id as titleId, ");
+            sqlBuilder.append("ct.title_name as titleValue, ");
             sqlBuilder.append("c.nationality_country_id as nationalityCountryId, ");
             sqlBuilder.append("cvNationality.code_value as nationalityValue, ");
             sqlBuilder.append("c.customer_risk_profile_cv_id as customerRiskProfileId, ");
             sqlBuilder.append("cvCustomerRiskProfile.code_value as customerRiskProfileValue, ");
             sqlBuilder.append("c.date_of_birth as dateOfBirth, ");
-            sqlBuilder.append("c.gender_cv_id as genderId, ");
-            sqlBuilder.append("cv.code_value as genderValue, ");
+            sqlBuilder.append("c.gender_enum as genderId, ");
             sqlBuilder.append("c.client_type_cv_id as clienttypeId, ");
             sqlBuilder.append("cvclienttype.code_value as clienttypeValue, ");
             sqlBuilder.append("c.client_classification_cv_id as classificationId, ");
@@ -366,8 +366,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("left join m_appuser sbu on sbu.id = c.created_by ");
             sqlBuilder.append("left join m_appuser acu on acu.id = c.activatedon_userid ");
             sqlBuilder.append("left join m_appuser clu on clu.id = c.closedon_userid ");
-            sqlBuilder.append("left join m_code_value cv on cv.id = c.gender_cv_id ");
-            sqlBuilder.append("left join m_code_value cvTitle on cvTitle.id = c.title_cv_id ");
+            sqlBuilder.append("left join m_client_title ct on ct.id = c.title_id ");
             sqlBuilder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
             sqlBuilder.append("left join m_code_value cvCustomerRiskProfile on cvCustomerRiskProfile.id = c.customer_risk_profile_cv_id ");
             sqlBuilder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
@@ -420,8 +419,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Long subIndustryId = JdbcSupport.getLong(rs, "subIndustryId");
             final LocalDate dateOfBirth = JdbcSupport.getLocalDate(rs, "dateOfBirth");
             final Long genderId = JdbcSupport.getLong(rs, "genderId");
-            final String genderValue = rs.getString("genderValue");
-            final CodeValueData gender = CodeValueData.instance(genderId, genderValue);
+            final CodeValueData gender = toGenderCodeValueData(genderId);
             final Long titleId = JdbcSupport.getLong(rs, "titleId");
             final String titleValue = rs.getString("titleValue");
             final CodeValueData title = CodeValueData.instance(titleId, titleValue);
@@ -638,15 +636,14 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("c.customer_class_id as customerClassId, ");
             builder.append("cc.class_code as customerClassCode, ");
             builder.append("cc.class_name as customerClassName, ");
-            builder.append("c.title_cv_id as titleId, ");
-            builder.append("cvTitle.code_value as titleValue, ");
+            builder.append("c.title_id as titleId, ");
+            builder.append("ct.title_name as titleValue, ");
             builder.append("c.nationality_country_id as nationalityCountryId, ");
             builder.append("cvNationality.code_value as nationalityValue, ");
             builder.append("c.customer_risk_profile_cv_id as customerRiskProfileId, ");
             builder.append("cvCustomerRiskProfile.code_value as customerRiskProfileValue, ");
             builder.append("c.date_of_birth as dateOfBirth, ");
-            builder.append("c.gender_cv_id as genderId, ");
-            builder.append("cv.code_value as genderValue, ");
+            builder.append("c.gender_enum as genderId, ");
             builder.append("c.client_type_cv_id as clienttypeId, ");
             builder.append("cvclienttype.code_value as clienttypeValue, ");
             builder.append("c.client_classification_cv_id as classificationId, ");
@@ -689,8 +686,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("left join m_appuser sbu on sbu.id = c.created_by ");
             builder.append("left join m_appuser acu on acu.id = c.activatedon_userid ");
             builder.append("left join m_appuser clu on clu.id = c.closedon_userid ");
-            builder.append("left join m_code_value cv on cv.id = c.gender_cv_id ");
-            builder.append("left join m_code_value cvTitle on cvTitle.id = c.title_cv_id ");
+            builder.append("left join m_client_title ct on ct.id = c.title_id ");
             builder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
             builder.append("left join m_code_value cvCustomerRiskProfile on cvCustomerRiskProfile.id = c.customer_risk_profile_cv_id ");
             builder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
@@ -743,8 +739,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Long subIndustryId = JdbcSupport.getLong(rs, "subIndustryId");
             final LocalDate dateOfBirth = JdbcSupport.getLocalDate(rs, "dateOfBirth");
             final Long genderId = JdbcSupport.getLong(rs, "genderId");
-            final String genderValue = rs.getString("genderValue");
-            final CodeValueData gender = CodeValueData.instance(genderId, genderValue);
+            final CodeValueData gender = toGenderCodeValueData(genderId);
             final Long titleId = JdbcSupport.getLong(rs, "titleId");
             final String titleValue = rs.getString("titleValue");
             final CodeValueData title = CodeValueData.instance(titleId, titleValue);
@@ -849,5 +844,16 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         } catch (final EmptyResultDataAccessException e) {
             return null;
         }
+    }
+
+    private static CodeValueData toGenderCodeValueData(final Long genderId) {
+        if (genderId == null) {
+            return null;
+        }
+        final Gender gender = Gender.fromInt(genderId.intValue());
+        if (gender == null) {
+            return null;
+        }
+        return CodeValueData.instance(gender.getValue().longValue(), gender.getLabel());
     }
 }

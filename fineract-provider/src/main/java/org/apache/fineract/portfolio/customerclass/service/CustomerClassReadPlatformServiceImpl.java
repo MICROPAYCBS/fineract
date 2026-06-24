@@ -27,6 +27,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.customerclass.data.CustomerClassTemplateData;
 import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
+import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
@@ -44,8 +45,8 @@ public class CustomerClassReadPlatformServiceImpl implements CustomerClassReadPl
 
         public String schema() {
             return " cc.id AS id, cc.class_code AS classCode, cc.class_name AS className, cc.description AS description,"
-                    + " cc.customer_type AS customerType, cc.risk_level AS riskLevel, cc.kyc_level AS kycLevel,"
-                    + " cc.loan_eligible AS loanEligibleFlag, cc.restriction_id AS restrictionId,"
+                    + " cc.legal_form_enum AS legalFormId, cc.customer_type AS customerType, cc.risk_level AS riskLevel,"
+                    + " cc.kyc_level AS kycLevel, cc.loan_eligible AS loanEligibleFlag, cc.restriction_id AS restrictionId,"
                     + " r.restriction_code AS restrictionCode, r.restriction_name AS restrictionName,"
                     + " cc.overdraft_allowed AS overdraftAllowedFlag, cc.enhanced_due_diligence AS enhancedDueDiligenceFlag,"
                     + " cc.reclassification_allowed AS reclassificationAllowedFlag, cc.min_age AS minAge, cc.max_age AS maxAge,"
@@ -60,7 +61,8 @@ public class CustomerClassReadPlatformServiceImpl implements CustomerClassReadPl
         public CustomerClassData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
             return CustomerClassData.builder().id(rs.getLong("id")).classCode(rs.getString("classCode"))
                     .className(rs.getString("className")).description(rs.getString("description"))
-                    .customerType(rs.getString("customerType")).riskLevel(rs.getString("riskLevel")).kycLevel(rs.getString("kycLevel"))
+                    .legalFormId(JdbcSupport.getInteger(rs, "legalFormId")).customerType(rs.getString("customerType"))
+                    .riskLevel(rs.getString("riskLevel")).kycLevel(rs.getString("kycLevel"))
                     .loanEligible(fromYn(rs.getString("loanEligibleFlag"))).restrictionId(JdbcSupport.getLong(rs, "restrictionId"))
                     .restrictionCode(rs.getString("restrictionCode")).restrictionName(rs.getString("restrictionName"))
                     .overdraftAllowed(fromYn(rs.getString("overdraftAllowedFlag")))
@@ -104,7 +106,10 @@ public class CustomerClassReadPlatformServiceImpl implements CustomerClassReadPl
                 "SELECT id, restriction_code, restriction_name FROM m_restriction WHERE status = 'ACTIVE' ORDER BY restriction_name",
                 (rs, rowNum) -> new CustomerClassTemplateData.RestrictionOption(rs.getLong("id"), rs.getString("restriction_code"),
                         rs.getString("restriction_name")));
-        return CustomerClassTemplateData.builder().customerTypeOptions(List.of("INDIVIDUAL", "CORPORATE", "GROUP", "JOINT"))
+        return CustomerClassTemplateData.builder()
+                .legalFormOptions(List.of(new CustomerClassTemplateData.LegalFormOption(LegalForm.PERSON.getValue(), LegalForm.PERSON.getLabel()),
+                        new CustomerClassTemplateData.LegalFormOption(LegalForm.ENTITY.getValue(), LegalForm.ENTITY.getLabel())))
+                .customerTypeOptions(List.of("GROUP", "JOINT"))
                 .riskLevelOptions(List.of("LOW", "MEDIUM", "HIGH")).kycLevelOptions(List.of("BASIC", "STANDARD", "ENHANCED"))
                 .statusOptions(List.of("ACTIVE", "INACTIVE")).restrictionOptions(restrictionOptions).build();
     }

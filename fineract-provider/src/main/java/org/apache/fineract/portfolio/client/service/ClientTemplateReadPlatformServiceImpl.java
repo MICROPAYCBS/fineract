@@ -44,6 +44,7 @@ import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientFamilyMembersData;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
+import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.apache.fineract.portfolio.customerclass.service.CustomerClassReadPlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
@@ -67,6 +68,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
     private final ClientFamilyMembersReadPlatformService clientFamilyMembersReadPlatformService;
     private final ConfigurationDomainService configurationDomainService;
     private final CustomerClassReadPlatformService customerClassReadPlatformService;
+    private final ClientTitleReadPlatformService clientTitleReadPlatformService;
 
     @Override
     public ClientData retrieveTemplate(final Long officeId, final boolean staffInSelectedOfficeOnly) {
@@ -98,11 +100,13 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         if (CollectionUtils.isEmpty(staffOptions)) {
             staffOptions = null;
         }
-        final List<CodeValueData> genderOptions = new ArrayList<>(
-                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.GENDER));
+        final List<CodeValueData> genderOptions = ClientEnumerations.gender(Gender.values()).stream()
+                .map(option -> CodeValueData.instance(option.getId(), option.getValue())).toList();
 
-        final List<CodeValueData> titleOptions = new ArrayList<>(
-                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CLIENT_TITLE));
+        final List<org.apache.fineract.portfolio.client.data.ClientTitleData> clientTitleOptions = this.clientTitleReadPlatformService
+                .retrieveActiveForClientDropdown();
+        final List<CodeValueData> titleOptions = clientTitleOptions.stream()
+                .map(title -> CodeValueData.instance(title.getId(), title.getTitleName())).toList();
 
         final List<CodeValueData> nationalityOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.COUNTRY));
@@ -132,6 +136,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
                 clientNonPersonMainBusinessLineOptions, clientLegalFormOptions, familyMemberOptions,
                 new ArrayList<AddressData>(Arrays.asList(address)), isAddressEnabled, datatableTemplates);
         templateData.setTitleOptions(titleOptions);
+        templateData.setClientTitleOptions(clientTitleOptions);
         templateData.setNationalityOptions(nationalityOptions);
         templateData.setCustomerRiskProfileOptions(customerRiskProfileOptions);
         templateData.setCustomerClassOptions(this.customerClassReadPlatformService.retrieveActiveForClientDropdown());

@@ -16,11 +16,10 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.customerclass.data;
+package org.apache.fineract.portfolio.client.data;
 
 import java.io.Serial;
 import java.io.Serializable;
-import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -30,40 +29,14 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class CustomerClassTemplateData implements Serializable {
+public class ClientTitleRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private List<String> customerTypeOptions;
-    private List<LegalFormOption> legalFormOptions;
-    private List<String> riskLevelOptions;
-    private List<String> kycLevelOptions;
-    private List<String> statusOptions;
-    private List<RestrictionOption> restrictionOptions;
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class LegalFormOption implements Serializable {
-
-        @Serial
-        private static final long serialVersionUID = 1L;
-
-        private Integer id;
-        private String name;
-    }
-
-    @Data
-    @AllArgsConstructor
-    @NoArgsConstructor
-    public static class RestrictionOption implements Serializable {
-
-        @Serial
-        private static final long serialVersionUID = 1L;
-
-        private Long id;
-        private String restrictionCode;
-        private String restrictionName;
-    }
+    private String titleCode;
+    private String titleName;
+    private Integer genderId;
+    private Integer displayOrder;
+    private String status;
 }

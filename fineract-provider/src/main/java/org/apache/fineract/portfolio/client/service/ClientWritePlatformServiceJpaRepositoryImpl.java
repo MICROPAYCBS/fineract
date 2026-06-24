@@ -40,10 +40,8 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
@@ -77,6 +75,7 @@ import org.apache.fineract.portfolio.client.exception.ClientActiveForUpdateExcep
 import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
 import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepository;
 import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
+import org.apache.fineract.portfolio.customerclass.service.CustomerClassClientValidationService;
 import org.apache.fineract.portfolio.client.exception.ClientActivationRequiresProfileImageException;
 import org.apache.fineract.portfolio.client.exception.ClientHasNoStaffException;
 import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeDeletedException;
@@ -134,6 +133,8 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
     private final CustomerClassRepository customerClassRepository;
+    private final CustomerClassClientValidationService customerClassClientValidationService;
+    private final ClientTitleWritePlatformService clientTitleWritePlatformService;
 
     @Transactional
     @Override
@@ -225,11 +226,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 staff = this.staffRepository.findByOfficeHierarchyWithNotFoundDetection(staffId, clientOffice.getHierarchy());
             }
 
-            CodeValue gender = null;
-            final Long genderId = command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName);
-            if (genderId != null) {
-                gender = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.GENDER, genderId);
-            }
+            Integer genderEnum = resolveGenderEnum(command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName));
 
             CodeValue clientType = null;
             final Long clientTypeId = command.longValueOfParameterNamed(ClientApiConstants.clientTypeIdParamName);
@@ -312,7 +309,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             final Client newClient = Client.instance(currentUser, status, clientOffice, clientParentGroup, accountNo, firstname, middlename,
                     lastname, fullname, activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate,
-                    savingsProductId, savingsAccountId, dataOfBirth, gender, clientType, clientClassification, legalForm.getValue(),
+                    savingsProductId, savingsAccountId, dataOfBirth, genderEnum, clientType, clientClassification, legalForm.getValue(),
                     isStaff);
             if (StringUtils.isNotBlank(taxIdentificationNumber)) {
                 newClient.setTaxIdentificationNumber(taxIdentificationNumber.trim());
@@ -327,12 +324,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 newClient.setSubIndustryId(subIndustryId);
             }
             if (customerClassId != null) {
-                validateActiveCustomerClassForAssignment(customerClassId);
                 newClient.setCustomerClassId(customerClassId);
             }
             if (titleId != null) {
-                newClient.setTitle(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        ClientApiConstants.CLIENT_TITLE, titleId));
+                this.clientTitleWritePlatformService.validateTitleForGender(titleId, genderEnum);
+                newClient.updateTitle(titleId);
             }
             if (nationalityCountryId != null) {
                 newClient.setNationality(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
@@ -345,6 +341,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             // Account Number generation
             this.clientRepository.saveAndFlush(newClient);
+            if (customerClassId != null) {
+                validateCustomerClassAssignment(customerClassId, newClient);
+            }
             if (StringUtils.isBlank(accountNo)) {
                 AccountNumberFormat accountNumberFormat = this.accountNumberFormatRepository.findByAccountType(EntityAccountType.CLIENT);
                 newClient.updateAccountNo(accountNumberGenerator.generate(newClient, accountNumberFormat));
@@ -389,6 +388,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers) != null) {
                 this.clientIdentifierWritePlatformService.addClientIdentifiers(newClient, command);
+            }
+
+            if (newClient.getCustomerClassId() != null && newClient.isActive()) {
+                validateCustomerClassReadinessForActivation(newClient);
             }
 
             if (command.parameterExists(ClientApiConstants.datatables)) {
@@ -546,7 +549,13 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerClassIdParamName);
                 changes.put(ClientApiConstants.customerClassIdParamName, newValue);
                 if (newValue != null) {
-                    validateActiveCustomerClassForAssignment(newValue);
+                    final CustomerClass newCustomerClass = findCustomerClassWithNotFoundDetection(newValue);
+                    final Long currentCustomerClassId = clientForUpdate.getCustomerClassId();
+                    if (currentCustomerClassId != null && !currentCustomerClassId.equals(newValue)) {
+                        this.customerClassClientValidationService.validateReclassification(
+                                findCustomerClassWithNotFoundDetection(currentCustomerClassId), newCustomerClass);
+                    }
+                    this.customerClassClientValidationService.validateAssignment(newCustomerClass, clientForUpdate);
                 }
                 clientForUpdate.setCustomerClassId(newValue);
             }
@@ -685,22 +694,17 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
 
             if (changes.containsKey(ClientApiConstants.genderIdParamName)) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName);
-                CodeValue gender = null;
-                if (newValue != null) {
-                    gender = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.GENDER, newValue);
+                final Integer newValue = resolveGenderEnum(command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName));
+                clientForUpdate.updateGender(newValue);
+                if (clientForUpdate.titleId() != null) {
+                    this.clientTitleWritePlatformService.validateTitleForGender(clientForUpdate.titleId(), newValue);
                 }
-                clientForUpdate.updateGender(gender);
             }
 
             if (changes.containsKey(ClientApiConstants.titleIdParamName)) {
                 final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
-                CodeValue title = null;
-                if (newValue != null) {
-                    title = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.CLIENT_TITLE,
-                            newValue);
-                }
-                clientForUpdate.updateTitle(title);
+                this.clientTitleWritePlatformService.validateTitleForGender(newValue, clientForUpdate.getGenderEnum());
+                clientForUpdate.updateTitle(newValue);
             }
 
             if (changes.containsKey(ClientApiConstants.nationalityCountryIdParamName)) {
@@ -852,6 +856,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             this.fromApiJsonDeserializer.validateActivation(command);
 
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId, true);
+            if (client.getCustomerClassId() != null) {
+                validateCustomerClassReadinessForActivation(client);
+            }
             if (client.getImageId() == null) {
                 throw new ClientActivationRequiresProfileImageException(clientId);
             }
@@ -1247,15 +1254,33 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 .build();
     }
 
-    private void validateActiveCustomerClassForAssignment(final Long customerClassId) {
-        final CustomerClass customerClass = this.customerClassRepository.findById(customerClassId)
+    private CustomerClass findCustomerClassWithNotFoundDetection(final Long customerClassId) {
+        return this.customerClassRepository.findById(customerClassId)
                 .orElseThrow(() -> new CustomerClassNotFoundException(customerClassId));
-        if (!"ACTIVE".equalsIgnoreCase(customerClass.getStatus())) {
-            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.client.customerClassId.inactive",
-                    "Only an active customer class can be assigned to a client.", ClientApiConstants.customerClassIdParamName,
-                    customerClassId);
-            throw new PlatformApiDataValidationException(List.of(error));
+    }
+
+    private void validateCustomerClassAssignment(final Long customerClassId, final Client client) {
+        this.customerClassClientValidationService.validateAssignment(findCustomerClassWithNotFoundDetection(customerClassId), client);
+    }
+
+    private void validateCustomerClassReadinessForActivation(final Client client) {
+        this.customerClassClientValidationService.validateReadinessForActivation(
+                findCustomerClassWithNotFoundDetection(client.getCustomerClassId()), client);
+    }
+
+    private Integer resolveGenderEnum(final Long genderId) {
+        if (genderId == null) {
+            return null;
         }
+        final Integer genderEnum = genderId.intValue();
+        if (org.apache.fineract.portfolio.client.domain.Gender.fromInt(genderEnum) == null) {
+            throw new org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException(
+                    java.util.List.of(
+                            org.apache.fineract.infrastructure.core.data.ApiParameterError.parameterError(
+                                    "validation.msg.client.genderId.invalid", "Gender must be Male or Female.",
+                                    ClientApiConstants.genderIdParamName, genderId)));
+        }
+        return genderEnum;
     }
 
 }

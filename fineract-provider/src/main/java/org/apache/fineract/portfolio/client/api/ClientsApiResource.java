@@ -455,6 +455,7 @@ public class ClientsApiResource {
             clientData.setCustomerRiskProfile(customerRiskProfile);
             clientData.setCustomerClass(customerClass);
             clientData.setTitleOptions(templateData.getTitleOptions());
+            clientData.setClientTitleOptions(templateData.getClientTitleOptions());
             clientData.setNationalityOptions(templateData.getNationalityOptions());
             clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
             clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
@@ -466,6 +467,7 @@ public class ClientsApiResource {
                 clientData.setCustomerRiskProfile(customerRiskProfile);
                 clientData.setCustomerClass(customerClass);
                 clientData.setTitleOptions(templateData.getTitleOptions());
+            clientData.setClientTitleOptions(templateData.getClientTitleOptions());
                 clientData.setNationalityOptions(templateData.getNationalityOptions());
                 clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
                 clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());

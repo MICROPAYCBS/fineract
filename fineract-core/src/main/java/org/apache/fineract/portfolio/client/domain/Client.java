@@ -122,9 +122,8 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "customer_class_id")
     private Long customerClassId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "title_cv_id")
-    private CodeValue title;
+    @Column(name = "title_id")
+    private Long titleId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nationality_country_id")
@@ -143,9 +142,8 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "gender_cv_id")
-    private CodeValue gender;
+    @Column(name = "gender_enum")
+    private Integer genderEnum;
 
     @ManyToOne
     @JoinColumn(name = "staff_id")
@@ -236,11 +234,11 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
             final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
             final String emailAddress, final Staff staff, final LocalDate submittedOnDate, final Long savingsProductId,
-            final Long savingsAccountId, final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType,
+            final Long savingsAccountId, final LocalDate dateOfBirth, final Integer genderEnum, final CodeValue clientType,
             final CodeValue clientClassification, final Integer legalForm, final Boolean isStaff) {
         return new Client(currentUser, status, office, clientParentGroup, accountNo, firstname, middlename, lastname, fullname,
                 activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate, savingsProductId,
-                savingsAccountId, dateOfBirth, gender, clientType, clientClassification, legalForm, isStaff);
+                savingsAccountId, dateOfBirth, genderEnum, clientType, clientClassification, legalForm, isStaff);
     }
 
     protected Client() {}
@@ -249,7 +247,7 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
             final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
             final String emailAddress, final Staff staff, final LocalDate submittedOnDate, final Long savingsProductId,
-            final Long savingsAccountId, final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType,
+            final Long savingsAccountId, final LocalDate dateOfBirth, final Integer genderEnum, final CodeValue clientType,
             final CodeValue clientClassification, final Integer legalForm, final Boolean isStaff) {
 
         if (StringUtils.isBlank(accountNo)) {
@@ -304,8 +302,8 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.savingsProductId = savingsProductId;
         this.savingsAccountId = savingsAccountId;
 
-        if (gender != null) {
-            this.gender = gender;
+        if (genderEnum != null) {
+            this.genderEnum = genderEnum;
         }
 
         this.dateOfBirth = dateOfBirth;
@@ -626,11 +624,11 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     public Long genderId() {
-        Long genderId = null;
-        if (this.gender != null) {
-            genderId = this.gender.getId();
-        }
-        return genderId;
+        return this.genderEnum != null ? this.genderEnum.longValue() : null;
+    }
+
+    public Integer getGenderEnum() {
+        return this.genderEnum;
     }
 
     public Long clientTypeId() {
@@ -653,10 +651,6 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return this.rejectionDate;
     }
 
-    public CodeValue gender() {
-        return this.gender;
-    }
-
     public CodeValue clientType() {
         return this.clientType;
     }
@@ -673,16 +667,12 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.clientClassification = clientClassification;
     }
 
-    public void updateGender(CodeValue gender) {
-        this.gender = gender;
+    public void updateGender(final Integer genderEnum) {
+        this.genderEnum = genderEnum;
     }
 
     public Long titleId() {
-        Long titleId = null;
-        if (this.title != null) {
-            titleId = this.title.getId();
-        }
-        return titleId;
+        return this.titleId;
     }
 
     public Long nationalityCountryId() {
@@ -693,8 +683,8 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return nationalityCountryId;
     }
 
-    public void updateTitle(CodeValue title) {
-        this.title = title;
+    public void updateTitle(final Long titleId) {
+        this.titleId = titleId;
     }
 
     public void updateNationality(CodeValue nationality) {

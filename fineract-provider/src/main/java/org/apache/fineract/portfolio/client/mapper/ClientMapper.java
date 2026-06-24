@@ -26,6 +26,7 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientTimelineData;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
+import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -65,6 +66,7 @@ public interface ClientMapper {
     @Mapping(target = "savingAccountOptions", ignore = true)
     @Mapping(target = "genderOptions", ignore = true)
     @Mapping(target = "titleOptions", ignore = true)
+    @Mapping(target = "clientTitleOptions", ignore = true)
     @Mapping(target = "nationalityOptions", ignore = true)
     @Mapping(target = "customerRiskProfileOptions", ignore = true)
     @Mapping(target = "customerClass", ignore = true)
@@ -119,20 +121,22 @@ public interface ClientMapper {
 
     @Named("clientGenderCode")
     default CodeValueData clientGenderCode(Client client) {
-        final CodeValue code = client.getGender();
-        if (code == null) {
+        if (client.getGenderEnum() == null) {
             return null;
         }
-        return CodeValueData.instance(code.getId(), code.getLabel());
+        final Gender gender = Gender.fromInt(client.getGenderEnum());
+        if (gender == null) {
+            return null;
+        }
+        return CodeValueData.instance(gender.getValue().longValue(), gender.getLabel());
     }
 
     @Named("clientTitleCode")
     default CodeValueData clientTitleCode(Client client) {
-        final CodeValue code = client.getTitle();
-        if (code == null) {
+        if (client.getTitleId() == null) {
             return null;
         }
-        return CodeValueData.instance(code.getId(), code.getLabel());
+        return CodeValueData.instance(client.getTitleId(), null);
     }
 
     @Named("clientNationalityCode")
