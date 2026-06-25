@@ -24,7 +24,7 @@ import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
 public interface CustomerClassClientValidationService {
 
     /**
-     * Validates that a client is eligible to be assigned the given customer class (age, type, risk, restriction, blacklist).
+     * Validates that a client may be assigned the given customer class (legal form, age when configured, restriction, blacklist).
      */
     void validateAssignment(CustomerClass customerClass, Client client);
 

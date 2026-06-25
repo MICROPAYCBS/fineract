@@ -188,6 +188,8 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FAMILYMEMBERS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COMPLIANCEPROFILE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTTITLE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
@@ -483,6 +485,56 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_CLIENTTITLE;
         this.href = "/clienttitles/" + clientTitleId;
         this.entityId = clientTitleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createContactType() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_CONTACTTYPE;
+        this.href = "/contacttypes";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateContactType(final long contactTypeId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_CONTACTTYPE;
+        this.href = "/contacttypes/" + contactTypeId;
+        this.entityId = contactTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteContactType(final long contactTypeId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_CONTACTTYPE;
+        this.href = "/contacttypes/" + contactTypeId;
+        this.entityId = contactTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createClientContact(final Long clientId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_CLIENTCONTACT;
+        this.entityId = null;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "/contacts/template";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateClientContact(final Long clientId, final Long clientContactId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_CLIENTCONTACT;
+        this.entityId = clientContactId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "/contacts/" + clientContactId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteClientContact(final Long clientId, final Long clientContactId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_CLIENTCONTACT;
+        this.entityId = clientContactId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "/contacts/" + clientContactId;
         return this;
     }
 

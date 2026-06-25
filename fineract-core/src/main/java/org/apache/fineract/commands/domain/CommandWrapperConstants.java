@@ -170,6 +170,8 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_COMPLIANCEPROFILE = "COMPLIANCEPROFILE";
     public static final String ENTITY_CUSTOMERCLASS = "CUSTOMERCLASS";
     public static final String ENTITY_CLIENTTITLE = "CLIENTTITLE";
+    public static final String ENTITY_CONTACTTYPE = "CONTACTTYPE";
+    public static final String ENTITY_CLIENTCONTACT = "CLIENTCONTACT";
     public static final String ENTITY_CONFIGURATION = "CONFIGURATION";
     public static final String ENTITY_PERMISSION = "PERMISSION";
     public static final String ENTITY_ROLE = "ROLE";

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3036-create-m-contact-type-postgresql" author="micropay" context="postgresql">
+        <sqlFile path="V3036__create_m_contact_type.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="V3036__seed_m_contact_type.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    <changeSet id="3036-create-m-contact-type-mysql" author="micropay" context="mysql">
+        <sqlFile path="V3036__create_m_contact_type.mysql.sql" relativeToChangelogFile="true"/>
+        <sqlFile path="V3036__seed_m_contact_type.mysql.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+</databaseChangeLog>

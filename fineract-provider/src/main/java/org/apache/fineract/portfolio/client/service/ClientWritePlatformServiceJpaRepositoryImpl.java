@@ -135,6 +135,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final CustomerClassRepository customerClassRepository;
     private final CustomerClassClientValidationService customerClassClientValidationService;
     private final ClientTitleWritePlatformService clientTitleWritePlatformService;
+    private final ClientContactValidationService clientContactValidationService;
 
     @Transactional
     @Override
@@ -859,6 +860,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (client.getCustomerClassId() != null) {
                 validateCustomerClassReadinessForActivation(client);
             }
+            this.clientContactValidationService.validateMandatoryContactsForClient(clientId);
             if (client.getImageId() == null) {
                 throw new ClientActivationRequiresProfileImageException(clientId);
             }

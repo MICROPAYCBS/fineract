@@ -23,11 +23,9 @@ import java.time.Period;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -49,10 +47,6 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
     private static final String CLIENT_ENTITY_TYPE = "clients";
     private static final String CLIENT_SIGNATURE_DOCUMENT_NAME = "clientSignature";
 
-    private static final Set<String> LOW_RISK_PROFILE_VALUES = Set.of("very low", "low");
-    private static final Set<String> MEDIUM_RISK_PROFILE_VALUES = Set.of("medium");
-    private static final Set<String> HIGH_RISK_PROFILE_VALUES = Set.of("high", "very high");
-
     private final JdbcTemplate jdbcTemplate;
     private final ClientComplianceProfileRepository complianceProfileRepository;
 
@@ -62,8 +56,6 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
         validateClassActive(customerClass, errors);
         validateLegalFormEligibility(customerClass, client, errors);
         validateAgeEligibility(customerClass, client, errors);
-        validateCustomerTypeEligibility(customerClass, client, errors);
-        validateRiskLevelEligibility(customerClass, client, errors);
         validateLinkedRestriction(customerClass, errors);
         validateNotBlacklistedForAccountOpening(client, errors);
         throwIfErrors(errors);
@@ -167,62 +159,6 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
                     "Customer class `" + customerClass.getClassName() + "` is for " + requiredLabel
                             + " customers; this client's legal form is " + clientLegalForm.getLabel() + ".",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
-        }
-    }
-
-    private void validateCustomerTypeEligibility(final CustomerClass customerClass, final Client client,
-            final List<ApiParameterError> errors) {
-        final String customerType = customerClass.getCustomerType();
-        if (StringUtils.isBlank(customerType)) {
-            return;
-        }
-        switch (customerType.toUpperCase(Locale.ENGLISH)) {
-            case "GROUP" -> {
-                if (countGroupMemberships(client.getId()) == 0) {
-                    errors.add(typeMismatchError(customerClass, "Group customer classes require the client to belong to a group."));
-                }
-            }
-            case "JOINT" -> errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.joint.not.supported",
-                    "Joint customer classes are not supported yet.", ClientApiConstants.customerClassIdParamName,
-                    customerClass.getClassCode()));
-            case "INDIVIDUAL", "CORPORATE" -> {
-                // Legacy segment values; legal form eligibility is enforced separately.
-            }
-            default -> {
-                // no-op for unknown future types
-            }
-        }
-    }
-
-    private ApiParameterError typeMismatchError(final CustomerClass customerClass, final String message) {
-        return ApiParameterError.parameterError("validation.msg.client.customerClassId.customerType.mismatch", message,
-                ClientApiConstants.customerClassIdParamName, customerClass.getClassCode());
-    }
-
-    private void validateRiskLevelEligibility(final CustomerClass customerClass, final Client client, final List<ApiParameterError> errors) {
-        final String classRiskLevel = customerClass.getRiskLevel();
-        if (StringUtils.isBlank(classRiskLevel)) {
-            return;
-        }
-        final CodeValue riskProfile = client.getCustomerRiskProfile();
-        if (riskProfile == null || StringUtils.isBlank(riskProfile.getLabel())) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.riskProfile.required",
-                    "Customer risk profile is required for customer class `" + customerClass.getClassName() + "`.",
-                    ClientApiConstants.customerRiskProfileIdParamName));
-            return;
-        }
-        final String profileValue = riskProfile.getLabel().trim().toLowerCase(Locale.ENGLISH);
-        final boolean matches = switch (classRiskLevel.toUpperCase(Locale.ENGLISH)) {
-            case "LOW" -> LOW_RISK_PROFILE_VALUES.contains(profileValue);
-            case "MEDIUM" -> MEDIUM_RISK_PROFILE_VALUES.contains(profileValue);
-            case "HIGH" -> HIGH_RISK_PROFILE_VALUES.contains(profileValue);
-            default -> true;
-        };
-        if (!matches) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.riskLevel.mismatch",
-                    "Customer risk profile `" + riskProfile.getLabel() + "` does not match the `" + classRiskLevel
-                            + "` risk level required by class `" + customerClass.getClassName() + "`.",
-                    ClientApiConstants.customerRiskProfileIdParamName, customerClass.getClassCode()));
         }
     }
 
@@ -369,15 +305,6 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
         final Integer count = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM m_client_address WHERE client_id = ?",
                 Integer.class, clientId);
         return count != null && count > 0;
-    }
-
-    private int countGroupMemberships(final Long clientId) {
-        if (clientId == null) {
-            return 0;
-        }
-        final Integer count = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM m_group_client WHERE client_id = ?",
-                Integer.class, clientId);
-        return count == null ? 0 : count;
     }
 
     private static boolean isYes(final String value) {

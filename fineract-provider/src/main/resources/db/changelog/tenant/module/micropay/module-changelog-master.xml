@@ -58,4 +58,7 @@
   <include relativeToChangelogFile="true" file="parts/3033_create_m_client_title.xml"/>
   <include relativeToChangelogFile="true" file="parts/3034_migrate_client_gender_title.xml"/>
   <include relativeToChangelogFile="true" file="parts/3035_add_client_title_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3036_create_m_contact_type.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3037_create_m_client_contact.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3038_add_contact_permissions.xml"/>
 </databaseChangeLog>
