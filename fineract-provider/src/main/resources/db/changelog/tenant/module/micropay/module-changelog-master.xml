@@ -61,4 +61,5 @@
   <include relativeToChangelogFile="true" file="parts/3036_create_m_contact_type.xml"/>
   <include relativeToChangelogFile="true" file="parts/3037_create_m_client_contact.xml"/>
   <include relativeToChangelogFile="true" file="parts/3038_add_contact_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3039_add_currency_filter_core_accounting_table_reports.xml"/>
 </databaseChangeLog>

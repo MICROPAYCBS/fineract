@@ -131,14 +131,14 @@ public class ReportsTest extends IntegrationTest {
     @Test
     void testTrialBalanceTableReportRunsSuccessfully() {
         Response<RunReportsResponse> response = okR(fineractClient().reportsRun.runReportGetData("Trial Balance Table",
-                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16")));
+                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_currencyId", "-1")));
         assertEquals(200, response.code());
     }
 
     @Test
     void testIncomeStatementTableReportRunsSuccessfully() {
         Response<RunReportsResponse> response = okR(fineractClient().reportsRun.runReportGetData("Income Statement Table",
-                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16")));
+                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_currencyId", "-1")));
         assertEquals(200, response.code());
     }
 
@@ -152,7 +152,8 @@ public class ReportsTest extends IntegrationTest {
     @Test
     void testBalanceSheetTableReportRunsSuccessfully() {
         Response<RunReportsResponse> response = okR(
-                fineractClient().reportsRun.runReportGetData("Balance Sheet Table", Map.of("R_endDate", "2013-04-30", "R_officeId", "1")));
+                fineractClient().reportsRun.runReportGetData("Balance Sheet Table",
+                        Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_currencyId", "-1")));
         assertEquals(200, response.code());
     }
 
