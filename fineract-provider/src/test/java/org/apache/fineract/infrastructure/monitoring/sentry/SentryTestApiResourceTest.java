@@ -26,14 +26,21 @@ class SentryTestApiResourceTest {
     @Test
     void dryRunDoesNotThrow() {
         SentryTestApiResource resource = new SentryTestApiResource();
-        var response = resource.sentryTest(true);
+        var response = resource.sentryTest(true, false);
         Assertions.assertEquals("ready", response.get("status"));
     }
 
     @Test
-    void triggerThrowsIntentionalTestError() {
+    void captureOnlyDoesNotThrow() {
         SentryTestApiResource resource = new SentryTestApiResource();
-        RuntimeException thrown = Assertions.assertThrows(RuntimeException.class, () -> resource.sentryTest(false));
+        var response = resource.sentryTest(false, true);
+        Assertions.assertNotNull(response.get("sentrySdkEnabled"));
+    }
+
+    @Test
+    void defaultModeThrowsIntentionalTestError() {
+        SentryTestApiResource resource = new SentryTestApiResource();
+        RuntimeException thrown = Assertions.assertThrows(RuntimeException.class, () -> resource.sentryTest(false, false));
         Assertions.assertEquals(SentryTestApiResource.TEST_ERROR_MESSAGE, thrown.getMessage());
     }
 }

@@ -28,14 +28,16 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 /**
- * Temporary diagnostic endpoint to verify the Jersey → Sentry reporting path.
+ * Temporary diagnostic endpoint to verify Sentry ingestion.
  *
  * <p>Enable with {@code FINERACT_SENTRY_TEST_ENDPOINT_ENABLED=true}. Remove this class when no longer needed.
  */
@@ -48,11 +50,15 @@ public class SentryTestApiResource implements InitializingBean {
 
     static final String TEST_ERROR_MESSAGE = "Fineract Sentry test: intentional server error (safe to ignore)";
 
+    @Value("${sentry.dsn:}")
+    private String configuredDsn;
+
     @Override
     @SuppressFBWarnings("SLF4J_SIGN_ONLY_FORMAT")
     public void afterPropertiesSet() {
         log.warn("------------------------------------------------------------");
         log.warn("Sentry test endpoint ENABLED at GET /api/v1/diagnostics/sentry-test");
+        log.warn("Use ?dryRun=true or ?captureOnly=true before the default 500 test");
         log.warn("DO NOT enable FINERACT_SENTRY_TEST_ENDPOINT_ENABLED in production!");
         log.warn("------------------------------------------------------------");
     }
@@ -60,11 +66,30 @@ public class SentryTestApiResource implements InitializingBean {
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Trigger or inspect the Sentry test endpoint", hidden = true)
-    public Map<String, Object> sentryTest(@QueryParam("dryRun") @DefaultValue("false") boolean dryRun) {
+    public Map<String, Object> sentryTest(@QueryParam("dryRun") @DefaultValue("false") boolean dryRun,
+            @QueryParam("captureOnly") @DefaultValue("false") boolean captureOnly) {
         if (dryRun) {
-            return Map.of("status", "ready", "sentryEnabled", Sentry.isEnabled(), "message",
-                    "Call without dryRun=true to emit a test 500 to Sentry");
+            return statusResponse(null);
         }
-        throw new RuntimeException(TEST_ERROR_MESSAGE);
+
+        RuntimeException error = new RuntimeException(TEST_ERROR_MESSAGE);
+        if (captureOnly) {
+            String eventId = FineractSentrySupport.captureServerError(error, 500, "GET", "/v1/diagnostics/sentry-test");
+            Sentry.flush(3000);
+            return statusResponse(eventId);
+        }
+
+        throw error;
+    }
+
+    private Map<String, Object> statusResponse(String eventId) {
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("status", eventId == null ? "ready" : "captured");
+        response.put("sentrySdkEnabled", Sentry.isEnabled());
+        response.put("dsnConfigured", configuredDsn != null && !configuredDsn.isBlank());
+        response.put("eventId", eventId);
+        response.put("message",
+                "Errors appear under Sentry Issues (not Logs). Use ?captureOnly=true for a safe 200 test, or call without params for HTTP 500.");
+        return response;
     }
 }

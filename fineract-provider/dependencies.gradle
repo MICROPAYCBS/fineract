@@ -209,6 +209,7 @@ dependencies {
     implementation 'io.github.classgraph:classgraph'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'io.sentry:sentry-spring-boot-starter-jakarta'
+    implementation 'io.sentry:sentry-logback'
 
     // testCompile dependencies are ONLY used in src/test, not src/main.
     // Do NOT repeat dependencies which are ALREADY in implementation or runtimeOnly!

@@ -21,6 +21,7 @@ package org.apache.fineract.infrastructure.monitoring.sentry;
 import io.sentry.IScope;
 import io.sentry.Sentry;
 import io.sentry.SentryEvent;
+import io.sentry.protocol.SentryId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.slf4j.MDC;
@@ -29,16 +30,14 @@ final class FineractSentrySupport {
 
     private FineractSentrySupport() {}
 
-    static void reportServerSideApiError(Throwable exception, int httpStatus, String requestMethod, String requestPath) {
+    static String captureServerError(Throwable exception, int httpStatus, String httpMethod, String requestPath) {
         if (!Sentry.isEnabled() || exception == null || httpStatus < 500) {
-            return;
+            return null;
         }
 
         Throwable reportable = toReportableThrowable(exception);
-        Sentry.withScope(scope -> {
-            applyRequestContext(scope, httpStatus, requestMethod, requestPath);
-            Sentry.captureException(reportable);
-        });
+        SentryId eventId = Sentry.captureException(reportable, scope -> applyRequestContext(scope, httpStatus, httpMethod, requestPath));
+        return eventId != null ? eventId.toString() : null;
     }
 
     static void enrichEvent(SentryEvent event) {
@@ -52,7 +51,7 @@ final class FineractSentrySupport {
         return exception;
     }
 
-    private static void applyRequestContext(IScope scope, int httpStatus, String requestMethod, String requestPath) {
+    private static void applyRequestContext(IScope scope, int httpStatus, String httpMethod, String requestPath) {
         scope.setTag("http.status_code", String.valueOf(httpStatus));
         scope.setTag("surface", "jersey-api");
         if (requestMethod != null) {
