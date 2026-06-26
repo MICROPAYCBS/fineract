@@ -171,19 +171,17 @@ public interface ClientMapper {
     default ClientTimelineData clientTimelineData(Client client) {
         if (client.isClosed()) {
             final AppUser activatedBy = client.getActivatedBy();
-            if (activatedBy != null) {
-                return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
-                        activatedBy.getUsername(), activatedBy.getFirstname(), activatedBy.getLastname(), client.getClosureDate(),
-                        client.getClosedBy().getUsername(), client.getClosedBy().getFirstname(), client.getClosedBy().getLastname());
-            } else {
-                return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(), null, null, null,
-                        client.getClosureDate(), client.getClosedBy().getUsername(), client.getClosedBy().getFirstname(),
-                        client.getClosedBy().getLastname());
-
-            }
-        } else if (client.isActive()) {
+            final AppUser closedBy = client.getClosedBy();
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
-                    client.getActivatedBy().getUsername(), client.getActivatedBy().getFirstname(), client.getActivatedBy().getLastname(),
+                    activatedBy != null ? activatedBy.getUsername() : null,
+                    activatedBy != null ? activatedBy.getFirstname() : null, activatedBy != null ? activatedBy.getLastname() : null,
+                    client.getClosureDate(), closedBy != null ? closedBy.getUsername() : null,
+                    closedBy != null ? closedBy.getFirstname() : null, closedBy != null ? closedBy.getLastname() : null);
+        } else if (client.isActive()) {
+            final AppUser activatedBy = client.getActivatedBy();
+            return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
+                    activatedBy != null ? activatedBy.getUsername() : null,
+                    activatedBy != null ? activatedBy.getFirstname() : null, activatedBy != null ? activatedBy.getLastname() : null,
                     null, null, null, null);
         } else {
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, null, null, null, null, null, null, null, null);
