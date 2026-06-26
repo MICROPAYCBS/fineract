@@ -7,14 +7,14 @@
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
 
     <changeSet author="micropay" id="3039-mysql-currency-filter" context="mysql">
-        <sqlFile path="parts/V3039__core_accounting_reports_currency_filter.mysql.sql"
+        <sqlFile path="V3039__core_accounting_reports_currency_filter.mysql.sql"
             relativeToChangelogFile="true"
             splitStatements="true"
             stripComments="false"/>
     </changeSet>
 
     <changeSet author="micropay" id="3039-postgresql-currency-filter" context="postgresql">
-        <sqlFile path="parts/V3039__core_accounting_reports_currency_filter.postgresql.sql"
+        <sqlFile path="V3039__core_accounting_reports_currency_filter.postgresql.sql"
             relativeToChangelogFile="true"
             splitStatements="true"
             stripComments="false"/>

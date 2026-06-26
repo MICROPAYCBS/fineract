@@ -54,8 +54,8 @@ final class FineractSentrySupport {
     private static void applyRequestContext(IScope scope, int httpStatus, String httpMethod, String requestPath) {
         scope.setTag("http.status_code", String.valueOf(httpStatus));
         scope.setTag("surface", "jersey-api");
-        if (requestMethod != null) {
-            scope.setTag("http.method", requestMethod);
+        if (httpMethod != null) {
+            scope.setTag("http.method", httpMethod);
         }
         if (requestPath != null) {
             scope.setExtra("request.path", requestPath);
