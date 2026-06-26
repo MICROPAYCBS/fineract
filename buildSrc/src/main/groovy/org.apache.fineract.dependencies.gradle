@@ -142,6 +142,8 @@ dependencyManagement {
         dependency 'org.glassfish.jaxb:jaxb-runtime:2.3.6' // Swagger needs exactly this version
         dependency 'joda-time:joda-time:2.14.2'
 
+        dependency 'io.sentry:sentry-spring-boot-starter-jakarta:8.37.1'
+
         dependency 'io.github.classgraph:classgraph:4.8.184'
         dependency 'org.awaitility:awaitility:4.3.0'
         dependency 'com.github.spotbugs:spotbugs-annotations:4.9.8'
