@@ -74,6 +74,7 @@ public class CustomerClassApiResource {
     private Map<String, Object> buildTemplateResponse(final CustomerClassTemplateData templateData) {
         final Map<String, Object> response = new HashMap<>();
         response.put("customerTypeOptions", templateData.getCustomerTypeOptions());
+        response.put("legalFormOptions", templateData.getLegalFormOptions());
         response.put("riskLevelOptions", templateData.getRiskLevelOptions());
         response.put("kycLevelOptions", templateData.getKycLevelOptions());
         response.put("statusOptions", templateData.getStatusOptions());

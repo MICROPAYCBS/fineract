@@ -67,7 +67,6 @@ public final class CustomerClassCommandFromApiJsonDeserializer {
             RECLASSIFICATION_ALLOWED, MIN_AGE, MAX_AGE, ENFORCE_CUST_PHOTO, ENFORCE_CUST_SIGNATURE, ENFORCE_CUST_DOCUMENT,
             AUTO_CREATE_ACCOUNT, STATUS));
 
-    private static final List<Integer> LEGAL_FORM_IDS = List.of(LegalForm.PERSON.getValue(), LegalForm.ENTITY.getValue());
     private static final List<String> CUSTOMER_TYPES = List.of("INDIVIDUAL", "CORPORATE", "GROUP", "JOINT");
     private static final List<String> SEGMENT_CUSTOMER_TYPES = List.of("GROUP", "JOINT");
     private static final List<String> RISK_LEVELS = List.of("LOW", "MEDIUM", "HIGH");
@@ -110,7 +109,8 @@ public final class CustomerClassCommandFromApiJsonDeserializer {
         }
         if (create || this.fromApiJsonHelper.parameterExists(LEGAL_FORM_ID, element)) {
             final Integer legalFormId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(LEGAL_FORM_ID, element);
-            baseDataValidator.reset().parameter(LEGAL_FORM_ID).value(legalFormId).notNull().isOneOfTheseValues(LEGAL_FORM_IDS);
+            baseDataValidator.reset().parameter(LEGAL_FORM_ID).value(legalFormId).notNull()
+                    .isOneOfTheseValues(LegalForm.PERSON.getValue(), LegalForm.ENTITY.getValue());
         }
         if (this.fromApiJsonHelper.parameterExists(CUSTOMER_TYPE, element)) {
             final String customerType = this.fromApiJsonHelper.extractStringNamed(CUSTOMER_TYPE, element);
