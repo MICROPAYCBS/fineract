@@ -58,17 +58,20 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
     private final ClientIdentifierRepository clientIdentifierRepository;
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final ClientIdentifierCommandFromApiJsonDeserializer clientIdentifierCommandFromApiJsonDeserializer;
+    private final ClientIdentifierValidationService clientIdentifierValidationService;
 
     @Autowired
     public ClientIdentifierWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
             final ClientRepositoryWrapper clientRepository, final ClientIdentifierRepository clientIdentifierRepository,
             final CodeValueRepositoryWrapper codeValueRepository,
-            final ClientIdentifierCommandFromApiJsonDeserializer clientIdentifierCommandFromApiJsonDeserializer) {
+            final ClientIdentifierCommandFromApiJsonDeserializer clientIdentifierCommandFromApiJsonDeserializer,
+            final ClientIdentifierValidationService clientIdentifierValidationService) {
         this.context = context;
         this.clientRepository = clientRepository;
         this.clientIdentifierRepository = clientIdentifierRepository;
         this.codeValueRepository = codeValueRepository;
         this.clientIdentifierCommandFromApiJsonDeserializer = clientIdentifierCommandFromApiJsonDeserializer;
+        this.clientIdentifierValidationService = clientIdentifierValidationService;
     }
 
     @Transactional
@@ -90,6 +93,8 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
                     .findOneWithNotFoundDetection(clientIdentifierCommand.getDocumentTypeId());
             documentTypeId = documentType.getId();
             documentTypeLabel = documentType.getLabel();
+
+            this.clientIdentifierValidationService.validateDocumentKey(documentTypeId, documentKey);
 
             final ClientIdentifier clientIdentifier = ClientIdentifier.fromJson(client, documentType, command);
 
@@ -155,6 +160,9 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
             }
 
             if (!changes.isEmpty()) {
+                if (documentKey != null) {
+                    this.clientIdentifierValidationService.validateDocumentKey(documentTypeId, documentKey);
+                }
                 this.clientIdentifierRepository.saveAndFlush(clientIdentifierForUpdate);
             }
 
@@ -224,6 +232,8 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
             clientIdentifierCommand.validateForCreate();
             final CodeValue documentType = this.codeValueRepository
                     .findOneWithNotFoundDetection(clientIdentifierCommand.getDocumentTypeId());
+            this.clientIdentifierValidationService.validateDocumentKey(documentType.getId(),
+                    clientIdentifierCommand.getDocumentKey());
             final ClientIdentifier clientIdentifier = ClientIdentifier.create(client, documentType,
                     clientIdentifierCommand.getDocumentKey(), clientIdentifierCommand.getStatus(),
                     clientIdentifierCommand.getDescription());

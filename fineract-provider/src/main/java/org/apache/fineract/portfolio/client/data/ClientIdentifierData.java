@@ -24,6 +24,7 @@ import java.util.Collection;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
+import org.apache.fineract.portfolio.client.data.IdentityTypeData;
 
 /**
  * Immutable data object represent client identity data.
@@ -43,18 +44,21 @@ public class ClientIdentifierData implements Serializable {
     private final String status;
     @SuppressWarnings("unused")
     private final Collection<CodeValueData> allowedDocumentTypes;
+    private final Collection<IdentityTypeData> identityTypeOptions;
 
     public static ClientIdentifierData singleItem(final Long id, final Long clientId, final CodeValueData documentType,
             final String documentKey, final String status, final String description) {
-        return new ClientIdentifierData(id, clientId, documentType, documentKey, description, status, null);
+        return new ClientIdentifierData(id, clientId, documentType, documentKey, description, status, null, null);
     }
 
-    public static ClientIdentifierData template(final Collection<CodeValueData> codeValues) {
-        return new ClientIdentifierData(null, null, null, null, null, null, codeValues);
+    public static ClientIdentifierData template(final Collection<CodeValueData> codeValues,
+            final Collection<IdentityTypeData> identityTypeOptions) {
+        return new ClientIdentifierData(null, null, null, null, null, null, codeValues, identityTypeOptions);
     }
 
-    public static ClientIdentifierData template(final ClientIdentifierData data, final Collection<CodeValueData> codeValues) {
+    public static ClientIdentifierData template(final ClientIdentifierData data, final Collection<CodeValueData> codeValues,
+            final Collection<IdentityTypeData> identityTypeOptions) {
         return new ClientIdentifierData(data.id, data.clientId, data.documentType, data.documentKey, data.description, data.status,
-                codeValues);
+                codeValues, identityTypeOptions);
     }
 }

@@ -55,9 +55,11 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientIdentifierData;
 import org.apache.fineract.portfolio.client.data.ClientIdentifierRequest;
+import org.apache.fineract.portfolio.client.data.IdentityTypeData;
 import org.apache.fineract.portfolio.client.exception.DuplicateClientIdentifierException;
 import org.apache.fineract.portfolio.client.service.ClientIdentifierReadPlatformService;
 import org.apache.fineract.portfolio.client.service.ClientReadPlatformService;
+import org.apache.fineract.portfolio.client.service.IdentityTypeReadPlatformService;
 import org.springframework.stereotype.Component;
 
 @Path("/v1/clients/{clientId}/identifiers")
@@ -68,7 +70,7 @@ import org.springframework.stereotype.Component;
 public class ClientIdentifiersApiResource {
 
     private static final Set<String> CLIENT_IDENTIFIER_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList("id", "clientId", "documentType", "documentKey", "description", "allowedDocumentTypes"));
+            Arrays.asList("id", "clientId", "documentType", "documentKey", "description", "allowedDocumentTypes", "identityTypeOptions"));
 
     private static final String RESOURCE_NAME_FOR_PERMISSIONS = "CLIENTIDENTIFIER";
 
@@ -76,6 +78,7 @@ public class ClientIdentifiersApiResource {
     private final ClientReadPlatformService clientReadPlatformService;
     private final ClientIdentifierReadPlatformService clientIdentifierReadPlatformService;
     private final CodeValueReadPlatformService codeValueReadPlatformService;
+    private final IdentityTypeReadPlatformService identityTypeReadPlatformService;
     private final DefaultToApiJsonSerializer<ClientIdentifierData> toApiJsonSerializer;
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
@@ -103,8 +106,9 @@ public class ClientIdentifiersApiResource {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
 
         final List<CodeValueData> codeValues = this.codeValueReadPlatformService.retrieveCodeValuesByCode("Customer Identifier");
+        final List<IdentityTypeData> identityTypeOptions = this.identityTypeReadPlatformService.retrieveActiveForDropdown();
 
-        return ClientIdentifierData.template(codeValues);
+        return ClientIdentifierData.template(codeValues, identityTypeOptions);
     }
 
     @POST
@@ -154,7 +158,8 @@ public class ClientIdentifiersApiResource {
                 clientIdentifierId);
         if (settings.isTemplate()) {
             final Collection<CodeValueData> codeValues = this.codeValueReadPlatformService.retrieveCodeValuesByCode("Customer Identifier");
-            clientIdentifierData = ClientIdentifierData.template(clientIdentifierData, codeValues);
+            final List<IdentityTypeData> identityTypeOptions = this.identityTypeReadPlatformService.retrieveActiveForDropdown();
+            clientIdentifierData = ClientIdentifierData.template(clientIdentifierData, codeValues, identityTypeOptions);
         }
 
         return this.toApiJsonSerializer.serialize(settings, clientIdentifierData, CLIENT_IDENTIFIER_DATA_PARAMETERS);

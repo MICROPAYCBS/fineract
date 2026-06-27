@@ -190,6 +190,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTTITLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
@@ -508,6 +509,29 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_CONTACTTYPE;
         this.href = "/contacttypes/" + contactTypeId;
         this.entityId = contactTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createIdentityType() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_IDENTITYTYPE;
+        this.href = "/identitytypes";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateIdentityType(final long identityTypeId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_IDENTITYTYPE;
+        this.href = "/identitytypes/" + identityTypeId;
+        this.entityId = identityTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteIdentityType(final long identityTypeId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_IDENTITYTYPE;
+        this.href = "/identitytypes/" + identityTypeId;
+        this.entityId = identityTypeId;
         return this;
     }
 
