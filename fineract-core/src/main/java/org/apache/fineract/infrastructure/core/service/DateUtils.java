@@ -445,23 +445,19 @@ public final class DateUtils {
         if (dateTimeStr == null || dateTimeStr.isBlank()) {
             return null;
         }
-        final Locale locale = localeStr == null ? null : JsonParserHelper.localeFromString(localeStr);
-        DateTimeFormatter formatter = getDateFormatter(dateFormat, locale);
-        TemporalAccessor parsed = formatter.parse(dateTimeStr);
-
-        boolean hasTime = parsed.isSupported(ChronoField.HOUR_OF_DAY) && parsed.isSupported(ChronoField.MINUTE_OF_HOUR);
-
         try {
+            TemporalAccessor parsed = parseDateTimeString(dateTimeStr, dateFormat, localeStr);
+            boolean hasTime = parsed.isSupported(ChronoField.HOUR_OF_DAY) && parsed.isSupported(ChronoField.MINUTE_OF_HOUR);
             if (hasTime) {
+                if (parsed.isSupported(ChronoField.OFFSET_SECONDS)) {
+                    return OffsetDateTime.from(parsed).toLocalDateTime();
+                }
                 return LocalDateTime.from(parsed);
-            } else {
-                LocalDate date = LocalDate.from(parsed);
-                return LocalDateTime.of(date, fallbackTime);
             }
+            LocalDate date = LocalDate.from(parsed);
+            return LocalDateTime.of(date, fallbackTime);
         } catch (final DateTimeParseException e) {
-            final List<ApiParameterError> errors = List.of(ApiParameterError.parameterError("validation.msg.invalid.date.pattern",
-                    "The parameter date (" + dateTimeStr + ") format is invalid", "date", dateTimeStr));
-            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.", errors, e);
+            throw invalidDatePatternException(dateTimeStr, e);
         }
     }
 
@@ -470,29 +466,45 @@ public final class DateUtils {
         if (Strings.isEmpty(dateTimeStr)) {
             return null;
         }
-        final Locale locale = localeStr == null ? null : JsonParserHelper.localeFromString(localeStr);
-        DateTimeFormatter formatter = getDateFormatter(dateFormat, locale);
-        TemporalAccessor parsed = formatter.parse(dateTimeStr);
-
-        boolean hasTime = parsed.isSupported(ChronoField.HOUR_OF_DAY) && parsed.isSupported(ChronoField.MINUTE_OF_HOUR);
-        boolean hasOffset = parsed.isSupported(ChronoField.OFFSET_SECONDS);
-
         try {
+            TemporalAccessor parsed = parseDateTimeString(dateTimeStr, dateFormat, localeStr);
+            boolean hasTime = parsed.isSupported(ChronoField.HOUR_OF_DAY) && parsed.isSupported(ChronoField.MINUTE_OF_HOUR);
+            boolean hasOffset = parsed.isSupported(ChronoField.OFFSET_SECONDS);
             if (hasTime && hasOffset) {
                 return OffsetDateTime.from(parsed);
             } else if (hasTime) {
                 LocalDateTime localDateTime = LocalDateTime.from(parsed);
                 return localDateTime.atOffset(ZoneOffset.UTC);
-            } else {
-                LocalDate date = LocalDate.from(parsed);
-                LocalDateTime localDateTime = LocalDateTime.of(date, fallbackTime);
-                return localDateTime.atOffset(ZoneOffset.UTC);
             }
+            LocalDate date = LocalDate.from(parsed);
+            LocalDateTime localDateTime = LocalDateTime.of(date, fallbackTime);
+            return localDateTime.atOffset(ZoneOffset.UTC);
         } catch (final DateTimeParseException e) {
-            final List<ApiParameterError> errors = List.of(ApiParameterError.parameterError("validation.msg.invalid.date.pattern",
-                    "The parameter date (" + dateTimeStr + ") format is invalid", "date", dateTimeStr));
-            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.", errors, e);
+            throw invalidDatePatternException(dateTimeStr, e);
         }
+    }
+
+    private static TemporalAccessor parseDateTimeString(String dateTimeStr, String dateFormat, String localeStr) {
+        final Locale locale = localeStr == null ? null : JsonParserHelper.localeFromString(localeStr);
+        if (dateFormat != null || locale != null) {
+            return getDateTimeFormatter(dateFormat, locale).parse(dateTimeStr);
+        }
+        DateTimeParseException lastException = null;
+        for (DateTimeFormatter formatter : List.of(DateTimeFormatter.ISO_OFFSET_DATE_TIME, DateTimeFormatter.ISO_LOCAL_DATE_TIME,
+                DEFAULT_DATETIME_FORMATTER, DEFAULT_DATE_FORMATTER)) {
+            try {
+                return formatter.parse(dateTimeStr);
+            } catch (DateTimeParseException e) {
+                lastException = e;
+            }
+        }
+        throw lastException != null ? lastException : new DateTimeParseException("Unable to parse datetime", dateTimeStr, 0);
+    }
+
+    private static PlatformApiDataValidationException invalidDatePatternException(String dateTimeStr, DateTimeParseException e) {
+        final List<ApiParameterError> errors = List.of(ApiParameterError.parameterError("validation.msg.invalid.date.pattern",
+                "The parameter date (" + dateTimeStr + ") format is invalid", "date", dateTimeStr));
+        return new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.", errors, e);
     }
 
     /**
