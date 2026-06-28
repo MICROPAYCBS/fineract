@@ -64,4 +64,8 @@
   <include relativeToChangelogFile="true" file="parts/3039_add_currency_filter_core_accounting_table_reports.xml"/>
   <include relativeToChangelogFile="true" file="parts/3040_create_m_identity_type.xml"/>
   <include relativeToChangelogFile="true" file="parts/3041_add_identity_type_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3042_enable_cross_branch_servicing_config.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3043_create_m_inter_branch_gl_rule.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3044_create_m_office_servicing_access.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3045_add_cross_branch_servicing_permissions.xml"/>
 </databaseChangeLog>

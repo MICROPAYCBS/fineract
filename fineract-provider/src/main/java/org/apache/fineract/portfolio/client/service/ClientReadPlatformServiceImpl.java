@@ -42,6 +42,7 @@ import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.portfolio.client.data.ClientCollateralManagementData;
@@ -86,6 +87,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
     private final ClientCollateralManagementRepositoryWrapper clientCollateralManagementRepositoryWrapper;
     private final ClientRepositoryWrapper clientRepositoryWrapper;
     private final ClientMapper clientMapper;
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
 
     @Override
     public Page<ClientData> retrieveAll(final SearchParameters searchParameters) {
@@ -103,15 +105,11 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         final String userOfficeHierarchy = this.context.officeHierarchy();
         final String underHierarchySearchString = userOfficeHierarchy + "%";
 
-        // if (searchParameters.isScopedByOfficeHierarchy()) {
-        // this.context.validateAccessRights(searchParameters.getHierarchy());
-        // underHierarchySearchString = searchParameters.getHierarchy() + "%";
-        // }
-        List<Object> paramList = new ArrayList<>(Arrays.asList(underHierarchySearchString, underHierarchySearchString));
+        List<Object> paramList = new ArrayList<>();
         final StringBuilder sqlBuilder = new StringBuilder(200);
         sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(this.clientToDataMapper.schema());
-        sqlBuilder.append(" where (o.hierarchy like ? or transferToOffice.hierarchy like ?) ");
+        appendClientVisibilityWhereClause(sqlBuilder, paramList, underHierarchySearchString);
 
         if (searchParameters != null) {
 
@@ -207,6 +205,25 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             extraCriteria = extraCriteria.substring(4);
         }
         return extraCriteria;
+    }
+
+    private void appendClientVisibilityWhereClause(final StringBuilder sqlBuilder, final List<Object> paramList,
+            final String underHierarchySearchString) {
+        paramList.add(underHierarchySearchString);
+        paramList.add(underHierarchySearchString);
+        sqlBuilder.append(" where (o.hierarchy like ? or transferToOffice.hierarchy like ?");
+
+        if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+            final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
+            final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId);
+            if (!bookOfficeIds.isEmpty()) {
+                sqlBuilder.append(" or c.office_id in (");
+                sqlBuilder.append(String.join(",", bookOfficeIds.stream().map(id -> "?").toList()));
+                sqlBuilder.append(")");
+                paramList.addAll(bookOfficeIds);
+            }
+        }
+        sqlBuilder.append(") ");
     }
 
     @Override

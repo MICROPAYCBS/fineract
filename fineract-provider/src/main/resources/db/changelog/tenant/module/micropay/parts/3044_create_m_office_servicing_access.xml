@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3044-create-m-office-servicing-access-postgresql" author="micropay" context="postgresql">
+        <sqlFile path="V3044__create_m_office_servicing_access.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    <changeSet id="3044-create-m-office-servicing-access-mysql" author="micropay" context="mysql">
+        <sqlFile path="V3044__create_m_office_servicing_access.mysql.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+</databaseChangeLog>

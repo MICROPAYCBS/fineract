@@ -191,6 +191,8 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTERBRANCHRULE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SERVICINGACCESS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
@@ -532,6 +534,52 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_IDENTITYTYPE;
         this.href = "/identitytypes/" + identityTypeId;
         this.entityId = identityTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createInterBranchGlRule() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_INTERBRANCHRULE;
+        this.href = "/interbranch/rules";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateInterBranchGlRule(final long ruleId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_INTERBRANCHRULE;
+        this.href = "/interbranch/rules/" + ruleId;
+        this.entityId = ruleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteInterBranchGlRule(final long ruleId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_INTERBRANCHRULE;
+        this.href = "/interbranch/rules/" + ruleId;
+        this.entityId = ruleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createOfficeServicingAccess() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_SERVICINGACCESS;
+        this.href = "/interbranch/access";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateOfficeServicingAccess(final long accessId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SERVICINGACCESS;
+        this.href = "/interbranch/access/" + accessId;
+        this.entityId = accessId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteOfficeServicingAccess(final long accessId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_SERVICINGACCESS;
+        this.href = "/interbranch/access/" + accessId;
+        this.entityId = accessId;
         return this;
     }
 

@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.exception.ClientNotActiveException;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
@@ -39,6 +40,7 @@ public class ClientRepositoryWrapper {
 
     private final ClientRepository repository;
     private final PlatformSecurityContext context;
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
 
     @Transactional(readOnly = true)
     public Client findOneWithNotFoundDetection(final Long id) {
@@ -94,6 +96,17 @@ public class ClientRepositoryWrapper {
 
     public Client getClientByClientIdAndHierarchy(final Long clientId, final String hierarchySearchString) {
         Client client = this.repository.fetchByClientIdAndHierarchy(clientId, hierarchySearchString, hierarchySearchString);
+        if (client == null && this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+            client = this.repository.findById(clientId).orElse(null);
+            if (client != null) {
+                final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
+                final boolean allowed = this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId)
+                        .contains(client.getOffice().getId());
+                if (!allowed) {
+                    client = null;
+                }
+            }
+        }
         if (client == null) {
             throw new ClientNotFoundException(clientId.toString(), "client.id");
         }

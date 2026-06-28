@@ -496,6 +496,13 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public boolean isCrossBranchServicingEnabled() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.ENABLE_CROSS_BRANCH_SERVICING);
+        return property.isEnabled();
+    }
+
+    @Override
     public boolean isCOBBulkEventEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ENABLE_COB_BULK_EVENT);

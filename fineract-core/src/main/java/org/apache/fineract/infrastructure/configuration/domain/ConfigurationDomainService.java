@@ -138,6 +138,8 @@ public interface ConfigurationDomainService {
 
     boolean isAddressEnabled();
 
+    boolean isCrossBranchServicingEnabled();
+
     boolean isCOBBulkEventEnabled();
 
     Long retrieveExternalEventBatchSize();

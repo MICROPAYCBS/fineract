@@ -33,6 +33,8 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.jpa.CriteriaQueryFactory;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
@@ -49,6 +51,8 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
     private EntityManager entityManager;
 
     private final CriteriaQueryFactory criteriaQueryFactory;
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+    private final PlatformSecurityContext context;
 
     @Override
     public Page<SearchedClient> searchByText(String searchText, Pageable pageable, String officeHierarchy) {
@@ -72,7 +76,16 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
             Join<Client, ClientIdentifier> identity = r.join("identifiers", JoinType.LEFT);
 
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
+            List<Predicate> visibilityPredicates = new ArrayList<>();
+            visibilityPredicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
+            if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+                final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
+                final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId);
+                if (!bookOfficeIds.isEmpty()) {
+                    visibilityPredicates.add(o.get("id").in(bookOfficeIds));
+                }
+            }
+            predicates.add(cb.or(visibilityPredicates.toArray(new Predicate[0])));
 
             String searchLikeValue = "%" + searchText + "%";
             predicates.add(cb.or(cb.like(r.get("accountNumber"), searchLikeValue), cb.like(r.get("displayName"), searchLikeValue),
