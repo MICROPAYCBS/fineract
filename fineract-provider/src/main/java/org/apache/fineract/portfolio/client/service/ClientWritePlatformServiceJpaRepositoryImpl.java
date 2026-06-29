@@ -275,6 +275,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final Long titleId = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
             final Long nationalityCountryId = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
             final Long customerRiskProfileId = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
+            final Long maritalStatusId = command.longValueOfParameterNamed(ClientApiConstants.maritalStatusIdParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -337,6 +338,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (customerRiskProfileId != null) {
                 newClient.updateCustomerRiskProfile(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
                         ClientApiConstants.CUSTOMER_RISK_PROFILE, customerRiskProfileId));
+            }
+            if (maritalStatusId != null) {
+                newClient.updateMaritalStatus(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                        ClientApiConstants.MARITAL_STATUS, maritalStatusId));
             }
 
             // Account Number generation
@@ -577,6 +582,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 changes.put(ClientApiConstants.customerRiskProfileIdParamName, newValue);
             }
 
+            if (command.isChangeInLongParameterNamed(ClientApiConstants.maritalStatusIdParamName, clientForUpdate.maritalStatusId())) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.maritalStatusIdParamName);
+                changes.put(ClientApiConstants.maritalStatusIdParamName, newValue);
+            }
+
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
                 changes.put(ClientApiConstants.firstnameParamName, newValue);
@@ -725,6 +735,16 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                             ClientApiConstants.CUSTOMER_RISK_PROFILE, newValue);
                 }
                 clientForUpdate.updateCustomerRiskProfile(customerRiskProfile);
+            }
+
+            if (changes.containsKey(ClientApiConstants.maritalStatusIdParamName)) {
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.maritalStatusIdParamName);
+                CodeValue maritalStatus = null;
+                if (newValue != null) {
+                    maritalStatus = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                            ClientApiConstants.MARITAL_STATUS, newValue);
+                }
+                clientForUpdate.updateMaritalStatus(maritalStatus);
             }
 
             if (changes.containsKey(ClientApiConstants.savingsProductIdParamName)) {

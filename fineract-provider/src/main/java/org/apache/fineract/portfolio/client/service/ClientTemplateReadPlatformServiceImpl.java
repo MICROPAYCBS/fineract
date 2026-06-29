@@ -114,6 +114,9 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         final List<CodeValueData> customerRiskProfileOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CUSTOMER_RISK_PROFILE));
 
+        final List<CodeValueData> maritalStatusOptions = new ArrayList<>(
+                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.MARITAL_STATUS));
+
         final List<CodeValueData> clientTypeOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CLIENT_TYPE));
 
@@ -139,6 +142,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         templateData.setClientTitleOptions(clientTitleOptions);
         templateData.setNationalityOptions(nationalityOptions);
         templateData.setCustomerRiskProfileOptions(customerRiskProfileOptions);
+        templateData.setMaritalStatusOptions(maritalStatusOptions);
         templateData.setCustomerClassOptions(this.customerClassReadPlatformService.retrieveActiveForClientDropdown());
         return templateData;
     }

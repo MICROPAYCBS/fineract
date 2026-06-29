@@ -76,6 +76,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private CodeValueData title;
     private CodeValueData nationality;
     private CodeValueData customerRiskProfile;
+    private CodeValueData maritalStatus;
     private LocalDate dateOfBirth;
     private CodeValueData gender;
     private CodeValueData clientType;
@@ -114,6 +115,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private List<ClientTitleData> clientTitleOptions;
     private Collection<CodeValueData> nationalityOptions;
     private Collection<CodeValueData> customerRiskProfileOptions;
+    private Collection<CodeValueData> maritalStatusOptions;
     private List<CustomerClassData> customerClassOptions;
     private Collection<CodeValueData> clientTypeOptions;
     private Collection<CodeValueData> clientClassificationOptions;
@@ -366,6 +368,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         merged.setTitleOptions(templateData.getTitleOptions());
         merged.setNationalityOptions(templateData.getNationalityOptions());
         merged.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
+        merged.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
         return merged;
     }
 
@@ -389,6 +392,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         merged.setTitleOptions(clientData.getTitleOptions());
         merged.setNationalityOptions(clientData.getNationalityOptions());
         merged.setCustomerRiskProfileOptions(clientData.getCustomerRiskProfileOptions());
+        merged.setMaritalStatusOptions(clientData.getMaritalStatusOptions());
         return merged;
     }
 
@@ -414,6 +418,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         target.setTitle(source.getTitle());
         target.setNationality(source.getNationality());
         target.setCustomerRiskProfile(source.getCustomerRiskProfile());
+        target.setMaritalStatus(source.getMaritalStatus());
     }
 
     public static ClientData clientIdentifier(final Long id, final String accountNo, final String firstname, final String middlename,

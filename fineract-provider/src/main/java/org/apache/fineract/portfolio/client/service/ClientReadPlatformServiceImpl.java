@@ -338,6 +338,8 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("cvNationality.code_value as nationalityValue, ");
             sqlBuilder.append("c.customer_risk_profile_cv_id as customerRiskProfileId, ");
             sqlBuilder.append("cvCustomerRiskProfile.code_value as customerRiskProfileValue, ");
+            sqlBuilder.append("c.marital_status_cv_id as maritalStatusId, ");
+            sqlBuilder.append("cvMaritalStatus.code_value as maritalStatusValue, ");
             sqlBuilder.append("c.date_of_birth as dateOfBirth, ");
             sqlBuilder.append("c.gender_enum as genderId, ");
             sqlBuilder.append("c.client_type_cv_id as clienttypeId, ");
@@ -386,6 +388,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("left join m_client_title ct on ct.id = c.title_id ");
             sqlBuilder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
             sqlBuilder.append("left join m_code_value cvCustomerRiskProfile on cvCustomerRiskProfile.id = c.customer_risk_profile_cv_id ");
+            sqlBuilder.append("left join m_code_value cvMaritalStatus on cvMaritalStatus.id = c.marital_status_cv_id ");
             sqlBuilder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
             sqlBuilder.append("left join m_code_value cvclassification on cvclassification.id = c.client_classification_cv_id ");
             sqlBuilder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
@@ -446,6 +449,9 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Long customerRiskProfileId = JdbcSupport.getLong(rs, "customerRiskProfileId");
             final String customerRiskProfileValue = rs.getString("customerRiskProfileValue");
             final CodeValueData customerRiskProfile = CodeValueData.instance(customerRiskProfileId, customerRiskProfileValue);
+            final Long maritalStatusId = JdbcSupport.getLong(rs, "maritalStatusId");
+            final String maritalStatusValue = rs.getString("maritalStatusValue");
+            final CodeValueData maritalStatus = CodeValueData.instance(maritalStatusId, maritalStatusValue);
 
             final Long clienttypeId = JdbcSupport.getLong(rs, "clienttypeId");
             final String clienttypeValue = rs.getString("clienttypeValue");
@@ -510,6 +516,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             clientData.setTitle(title);
             clientData.setNationality(nationality);
             clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setMaritalStatus(maritalStatus);
             clientData.setCustomerClassId(JdbcSupport.getLong(rs, "customerClassId"));
             final Long customerClassId = clientData.getCustomerClassId();
             if (customerClassId != null) {
@@ -659,6 +666,8 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("cvNationality.code_value as nationalityValue, ");
             builder.append("c.customer_risk_profile_cv_id as customerRiskProfileId, ");
             builder.append("cvCustomerRiskProfile.code_value as customerRiskProfileValue, ");
+            builder.append("c.marital_status_cv_id as maritalStatusId, ");
+            builder.append("cvMaritalStatus.code_value as maritalStatusValue, ");
             builder.append("c.date_of_birth as dateOfBirth, ");
             builder.append("c.gender_enum as genderId, ");
             builder.append("c.client_type_cv_id as clienttypeId, ");
@@ -706,6 +715,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("left join m_client_title ct on ct.id = c.title_id ");
             builder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
             builder.append("left join m_code_value cvCustomerRiskProfile on cvCustomerRiskProfile.id = c.customer_risk_profile_cv_id ");
+            builder.append("left join m_code_value cvMaritalStatus on cvMaritalStatus.id = c.marital_status_cv_id ");
             builder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
             builder.append("left join m_code_value cvclassification on cvclassification.id = c.client_classification_cv_id ");
             builder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
@@ -766,6 +776,9 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Long customerRiskProfileId = JdbcSupport.getLong(rs, "customerRiskProfileId");
             final String customerRiskProfileValue = rs.getString("customerRiskProfileValue");
             final CodeValueData customerRiskProfile = CodeValueData.instance(customerRiskProfileId, customerRiskProfileValue);
+            final Long maritalStatusId = JdbcSupport.getLong(rs, "maritalStatusId");
+            final String maritalStatusValue = rs.getString("maritalStatusValue");
+            final CodeValueData maritalStatus = CodeValueData.instance(maritalStatusId, maritalStatusValue);
 
             final Long clienttypeId = JdbcSupport.getLong(rs, "clienttypeId");
             final String clienttypeValue = rs.getString("clienttypeValue");
@@ -829,6 +842,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             clientData.setTitle(title);
             clientData.setNationality(nationality);
             clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setMaritalStatus(maritalStatus);
             clientData.setCustomerClassId(JdbcSupport.getLong(rs, "customerClassId"));
             final Long customerClassId = clientData.getCustomerClassId();
             if (customerClassId != null) {

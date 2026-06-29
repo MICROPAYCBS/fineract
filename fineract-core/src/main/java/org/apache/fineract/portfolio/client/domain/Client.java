@@ -133,6 +133,10 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @JoinColumn(name = "customer_risk_profile_cv_id")
     private CodeValue customerRiskProfile;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "marital_status_cv_id")
+    private CodeValue maritalStatus;
+
     @Column(name = "is_staff", nullable = false)
     private boolean isStaff;
 
@@ -701,6 +705,18 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public void updateCustomerRiskProfile(CodeValue customerRiskProfile) {
         this.customerRiskProfile = customerRiskProfile;
+    }
+
+    public Long maritalStatusId() {
+        Long maritalStatusId = null;
+        if (this.maritalStatus != null) {
+            maritalStatusId = this.maritalStatus.getId();
+        }
+        return maritalStatusId;
+    }
+
+    public void updateMaritalStatus(CodeValue maritalStatus) {
+        this.maritalStatus = maritalStatus;
     }
 
     public LocalDate dateOfBirth() {

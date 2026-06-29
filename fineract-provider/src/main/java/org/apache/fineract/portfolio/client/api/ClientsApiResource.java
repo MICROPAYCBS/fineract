@@ -446,6 +446,7 @@ public class ClientsApiResource {
             final CodeValueData title = clientData.getTitle();
             final CodeValueData nationality = clientData.getNationality();
             final CodeValueData customerRiskProfile = clientData.getCustomerRiskProfile();
+            final CodeValueData maritalStatus = clientData.getMaritalStatus();
             final CustomerClassData customerClass = clientData.getCustomerClass();
             final ClientData templateData = clientTemplateReadPlatformService.retrieveTemplate(clientData.getOfficeId(),
                     staffInSelectedOfficeOnly);
@@ -453,11 +454,13 @@ public class ClientsApiResource {
             clientData.setTitle(title);
             clientData.setNationality(nationality);
             clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setMaritalStatus(maritalStatus);
             clientData.setCustomerClass(customerClass);
             clientData.setTitleOptions(templateData.getTitleOptions());
             clientData.setClientTitleOptions(templateData.getClientTitleOptions());
             clientData.setNationalityOptions(templateData.getNationalityOptions());
             clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
+            clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
             clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
             Collection<SavingsAccountData> savingAccountOptions = savingsAccountReadPlatformService.retrieveForLookup(clientId, null);
             if (savingAccountOptions != null && savingAccountOptions.size() > 0) {
@@ -465,11 +468,13 @@ public class ClientsApiResource {
                 clientData.setTitle(title);
                 clientData.setNationality(nationality);
                 clientData.setCustomerRiskProfile(customerRiskProfile);
+                clientData.setMaritalStatus(maritalStatus);
                 clientData.setCustomerClass(customerClass);
                 clientData.setTitleOptions(templateData.getTitleOptions());
             clientData.setClientTitleOptions(templateData.getClientTitleOptions());
                 clientData.setNationalityOptions(templateData.getNationalityOptions());
                 clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
+                clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
                 clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
             }
         }

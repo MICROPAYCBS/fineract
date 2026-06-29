@@ -220,6 +220,12 @@ public final class ClientDataValidator {
                     .ignoreIfNull().integerGreaterThanZero();
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.maritalStatusIdParamName, element)) {
+            final Long maritalStatusId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.maritalStatusIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.maritalStatusIdParamName).value(maritalStatusId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {

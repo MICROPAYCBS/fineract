@@ -73,7 +73,7 @@ public class ClientApiConstants {
     public static final String incomeSources = "incomeSources";
     public static final String complianceProfile = "complianceProfile";
     public static final String clientIdentifiers = "clientIdentifiers";
-    public static final String MARITALSTATUS = "MARITALSTATUS";
+    public static final String MARITAL_STATUS = "MARITAL STATUS";
     public static final String maritalStatusIdParamName = "maritalStatusId";
 
     public static final String CLIENT_TYPE_INDIVIDUAL = "Individual";
@@ -123,6 +123,7 @@ public class ClientApiConstants {
     public static final String titleParamName = "title";
     public static final String nationalityParamName = "nationality";
     public static final String customerRiskProfileParamName = "customerRiskProfile";
+    public static final String maritalStatusParamName = "maritalStatus";
     public static final String clientTypeIdParamName = "clientTypeId";
     public static final String clientTypeParamName = "clientType";
     public static final String clientClassificationIdParamName = "clientClassificationId";
@@ -197,6 +198,7 @@ public class ClientApiConstants {
     public static final String titleOptionsParamName = "titleOptions";
     public static final String nationalityOptionsParamName = "nationalityOptions";
     public static final String customerRiskProfileOptionsParamName = "customerRiskProfileOptions";
+    public static final String maritalStatusOptionsParamName = "maritalStatusOptions";
     public static final String customerClassParamName = "customerClass";
     public static final String customerClassOptionsParamName = "customerClassOptions";
 
@@ -217,11 +219,13 @@ public class ClientApiConstants {
             lastnameParamName, fullnameParamName, displayNameParamName, mobileNoParamName, emailAddressParamName,
             taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
             subIndustryIdParamName, customerClassIdParamName, titleIdParamName, nationalityCountryIdParamName,
-            customerRiskProfileIdParamName, titleParamName, nationalityParamName, customerRiskProfileParamName, customerClassParamName,
+            customerRiskProfileIdParamName, maritalStatusIdParamName, titleParamName, nationalityParamName,
+            customerRiskProfileParamName, maritalStatusParamName, customerClassParamName,
             customerClassOptionsParamName, officeIdParamName, officeNameParamName, transferToOfficeIdParamName,
             transferToOfficeNameParamName, hierarchyParamName, imageIdParamName, imagePresentParamName, staffIdParamName,
             staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName, staffOptionsParamName, genderOptionsParamName,
-            titleOptionsParamName, nationalityOptionsParamName, customerRiskProfileOptionsParamName, dateOfBirthParamName,
+            titleOptionsParamName, nationalityOptionsParamName, customerRiskProfileOptionsParamName, maritalStatusOptionsParamName,
+            dateOfBirthParamName,
             genderParamName, clientTypeParamName, clientClassificationParamName, legalFormParamName, clientNonPersonDetailsParamName,
             isStaffParamName, legalFormParamName));
 
