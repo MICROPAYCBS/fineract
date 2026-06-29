@@ -21,6 +21,7 @@ package org.apache.fineract.infrastructure.interbranch.serialization;
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -82,12 +83,12 @@ public final class OfficeServicingAccessCommandFromApiJsonDeserializer {
             validator.reset().parameter(BOOK_OFFICE_ID).value(bookOfficeId).notNull().integerGreaterThanZero();
         }
         if (create || this.fromApiJsonHelper.parameterExists(EFFECTIVE_FROM, element)) {
-            final String effectiveFrom = this.fromApiJsonHelper.extractStringNamed(EFFECTIVE_FROM, element);
-            validator.reset().parameter(EFFECTIVE_FROM).value(effectiveFrom).notBlank().validDateFormat("effectiveFrom");
+            final LocalDate effectiveFrom = this.fromApiJsonHelper.extractLocalDateNamed(EFFECTIVE_FROM, element);
+            validator.reset().parameter(EFFECTIVE_FROM).value(effectiveFrom).notNull();
         }
         if (this.fromApiJsonHelper.parameterExists(EFFECTIVE_TO, element)) {
-            final String effectiveTo = this.fromApiJsonHelper.extractStringNamed(EFFECTIVE_TO, element);
-            validator.reset().parameter(EFFECTIVE_TO).value(effectiveTo).ignoreIfNull().validDateFormat("effectiveTo");
+            final LocalDate effectiveTo = this.fromApiJsonHelper.extractLocalDateNamed(EFFECTIVE_TO, element);
+            validator.reset().parameter(EFFECTIVE_TO).value(effectiveTo).ignoreIfNull();
         }
         if (create || this.fromApiJsonHelper.parameterExists(STATUS, element)) {
             final String status = this.fromApiJsonHelper.extractStringNamed(STATUS, element);

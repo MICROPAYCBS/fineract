@@ -76,7 +76,6 @@ import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
 import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepository;
 import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
 import org.apache.fineract.portfolio.customerclass.service.CustomerClassClientValidationService;
-import org.apache.fineract.portfolio.client.exception.ClientActivationRequiresProfileImageException;
 import org.apache.fineract.portfolio.client.exception.ClientHasNoStaffException;
 import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeDeletedException;
 import org.apache.fineract.portfolio.client.exception.InvalidClientSavingProductException;
@@ -861,9 +860,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 validateCustomerClassReadinessForActivation(client);
             }
             this.clientContactValidationService.validateMandatoryContactsForClient(clientId);
-            if (client.getImageId() == null) {
-                throw new ClientActivationRequiresProfileImageException(clientId);
-            }
             validateParentGroupRulesBeforeClientActivation(client);
             final Locale locale = command.extractLocale();
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
