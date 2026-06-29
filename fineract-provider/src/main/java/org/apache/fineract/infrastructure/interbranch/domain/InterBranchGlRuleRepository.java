@@ -25,13 +25,13 @@ import org.springframework.data.repository.query.Param;
 public interface InterBranchGlRuleRepository extends JpaRepository<InterBranchGlRule, Long> {
 
     @Query("""
-            SELECT COUNT(r) > 0 FROM InterBranchGlRule r
+            SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM InterBranchGlRule r
             WHERE r.leftOffice IS NULL AND r.rightOffice IS NULL AND r.id <> :excludeId
             """)
     boolean existsDefaultRuleExcludingId(@Param("excludeId") Long excludeId);
 
     @Query("""
-            SELECT COUNT(r) > 0 FROM InterBranchGlRule r
+            SELECT CASE WHEN COUNT(r) > 0 THEN TRUE ELSE FALSE END FROM InterBranchGlRule r
             WHERE r.leftOffice IS NULL AND r.rightOffice IS NULL
             """)
     boolean existsDefaultRule();

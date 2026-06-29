@@ -36,7 +36,7 @@ public interface OfficeServicingAccessRepository extends JpaRepository<OfficeSer
     List<Long> findAccessibleBookOfficeIds(@Param("servicingOfficeId") Long servicingOfficeId, @Param("onDate") LocalDate onDate);
 
     @Query("""
-            SELECT COUNT(osa) > 0 FROM OfficeServicingAccess osa
+            SELECT CASE WHEN COUNT(osa) > 0 THEN TRUE ELSE FALSE END FROM OfficeServicingAccess osa
             WHERE osa.servicingOffice.id = :servicingOfficeId
             AND osa.bookOffice.id = :bookOfficeId
             AND osa.status = 'ACTIVE'
