@@ -95,6 +95,8 @@ public final class GlobalConfigurationConstants {
     public static final String RETAINED_EARNING_USED_BY_REPORT_NAME = "retained-earning-used-by-report-name";
     public static final String OFFICE_ID = "office-id";
     public static final String ENABLE_CROSS_BRANCH_SERVICING = "enable-cross-branch-servicing";
+    public static final String SESSION_IDLE_TIMEOUT_MINUTES = "session-idle-timeout-minutes";
+    public static final String SESSION_IDLE_WARNING_SECONDS = "session-idle-warning-seconds";
 
     private GlobalConfigurationConstants() {}
 }

@@ -140,6 +140,10 @@ public interface ConfigurationDomainService {
 
     boolean isCrossBranchServicingEnabled();
 
+    Integer retrieveSessionIdleTimeoutMinutes();
+
+    Integer retrieveSessionIdleWarningSeconds();
+
     boolean isCOBBulkEventEnabled();
 
     Long retrieveExternalEventBatchSize();

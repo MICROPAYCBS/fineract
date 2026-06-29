@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3046-session-idle-timeout-minutes" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'session-idle-timeout-minutes'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="session-idle-timeout-minutes"/>
+            <column name="value" valueNumeric="15"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="Minutes of user inactivity before the UI should log out. Set to 0 to disable client idle logout."/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3046-session-idle-warning-seconds" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'session-idle-warning-seconds'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="session-idle-warning-seconds"/>
+            <column name="value" valueNumeric="60"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="Seconds before idle logout when the UI should show a warning to the user."/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

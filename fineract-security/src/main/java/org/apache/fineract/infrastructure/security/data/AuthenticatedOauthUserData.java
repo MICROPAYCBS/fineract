@@ -62,4 +62,10 @@ public class AuthenticatedOauthUserData {
 
     @SuppressWarnings("unused")
     private boolean isTwoFactorAuthenticationRequired;
+
+    @SuppressWarnings("unused")
+    private Integer sessionIdleTimeoutMinutes;
+
+    @SuppressWarnings("unused")
+    private Integer sessionIdleWarningSeconds;
 }

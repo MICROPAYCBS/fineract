@@ -36,6 +36,7 @@ import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer
 import org.apache.fineract.infrastructure.security.constants.TwoFactorConstants;
 import org.apache.fineract.infrastructure.security.data.AuthenticatedOauthUserData;
 import org.apache.fineract.infrastructure.security.data.FineractJwtAuthenticationToken;
+import org.apache.fineract.infrastructure.security.service.SessionIdlePolicyReadService;
 import org.apache.fineract.infrastructure.security.service.SpringSecurityPlatformSecurityContext;
 import org.apache.fineract.useradministration.data.RoleData;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -59,6 +60,7 @@ public class UserDetailsApiResource {
 
     private final ToApiJsonSerializer<AuthenticatedOauthUserData> apiJsonSerializerService;
     private final SpringSecurityPlatformSecurityContext springSecurityPlatformSecurityContext;
+    private final SessionIdlePolicyReadService sessionIdlePolicyReadService;
 
     @Value("${fineract.security.2fa.enabled}")
     private boolean twoFactorEnabled;
@@ -109,15 +111,17 @@ public class UserDetailsApiResource {
         boolean isTwoFactorRequired = this.twoFactorEnabled
                 && !principal.hasSpecificPermissionTo(TwoFactorConstants.BYPASS_TWO_FACTOR_PERMISSION);
         if (this.springSecurityPlatformSecurityContext.doesPasswordHasToBeRenewed(principal)) {
-            authenticatedUserData = new AuthenticatedOauthUserData().setUsername(principal.getUsername()).setUserId(principal.getId())
+            authenticatedUserData = this.sessionIdlePolicyReadService.applySessionIdlePolicy(new AuthenticatedOauthUserData()
+                    .setUsername(principal.getUsername()).setUserId(principal.getId())
                     .setAccessToken(authentication.getToken().getTokenValue()).setAuthenticated(true).setShouldRenewPassword(true)
-                    .setTwoFactorAuthenticationRequired(isTwoFactorRequired);
+                    .setTwoFactorAuthenticationRequired(isTwoFactorRequired));
         } else {
-            authenticatedUserData = new AuthenticatedOauthUserData().setUsername(principal.getUsername()).setOfficeId(officeId)
-                    .setOfficeName(officeName).setStaffId(staffId).setStaffDisplayName(staffDisplayName)
-                    .setOrganisationalRole(organisationalRole).setRoles(roles).setPermissions(permissions).setUserId(principal.getId())
+            authenticatedUserData = this.sessionIdlePolicyReadService.applySessionIdlePolicy(new AuthenticatedOauthUserData()
+                    .setUsername(principal.getUsername()).setOfficeId(officeId).setOfficeName(officeName).setStaffId(staffId)
+                    .setStaffDisplayName(staffDisplayName).setOrganisationalRole(organisationalRole).setRoles(roles)
+                    .setPermissions(permissions).setUserId(principal.getId())
                     .setAccessToken(authentication.getToken().getTokenValue()).setAuthenticated(true)
-                    .setTwoFactorAuthenticationRequired(isTwoFactorRequired);
+                    .setTwoFactorAuthenticationRequired(isTwoFactorRequired));
         }
 
         return this.apiJsonSerializerService.serialize(authenticatedUserData);

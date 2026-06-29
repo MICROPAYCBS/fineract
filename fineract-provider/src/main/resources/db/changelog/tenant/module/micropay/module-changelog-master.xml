@@ -68,4 +68,5 @@
   <include relativeToChangelogFile="true" file="parts/3043_create_m_inter_branch_gl_rule.xml"/>
   <include relativeToChangelogFile="true" file="parts/3044_create_m_office_servicing_access.xml"/>
   <include relativeToChangelogFile="true" file="parts/3045_add_cross_branch_servicing_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3046_add_session_idle_configuration.xml"/>
 </databaseChangeLog>

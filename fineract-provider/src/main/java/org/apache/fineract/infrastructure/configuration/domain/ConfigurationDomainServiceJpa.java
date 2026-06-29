@@ -503,6 +503,26 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public Integer retrieveSessionIdleTimeoutMinutes() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);
+        if (property.getValue() == null) {
+            return 15;
+        }
+        return property.getValue().intValue();
+    }
+
+    @Override
+    public Integer retrieveSessionIdleWarningSeconds() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.SESSION_IDLE_WARNING_SECONDS);
+        if (property.getValue() == null) {
+            return 60;
+        }
+        return property.getValue().intValue();
+    }
+
+    @Override
     public boolean isCOBBulkEventEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ENABLE_COB_BULK_EVENT);
