@@ -1,0 +1,75 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+ext {
+    fineractQuickBuildSkippedTaskNames = [
+            'test',
+            'testClasses',
+            'compileTestJava',
+            'processTestResources',
+            'check',
+            'checkstyle',
+            'checkstyleMain',
+            'checkstyleTest',
+            'spotlessCheck',
+            'spotlessApply',
+            'spotbugsMain',
+            'spotbugsTest',
+            'javadoc',
+            'javadocJar',
+            'modernizer',
+            'modernizerMain',
+            'modernizerTest',
+            'rat',
+            'licenseMain',
+            'licenseTest',
+            'cucumber',
+            'checkBreakingChanges',
+            'jacocoTestReport'
+    ]
+}
+
+gradle.taskGraph.whenReady { graph ->
+    if (!graph.allTasks.any { it.name == 'quickBootJar' }) {
+        return
+    }
+
+    logger.lifecycle('quickBootJar: skipping tests and quality checks; compileJava and bootJar will still run')
+
+    rootProject.fineractJavaProjects.each { subproject ->
+        subproject.tasks.matching { task ->
+            task.name in fineractQuickBuildSkippedTaskNames ||
+                    task.name.startsWith('spotless') ||
+                    task.name.startsWith('checkstyle') ||
+                    task.name.startsWith('spotbugs')
+        }.configureEach {
+            enabled = false
+        }
+
+        subproject.tasks.withType(JavaCompile).configureEach {
+            options.errorprone.enabled = false
+        }
+    }
+}
+
+tasks.register('quickBootJar') {
+    group = 'build'
+    description = 'Builds the executable bootJar after compileJava, skipping tests and quality checks.'
+    dependsOn ':fineract-provider:quickBootJar'
+}

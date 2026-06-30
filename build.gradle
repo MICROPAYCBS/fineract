@@ -140,7 +140,8 @@ apply from: "${rootDir}/buildSrc/src/main/groovy/org.apache.fineract.release.gra
 
 description = '''\
 Run as:
-gradle clean bootRun'''
+gradle clean bootRun
+gradle quickBootJar'''
 
 version = '0.0.0-SNAPSHOT'
 
@@ -391,6 +392,8 @@ file("${rootDir}/custom").eachDir { companyDir ->
         }
     }
 }
+
+apply from: "${rootDir}/quick-build.gradle"
 
 configure(project.fineractJavaProjects) {
     // NOTE: order matters!

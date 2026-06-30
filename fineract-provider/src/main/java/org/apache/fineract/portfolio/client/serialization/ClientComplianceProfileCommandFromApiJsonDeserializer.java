@@ -128,14 +128,19 @@ public final class ClientComplianceProfileCommandFromApiJsonDeserializer {
         final Boolean fatcaRegistered = extractBooleanNamed(FATCA_REGISTERED, element);
 
         int otherBankAccountCount = 0;
-        if (this.fromApiJsonHelper.parameterExists(OTHER_BANK_ACCOUNTS, element)) {
+        if (Boolean.TRUE.equals(hasOtherBankAccounts) && this.fromApiJsonHelper.parameterExists(OTHER_BANK_ACCOUNTS, element)) {
             final JsonArray otherBankAccounts = element.getAsJsonObject().getAsJsonArray(OTHER_BANK_ACCOUNTS);
-            otherBankAccountCount = otherBankAccounts.size();
+            int displayOrder = 0;
+            for (JsonElement accountElement : otherBankAccounts) {
+                if (isBlankOtherBankAccount(accountElement)) {
+                    continue;
+                }
+                displayOrder++;
+                validateOtherBankAccount(accountElement, baseDataValidator, displayOrder);
+                otherBankAccountCount++;
+            }
             if (otherBankAccountCount > 2) {
                 baseDataValidator.reset().parameter(OTHER_BANK_ACCOUNTS).failWithCode("cannot.exceed.max.of.two");
-            }
-            for (JsonElement accountElement : otherBankAccounts) {
-                validateOtherBankAccount(accountElement, baseDataValidator);
             }
         }
 
@@ -154,7 +159,14 @@ public final class ClientComplianceProfileCommandFromApiJsonDeserializer {
         }
     }
 
-    private void validateOtherBankAccount(final JsonElement accountElement, final DataValidatorBuilder baseDataValidator) {
+    private boolean isBlankOtherBankAccount(final JsonElement accountElement) {
+        final String bankName = this.fromApiJsonHelper.extractStringNamed(BANK_NAME, accountElement);
+        final String accountNumber = this.fromApiJsonHelper.extractStringNamed(ACCOUNT_NUMBER, accountElement);
+        return StringUtils.isBlank(bankName) && StringUtils.isBlank(accountNumber);
+    }
+
+    private void validateOtherBankAccount(final JsonElement accountElement, final DataValidatorBuilder baseDataValidator,
+            final int defaultDisplayOrder) {
         final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, accountElement.toString(), OTHER_BANK_ACCOUNT_SUPPORTED_PARAMETERS);
 
@@ -169,7 +181,10 @@ public final class ClientComplianceProfileCommandFromApiJsonDeserializer {
         final String accountNumber = this.fromApiJsonHelper.extractStringNamed(ACCOUNT_NUMBER, accountElement);
         baseDataValidator.reset().parameter(ACCOUNT_NUMBER).value(accountNumber).notBlank().notExceedingLengthOf(50);
 
-        final Integer displayOrder = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(DISPLAY_ORDER, accountElement);
+        Integer displayOrder = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(DISPLAY_ORDER, accountElement);
+        if (displayOrder == null) {
+            displayOrder = defaultDisplayOrder;
+        }
         baseDataValidator.reset().parameter(DISPLAY_ORDER).value(displayOrder).notNull().inMinMaxRange(1, 2);
     }
 

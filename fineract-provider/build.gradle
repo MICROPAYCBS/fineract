@@ -298,6 +298,12 @@ bootJar {
     dependsOn resolve, generateGitProperties
 }
 
+tasks.register('quickBootJar') {
+    group = 'build'
+    description = 'Builds the Spring Boot executable JAR after compileJava, skipping tests and quality checks.'
+    dependsOn bootJar
+}
+
 jib {
     from {
         image = 'azul/zulu-openjdk-alpine:21'

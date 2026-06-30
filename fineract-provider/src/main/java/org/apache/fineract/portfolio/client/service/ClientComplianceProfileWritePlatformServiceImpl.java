@@ -164,20 +164,33 @@ public class ClientComplianceProfileWritePlatformServiceImpl implements ClientCo
             return;
         }
         final JsonArray otherBankAccounts = json.getAsJsonArray(ClientComplianceProfileCommandFromApiJsonDeserializer.OTHER_BANK_ACCOUNTS);
+        int displayOrder = 0;
         for (JsonElement element : otherBankAccounts) {
             final JsonObject accountJson = element.getAsJsonObject();
+            final String bankName = accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.BANK_NAME)
+                    ? StringUtils.trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.BANK_NAME).getAsString())
+                    : null;
+            final String accountNumber = accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER) ? StringUtils
+                    .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER).getAsString()) : null;
+            if (StringUtils.isBlank(bankName) && StringUtils.isBlank(accountNumber)) {
+                continue;
+            }
+            displayOrder++;
             final ClientOtherBankAccount account = new ClientOtherBankAccount();
             account.setClient(client);
-            account.setBankName(StringUtils
-                    .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.BANK_NAME).getAsString()));
+            account.setBankName(bankName);
             if (accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.BRANCH_NAME)) {
                 account.setBranchName(StringUtils
                         .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.BRANCH_NAME).getAsString()));
             }
-            account.setAccountNumber(StringUtils
-                    .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER).getAsString()));
-            account.setDisplayOrder(
-                    accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER).getAsInt());
+            account.setAccountNumber(accountNumber);
+            if (accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER)
+                    && !accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER).isJsonNull()) {
+                account.setDisplayOrder(
+                        accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER).getAsInt());
+            } else {
+                account.setDisplayOrder(displayOrder);
+            }
             this.otherBankAccountRepository.saveAndFlush(account);
         }
     }
