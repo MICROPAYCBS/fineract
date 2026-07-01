@@ -154,6 +154,7 @@ public class ClientComplianceProfileWritePlatformServiceImpl implements ClientCo
         final List<ClientOtherBankAccount> existingAccounts = this.otherBankAccountRepository.findByClient_IdOrderByDisplayOrderAsc(clientId);
         if (!existingAccounts.isEmpty()) {
             this.otherBankAccountRepository.deleteAll(existingAccounts);
+            this.otherBankAccountRepository.flush();
         }
     }
 
@@ -184,13 +185,7 @@ public class ClientComplianceProfileWritePlatformServiceImpl implements ClientCo
                         .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.BRANCH_NAME).getAsString()));
             }
             account.setAccountNumber(accountNumber);
-            if (accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER)
-                    && !accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER).isJsonNull()) {
-                account.setDisplayOrder(
-                        accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.DISPLAY_ORDER).getAsInt());
-            } else {
-                account.setDisplayOrder(displayOrder);
-            }
+            account.setDisplayOrder(displayOrder);
             this.otherBankAccountRepository.saveAndFlush(account);
         }
     }

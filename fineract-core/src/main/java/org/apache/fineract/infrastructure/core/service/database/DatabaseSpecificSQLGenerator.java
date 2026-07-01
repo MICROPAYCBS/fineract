@@ -362,4 +362,18 @@ public class DatabaseSpecificSQLGenerator {
             case MYSQL -> ids.toArray();
         };
     }
+
+    /**
+     * Case-insensitive {@code LIKE} for bind parameter {@code :search} (may include {@code %} wildcards).
+     */
+    public String caseInsensitiveLike(final String columnExpression) {
+        if (databaseTypeResolver.isPostgreSQL()) {
+            return format("%s ILIKE :search", columnExpression);
+        } else if (databaseTypeResolver.isMySQL()) {
+            return format("LOWER(%s) LIKE LOWER(:search)", columnExpression);
+        } else {
+            throw new IllegalStateException(
+                    "Database type is not supported for case-insensitive like " + databaseTypeResolver.databaseType());
+        }
+    }
 }

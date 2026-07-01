@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: enable GPS coordinate fields on customer addresses (latitude / longitude).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3050-enable-address-gps-fields">
+        <update tableName="m_field_configuration">
+            <column name="is_enabled" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+            <where>entity = 'ADDRESS' AND subentity = 'CLIENT' AND field IN ('latitude', 'longitude')</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

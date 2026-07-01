@@ -63,4 +63,20 @@ public class DatabaseSpecificSQLGeneratorTest {
         String countQuery = databaseSpecificSQLGenerator.countQueryResult(sql);
         Assertions.assertEquals("SELECT COUNT(*) FROM (SELECT 1 FROM test_table WHERE asd=2) AS temp", countQuery);
     }
+
+    @Test
+    public void testCaseInsensitiveLikeOnPostgreSQL() {
+        Mockito.when(databaseTypeResolver.isPostgreSQL()).thenReturn(true);
+        Mockito.when(databaseTypeResolver.isMySQL()).thenReturn(false);
+        Assertions.assertEquals("c.display_name ILIKE :search",
+                databaseSpecificSQLGenerator.caseInsensitiveLike("c.display_name"));
+    }
+
+    @Test
+    public void testCaseInsensitiveLikeOnMySQL() {
+        Mockito.when(databaseTypeResolver.isPostgreSQL()).thenReturn(false);
+        Mockito.when(databaseTypeResolver.isMySQL()).thenReturn(true);
+        Assertions.assertEquals("LOWER(c.display_name) LIKE LOWER(:search)",
+                databaseSpecificSQLGenerator.caseInsensitiveLike("c.display_name"));
+    }
 }

@@ -72,4 +72,5 @@
   <include relativeToChangelogFile="true" file="parts/3047_add_client_marital_status.xml"/>
   <include relativeToChangelogFile="true" file="parts/3048_update_stretchy_parameter_labels.xml"/>
   <include relativeToChangelogFile="true" file="parts/3049_fix_currency_report_parameter_format_type.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3050_enable_address_gps_field_configuration.xml"/>
 </databaseChangeLog>
