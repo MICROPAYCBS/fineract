@@ -637,24 +637,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 changes.put(ClientApiConstants.clientClassificationIdParamName, newValue);
             }
 
-            if (command.isChangeInIntegerParameterNamed(ClientApiConstants.legalFormIdParamName, clientForUpdate.getLegalForm())) {
-                final Integer newValue = command.integerValueOfParameterNamed(ClientApiConstants.legalFormIdParamName);
-                if (newValue != null) {
-                    LegalForm legalForm = LegalForm.fromInt(newValue);
-                    if (legalForm != null) {
-                        changes.put(ClientApiConstants.legalFormIdParamName, ClientEnumerations.legalForm(newValue));
-                        clientForUpdate.setLegalForm(legalForm.getValue());
-                        clientForUpdate.resetDerivedNames(legalForm);
-                    } else {
-                        changes.put(ClientApiConstants.legalFormIdParamName, null);
-                        clientForUpdate.setLegalForm(null);
-                    }
-                } else {
-                    changes.put(ClientApiConstants.legalFormIdParamName, null);
-                    clientForUpdate.setLegalForm(null);
-                }
-            }
-
             final String dateFormatAsInput = command.dateFormat();
             final String localeAsInput = command.locale();
 
@@ -783,26 +765,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 this.clientRepository.saveAndFlush(clientForUpdate);
             }
 
-            if (changes.containsKey(ClientApiConstants.legalFormIdParamName)) {
-                Integer legalFormValue = clientForUpdate.getLegalForm();
-                boolean isChangedToEntity = false;
-                if (legalFormValue != null) {
-                    LegalForm legalForm = LegalForm.fromInt(legalFormValue);
-                    if (legalForm != null) {
-                        isChangedToEntity = legalForm.isEntity();
-                    }
-                }
-
-                if (isChangedToEntity) {
-                    extractAndCreateClientNonPerson(clientForUpdate, command);
-                } else {
-                    final ClientNonPerson clientNonPerson = this.clientNonPersonRepository.findOneByClientId(clientForUpdate.getId());
-                    if (clientNonPerson != null) {
-                        this.clientNonPersonRepository.delete(clientNonPerson);
-                    }
-                }
-            }
-
             final ClientNonPerson clientNonPersonForUpdate = this.clientNonPersonRepository.findOneByClientId(clientId);
             if (clientNonPersonForUpdate != null) {
                 final JsonElement clientNonPersonElement = command.jsonElement(ClientApiConstants.clientNonPersonDetailsParamName);
@@ -839,10 +801,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
                 changes.putAll(clientNonPersonChanges);
             } else {
-                final Integer legalFormParamValue = command.integerValueOfParameterNamed(ClientApiConstants.legalFormIdParamName);
+                final Integer legalFormValue = clientForUpdate.getLegalForm();
                 boolean isEntity = false;
-                if (legalFormParamValue != null) {
-                    final LegalForm legalForm = LegalForm.fromInt(legalFormParamValue);
+                if (legalFormValue != null) {
+                    final LegalForm legalForm = LegalForm.fromInt(legalFormValue);
                     if (legalForm != null) {
                         isEntity = legalForm.isEntity();
                     }

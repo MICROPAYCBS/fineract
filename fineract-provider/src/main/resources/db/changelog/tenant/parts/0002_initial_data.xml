@@ -12016,7 +12016,7 @@
             <column name="id" valueNumeric="1"/>
             <column name="parameter_name" value="startDateSelect"/>
             <column name="parameter_variable" value="startDate"/>
-            <column name="parameter_label" value="startDate"/>
+            <column name="parameter_label" value="Start Date"/>
             <column name="parameter_displayType" value="date"/>
             <column name="parameter_FormatType" value="date"/>
             <column name="parameter_default" value="today"/>
@@ -12030,7 +12030,7 @@
             <column name="id" valueNumeric="2"/>
             <column name="parameter_name" value="endDateSelect"/>
             <column name="parameter_variable" value="endDate"/>
-            <column name="parameter_label" value="endDate"/>
+            <column name="parameter_label" value="End Date"/>
             <column name="parameter_displayType" value="date"/>
             <column name="parameter_FormatType" value="date"/>
             <column name="parameter_default" value="today"/>
@@ -12044,7 +12044,7 @@
             <column name="id" valueNumeric="3"/>
             <column name="parameter_name" value="obligDateTypeSelect"/>
             <column name="parameter_variable" value="obligDateType"/>
-            <column name="parameter_label" value="obligDateType"/>
+            <column name="parameter_label" value="Obligation Date Type"/>
             <column name="parameter_displayType" value="select"/>
             <column name="parameter_FormatType" value="number"/>
             <column name="parameter_default" value="0"/>
@@ -12059,7 +12059,7 @@
             <column name="id" valueNumeric="5"/>
             <column name="parameter_name" value="OfficeIdSelectOne"/>
             <column name="parameter_variable" value="officeId"/>
-            <column name="parameter_label" value="Office"/>
+            <column name="parameter_label" value="Branch"/>
             <column name="parameter_displayType" value="select"/>
             <column name="parameter_FormatType" value="number"/>
             <column name="parameter_default" value="0"/>
@@ -12149,7 +12149,7 @@
             <column name="id" valueNumeric="100"/>
             <column name="parameter_name" value="parTypeSelect"/>
             <column name="parameter_variable" value="parType"/>
-            <column name="parameter_label" value="parType"/>
+            <column name="parameter_label" value="PAR Type"/>
             <column name="parameter_displayType" value="select"/>
             <column name="parameter_FormatType" value="number"/>
             <column name="parameter_default" value="0"/>
@@ -12209,7 +12209,7 @@
             <column name="id" valueNumeric="1004"/>
             <column name="parameter_name" value="selectAccount"/>
             <column name="parameter_variable" value="accountNo"/>
-            <column name="parameter_label" value="Enter Account No"/>
+            <column name="parameter_label" value="Account Number"/>
             <column name="parameter_displayType" value="text"/>
             <column name="parameter_FormatType" value="string"/>
             <column name="parameter_default" value="n/a"/>
@@ -12223,7 +12223,7 @@
             <column name="id" valueNumeric="1005"/>
             <column name="parameter_name" value="savingsProductIdSelectAll"/>
             <column name="parameter_variable" value="savingsProductId"/>
-            <column name="parameter_label" value="Product"/>
+            <column name="parameter_label" value="Savings Product"/>
             <column name="parameter_displayType" value="select"/>
             <column name="parameter_FormatType" value="number"/>
             <column name="parameter_default" value="0"/>
@@ -12238,7 +12238,7 @@
             <column name="id" valueNumeric="1006"/>
             <column name="parameter_name" value="transactionId"/>
             <column name="parameter_variable" value="transactionId"/>
-            <column name="parameter_label" value="transactionId"/>
+            <column name="parameter_label" value="Transaction ID"/>
             <column name="parameter_displayType" value="text"/>
             <column name="parameter_FormatType" value="string"/>
             <column name="parameter_default" value="n/a"/>
@@ -12252,7 +12252,7 @@
             <column name="id" valueNumeric="1007"/>
             <column name="parameter_name" value="selectCenterId"/>
             <column name="parameter_variable" value="centerId"/>
-            <column name="parameter_label" value="Enter Center Id"/>
+            <column name="parameter_label" value="Center"/>
             <column name="parameter_displayType" value="text"/>
             <column name="parameter_FormatType" value="string"/>
             <column name="parameter_default" value="n/a"/>
@@ -12266,7 +12266,7 @@
             <column name="id" valueNumeric="1008"/>
             <column name="parameter_name" value="SelectGLAccountNO"/>
             <column name="parameter_variable" value="GLAccountNO"/>
-            <column name="parameter_label" value="GLAccountNO"/>
+            <column name="parameter_label" value="GL Account Number"/>
             <column name="parameter_displayType" value="select"/>
             <column name="parameter_FormatType" value="number"/>
             <column name="parameter_default" value="0"/>
@@ -12280,7 +12280,7 @@
             <column name="id" valueNumeric="1009"/>
             <column name="parameter_name" value="asOnDate"/>
             <column name="parameter_variable" value="asOn"/>
-            <column name="parameter_label" value="As On"/>
+            <column name="parameter_label" value="As On Date"/>
             <column name="parameter_displayType" value="date"/>
             <column name="parameter_FormatType" value="date"/>
             <column name="parameter_default" value="today"/>
@@ -12294,7 +12294,7 @@
             <column name="id" valueNumeric="1010"/>
             <column name="parameter_name" value="SavingsAccountSubStatus"/>
             <column name="parameter_variable" value="subStatus"/>
-            <column name="parameter_label" value="SavingsAccountDormancyStatus"/>
+            <column name="parameter_label" value="Savings Account Status"/>
             <column name="parameter_displayType" value="select"/>
             <column name="parameter_FormatType" value="number"/>
             <column name="parameter_default" value="100"/>

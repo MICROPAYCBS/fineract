@@ -39,5 +39,6 @@ public final class ReportParameterJoinData {
     private final Long parameterId;
     private final String reportParameterName;
     private final String parameterName;
+    private final String parameterLabel;
 
 }

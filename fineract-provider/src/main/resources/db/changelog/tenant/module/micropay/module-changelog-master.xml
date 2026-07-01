@@ -70,4 +70,5 @@
   <include relativeToChangelogFile="true" file="parts/3045_add_cross_branch_servicing_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/3046_add_session_idle_configuration.xml"/>
   <include relativeToChangelogFile="true" file="parts/3047_add_client_marital_status.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3048_update_stretchy_parameter_labels.xml"/>
 </databaseChangeLog>

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: user-friendly labels for stretchy report parameters (Branch instead of Office).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3048-update-stretchy-parameter-labels">
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Start Date"/>
+            <where>parameter_name = 'startDateSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="End Date"/>
+            <where>parameter_name = 'endDateSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Obligation Date Type"/>
+            <where>parameter_name = 'obligDateTypeSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Branch"/>
+            <where>parameter_name = 'OfficeIdSelectOne'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="PAR Type"/>
+            <where>parameter_name = 'parTypeSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Account Number"/>
+            <where>parameter_name = 'selectAccount'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Savings Product"/>
+            <where>parameter_name = 'savingsProductIdSelectAll'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Transaction ID"/>
+            <where>parameter_name = 'transactionId'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Center"/>
+            <where>parameter_name = 'selectCenterId'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="GL Account Number"/>
+            <where>parameter_name = 'SelectGLAccountNO'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="As On Date"/>
+            <where>parameter_name = 'asOnDate'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Savings Account Status"/>
+            <where>parameter_name = 'SavingsAccountSubStatus'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

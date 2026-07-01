@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.junit.jupiter.api.BeforeEach;
@@ -200,5 +201,22 @@ class ClientDataValidatorTest {
                 """;
 
         assertDoesNotThrow(() -> validator.validateForUpdate(json));
+    }
+
+    @Test
+    void validateForUpdate_withLegalFormId_throwsUnsupportedParameterException() {
+        String json = """
+                {
+                  "firstname": "Jane",
+                  "lastname": "Doe",
+                  "legalFormId": 1,
+                  "locale": "en",
+                  "dateFormat": "yyyy-MM-dd"
+                }
+                """;
+
+        UnsupportedParameterException ex = assertThrows(UnsupportedParameterException.class, () -> validator.validateForUpdate(json));
+
+        assertTrue(ex.getUnsupportedParameters().contains(ClientApiConstants.legalFormIdParamName));
     }
 }
