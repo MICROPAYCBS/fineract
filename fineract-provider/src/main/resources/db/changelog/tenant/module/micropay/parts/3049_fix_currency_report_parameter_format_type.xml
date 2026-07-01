@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: currency report filters use organisation currency codes (USD), not numeric ids.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3049-fix-currency-report-parameter-format-type">
+        <update tableName="stretchy_parameter">
+            <column name="parameter_FormatType" value="text"/>
+            <where>parameter_name = 'currencyIdSelectAll'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

@@ -71,4 +71,5 @@
   <include relativeToChangelogFile="true" file="parts/3046_add_session_idle_configuration.xml"/>
   <include relativeToChangelogFile="true" file="parts/3047_add_client_marital_status.xml"/>
   <include relativeToChangelogFile="true" file="parts/3048_update_stretchy_parameter_labels.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3049_fix_currency_report_parameter_format_type.xml"/>
 </databaseChangeLog>
