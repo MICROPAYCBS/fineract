@@ -34,4 +34,9 @@ public class DisabledCrossBranchClientAccessReadService implements CrossBranchCl
     public List<Long> retrieveAccessibleBookOfficeIds(final Long servicingOfficeId) {
         return Collections.emptyList();
     }
+
+    @Override
+    public List<Long> accessibleBookOfficeIdsForCurrentUser() {
+        return Collections.emptyList();
+    }
 }

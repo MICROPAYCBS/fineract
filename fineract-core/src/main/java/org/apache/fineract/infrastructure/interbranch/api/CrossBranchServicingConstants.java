@@ -22,6 +22,7 @@ public final class CrossBranchServicingConstants {
 
     public static final String ENABLE_CROSS_BRANCH_SERVICING = "enable-cross-branch-servicing";
     public static final String VIEW_OTHER_BRANCH_CLIENT_PERMISSION = "VIEW_OTHER_BRANCH_CLIENT";
+    public static final String TRANSACT_CROSSOFFICE_PERMISSION = "TRANSACT_CROSSOFFICE";
 
     private CrossBranchServicingConstants() {}
 }

@@ -176,6 +176,7 @@ public class AccountingProcessorHelper {
                     feePaid, penaltyPaid);
 
             transaction.setLoanToLoanTransfer(loanTxnDto.isLoanToLoanTransfer());
+            transaction.setTransactionOfficeId(loanTxnDto.getTransactionOfficeId());
             transaction.setChargeTaxPayments(chargeTaxPayments);
             newLoanTransactions.add(transaction);
         }
@@ -268,6 +269,7 @@ public class AccountingProcessorHelper {
             final SavingsTransactionDTO transaction = new SavingsTransactionDTO(transactionOfficeId, paymentTypeId, transactionId,
                     transactionDate, transactionType, amount, reversed, feePayments, penaltyPayments, overdraftAmount, isAccountTransfer,
                     taxPayments);
+            transaction.setTransactionOfficeId((Long) map.get("transactionOfficeId"));
 
             newSavingsTransactions.add(transaction);
 
@@ -353,8 +355,11 @@ public class AccountingProcessorHelper {
             }
         }
 
-        return new ClientTransactionDTO(clientId, transactionOfficeId, paymentTypeId, transactionId, transactionDate, transactionType,
-                currencyCode, amount, reversed, accountingEnabled, clientChargePaymentDTOs);
+        final ClientTransactionDTO clientTransactionDTO = new ClientTransactionDTO(clientId, transactionOfficeId, paymentTypeId,
+                transactionId, transactionDate, transactionType, currencyCode, amount, reversed, accountingEnabled,
+                clientChargePaymentDTOs);
+        clientTransactionDTO.setTransactionOfficeId((Long) accountingBridgeData.get("transactionOfficeId"));
+        return clientTransactionDTO;
 
     }
 
@@ -903,7 +908,7 @@ public class AccountingProcessorHelper {
         createDebitJournalEntryForLoan(office, currencyCode, account, loanId, transactionId, transactionDate, amount);
     }
 
-    private void createCreditJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
+    public void createCreditJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
             final Long clientId, final Long transactionId, final LocalDate transactionDate, final BigDecimal amount) {
         final boolean manualEntry = false;
 
@@ -914,7 +919,7 @@ public class AccountingProcessorHelper {
         persistJournalEntry(journalEntry);
     }
 
-    private void createCreditJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
+    public void createCreditJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
             final Long savingsId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount)
             throws DataAccessException {
         final boolean manualEntry = false;
@@ -1022,7 +1027,7 @@ public class AccountingProcessorHelper {
         return accountMapping.getGlAccount();
     }
 
-    private void createDebitJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
+    public void createDebitJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
             final Long savingsId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount) {
         final boolean manualEntry = false;
         Long savingsAccountTransactionId = null;
@@ -1038,7 +1043,7 @@ public class AccountingProcessorHelper {
         persistJournalEntry(journalEntry);
     }
 
-    private void createDebitJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
+    public void createDebitJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
             final Long clientId, final Long transactionId, final LocalDate transactionDate, final BigDecimal amount) {
         final boolean manualEntry = false;
         String modifiedTransactionId = CLIENT_TRANSACTION_IDENTIFIER + transactionId;
@@ -1262,7 +1267,7 @@ public class AccountingProcessorHelper {
         return accountMapping.getGlAccount();
     }
 
-    private GLAccount getLinkedGLAccountForSavingsProduct(final Long savingsProductId, final int accountMappingTypeId,
+    public GLAccount getLinkedGLAccountForSavingsProduct(final Long savingsProductId, final int accountMappingTypeId,
             final Long paymentTypeId) {
         GLAccount glAccount;
         if (isOrganizationAccount(accountMappingTypeId)) {

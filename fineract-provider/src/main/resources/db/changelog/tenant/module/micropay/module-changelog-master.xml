@@ -73,4 +73,9 @@
   <include relativeToChangelogFile="true" file="parts/3048_update_stretchy_parameter_labels.xml"/>
   <include relativeToChangelogFile="true" file="parts/3049_fix_currency_report_parameter_format_type.xml"/>
   <include relativeToChangelogFile="true" file="parts/3050_enable_address_gps_field_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3051_add_sector_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3052_add_industry_subindustry_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3053_add_office_extension_table.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3054_add_transaction_office_id.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3055_enable_cross_branch_servicing_by_default.xml"/>
 </databaseChangeLog>

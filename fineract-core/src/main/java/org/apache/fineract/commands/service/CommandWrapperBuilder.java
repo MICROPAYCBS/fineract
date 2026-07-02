@@ -190,6 +190,9 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTTITLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INDUSTRY;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SUBINDUSTRY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTERBRANCHRULE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SERVICINGACCESS;
@@ -511,6 +514,75 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_CONTACTTYPE;
         this.href = "/contacttypes/" + contactTypeId;
         this.entityId = contactTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createSector() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_SECTOR;
+        this.href = "/sectors";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateSector(final long sectorId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SECTOR;
+        this.href = "/sectors/" + sectorId;
+        this.entityId = sectorId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteSector(final long sectorId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_SECTOR;
+        this.href = "/sectors/" + sectorId;
+        this.entityId = sectorId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createIndustry() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_INDUSTRY;
+        this.href = "/industries";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateIndustry(final long industryId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_INDUSTRY;
+        this.href = "/industries/" + industryId;
+        this.entityId = industryId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteIndustry(final long industryId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_INDUSTRY;
+        this.href = "/industries/" + industryId;
+        this.entityId = industryId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createSubIndustry() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_SUBINDUSTRY;
+        this.href = "/subindustries";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateSubIndustry(final long subIndustryId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SUBINDUSTRY;
+        this.href = "/subindustries/" + subIndustryId;
+        this.entityId = subIndustryId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteSubIndustry(final long subIndustryId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_SUBINDUSTRY;
+        this.href = "/subindustries/" + subIndustryId;
+        this.entityId = subIndustryId;
         return this;
     }
 

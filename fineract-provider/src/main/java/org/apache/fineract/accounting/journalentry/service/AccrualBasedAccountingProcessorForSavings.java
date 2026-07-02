@@ -29,6 +29,7 @@ import org.apache.fineract.accounting.journalentry.data.ChargePaymentDTO;
 import org.apache.fineract.accounting.journalentry.data.SavingsDTO;
 import org.apache.fineract.accounting.journalentry.data.SavingsTransactionDTO;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchAccountingHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +38,7 @@ import org.springframework.stereotype.Component;
 public class AccrualBasedAccountingProcessorForSavings implements AccountingProcessorForSavings {
 
     private final AccountingProcessorHelper helper;
+    private final InterBranchAccountingHelper interBranchAccountingHelper;
 
     @Override
     public void createJournalEntriesForSavings(final SavingsDTO savingsDTO) {
@@ -55,7 +57,17 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
             final List<ChargePaymentDTO> feePayments = savingsTransactionDTO.getFeePayments();
             final List<ChargePaymentDTO> penaltyPayments = savingsTransactionDTO.getPenaltyPayments();
 
-            this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            final Long homeOfficeId = savingsTransactionDTO.getOfficeId();
+            final Long servicingOfficeId = savingsTransactionDTO.getTransactionOfficeId();
+            final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId);
+            final Office homeOffice = crossBranch ? this.helper.getOfficeById(homeOfficeId) : office;
+            final Office servicingOffice = crossBranch ? this.helper.getOfficeById(servicingOfficeId) : office;
+
+            if (crossBranch) {
+                this.interBranchAccountingHelper.validateBranchClosures(servicingOfficeId, homeOfficeId, transactionDate);
+            } else {
+                this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            }
 
             if (savingsTransactionDTO.getTransactionType().isWithdrawal() && savingsTransactionDTO.isOverdraftTransaction()) {
                 boolean isPositive = amount.subtract(overdraftAmount).compareTo(BigDecimal.ZERO) > 0;
@@ -113,7 +125,19 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
 
             /** Handle Deposits and reversals of deposits **/
             else if (savingsTransactionDTO.getTransactionType().isDeposit()) {
-                if (savingsTransactionDTO.isAccountTransfer()) {
+                if (crossBranch) {
+                    if (savingsTransactionDTO.isAccountTransfer()) {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, this.interBranchAccountingHelper.liabilityTransferAccountType(),
+                                AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    } else {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, AccrualAccountsForSavings.SAVINGS_REFERENCE.getValue(),
+                                AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    }
+                } else if (savingsTransactionDTO.isAccountTransfer()) {
                     this.helper.createCashBasedJournalEntriesAndReversalsForSavings(office, currencyCode,
                             FinancialActivity.LIABILITY_TRANSFER.getValue(), AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(),
                             savingsProductId, paymentTypeId, savingsId, transactionId, transactionDate, amount, isReversal);
@@ -133,7 +157,19 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
 
             /** Handle withdrawals and reversals of withdrawals **/
             else if (savingsTransactionDTO.getTransactionType().isWithdrawal()) {
-                if (savingsTransactionDTO.isAccountTransfer()) {
+                if (crossBranch) {
+                    if (savingsTransactionDTO.isAccountTransfer()) {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(),
+                                this.interBranchAccountingHelper.liabilityTransferAccountType(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    } else {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(),
+                                AccrualAccountsForSavings.SAVINGS_REFERENCE.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    }
+                } else if (savingsTransactionDTO.isAccountTransfer()) {
                     this.helper.createCashBasedJournalEntriesAndReversalsForSavings(office, currencyCode,
                             AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), FinancialActivity.LIABILITY_TRANSFER.getValue(),
                             savingsProductId, paymentTypeId, savingsId, transactionId, transactionDate, amount, isReversal);

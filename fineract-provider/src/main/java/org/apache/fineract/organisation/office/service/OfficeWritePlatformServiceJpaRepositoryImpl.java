@@ -57,6 +57,7 @@ public class OfficeWritePlatformServiceJpaRepositoryImpl implements OfficeWriteP
     private final OfficeRepositoryWrapper officeRepositoryWrapper;
     private final OfficeTransactionRepository officeTransactionRepository;
     private final ApplicationCurrencyRepositoryWrapper applicationCurrencyRepository;
+    private final OfficeExtensionWritePlatformService officeExtensionWritePlatformService;
 
     @Transactional
     @Override
@@ -85,10 +86,14 @@ public class OfficeWritePlatformServiceJpaRepositoryImpl implements OfficeWriteP
 
             this.officeRepositoryWrapper.save(office);
 
+            final Map<String, Object> branchProfileChanges = this.officeExtensionWritePlatformService.saveOrUpdate(office.getId(),
+                    command);
+
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //
                     .withEntityId(office.getId()) //
                     .withOfficeId(office.getId()) //
+                    .with(branchProfileChanges) //
                     .build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
             handleOfficeDataIntegrityIssues(command, dve.getMostSpecificCause(), dve);
@@ -130,6 +135,9 @@ public class OfficeWritePlatformServiceJpaRepositoryImpl implements OfficeWriteP
             if (!changes.isEmpty()) {
                 this.officeRepositoryWrapper.saveAndFlush(office);
             }
+
+            final Map<String, Object> branchProfileChanges = this.officeExtensionWritePlatformService.saveOrUpdate(officeId, command);
+            changes.putAll(branchProfileChanges);
 
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //

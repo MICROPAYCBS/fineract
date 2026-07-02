@@ -59,4 +59,16 @@ public class CrossBranchClientAccessReadServiceImpl implements CrossBranchClient
         final LocalDate onDate = DateUtils.getBusinessLocalDate();
         return this.officeServicingAccessRepository.findAccessibleBookOfficeIds(servicingOfficeId, onDate);
     }
+
+    @Override
+    public List<Long> accessibleBookOfficeIdsForCurrentUser() {
+        if (!this.configurationDomainService.isCrossBranchServicingEnabled()) {
+            return Collections.emptyList();
+        }
+        final AppUser user = this.context.getAuthenticatedUserIfPresent();
+        if (user == null || !user.hasSpecificPermissionTo(CrossBranchServicingConstants.VIEW_OTHER_BRANCH_CLIENT_PERMISSION)) {
+            return Collections.emptyList();
+        }
+        return retrieveAccessibleBookOfficeIds(user.getOffice().getId());
+    }
 }

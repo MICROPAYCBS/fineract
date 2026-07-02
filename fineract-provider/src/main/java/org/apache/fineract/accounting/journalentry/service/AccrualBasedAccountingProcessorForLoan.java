@@ -40,6 +40,7 @@ import org.apache.fineract.accounting.journalentry.data.LoanDTO;
 import org.apache.fineract.accounting.journalentry.data.LoanTransactionDTO;
 import org.apache.fineract.accounting.producttoaccountmapping.domain.ProductToGLAccountMapping;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchAccountingHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.PortfolioProductType;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionEnumData;
@@ -52,6 +53,7 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
     private final AccountingProcessorHelper helper;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
     private final LoanCommonAccountingHelper loanCommonAccountingHelper;
+    private final InterBranchAccountingHelper interBranchAccountingHelper;
 
     @Override
     public void createJournalEntriesForLoan(final LoanDTO loanDTO) {
@@ -62,7 +64,13 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
             final GLClosure latestGLClosure = latestGLClosureByOfficeId.computeIfAbsent(officeId, this.helper::getLatestClosureByBranch);
             final Office office = officeById.computeIfAbsent(officeId, this.helper::getOfficeById);
             final LocalDate transactionDate = loanTransactionDTO.getTransactionDate();
-            this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            final Long homeOfficeId = officeId;
+            final Long servicingOfficeId = loanTransactionDTO.getTransactionOfficeId();
+            if (this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)) {
+                this.interBranchAccountingHelper.validateBranchClosures(servicingOfficeId, homeOfficeId, transactionDate);
+            } else {
+                this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            }
             final LoanTransactionEnumData transactionType = loanTransactionDTO.getTransactionType();
 
             if (loanTransactionDTO.isReversed()) {
@@ -1709,6 +1717,14 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
         final BigDecimal overPaymentAmount = loanTransactionDTO.getOverPayment();
         final Long paymentTypeId = loanTransactionDTO.getPaymentTypeId();
 
+        final Long homeOfficeId = loanTransactionDTO.getOfficeId();
+        final Long servicingOfficeId = loanTransactionDTO.getTransactionOfficeId();
+        final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)
+                && !loanTransactionDTO.isAccountTransfer() && !loanTransactionDTO.isLoanToLoanTransfer()
+                && !loanTransactionDTO.getTransactionType().isGoodwillCredit();
+        final Office creditOffice = crossBranch ? this.helper.getOfficeById(homeOfficeId) : office;
+        final Office fundSourceOffice = crossBranch ? this.helper.getOfficeById(servicingOfficeId) : office;
+
         BigDecimal totalDebitAmount = new BigDecimal(0);
 
         final Map<GLAccount, BigDecimal> accountMap = new LinkedHashMap<>();
@@ -1752,14 +1768,14 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
                 final BigDecimal feeTaxTotal = loanCommonAccountingHelper.sumTaxAmounts(feeTaxPayments);
                 if (feeTaxTotal.compareTo(BigDecimal.ZERO) > 0) {
                     final BigDecimal netFees = feesAmount.subtract(feeTaxTotal);
-                    this.helper.createCreditJournalEntryForLoanCharges(office, currencyCode,
+                    this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
                             AccrualAccountsForLoan.INCOME_FROM_FEES.getValue(), loanProductId, loanId, transactionId, transactionDate,
                             netFees,
                             loanCommonAccountingHelper.computeNetChargePayments(loanTransactionDTO.getFeePayments(), feeTaxPayments));
-                    loanCommonAccountingHelper.createTaxLiabilityCreditEntries(office, currencyCode, loanId, transactionId, transactionDate,
-                            feeTaxPayments);
+                    loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId,
+                            transactionDate, feeTaxPayments);
                 } else {
-                    this.helper.createCreditJournalEntryForLoanCharges(office, currencyCode,
+                    this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
                             AccrualAccountsForLoan.INCOME_FROM_FEES.getValue(), loanProductId, loanId, transactionId, transactionDate,
                             feesAmount, loanTransactionDTO.getFeePayments());
                 }
@@ -1828,8 +1844,8 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
 
         for (Map.Entry<GLAccount, BigDecimal> entry : accountMap.entrySet()) {
             if (MathUtil.isGreaterThanZero(entry.getValue())) {
-                this.helper.createCreditJournalEntryForLoan(office, currencyCode, loanId, transactionId, transactionDate, entry.getValue(),
-                        entry.getKey());
+                this.helper.createCreditJournalEntryForLoan(creditOffice, currencyCode, loanId, transactionId, transactionDate,
+                        entry.getValue(), entry.getKey());
             }
         }
 
@@ -1852,9 +1868,14 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
                     }
 
                 } else {
-                    this.helper.createDebitJournalEntryForLoan(office, currencyCode, AccrualAccountsForLoan.FUND_SOURCE.getValue(),
+                    this.helper.createDebitJournalEntryForLoan(fundSourceOffice, currencyCode, AccrualAccountsForLoan.FUND_SOURCE.getValue(),
                             loanProductId, paymentTypeId, loanId, transactionId, transactionDate, totalDebitAmount);
                 }
+            }
+
+            if (crossBranch) {
+                this.interBranchAccountingHelper.postLoanClearingBridge(fundSourceOffice, creditOffice, currencyCode, loanId, transactionId,
+                        transactionDate, totalDebitAmount, false);
             }
         }
 
@@ -1993,10 +2014,22 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
         final BigDecimal amount = loanTransactionDTO.getAmount();
         final Long paymentTypeId = loanTransactionDTO.getPaymentTypeId();
 
+        final Long homeOfficeId = loanTransactionDTO.getOfficeId();
+        final Long servicingOfficeId = loanTransactionDTO.getTransactionOfficeId();
+        final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)
+                && !loanTransactionDTO.isAccountTransfer() && !loanTransactionDTO.isLoanToLoanTransfer();
+
         if (MathUtil.isGreaterThanZero(amount)) {
-            this.helper.createJournalEntriesForLoan(office, currencyCode, AccrualAccountsForLoan.FUND_SOURCE.getValue(),
-                    AccrualAccountsForLoan.INCOME_FROM_RECOVERY.getValue(), loanProductId, paymentTypeId, loanId, transactionId,
-                    transactionDate, amount);
+            if (crossBranch) {
+                this.interBranchAccountingHelper.createCrossBranchRecoveryRepayment(this.helper.getOfficeById(servicingOfficeId),
+                        this.helper.getOfficeById(homeOfficeId), currencyCode, AccrualAccountsForLoan.FUND_SOURCE.getValue(),
+                        AccrualAccountsForLoan.INCOME_FROM_RECOVERY.getValue(), loanProductId, paymentTypeId, loanId, transactionId,
+                        transactionDate, amount);
+            } else {
+                this.helper.createJournalEntriesForLoan(office, currencyCode, AccrualAccountsForLoan.FUND_SOURCE.getValue(),
+                        AccrualAccountsForLoan.INCOME_FROM_RECOVERY.getValue(), loanProductId, paymentTypeId, loanId, transactionId,
+                        transactionDate, amount);
+            }
         }
     }
 

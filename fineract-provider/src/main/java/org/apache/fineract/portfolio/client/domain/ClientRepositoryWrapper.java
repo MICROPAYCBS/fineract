@@ -23,7 +23,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
 import org.apache.fineract.portfolio.client.exception.ClientNotActiveException;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.springframework.stereotype.Service;
@@ -41,6 +43,7 @@ public class ClientRepositoryWrapper {
     private final ClientRepository repository;
     private final PlatformSecurityContext context;
     private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+    private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
 
     @Transactional(readOnly = true)
     public Client findOneWithNotFoundDetection(final Long id) {
@@ -82,8 +85,23 @@ public class ClientRepositoryWrapper {
         if (client.isNotActive()) {
             throw new ClientNotActiveException(client.getId());
         }
-        this.context.validateAccessRights(client.getOffice().getHierarchy());
+        try {
+            this.context.validateAccessRights(client.getOffice().getHierarchy());
+        } catch (final NoAuthorizationException e) {
+            if (!isCrossBranchClientAccessAllowedForWrite(client)) {
+                throw e;
+            }
+        }
         return client;
+    }
+
+    private boolean isCrossBranchClientAccessAllowedForWrite(final Client client) {
+        if (!this.crossBranchTransactionAccessService.isCrossBranchTransactionEnabledForCurrentUser()) {
+            return false;
+        }
+        final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
+        return this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId)
+                .contains(client.getOffice().getId());
     }
 
     public Client getClientByAccountNumber(String accountNumber) {

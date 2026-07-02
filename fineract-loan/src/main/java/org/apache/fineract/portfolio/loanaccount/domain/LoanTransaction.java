@@ -73,6 +73,11 @@ public class LoanTransaction extends AbstractAuditableWithUTCDateTimeCustom<Long
     @JoinColumn(name = "office_id", nullable = false)
     private Office office;
 
+    @ManyToOne
+    @JoinColumn(name = "transaction_office_id", nullable = true)
+    @Setter
+    private Office transactionOffice;
+
     @ManyToOne(optional = true)
     @JoinColumn(name = "payment_detail_id")
     private PaymentDetail paymentDetail;

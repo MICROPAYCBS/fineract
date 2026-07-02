@@ -67,6 +67,9 @@ public class LoanTransactionDTO {
     private final BigDecimal feePaid;
     private final BigDecimal penaltyPaid;
 
+    @Setter
+    private Long transactionOfficeId;
+
     /** Used by accounting processors to split the fee income credit into net income + tax liability entries */
     @Setter
     private List<ChargeTaxPaymentDTO> chargeTaxPayments = new ArrayList<>();

@@ -36,6 +36,7 @@ import org.apache.fineract.accounting.journalentry.data.GLAccountBalanceHolder;
 import org.apache.fineract.accounting.journalentry.data.LoanDTO;
 import org.apache.fineract.accounting.journalentry.data.LoanTransactionDTO;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchAccountingHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionEnumData;
 import org.springframework.stereotype.Component;
@@ -47,6 +48,7 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
     private final AccountingProcessorHelper helper;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
     private final LoanCommonAccountingHelper loanCommonAccountingHelper;
+    private final InterBranchAccountingHelper interBranchAccountingHelper;
 
     @Override
     public void createJournalEntriesForLoan(final LoanDTO loanDTO) {
@@ -64,7 +66,13 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
             final Long loanId = loanDTO.getLoanId();
             final LoanTransactionEnumData transactionType = loanTransactionDTO.getTransactionType();
 
-            this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            final Long homeOfficeId = officeId;
+            final Long servicingOfficeId = loanTransactionDTO.getTransactionOfficeId();
+            if (this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)) {
+                this.interBranchAccountingHelper.validateBranchClosures(servicingOfficeId, homeOfficeId, transactionDate);
+            } else {
+                this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            }
 
             if (loanTransactionDTO.isReversed()) {
                 journalEntryWritePlatformService.createJournalEntryForReversedLoanTransaction(transactionDate, transactionId, officeId);
@@ -740,12 +748,20 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
         final BigDecimal overPaymentAmount = loanTransactionDTO.getOverPayment();
         final Long paymentTypeId = loanTransactionDTO.getPaymentTypeId();
 
+        final Long homeOfficeId = loanTransactionDTO.getOfficeId();
+        final Long servicingOfficeId = loanTransactionDTO.getTransactionOfficeId();
+        final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)
+                && !loanTransactionDTO.isAccountTransfer() && !loanTransactionDTO.isLoanToLoanTransfer()
+                && !loanTransactionDTO.getTransactionType().isGoodwillCredit();
+        final Office creditOffice = crossBranch ? this.helper.getOfficeById(homeOfficeId) : office;
+        final Office fundSourceOffice = crossBranch ? this.helper.getOfficeById(servicingOfficeId) : office;
+
         BigDecimal totalDebitAmount = new BigDecimal(0);
         Map<Integer, BigDecimal> debitAccountMapForGoodwillCredit = new LinkedHashMap<>();
 
         if (principalAmount != null && principalAmount.compareTo(BigDecimal.ZERO) > 0) {
             totalDebitAmount = totalDebitAmount.add(principalAmount);
-            this.helper.createCreditJournalEntryForLoan(office, currencyCode, CashAccountsForLoan.LOAN_PORTFOLIO, loanProductId,
+            this.helper.createCreditJournalEntryForLoan(creditOffice, currencyCode, CashAccountsForLoan.LOAN_PORTFOLIO, loanProductId,
                     paymentTypeId, loanId, transactionId, transactionDate, principalAmount);
             if (loanTransactionDTO.getTransactionType().isGoodwillCredit()) {
                 loanCommonAccountingHelper.populateDebitAccountEntry(loanProductId, principalAmount,
@@ -755,7 +771,7 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
 
         if (interestAmount != null && interestAmount.compareTo(BigDecimal.ZERO) > 0) {
             totalDebitAmount = totalDebitAmount.add(interestAmount);
-            this.helper.createCreditJournalEntryForLoan(office, currencyCode, CashAccountsForLoan.INTEREST_ON_LOANS, loanProductId,
+            this.helper.createCreditJournalEntryForLoan(creditOffice, currencyCode, CashAccountsForLoan.INTEREST_ON_LOANS, loanProductId,
                     paymentTypeId, loanId, transactionId, transactionDate, interestAmount);
             if (loanTransactionDTO.getTransactionType().isGoodwillCredit()) {
                 loanCommonAccountingHelper.populateDebitAccountEntry(loanProductId, interestAmount,
@@ -770,13 +786,13 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
             final BigDecimal feeTaxTotal = loanCommonAccountingHelper.sumTaxAmounts(feeTaxPayments);
             if (feeTaxTotal.compareTo(BigDecimal.ZERO) > 0) {
                 final BigDecimal netFees = feesAmount.subtract(feeTaxTotal);
-                this.helper.createCreditJournalEntryForLoanCharges(office, currencyCode, CashAccountsForLoan.INCOME_FROM_FEES.getValue(),
+                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode, CashAccountsForLoan.INCOME_FROM_FEES.getValue(),
                         loanProductId, loanId, transactionId, transactionDate, netFees,
                         loanCommonAccountingHelper.computeNetChargePayments(loanTransactionDTO.getFeePayments(), feeTaxPayments));
-                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(office, currencyCode, loanId, transactionId, transactionDate,
+                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId, transactionDate,
                         feeTaxPayments);
             } else {
-                this.helper.createCreditJournalEntryForLoanCharges(office, currencyCode, CashAccountsForLoan.INCOME_FROM_FEES.getValue(),
+                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode, CashAccountsForLoan.INCOME_FROM_FEES.getValue(),
                         loanProductId, loanId, transactionId, transactionDate, feesAmount, loanTransactionDTO.getFeePayments());
             }
             if (loanTransactionDTO.getTransactionType().isGoodwillCredit()) {
@@ -791,14 +807,14 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
             final BigDecimal penaltyTaxTotal = loanCommonAccountingHelper.sumTaxAmounts(penaltyTaxPayments);
             if (penaltyTaxTotal.compareTo(BigDecimal.ZERO) > 0) {
                 final BigDecimal netPenalties = penaltiesAmount.subtract(penaltyTaxTotal);
-                this.helper.createCreditJournalEntryForLoanCharges(office, currencyCode,
+                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
                         CashAccountsForLoan.INCOME_FROM_PENALTIES.getValue(), loanProductId, loanId, transactionId, transactionDate,
                         netPenalties,
                         loanCommonAccountingHelper.computeNetChargePayments(loanTransactionDTO.getPenaltyPayments(), penaltyTaxPayments));
-                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(office, currencyCode, loanId, transactionId, transactionDate,
+                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId, transactionDate,
                         penaltyTaxPayments);
             } else {
-                this.helper.createCreditJournalEntryForLoanCharges(office, currencyCode,
+                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
                         CashAccountsForLoan.INCOME_FROM_PENALTIES.getValue(), loanProductId, loanId, transactionId, transactionDate,
                         penaltiesAmount, loanTransactionDTO.getPenaltyPayments());
             }
@@ -811,7 +827,7 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
 
         if (overPaymentAmount != null && overPaymentAmount.compareTo(BigDecimal.ZERO) > 0) {
             totalDebitAmount = totalDebitAmount.add(overPaymentAmount);
-            this.helper.createCreditJournalEntryForLoan(office, currencyCode, CashAccountsForLoan.OVERPAYMENT, loanProductId, paymentTypeId,
+            this.helper.createCreditJournalEntryForLoan(creditOffice, currencyCode, CashAccountsForLoan.OVERPAYMENT, loanProductId, paymentTypeId,
                     loanId, transactionId, transactionDate, overPaymentAmount);
             if (loanTransactionDTO.getTransactionType().isGoodwillCredit()) {
                 loanCommonAccountingHelper.populateDebitAccountEntry(loanProductId, overPaymentAmount,
@@ -836,9 +852,14 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
                 }
 
             } else {
-                this.helper.createDebitJournalEntryForLoan(office, currencyCode, CashAccountsForLoan.FUND_SOURCE.getValue(), loanProductId,
-                        paymentTypeId, loanId, transactionId, transactionDate, totalDebitAmount);
+                this.helper.createDebitJournalEntryForLoan(fundSourceOffice, currencyCode, CashAccountsForLoan.FUND_SOURCE.getValue(),
+                        loanProductId, paymentTypeId, loanId, transactionId, transactionDate, totalDebitAmount);
             }
+        }
+
+        if (crossBranch && totalDebitAmount.compareTo(BigDecimal.ZERO) > 0) {
+            this.interBranchAccountingHelper.postLoanClearingBridge(fundSourceOffice, creditOffice, currencyCode, loanId, transactionId,
+                    transactionDate, totalDebitAmount, false);
         }
 
         /**
@@ -867,6 +888,19 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
         final LocalDate transactionDate = loanTransactionDTO.getTransactionDate();
         final BigDecimal amount = loanTransactionDTO.getAmount();
         final Long paymentTypeId = loanTransactionDTO.getPaymentTypeId();
+
+        final Long homeOfficeId = loanTransactionDTO.getOfficeId();
+        final Long servicingOfficeId = loanTransactionDTO.getTransactionOfficeId();
+        final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)
+                && !loanTransactionDTO.isAccountTransfer() && !loanTransactionDTO.isLoanToLoanTransfer();
+
+        if (crossBranch) {
+            this.interBranchAccountingHelper.createCrossBranchRecoveryRepayment(this.helper.getOfficeById(servicingOfficeId),
+                    this.helper.getOfficeById(homeOfficeId), currencyCode, CashAccountsForLoan.FUND_SOURCE.getValue(),
+                    CashAccountsForLoan.INCOME_FROM_RECOVERY.getValue(), loanProductId, paymentTypeId, loanId, transactionId,
+                    transactionDate, amount);
+            return;
+        }
 
         this.helper.createJournalEntriesForLoan(office, currencyCode, CashAccountsForLoan.FUND_SOURCE.getValue(),
                 CashAccountsForLoan.INCOME_FROM_RECOVERY.getValue(), loanProductId, paymentTypeId, loanId, transactionId, transactionDate,

@@ -25,4 +25,11 @@ public interface CrossBranchClientAccessReadService {
     boolean isCrossBranchClientAccessEnabledForCurrentUser();
 
     List<Long> retrieveAccessibleBookOfficeIds(Long servicingOfficeId);
+
+    /**
+     * Book office ids the current user may additionally access via the servicing-access matrix. Returns an empty list
+     * when cross-branch servicing is disabled, the user lacks the view permission, or no matrix entries apply. Use
+     * this to relax office-hierarchy visibility filters in read queries.
+     */
+    List<Long> accessibleBookOfficeIdsForCurrentUser();
 }

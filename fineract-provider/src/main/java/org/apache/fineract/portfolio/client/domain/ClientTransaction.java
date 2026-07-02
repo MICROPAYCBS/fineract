@@ -59,6 +59,10 @@ public class ClientTransaction extends AbstractAuditableWithUTCDateTimeCustom<Lo
     @JoinColumn(name = "office_id", nullable = false)
     private Office office;
 
+    @ManyToOne
+    @JoinColumn(name = "transaction_office_id", nullable = true)
+    private Office transactionOffice;
+
     @ManyToOne(optional = true)
     @JoinColumn(name = "payment_detail_id", nullable = true)
     private PaymentDetail paymentDetail;
@@ -133,6 +137,10 @@ public class ClientTransaction extends AbstractAuditableWithUTCDateTimeCustom<Lo
         this.reversed = true;
     }
 
+    public void setTransactionOffice(final Office transactionOffice) {
+        this.transactionOffice = transactionOffice;
+    }
+
     /**
      * Converts the content of this Client Transaction to a map which can be passed to the accounting module
      *
@@ -148,6 +156,9 @@ public class ClientTransaction extends AbstractAuditableWithUTCDateTimeCustom<Lo
         thisTransactionData.put("id", getId());
         thisTransactionData.put("clientId", getClientId());
         thisTransactionData.put("officeId", this.office.getId());
+        if (this.transactionOffice != null) {
+            thisTransactionData.put("transactionOfficeId", this.transactionOffice.getId());
+        }
         thisTransactionData.put("type", transactionType);
         thisTransactionData.put("reversed", Boolean.valueOf(this.reversed));
         thisTransactionData.put("date", getTransactionDate());

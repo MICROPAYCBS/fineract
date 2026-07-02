@@ -33,6 +33,7 @@ public class AccountingBridgeLoanTransactionDTO {
 
     private Long id;
     private Long officeId;
+    private Long transactionOfficeId;
     private LoanTransactionEnumData type;
     private boolean reversed;
     private LocalDate date;

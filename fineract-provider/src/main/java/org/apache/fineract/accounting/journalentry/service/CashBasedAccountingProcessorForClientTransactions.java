@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.closure.domain.GLClosure;
 import org.apache.fineract.accounting.journalentry.data.ClientTransactionDTO;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchAccountingHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.springframework.stereotype.Component;
 
@@ -31,18 +32,24 @@ import org.springframework.stereotype.Component;
 public class CashBasedAccountingProcessorForClientTransactions implements AccountingProcessorForClientTransactions {
 
     private final AccountingProcessorHelper helper;
+    private final InterBranchAccountingHelper interBranchAccountingHelper;
 
     @Override
     public void createJournalEntriesForClientTransaction(ClientTransactionDTO clientTransactionDTO) {
         if (clientTransactionDTO.isAccountingEnabled()) {
-            final GLClosure latestGLClosure = this.helper.getLatestClosureByBranch(clientTransactionDTO.getOfficeId());
             final LocalDate transactionDate = clientTransactionDTO.getTransactionDate();
-            final Office office = this.helper.getOfficeById(clientTransactionDTO.getOfficeId());
-            this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            final Long homeOfficeId = clientTransactionDTO.getOfficeId();
+            final Long servicingOfficeId = clientTransactionDTO.getTransactionOfficeId();
+            if (this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId)) {
+                this.interBranchAccountingHelper.validateBranchClosures(servicingOfficeId, homeOfficeId, transactionDate);
+            } else {
+                final GLClosure latestGLClosure = this.helper.getLatestClosureByBranch(homeOfficeId);
+                this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            }
 
             /** Handle client payments **/
             if (clientTransactionDTO.isChargePayment()) {
-                createJournalEntriesForChargePayments(clientTransactionDTO, office);
+                createJournalEntriesForChargePayments(clientTransactionDTO);
             }
         }
     }
@@ -53,9 +60,14 @@ public class CashBasedAccountingProcessorForClientTransactions implements Accoun
      *
      * In case the loan transaction is a reversal, all debits are turned into credits and vice versa
      */
-    private void createJournalEntriesForChargePayments(final ClientTransactionDTO clientTransactionDTO, final Office office) {
+    private void createJournalEntriesForChargePayments(final ClientTransactionDTO clientTransactionDTO) {
         // client properties
         final Long clientId = clientTransactionDTO.getClientId();
+        final Long homeOfficeId = clientTransactionDTO.getOfficeId();
+        final Long servicingOfficeId = clientTransactionDTO.getTransactionOfficeId();
+        final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId);
+        final Office homeOffice = this.helper.getOfficeById(homeOfficeId);
+        final Office servicingOffice = crossBranch ? this.helper.getOfficeById(servicingOfficeId) : homeOffice;
 
         // transaction properties
         final String currencyCode = clientTransactionDTO.getCurrencyCode();
@@ -65,15 +77,20 @@ public class CashBasedAccountingProcessorForClientTransactions implements Accoun
         final boolean isReversal = clientTransactionDTO.isReversed();
 
         if (amount != null && !(amount.compareTo(BigDecimal.ZERO) == 0)) {
-            BigDecimal totalCreditedAmount = this.helper.createCreditJournalEntryOrReversalForClientPayments(office, currencyCode, clientId,
-                    transactionId, transactionDate, isReversal, clientTransactionDTO.getChargePayments());
+            if (crossBranch) {
+                final BigDecimal totalCreditedAmount = this.interBranchAccountingHelper.createCrossBranchClientChargePaymentCredits(homeOffice,
+                        currencyCode, clientId, transactionId, transactionDate, isReversal, clientTransactionDTO.getChargePayments());
+                this.interBranchAccountingHelper.createCrossBranchClientChargePaymentFundSourceDebit(servicingOffice, currencyCode, clientId,
+                        transactionId, transactionDate, totalCreditedAmount, isReversal);
+                this.interBranchAccountingHelper.postClientClearingBridge(servicingOffice, homeOffice, currencyCode, clientId, transactionId,
+                        transactionDate, totalCreditedAmount, isReversal);
+            } else {
+                BigDecimal totalCreditedAmount = this.helper.createCreditJournalEntryOrReversalForClientPayments(homeOffice, currencyCode,
+                        clientId, transactionId, transactionDate, isReversal, clientTransactionDTO.getChargePayments());
 
-            /***
-             * create a single Debit entry (or reversal) for the entire amount that was credited (accounting is turned
-             * on at the level of for each charge that has been paid by this transaction)
-             **/
-            this.helper.createDebitJournalEntryOrReversalForClientChargePayments(office, currencyCode, clientId, transactionId,
-                    transactionDate, totalCreditedAmount, isReversal);
+                this.helper.createDebitJournalEntryOrReversalForClientChargePayments(homeOffice, currencyCode, clientId, transactionId,
+                        transactionDate, totalCreditedAmount, isReversal);
+            }
         }
 
     }

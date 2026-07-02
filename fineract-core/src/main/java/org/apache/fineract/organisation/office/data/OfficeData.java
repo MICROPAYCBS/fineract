@@ -40,6 +40,7 @@ public class OfficeData implements Serializable {
     private final Long parentId;
     private final String parentName;
     private final Collection<OfficeData> allowedParents;
+    private final OfficeBranchProfileData branchProfile;
 
     // import fields
     private transient Integer rowIndex;
@@ -71,12 +72,18 @@ public class OfficeData implements Serializable {
 
     public static OfficeData appendedTemplate(final OfficeData office, final Collection<OfficeData> allowedParents) {
         return new OfficeData(office.id, office.name, office.nameDecorated, office.externalId, office.openingDate, office.hierarchy,
-                office.parentId, office.parentName, allowedParents);
+                office.parentId, office.parentName, allowedParents, office.branchProfile);
     }
 
     public OfficeData(final Long id, final String name, final String nameDecorated, final ExternalId externalId,
             final LocalDate openingDate, final String hierarchy, final Long parentId, final String parentName,
             final Collection<OfficeData> allowedParents) {
+        this(id, name, nameDecorated, externalId, openingDate, hierarchy, parentId, parentName, allowedParents, null);
+    }
+
+    public OfficeData(final Long id, final String name, final String nameDecorated, final ExternalId externalId,
+            final LocalDate openingDate, final String hierarchy, final Long parentId, final String parentName,
+            final Collection<OfficeData> allowedParents, final OfficeBranchProfileData branchProfile) {
         this.id = id;
         this.name = name;
         this.nameDecorated = nameDecorated;
@@ -86,6 +93,7 @@ public class OfficeData implements Serializable {
         this.parentName = parentName;
         this.parentId = parentId;
         this.allowedParents = allowedParents;
+        this.branchProfile = branchProfile;
     }
 
     public boolean hasIdentifyOf(final Long officeId) {

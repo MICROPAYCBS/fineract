@@ -20,10 +20,13 @@ package org.apache.fineract.portfolio.client.service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.data.ClientIdentifierData;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifierStatus;
@@ -40,6 +43,7 @@ public class ClientIdentifierReadPlatformServiceImpl implements ClientIdentifier
 
     private final JdbcTemplate jdbcTemplate;
     private final PlatformSecurityContext context;
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
 
     @Override
     public List<ClientIdentifierData> retrieveClientIdentifiers(final Long clientId) {
@@ -50,11 +54,16 @@ public class ClientIdentifierReadPlatformServiceImpl implements ClientIdentifier
 
         final ClientIdentityMapper rm = new ClientIdentityMapper();
 
-        String sql = "select " + rm.schema();
+        final StringBuilder sqlBuilder = new StringBuilder("select ").append(rm.schema());
+        final List<Object> params = new ArrayList<>();
+        params.add(clientId);
+        params.add(hierarchySearchString);
+        appendCrossBranchOfficeScopeCondition(sqlBuilder, params);
+        sqlBuilder.append(")");
 
-        sql += " order by ci.id";
+        sqlBuilder.append(" order by ci.id");
 
-        return this.jdbcTemplate.query(sql, rm, clientId, hierarchySearchString); // NOSONAR
+        return this.jdbcTemplate.query(sqlBuilder.toString(), rm, params.toArray()); // NOSONAR
     }
 
     @Override
@@ -66,18 +75,30 @@ public class ClientIdentifierReadPlatformServiceImpl implements ClientIdentifier
 
             final ClientIdentityMapper rm = new ClientIdentityMapper();
 
-            String sql = "select " + rm.schema();
+            final StringBuilder sqlBuilder = new StringBuilder("select ").append(rm.schema());
+            final List<Object> params = new ArrayList<>();
+            params.add(clientId);
+            params.add(hierarchySearchString);
+            appendCrossBranchOfficeScopeCondition(sqlBuilder, params);
+            sqlBuilder.append(")");
 
-            sql += " and ci.id = ?";
+            sqlBuilder.append(" and ci.id = ?");
+            params.add(clientIdentifierId);
 
-            final ClientIdentifierData clientIdentifierData = this.jdbcTemplate.queryForObject(sql, rm, // NOSONAR
-                    clientId, hierarchySearchString, clientIdentifierId);
-
-            return clientIdentifierData;
+            return this.jdbcTemplate.queryForObject(sqlBuilder.toString(), rm, params.toArray()); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
             throw new ClientIdentifierNotFoundException(clientIdentifierId, e);
         }
 
+    }
+
+    private void appendCrossBranchOfficeScopeCondition(final StringBuilder sqlBuilder, final List<Object> params) {
+        final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.accessibleBookOfficeIdsForCurrentUser();
+        if (!bookOfficeIds.isEmpty()) {
+            sqlBuilder.append(" or c.office_id in (").append(String.join(",", Collections.nCopies(bookOfficeIds.size(), "?")))
+                    .append(")");
+            params.addAll(bookOfficeIds);
+        }
     }
 
     private static final class ClientIdentityMapper implements RowMapper<ClientIdentifierData> {
@@ -89,7 +110,7 @@ public class ClientIdentifierReadPlatformServiceImpl implements ClientIdentifier
                     + " ci.description as description, cv.code_value as documentType "
                     + " from m_client_identifier ci, m_client c, m_office o, m_code_value cv"
                     + " where ci.client_id=c.id and c.office_id=o.id" + " and ci.document_type_id=cv.id"
-                    + " and ci.client_id = ? and o.hierarchy like ? ";
+                    + " and ci.client_id = ? and (o.hierarchy like ? ";
         }
 
         @Override

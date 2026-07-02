@@ -71,6 +71,10 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
     @JoinColumn(name = "office_id", nullable = false)
     private Office office;
 
+    @ManyToOne
+    @JoinColumn(name = "transaction_office_id", nullable = true)
+    private Office transactionOffice;
+
     @ManyToOne(cascade = CascadeType.ALL, optional = true)
     @JoinColumn(name = "payment_detail_id", nullable = true)
     private PaymentDetail paymentDetail;
@@ -483,6 +487,14 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
         return this.office.getId();
     }
 
+    public Long getTransactionOfficeId() {
+        return this.transactionOffice == null ? null : this.transactionOffice.getId();
+    }
+
+    public void setTransactionOffice(final Office transactionOffice) {
+        this.transactionOffice = transactionOffice;
+    }
+
     public LocalDate getBalanceEndDate() {
         return this.balanceEndDate;
     }
@@ -621,6 +633,9 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
 
         thisTransactionData.put("id", getId());
         thisTransactionData.put("officeId", this.office.getId());
+        if (getTransactionOfficeId() != null) {
+            thisTransactionData.put("transactionOfficeId", getTransactionOfficeId());
+        }
         thisTransactionData.put("type", transactionType);
         thisTransactionData.put("reversed", isReversed());
         thisTransactionData.put("date", getTransactionDate());

@@ -35,6 +35,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
+import org.apache.fineract.organisation.office.data.OfficeBranchProfileData;
 import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.office.data.OfficeTransactionData;
 import org.apache.fineract.organisation.office.domain.OfficeRepository;
@@ -63,8 +64,29 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
 
         public String officeSchema() {
             return " o.id as id, o.name as name, " + nameDecoratedBaseOnHierarchy
-                    + " as nameDecorated, o.external_id as externalId, o.opening_date as openingDate, o.hierarchy as hierarchy, parent.id as parentId, parent.name as parentName "
-                    + "from m_office o LEFT JOIN m_office AS parent ON parent.id = o.parent_id ";
+                    + " as nameDecorated, o.external_id as externalId, o.opening_date as openingDate, o.hierarchy as hierarchy, parent.id as parentId, parent.name as parentName,"
+                    + " oe.office_code as officeCode, oe.branch_type as branchType, oe.region_code as regionCode, oe.address as address,"
+                    + " oe.city as city, oe.country_code as countryCode, oe.phone_no as phoneNo, oe.email_address as emailAddress,"
+                    + " oe.manager_staff_id as managerStaffId, mgr.display_name as managerStaffName, oe.swift_code as swiftCode,"
+                    + " oe.latitude as latitude, oe.longitude as longitude, oe.cash_limit as cashLimit, oe.working_hours as workingHours,"
+                    + " oe.status as branchStatus"
+                    + " from m_office o LEFT JOIN m_office AS parent ON parent.id = o.parent_id"
+                    + " LEFT JOIN m_office_extension oe ON oe.office_id = o.id"
+                    + " LEFT JOIN m_staff mgr ON mgr.id = oe.manager_staff_id ";
+        }
+
+        private OfficeBranchProfileData mapBranchProfile(final ResultSet rs) throws SQLException {
+            final String officeCode = rs.getString("officeCode");
+            if (officeCode == null && rs.getString("branchType") == null && rs.getString("branchStatus") == null) {
+                return null;
+            }
+            return OfficeBranchProfileData.builder().officeCode(officeCode).branchType(rs.getString("branchType"))
+                    .regionCode(rs.getString("regionCode")).address(rs.getString("address")).city(rs.getString("city"))
+                    .countryCode(rs.getString("countryCode")).phoneNo(rs.getString("phoneNo"))
+                    .emailAddress(rs.getString("emailAddress")).managerStaffId(JdbcSupport.getLong(rs, "managerStaffId"))
+                    .managerStaffName(rs.getString("managerStaffName")).swiftCode(rs.getString("swiftCode"))
+                    .latitude(rs.getString("latitude")).longitude(rs.getString("longitude")).cashLimit(rs.getBigDecimal("cashLimit"))
+                    .workingHours(rs.getString("workingHours")).status(rs.getString("branchStatus")).build();
         }
 
         @Override
@@ -80,7 +102,7 @@ public class OfficeReadPlatformServiceImpl implements OfficeReadPlatformService 
             final String parentName = rs.getString("parentName");
 
             return new OfficeData(id, name, nameDecorated, ExternalIdFactory.produce(externalId), openingDate, hierarchy, parentId,
-                    parentName, null);
+                    parentName, null, mapBranchProfile(rs));
         }
     }
 

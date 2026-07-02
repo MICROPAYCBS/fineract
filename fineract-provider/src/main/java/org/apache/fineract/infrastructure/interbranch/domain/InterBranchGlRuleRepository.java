@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.infrastructure.interbranch.domain;
 
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -35,4 +36,17 @@ public interface InterBranchGlRuleRepository extends JpaRepository<InterBranchGl
             WHERE r.leftOffice IS NULL AND r.rightOffice IS NULL
             """)
     boolean existsDefaultRule();
+
+    @Query("""
+            SELECT r FROM InterBranchGlRule r WHERE r.status = 'ACTIVE'
+            AND (r.currencyCode IS NULL OR r.currencyCode = :currencyCode)
+            AND (
+              (r.leftOffice.id = :servicingOfficeId AND r.rightOffice.id = :homeOfficeId)
+              OR (r.leftOffice.id = :homeOfficeId AND r.rightOffice.id = :servicingOfficeId)
+              OR (r.leftOffice IS NULL AND r.rightOffice IS NULL)
+            )
+            ORDER BY CASE WHEN r.leftOffice IS NULL THEN 1 ELSE 0 END
+            """)
+    List<InterBranchGlRule> findActiveRulesForOffices(@Param("servicingOfficeId") Long servicingOfficeId,
+            @Param("homeOfficeId") Long homeOfficeId, @Param("currencyCode") String currencyCode);
 }

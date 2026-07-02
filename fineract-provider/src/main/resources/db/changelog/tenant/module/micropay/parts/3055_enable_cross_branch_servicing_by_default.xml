@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3055-enable-cross-branch-servicing-by-default" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM c_configuration WHERE name = 'enable-cross-branch-servicing'</sqlCheck>
+        </preConditions>
+        <update tableName="c_configuration">
+            <column name="enabled" valueBoolean="true"/>
+            <column name="value" valueNumeric="1"/>
+            <column name="description" value="Enable cross-branch client visibility, servicing, and inter-branch GL settlement (Micropay)."/>
+            <where>name = 'enable-cross-branch-servicing'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

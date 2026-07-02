@@ -929,6 +929,9 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
         transactionDTO.setId(loanTransaction.getId());
         transactionDTO.setOfficeId(loanTransaction.getOffice().getId());
+        if (loanTransaction.getTransactionOffice() != null) {
+            transactionDTO.setTransactionOfficeId(loanTransaction.getTransactionOffice().getId());
+        }
         transactionDTO.setType(LoanEnumerations.transactionType(loanTransaction.getTypeOf()));
         transactionDTO.setReversed(loanTransaction.isReversed());
         transactionDTO.setDate(loanTransaction.getTransactionDate());

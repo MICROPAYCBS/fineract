@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionEnumData;
 
 @RequiredArgsConstructor
@@ -46,6 +47,10 @@ public class SavingsTransactionDTO {
     private final BigDecimal overdraftAmount;
     private final boolean isAccountTransfer;
     private final List<TaxPaymentDTO> taxPayments;
+
+    @Setter
+    @Getter
+    private Long transactionOfficeId;
 
     public boolean isOverdraftTransaction() {
         return this.overdraftAmount != null && this.overdraftAmount.doubleValue() > 0;

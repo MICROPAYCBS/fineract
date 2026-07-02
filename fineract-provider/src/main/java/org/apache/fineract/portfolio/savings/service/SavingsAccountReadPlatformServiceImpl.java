@@ -26,7 +26,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +42,7 @@ import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
@@ -109,10 +109,13 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
     private final SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper;
     private final SavingsAccountTransactionRepository savingsAccountTransactionRepository;
 
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+
     public SavingsAccountReadPlatformServiceImpl(final PlatformSecurityContext context, final JdbcTemplate jdbcTemplate,
             final SavingsAccountAssembler savingAccountAssembler, PaginationHelper paginationHelper, ColumnValidator columnValidator,
             DatabaseSpecificSQLGenerator sqlGenerator, SavingsAccountRepositoryWrapper savingsAccountRepositoryWrapper,
-            SavingsAccountTransactionRepository savingsAccountTransactionRepository) {
+            SavingsAccountTransactionRepository savingsAccountTransactionRepository,
+            CrossBranchClientAccessReadService crossBranchClientAccessReadService) {
         this.context = context;
         this.jdbcTemplate = jdbcTemplate;
         this.sqlGenerator = sqlGenerator;
@@ -126,6 +129,17 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
         this.paginationHelper = paginationHelper;
         this.savingAccountMapperForInterestPosting = new SavingAccountMapperForInterestPosting();
         this.savingAccountAssembler = savingAccountAssembler;
+        this.crossBranchClientAccessReadService = crossBranchClientAccessReadService;
+    }
+
+    private void appendCrossBranchOfficeScopeCondition(final StringBuilder sqlBuilder, final List<Object> params,
+            final String officeIdColumn) {
+        final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.accessibleBookOfficeIdsForCurrentUser();
+        if (!bookOfficeIds.isEmpty()) {
+            sqlBuilder.append(" or ").append(officeIdColumn).append(" in (")
+                    .append(String.join(",", Collections.nCopies(bookOfficeIds.size(), "?"))).append(")");
+            params.addAll(bookOfficeIds);
+        }
     }
 
     @Override
@@ -170,27 +184,27 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
         sqlBuilder.append(this.savingAccountMapper.schema());
 
         sqlBuilder.append(" join m_office o on o.id = c.office_id");
-        sqlBuilder.append(" where o.hierarchy like ?");
+        sqlBuilder.append(" where (o.hierarchy like ?");
 
-        final Object[] objectArray = new Object[3];
-        objectArray[0] = hierarchySearchString;
-        int arrayPos = 1;
+        final List<Object> params = new ArrayList<>();
+        params.add(hierarchySearchString);
+        appendCrossBranchOfficeScopeCondition(sqlBuilder, params, "c.office_id");
+        sqlBuilder.append(")");
+
         if (searchParameters != null) {
 
             if (StringUtils.isNotBlank(searchParameters.getStatus())) {
                 sqlBuilder.append(" and sa.status_enum = ?");
-                objectArray[arrayPos] = Integer.parseInt(searchParameters.getStatus());
-                arrayPos = arrayPos + 1;
+                params.add(Integer.parseInt(searchParameters.getStatus()));
             }
 
             if (StringUtils.isNotBlank(searchParameters.getExternalId())) {
                 sqlBuilder.append(" and sa.external_id = ?");
-                objectArray[arrayPos] = searchParameters.getExternalId();
-                arrayPos = arrayPos + 1;
+                params.add(searchParameters.getExternalId());
             }
             if (searchParameters.getOfficeId() != null) {
                 sqlBuilder.append(" and c.office_id = ?");
-                objectArray[arrayPos++] = searchParameters.getOfficeId();
+                params.add(searchParameters.getOfficeId());
             }
             if (searchParameters.hasOrderBy()) {
                 sqlBuilder.append(" order by ").append(searchParameters.getOrderBy());
@@ -211,17 +225,27 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                 }
             }
         }
-        final Object[] finalObjectArray = Arrays.copyOf(objectArray, arrayPos);
-        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), finalObjectArray, this.savingAccountMapper);
+        return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), params.toArray(), this.savingAccountMapper);
     }
 
     @Override
     public SavingsAccountData retrieveOne(final Long accountId) {
 
         try {
-            final String sql = "select " + this.savingAccountMapper.schema() + " where sa.id = ?";
+            final String hierarchySearchString = this.context.officeHierarchy() + "%";
 
-            return this.jdbcTemplate.queryForObject(sql, this.savingAccountMapper, new Object[] { accountId }); // NOSONAR
+            final StringBuilder sqlBuilder = new StringBuilder("select ");
+            sqlBuilder.append(this.savingAccountMapper.schema());
+            sqlBuilder.append(" left join m_office o on o.id = coalesce(c.office_id, g.office_id) ");
+            sqlBuilder.append(" where sa.id = ? and (o.id is null or o.hierarchy like ?");
+
+            final List<Object> params = new ArrayList<>();
+            params.add(accountId);
+            params.add(hierarchySearchString);
+            appendCrossBranchOfficeScopeCondition(sqlBuilder, params, "o.id");
+            sqlBuilder.append(")");
+
+            return this.jdbcTemplate.queryForObject(sqlBuilder.toString(), this.savingAccountMapper, params.toArray()); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
             throw new SavingsAccountNotFoundException(accountId, e);
         }
