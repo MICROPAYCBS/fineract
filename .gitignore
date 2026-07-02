@@ -9,7 +9,7 @@
 build
 *.log
 logs/
-*.avsc
+# Avro source schemas under fineract-avro-schemas/src/main/ are tracked; generated copies live under build/ (ignored above).
 *.iml
 *.ipr
 *.iws
