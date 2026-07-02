@@ -134,11 +134,8 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
 
     private void appendCrossBranchOfficeScopeCondition(final StringBuilder sqlBuilder, final List<Object> params,
             final String officeIdColumn) {
-        final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.accessibleBookOfficeIdsForCurrentUser();
-        if (!bookOfficeIds.isEmpty()) {
-            sqlBuilder.append(" or ").append(officeIdColumn).append(" in (")
-                    .append(String.join(",", Collections.nCopies(bookOfficeIds.size(), "?"))).append(")");
-            params.addAll(bookOfficeIds);
+        if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+            sqlBuilder.append(" or 1=1");
         }
     }
 

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="3056-seed-inter-branch-recon-gl-account-postgresql" author="micropay" context="postgresql">
+        <sqlFile path="V3056__seed_inter_branch_recon_gl_account.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+    <changeSet id="3056-seed-inter-branch-recon-gl-account-mysql" author="micropay" context="mysql">
+        <sqlFile path="V3056__seed_inter_branch_recon_gl_account.mysql.sql" relativeToChangelogFile="true"/>
+    </changeSet>
+
+</databaseChangeLog>

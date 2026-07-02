@@ -20,10 +20,11 @@ package org.apache.fineract.infrastructure.interbranch.service;
 
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity;
+import org.apache.fineract.accounting.financialactivityaccount.domain.FinancialActivityAccountRepositoryWrapper;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.infrastructure.interbranch.domain.InterBranchGlRule;
 import org.apache.fineract.infrastructure.interbranch.domain.InterBranchGlRuleRepository;
-import org.apache.fineract.infrastructure.interbranch.exception.InterBranchGlAccountNotConfiguredException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,14 +34,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class InterBranchGlAccountReadServiceImpl implements InterBranchGlAccountReadService {
 
     private final InterBranchGlRuleRepository interBranchGlRuleRepository;
+    private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepository;
 
     @Override
     public GLAccount resolveClearingAccount(final Long servicingOfficeId, final Long homeOfficeId, final String currencyCode) {
         final List<InterBranchGlRule> rules = this.interBranchGlRuleRepository.findActiveRulesForOffices(servicingOfficeId, homeOfficeId,
                 currencyCode);
-        if (rules.isEmpty()) {
-            throw new InterBranchGlAccountNotConfiguredException(servicingOfficeId, homeOfficeId);
+        if (!rules.isEmpty()) {
+            return rules.get(0).getGlAccount();
         }
-        return rules.get(0).getGlAccount();
+        return this.financialActivityAccountRepository
+                .findByFinancialActivityTypeWithNotFoundDetection(FinancialActivity.INTER_BRANCH_RECON.getValue()).getGlAccount();
     }
 }

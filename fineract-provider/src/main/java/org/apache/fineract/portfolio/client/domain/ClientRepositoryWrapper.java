@@ -88,20 +88,15 @@ public class ClientRepositoryWrapper {
         try {
             this.context.validateAccessRights(client.getOffice().getHierarchy());
         } catch (final NoAuthorizationException e) {
-            if (!isCrossBranchClientAccessAllowedForWrite(client)) {
+            if (!isCrossBranchClientAccessAllowedForWrite()) {
                 throw e;
             }
         }
         return client;
     }
 
-    private boolean isCrossBranchClientAccessAllowedForWrite(final Client client) {
-        if (!this.crossBranchTransactionAccessService.isCrossBranchTransactionEnabledForCurrentUser()) {
-            return false;
-        }
-        final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
-        return this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId)
-                .contains(client.getOffice().getId());
+    private boolean isCrossBranchClientAccessAllowedForWrite() {
+        return this.crossBranchTransactionAccessService.isCrossBranchTransactionEnabledForCurrentUser();
     }
 
     public Client getClientByAccountNumber(String accountNumber) {
@@ -116,14 +111,6 @@ public class ClientRepositoryWrapper {
         Client client = this.repository.fetchByClientIdAndHierarchy(clientId, hierarchySearchString, hierarchySearchString);
         if (client == null && this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
             client = this.repository.findById(clientId).orElse(null);
-            if (client != null) {
-                final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
-                final boolean allowed = this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId)
-                        .contains(client.getOffice().getId());
-                if (!allowed) {
-                    client = null;
-                }
-            }
         }
         if (client == null) {
             throw new ClientNotFoundException(clientId.toString(), "client.id");

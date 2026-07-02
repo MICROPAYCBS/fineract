@@ -93,11 +93,8 @@ public class ClientIdentifierReadPlatformServiceImpl implements ClientIdentifier
     }
 
     private void appendCrossBranchOfficeScopeCondition(final StringBuilder sqlBuilder, final List<Object> params) {
-        final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.accessibleBookOfficeIdsForCurrentUser();
-        if (!bookOfficeIds.isEmpty()) {
-            sqlBuilder.append(" or c.office_id in (").append(String.join(",", Collections.nCopies(bookOfficeIds.size(), "?")))
-                    .append(")");
-            params.addAll(bookOfficeIds);
+        if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+            sqlBuilder.append(" or 1=1");
         }
     }
 

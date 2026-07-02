@@ -36,7 +36,6 @@ public class CrossBranchTransactionAccessServiceImpl implements CrossBranchTrans
 
     private final ConfigurationDomainService configurationDomainService;
     private final PlatformSecurityContext context;
-    private final OfficeServicingAccessService officeServicingAccessService;
 
     @Override
     public boolean isCrossBranchTransactionEnabledForCurrentUser() {
@@ -65,16 +64,13 @@ public class CrossBranchTransactionAccessServiceImpl implements CrossBranchTrans
             return Optional.empty();
         }
 
-        validateCrossBranchTransaction(servicingOffice.getId(), homeOffice.getId());
+        validateCrossBranchTransaction();
         return Optional.of(servicingOffice);
     }
 
-    private void validateCrossBranchTransaction(final Long servicingOfficeId, final Long bookOfficeId) {
+    private void validateCrossBranchTransaction() {
         if (!isCrossBranchTransactionEnabledForCurrentUser()) {
             throw new NoAuthorizationException("Cross-branch transactions are not enabled for the current user.");
-        }
-        if (!this.officeServicingAccessService.canServeBookOffice(servicingOfficeId, bookOfficeId)) {
-            throw new NoAuthorizationException("The user's branch is not authorized to transact for the account's home branch.");
         }
     }
 }

@@ -18,8 +18,6 @@
  */
 package org.apache.fineract.infrastructure.interbranch.service;
 
-import java.util.Collections;
-import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -28,15 +26,5 @@ public class DisabledCrossBranchClientAccessReadService implements CrossBranchCl
     @Override
     public boolean isCrossBranchClientAccessEnabledForCurrentUser() {
         return false;
-    }
-
-    @Override
-    public List<Long> retrieveAccessibleBookOfficeIds(final Long servicingOfficeId) {
-        return Collections.emptyList();
-    }
-
-    @Override
-    public List<Long> accessibleBookOfficeIdsForCurrentUser() {
-        return Collections.emptyList();
     }
 }

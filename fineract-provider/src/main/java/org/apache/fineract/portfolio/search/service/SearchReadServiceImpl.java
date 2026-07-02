@@ -70,28 +70,25 @@ public class SearchReadServiceImpl implements SearchReadService {
 
         final SearchMapper rm = new SearchMapper();
 
-        final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.accessibleBookOfficeIdsForCurrentUser();
+        final boolean includeCrossBranchScope = this.crossBranchClientAccessReadService
+                .isCrossBranchClientAccessEnabledForCurrentUser();
 
         final MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("hierarchy", hierarchy + "%");
-        if (!bookOfficeIds.isEmpty()) {
-            params.addValue("bookOfficeIds", bookOfficeIds);
-        }
         if (searchConditions.getExactMatch()) {
             params.addValue("search", searchConditions.getSearchQuery());
         } else {
             params.addValue("search", "%" + searchConditions.getSearchQuery() + "%");
         }
-        return namedParameterJdbcTemplate.query(searchSchema(searchConditions, !bookOfficeIds.isEmpty()), params, rm);
+        return namedParameterJdbcTemplate.query(searchSchema(searchConditions, includeCrossBranchScope), params, rm);
     }
 
     public String searchSchema(final SearchConditions searchConditions, final boolean includeCrossBranchScope) {
 
         final String union = " union ";
         final Function<String, String> like = sqlGenerator::caseInsensitiveLike;
-        // relaxes the office-hierarchy visibility filter with the offices reachable through
-        // the cross-branch servicing-access matrix
-        final String crossBranchScope = includeCrossBranchScope ? " or c.office_id in (:bookOfficeIds)" : "";
+        // relaxes the office-hierarchy visibility filter when cross-branch read permission is granted
+        final String crossBranchScope = includeCrossBranchScope ? " or 1=1" : "";
         final String clientMatchSql = """
                 ( (select 'CLIENT' as entityType, c.id as entityId, c.display_name as entityName, \
                 c.external_id as entityExternalId, c.account_no as entityAccountNo, \

@@ -18,18 +18,11 @@
  */
 package org.apache.fineract.infrastructure.interbranch.service;
 
-import java.util.List;
-
 public interface CrossBranchClientAccessReadService {
 
-    boolean isCrossBranchClientAccessEnabledForCurrentUser();
-
-    List<Long> retrieveAccessibleBookOfficeIds(Long servicingOfficeId);
-
     /**
-     * Book office ids the current user may additionally access via the servicing-access matrix. Returns an empty list
-     * when cross-branch servicing is disabled, the user lacks the view permission, or no matrix entries apply. Use
-     * this to relax office-hierarchy visibility filters in read queries.
+     * True when cross-branch servicing is enabled globally and the current user may view clients outside their office
+     * hierarchy.
      */
-    List<Long> accessibleBookOfficeIdsForCurrentUser();
+    boolean isCrossBranchClientAccessEnabledForCurrentUser();
 }

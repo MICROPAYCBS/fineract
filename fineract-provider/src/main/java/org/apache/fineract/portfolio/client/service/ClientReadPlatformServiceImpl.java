@@ -214,14 +214,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         sqlBuilder.append(" where (o.hierarchy like ? or transferToOffice.hierarchy like ?");
 
         if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
-            final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
-            final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId);
-            if (!bookOfficeIds.isEmpty()) {
-                sqlBuilder.append(" or c.office_id in (");
-                sqlBuilder.append(String.join(",", bookOfficeIds.stream().map(id -> "?").toList()));
-                sqlBuilder.append(")");
-                paramList.addAll(bookOfficeIds);
-            }
+            sqlBuilder.append(" or 1=1");
         }
         sqlBuilder.append(") ");
     }

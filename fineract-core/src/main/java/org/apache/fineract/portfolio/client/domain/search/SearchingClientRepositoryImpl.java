@@ -34,7 +34,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.jpa.CriteriaQueryFactory;
 import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
@@ -52,7 +51,6 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
 
     private final CriteriaQueryFactory criteriaQueryFactory;
     private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
-    private final PlatformSecurityContext context;
 
     @Override
     public Page<SearchedClient> searchByText(String searchText, Pageable pageable, String officeHierarchy) {
@@ -77,13 +75,10 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
 
             List<Predicate> predicates = new ArrayList<>();
             List<Predicate> visibilityPredicates = new ArrayList<>();
-            visibilityPredicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
             if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
-                final Long userOfficeId = this.context.authenticatedUser().getOffice().getId();
-                final List<Long> bookOfficeIds = this.crossBranchClientAccessReadService.retrieveAccessibleBookOfficeIds(userOfficeId);
-                if (!bookOfficeIds.isEmpty()) {
-                    visibilityPredicates.add(o.get("id").in(bookOfficeIds));
-                }
+                visibilityPredicates.add(cb.isTrue(cb.literal(true)));
+            } else {
+                visibilityPredicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
             }
             predicates.add(cb.or(visibilityPredicates.toArray(new Predicate[0])));
 

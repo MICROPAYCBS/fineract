@@ -28,10 +28,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
+import org.eclipse.persistence.annotations.Customizer;
 
 @Entity
 @Table(name = "m_office_extension")
 @AttributeOverride(name = "id", column = @Column(name = "office_id"))
+@Customizer(OfficeExtensionCustomizer.class)
 @Getter
 @Setter
 @NoArgsConstructor

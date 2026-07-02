@@ -16,19 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.interbranch.service;
+package org.apache.fineract.organisation.office.domain;
 
-import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.apache.fineract.infrastructure.interbranch.domain.OfficeServicingAccess;
+import org.eclipse.persistence.config.DescriptorCustomizer;
+import org.eclipse.persistence.descriptors.ClassDescriptor;
 
-public interface OfficeServicingAccessWritePlatformService {
+/**
+ * office_id is an assigned primary key (same as m_office.id), not database-generated.
+ */
+public class OfficeExtensionCustomizer implements DescriptorCustomizer {
 
-    CommandProcessingResult createOfficeServicingAccess(JsonCommand command);
-
-    CommandProcessingResult updateOfficeServicingAccess(Long accessId, JsonCommand command);
-
-    CommandProcessingResult deleteOfficeServicingAccess(Long accessId, JsonCommand command);
-
-    OfficeServicingAccess findWithNotFoundDetection(Long accessId);
+    @Override
+    public void customize(final ClassDescriptor descriptor) {
+        descriptor.setSequenceNumberField(null);
+        descriptor.setSequenceNumberName(null);
+    }
 }

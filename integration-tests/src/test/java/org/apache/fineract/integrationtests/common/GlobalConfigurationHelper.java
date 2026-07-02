@@ -34,6 +34,7 @@ import org.apache.fineract.client.models.PutGlobalConfigurationsResponse;
 import org.apache.fineract.client.util.Calls;
 import org.apache.fineract.client.util.JSON;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
+import org.apache.fineract.infrastructure.interbranch.api.CrossBranchServicingConstants;
 import org.junit.jupiter.api.Assertions;
 
 @SuppressWarnings({ "unused", "rawtypes" })
@@ -693,6 +694,13 @@ public class GlobalConfigurationHelper {
         retainedEarningUsedByReportName.put("trapDoor", false);
         retainedEarningUsedByReportName.put("string_value", "Trial Balance Summary Report with Asset Owner");
         defaults.add(retainedEarningUsedByReportName);
+
+        HashMap<String, Object> enableCrossBranchServicing = new HashMap<>();
+        enableCrossBranchServicing.put("name", CrossBranchServicingConstants.ENABLE_CROSS_BRANCH_SERVICING);
+        enableCrossBranchServicing.put("value", 0L);
+        enableCrossBranchServicing.put("enabled", true);
+        enableCrossBranchServicing.put("trapDoor", false);
+        defaults.add(enableCrossBranchServicing);
 
         return defaults;
     }

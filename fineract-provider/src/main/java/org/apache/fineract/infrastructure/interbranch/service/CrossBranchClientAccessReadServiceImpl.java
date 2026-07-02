@@ -18,14 +18,9 @@
  */
 package org.apache.fineract.infrastructure.interbranch.service;
 
-import java.time.LocalDate;
-import java.util.Collections;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.interbranch.api.CrossBranchServicingConstants;
-import org.apache.fineract.infrastructure.interbranch.domain.OfficeServicingAccessRepository;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.context.annotation.Primary;
@@ -40,7 +35,6 @@ public class CrossBranchClientAccessReadServiceImpl implements CrossBranchClient
 
     private final ConfigurationDomainService configurationDomainService;
     private final PlatformSecurityContext context;
-    private final OfficeServicingAccessRepository officeServicingAccessRepository;
 
     @Override
     public boolean isCrossBranchClientAccessEnabledForCurrentUser() {
@@ -49,26 +43,5 @@ public class CrossBranchClientAccessReadServiceImpl implements CrossBranchClient
         }
         final AppUser user = this.context.authenticatedUser();
         return user.hasSpecificPermissionTo(CrossBranchServicingConstants.VIEW_OTHER_BRANCH_CLIENT_PERMISSION);
-    }
-
-    @Override
-    public List<Long> retrieveAccessibleBookOfficeIds(final Long servicingOfficeId) {
-        if (servicingOfficeId == null) {
-            return Collections.emptyList();
-        }
-        final LocalDate onDate = DateUtils.getBusinessLocalDate();
-        return this.officeServicingAccessRepository.findAccessibleBookOfficeIds(servicingOfficeId, onDate);
-    }
-
-    @Override
-    public List<Long> accessibleBookOfficeIdsForCurrentUser() {
-        if (!this.configurationDomainService.isCrossBranchServicingEnabled()) {
-            return Collections.emptyList();
-        }
-        final AppUser user = this.context.getAuthenticatedUserIfPresent();
-        if (user == null || !user.hasSpecificPermissionTo(CrossBranchServicingConstants.VIEW_OTHER_BRANCH_CLIENT_PERMISSION)) {
-            return Collections.emptyList();
-        }
-        return retrieveAccessibleBookOfficeIds(user.getOffice().getId());
     }
 }
