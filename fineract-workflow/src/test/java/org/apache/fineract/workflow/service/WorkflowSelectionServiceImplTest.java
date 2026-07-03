@@ -20,6 +20,8 @@ package org.apache.fineract.workflow.service;
 
 import static org.apache.fineract.workflow.WorkflowTestFixtures.definition;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -40,6 +42,9 @@ class WorkflowSelectionServiceImplTest {
     @Mock
     private WorkflowDefinitionRepository repository;
 
+    @Mock
+    private WorkflowTenantConfiguration tenantConfiguration;
+
     @InjectMocks
     private WorkflowSelectionServiceImpl selectionService;
 
@@ -52,6 +57,17 @@ class WorkflowSelectionServiceImplTest {
         // repository's ORDER BY priority DESC.
         largeLoanWorkflow = definition("LOAN", "Large Loan Approval", 20, "UGX", new BigDecimal("5000000"), null);
         defaultWorkflow = definition("LOAN", "Standard Loan Approval", 10, null, null, null);
+        lenient().when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
+    }
+
+    @Test
+    void noWorkflowIsSelectedWhenTenantConfigurationIsDisabled() {
+        when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(false);
+
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("7000000"), "UGX");
+
+        assertThat(selected).isEmpty();
+        verifyNoInteractions(repository);
     }
 
     @Test

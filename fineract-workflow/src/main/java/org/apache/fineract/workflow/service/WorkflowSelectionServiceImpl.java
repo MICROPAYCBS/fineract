@@ -37,9 +37,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkflowSelectionServiceImpl implements WorkflowSelectionService {
 
     private final WorkflowDefinitionRepository workflowDefinitionRepository;
+    private final WorkflowTenantConfiguration tenantConfiguration;
 
     @Override
     public Optional<WorkflowDefinition> selectWorkflow(final String moduleName, final BigDecimal amount, final String currencyCode) {
+        // Tenant-level opt-in: when the enable-approval-workflows global configuration is disabled, no workflow
+        // governs any transaction of this tenant, even if active definitions exist.
+        if (!this.tenantConfiguration.isApprovalWorkflowsEnabled()) {
+            return Optional.empty();
+        }
+
         final List<WorkflowDefinition> activeDefinitions = this.workflowDefinitionRepository
                 .findActiveByModuleNameOrderByPriorityDesc(moduleName);
 
