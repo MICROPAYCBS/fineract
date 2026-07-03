@@ -39,6 +39,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_DISCOUNTFEE = "DISCOUNTFEE";
     public static final String ACTION_DISCOUNTFEEADJUSTMENT = "DISCOUNTFEEADJUSTMENT";
     public static final String ACTION_ACTIVATE = "ACTIVATE";
+    public static final String ACTION_DEACTIVATE = "DEACTIVATE";
     public static final String ACTION_CLOSE = "CLOSE";
     public static final String ACTION_WITHDRAW = "WITHDRAW";
     public static final String ACTION_REACTIVATE = "REACTIVATE";
@@ -262,6 +263,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_DELINQUENCY_ACTION = "DELINQUENCY_ACTION";
     public static final String ENTITY_LOAN_AVAILABLE_DISBURSEMENT_AMOUNT = "LOAN_AVAILABLE_DISBURSEMENT_AMOUNT";
     public static final String ENTITY_LOAN_ORIGINATOR = "LOAN_ORIGINATOR";
+    public static final String ENTITY_WORKFLOW_DEFINITION = "WORKFLOW_DEFINITION";
     public static final String ENTITY_WORKINGDAYS = "WORKINGDAYS";
     public static final String ENTITY_SHAREPRODUCT = "SHAREPRODUCT";
     public static final String ENTITY_INTEREST_PAUSE = "INTEREST_PAUSE";

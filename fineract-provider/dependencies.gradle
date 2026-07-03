@@ -42,6 +42,7 @@ dependencies {
     implementation(project(path: ':fineract-report'))
     implementation(project(path: ':fineract-tax'))
     implementation(project(path: ':fineract-loan-origination'))
+    implementation(project(path: ':fineract-workflow'))
     implementation(project(path: ':fineract-security'))
     implementation(project(path: ':fineract-working-capital-loan'))
     implementation(project(path: ':fineract-mix'))

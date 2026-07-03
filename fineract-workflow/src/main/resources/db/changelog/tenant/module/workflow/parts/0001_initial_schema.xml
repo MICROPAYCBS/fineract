@@ -1,0 +1,592 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <!-- Create m_workflow_definition table - MySQL -->
+    <changeSet id="workflow-001" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_definition"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_definition">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="module_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="min_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create m_workflow_definition table - PostgreSQL -->
+    <changeSet id="workflow-001" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_definition"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_definition">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="module_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="min_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Audit FKs and constraints for m_workflow_definition -->
+    <changeSet id="workflow-002" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_definition"/>
+        </preConditions>
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_workflow_definition"
+                                 constraintName="FK_workflow_definition_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_workflow_definition"
+                                 constraintName="FK_workflow_definition_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addUniqueConstraint tableName="m_workflow_definition" columnNames="module_name, name"
+                             constraintName="UQ_workflow_definition_module_name"/>
+    </changeSet>
+
+    <changeSet id="workflow-003" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_definition"/>
+        </preConditions>
+        <createIndex tableName="m_workflow_definition" indexName="idx_workflow_definition_module_status">
+            <column name="module_name"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Create m_workflow_stage table - MySQL -->
+    <changeSet id="workflow-004" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_stage"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_stage">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_definition_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="stage_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="required_approvals" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_policy" type="VARCHAR(20)" defaultValue="ANY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_threshold" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="expiry_period_unit" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="expiry_period_value" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="escalation_enabled" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="escalation_target_stage_code" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="allow_cross_branch_access" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="require_distinct_approver" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create m_workflow_stage table - PostgreSQL -->
+    <changeSet id="workflow-004" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_stage"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_stage">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_definition_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="stage_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="required_approvals" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_policy" type="VARCHAR(20)" defaultValue="ANY">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rejection_threshold" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="expiry_period_unit" type="VARCHAR(20)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="expiry_period_value" type="INT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="escalation_enabled" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="escalation_target_stage_code" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="allow_cross_branch_access" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="require_distinct_approver" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="workflow-005" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_stage"/>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="m_workflow_stage" baseColumnNames="workflow_definition_id"
+                                 referencedTableName="m_workflow_definition" referencedColumnNames="id"
+                                 constraintName="FK_workflow_stage_definition" onDelete="CASCADE" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_workflow_stage"
+                                 constraintName="FK_workflow_stage_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_workflow_stage"
+                                 constraintName="FK_workflow_stage_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addUniqueConstraint tableName="m_workflow_stage" columnNames="workflow_definition_id, stage_code"
+                             constraintName="UQ_workflow_stage_definition_code"/>
+    </changeSet>
+
+    <!-- Create m_workflow_stage_participant table - MySQL -->
+    <changeSet id="workflow-006" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_stage_participant"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_stage_participant">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approval_limit_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="approval_limit_currency" type="VARCHAR(3)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create m_workflow_stage_participant table - PostgreSQL -->
+    <changeSet id="workflow-006" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_stage_participant"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_stage_participant">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approval_limit_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="approval_limit_currency" type="VARCHAR(3)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="workflow-007" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_stage_participant"/>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="m_workflow_stage_participant" baseColumnNames="workflow_stage_id"
+                                 referencedTableName="m_workflow_stage" referencedColumnNames="id"
+                                 constraintName="FK_workflow_participant_stage" onDelete="CASCADE" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="m_workflow_stage_participant" baseColumnNames="role_id"
+                                 referencedTableName="m_role" referencedColumnNames="id"
+                                 constraintName="FK_workflow_participant_role" onDelete="RESTRICT" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_workflow_stage_participant"
+                                 constraintName="FK_workflow_participant_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_workflow_stage_participant"
+                                 constraintName="FK_workflow_participant_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+    </changeSet>
+
+    <!-- Create m_workflow_stage_action table - MySQL -->
+    <changeSet id="workflow-008" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_stage_action"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_stage_action">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create m_workflow_stage_action table - PostgreSQL -->
+    <changeSet id="workflow-008" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_stage_action"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_stage_action">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="workflow-009" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_stage_action"/>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="m_workflow_stage_action" baseColumnNames="workflow_stage_id"
+                                 referencedTableName="m_workflow_stage" referencedColumnNames="id"
+                                 constraintName="FK_workflow_action_stage" onDelete="CASCADE" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_workflow_stage_action"
+                                 constraintName="FK_workflow_action_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_workflow_stage_action"
+                                 constraintName="FK_workflow_action_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addUniqueConstraint tableName="m_workflow_stage_action" columnNames="workflow_stage_id, action"
+                             constraintName="UQ_workflow_stage_action"/>
+    </changeSet>
+
+    <!-- Create m_workflow_transition table - MySQL -->
+    <changeSet id="workflow-010" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_transition"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_transition">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_definition_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sequence_no" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="DATETIME">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Create m_workflow_transition table - PostgreSQL -->
+    <changeSet id="workflow-010" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_workflow_transition"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_workflow_transition">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="workflow_definition_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_stage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sequence_no" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="workflow-011" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_transition"/>
+        </preConditions>
+        <addForeignKeyConstraint baseTableName="m_workflow_transition" baseColumnNames="workflow_definition_id"
+                                 referencedTableName="m_workflow_definition" referencedColumnNames="id"
+                                 constraintName="FK_workflow_transition_definition" onDelete="CASCADE" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="m_workflow_transition" baseColumnNames="from_stage_id"
+                                 referencedTableName="m_workflow_stage" referencedColumnNames="id"
+                                 constraintName="FK_workflow_transition_from_stage" onDelete="CASCADE" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseTableName="m_workflow_transition" baseColumnNames="to_stage_id"
+                                 referencedTableName="m_workflow_stage" referencedColumnNames="id"
+                                 constraintName="FK_workflow_transition_to_stage" onDelete="CASCADE" onUpdate="RESTRICT"/>
+        <addForeignKeyConstraint baseColumnNames="created_by" baseTableName="m_workflow_transition"
+                                 constraintName="FK_workflow_transition_created_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+        <addForeignKeyConstraint baseColumnNames="last_modified_by" baseTableName="m_workflow_transition"
+                                 constraintName="FK_workflow_transition_modified_by" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT"
+                                 referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
+    </changeSet>
+
+</databaseChangeLog>

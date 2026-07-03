@@ -58,6 +58,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREATESCHEDULEEXCEPTIONS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREATE_DIVIDEND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREDITBALANCEREFUND;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEACTIVATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEACTIVATEOVERDUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEFINEOPENINGBALANCE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETE;
@@ -162,16 +163,21 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CENTER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTIDENTIFIER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTTITLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENT_COLLATERAL_PRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CODE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CODEVALUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLATERAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLECTIONSHEET;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COMPLIANCEPROFILE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONFIGURATION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_LOANPRODUCT_MAPPING;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITREPORT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DATATABLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_ACTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_BUCKET;
@@ -186,17 +192,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EXTERNAL_ASSET_OWNER_LOAN_PRODUCT_ATTRIBUTE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FAMILYMEMBERS;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COMPLIANCEPROFILE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTTITLE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INDUSTRY;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SUBINDUSTRY;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTERBRANCHRULE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITPRODUCT;
@@ -209,7 +204,11 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GSIMACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GUARANTOR;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_HOLIDAY;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INDUSTRY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INLINE_JOB;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTERBRANCHRULE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTEREST_PAUSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOURNALENTRY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LIKELIHOOD;
@@ -239,10 +238,12 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNTCHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SHAREPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMSCAMPAIGN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_STANDINGINSTRUCTION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SUBINDUSTRY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SURVEY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TAXCOMPONENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TAXGROUP;
@@ -251,6 +252,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WAIVECHARGE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKFLOW_DEFINITION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOAN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANCHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANPRODUCT;
@@ -4312,6 +4314,45 @@ public class CommandWrapperBuilder {
         this.loanId = loanId;
         this.subentityId = originatorId;
         this.href = "/loans/" + loanId + "/originators/" + originatorId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createWorkflowDefinition() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_WORKFLOW_DEFINITION;
+        this.href = "/workflow-definitions";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateWorkflowDefinition(final Long definitionId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_WORKFLOW_DEFINITION;
+        this.entityId = definitionId;
+        this.href = "/workflow-definitions/" + definitionId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteWorkflowDefinition(final Long definitionId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_WORKFLOW_DEFINITION;
+        this.entityId = definitionId;
+        this.href = "/workflow-definitions/" + definitionId;
+        return this;
+    }
+
+    public CommandWrapperBuilder activateWorkflowDefinition(final Long definitionId) {
+        this.actionName = ACTION_ACTIVATE;
+        this.entityName = ENTITY_WORKFLOW_DEFINITION;
+        this.entityId = definitionId;
+        this.href = "/workflow-definitions/" + definitionId + "?command=activate";
+        return this;
+    }
+
+    public CommandWrapperBuilder deactivateWorkflowDefinition(final Long definitionId) {
+        this.actionName = ACTION_DEACTIVATE;
+        this.entityName = ENTITY_WORKFLOW_DEFINITION;
+        this.entityId = definitionId;
+        this.href = "/workflow-definitions/" + definitionId + "?command=deactivate";
         return this;
     }
 

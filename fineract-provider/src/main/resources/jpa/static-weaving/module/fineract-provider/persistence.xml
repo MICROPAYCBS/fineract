@@ -168,6 +168,13 @@
         <class>org.apache.fineract.portfolio.loanorigination.domain.LoanOriginator</class>
         <class>org.apache.fineract.portfolio.loanorigination.domain.LoanOriginatorMapping</class>
 
+        <!--  fineract-workflow module: -->
+        <class>org.apache.fineract.workflow.domain.WorkflowDefinition</class>
+        <class>org.apache.fineract.workflow.domain.WorkflowStage</class>
+        <class>org.apache.fineract.workflow.domain.WorkflowStageParticipant</class>
+        <class>org.apache.fineract.workflow.domain.WorkflowStageAction</class>
+        <class>org.apache.fineract.workflow.domain.WorkflowTransition</class>
+
         <!--  fineract-progressive-loan module: -->
         <class>org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeBalance</class>
         <class>org.apache.fineract.portfolio.loanaccount.domain.LoanCapitalizedIncomeBalance</class>
