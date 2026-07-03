@@ -34,6 +34,7 @@ import org.apache.fineract.organisation.teller.domain.CashierRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransactionRepository;
 import org.apache.fineract.organisation.teller.domain.TellerRepositoryWrapper;
 import org.apache.fineract.organisation.teller.serialization.TellerCommandFromApiJsonDeserializer;
+import org.apache.fineract.organisation.teller.service.CashierAccessReadService;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformService;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformServiceImpl;
 import org.apache.fineract.organisation.teller.service.TellerWritePlatformService;
@@ -51,9 +52,9 @@ public class OrganisationTellerConfiguration {
     public TellerManagementReadPlatformService tellerManagementReadPlatformService(JdbcTemplate jdbcTemplate,
             PlatformSecurityContext context, OfficeReadPlatformService officeReadPlatformService, StaffReadService staffReadPlatformService,
             CurrencyReadPlatformService currencyReadPlatformService, DatabaseSpecificSQLGenerator sqlGenerator,
-            PaginationHelper paginationHelper, SqlValidator sqlValidator) {
+            PaginationHelper paginationHelper, SqlValidator sqlValidator, CashierAccessReadService cashierAccessReadService) {
         return new TellerManagementReadPlatformServiceImpl(jdbcTemplate, context, officeReadPlatformService, staffReadPlatformService,
-                currencyReadPlatformService, sqlGenerator, paginationHelper, sqlValidator);
+                currencyReadPlatformService, sqlGenerator, paginationHelper, sqlValidator, cashierAccessReadService);
     }
 
     @Bean

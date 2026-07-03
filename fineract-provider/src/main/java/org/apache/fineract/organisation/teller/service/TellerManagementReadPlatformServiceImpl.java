@@ -49,6 +49,7 @@ import org.apache.fineract.organisation.teller.data.TellerJournalData;
 import org.apache.fineract.organisation.teller.data.TellerTransactionData;
 import org.apache.fineract.organisation.teller.domain.CashierTxnType;
 import org.apache.fineract.organisation.teller.domain.TellerStatus;
+import org.apache.fineract.organisation.teller.exception.CashierNotFoundException;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -67,6 +68,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
     private final DatabaseSpecificSQLGenerator sqlGenerator;
     private final PaginationHelper paginationHelper;
     private final SqlValidator sqlValidator;
+    private final CashierAccessReadService cashierAccessReadService;
 
     private static final class TellerMapper implements RowMapper<TellerData> {
 
@@ -117,6 +119,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Override
     public TellerData findTeller(final Long tellerId) {
+        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
 
         try {
             final TellerMapper tm = new TellerMapper();
@@ -140,20 +143,31 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Override
     public Collection<CashierData> retrieveCashiersForTellers(final Long tellerId) {
+        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
+
         final CashierMapper cm = new CashierMapper();
-        String sql = "select " + cm.schema() + " where teller_id = ?";
+        final Long staffIdFilter = this.cashierAccessReadService.selfReadStaffIdFilterOrNull();
+        if (staffIdFilter != null) {
+            final String sql = "select " + cm.schema() + " where c.teller_id = ? and c.staff_id = ?";
+            return this.jdbcTemplate.query(sql, cm, tellerId, staffIdFilter); // NOSONAR
+        }
+        final String sql = "select " + cm.schema() + " where c.teller_id = ?";
         return this.jdbcTemplate.query(sql, cm, tellerId); // NOSONAR
     }
 
     @Override
     public CashierData findCashier(Long cashierId) {
+        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
+
         try {
             final CashierMapper cm = new CashierMapper();
             final String sql = "select " + cm.schema() + " where c.id = ?";
 
-            return this.jdbcTemplate.queryForObject(sql, cm, new Object[] { cashierId }); // NOSONAR
+            final CashierData cashierData = this.jdbcTemplate.queryForObject(sql, cm, new Object[] { cashierId }); // NOSONAR
+            this.cashierAccessReadService.validateCanReadCashier(cashierData.getStaffId(), cashierId);
+            return cashierData;
         } catch (final EmptyResultDataAccessException e) {
-            throw new StaffNotFoundException(cashierId, e);
+            throw new CashierNotFoundException(cashierId);
         }
     }
 
@@ -189,6 +203,8 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Cacheable(value = "tellers", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier().concat(#root.target.context.authenticatedUser().getOffice().getHierarchy()+'of')")
     public Collection<TellerData> retrieveAllTellers(final boolean includeAllTellers) {
+        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
+
         final AppUser currentUser = this.context.authenticatedUser();
         final String hierarchy = currentUser.getOffice().getHierarchy();
         String hierarchySearchString = null;
@@ -205,6 +221,8 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Override
     public CashierData retrieveCashierTemplate(Long officeId, Long tellerId, boolean staffInSelectedOfficeOnly) {
+        this.cashierAccessReadService.validateCanAccessCashierAdminRead();
+
         final Long defaultOfficeId = defaultToUsersOfficeIfNull(officeId);
 
         final OfficeData officeData = this.officeReadPlatformService.retrieveOffice(defaultOfficeId);
@@ -270,6 +288,8 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
     public CashierTransactionsWithSummaryData retrieveCashierTransactionsWithSummary(final Long cashierId, final boolean includeAllTellers,
             final LocalDate fromDate, final LocalDate toDate, final String currencyCode, final SearchParameters searchParameters) {
 
+        findCashier(cashierId);
+
         sqlValidator.validate(searchParameters.getOrderBy());
         sqlValidator.validate(searchParameters.getSortOrder());
         final String nextDay = sqlGenerator.incrementDateByOneDay("c.end_date");
@@ -314,6 +334,8 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
     @Override
     public Page<CashierTransactionData> retrieveCashierTransactions(final Long cashierId, final boolean includeAllTellers,
             final LocalDate fromDate, final LocalDate toDate, final String currencyCode, final SearchParameters searchParameters) {
+
+        findCashier(cashierId);
 
         sqlValidator.validate(searchParameters.getOrderBy());
         sqlValidator.validate(searchParameters.getSortOrder());

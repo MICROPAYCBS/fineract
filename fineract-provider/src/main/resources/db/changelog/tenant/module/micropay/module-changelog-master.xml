@@ -80,4 +80,5 @@
   <include relativeToChangelogFile="true" file="parts/3055_enable_cross_branch_servicing_by_default.xml"/>
   <include relativeToChangelogFile="true" file="parts/3056_seed_inter_branch_recon_gl_account.xml"/>
   <include relativeToChangelogFile="true" file="parts/3057_drop_office_servicing_access.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3058_add_cashier_read_permissions.xml"/>
 </databaseChangeLog>
