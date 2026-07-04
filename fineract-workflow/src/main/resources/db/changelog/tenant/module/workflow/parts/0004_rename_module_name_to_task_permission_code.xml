@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Rename workflow definition anchor from module_name to task_permission_code.
+  Incremental follow-up to 0001_initial_schema.xml — do not amend the original changesets.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="workflow-012-drop-module-name-constraints" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_workflow_definition"/>
+                <columnExists tableName="m_workflow_definition" columnName="module_name"/>
+            </and>
+        </preConditions>
+        <dropUniqueConstraint tableName="m_workflow_definition" constraintName="UQ_workflow_definition_module_name"/>
+        <dropIndex tableName="m_workflow_definition" indexName="idx_workflow_definition_module_status"/>
+    </changeSet>
+
+    <changeSet id="workflow-013-rename-module-name-column" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_workflow_definition"/>
+                <columnExists tableName="m_workflow_definition" columnName="module_name"/>
+                <not>
+                    <columnExists tableName="m_workflow_definition" columnName="task_permission_code"/>
+                </not>
+            </and>
+        </preConditions>
+        <renameColumn tableName="m_workflow_definition" oldColumnName="module_name" newColumnName="task_permission_code"
+                      columnDataType="VARCHAR(100)"/>
+    </changeSet>
+
+    <changeSet id="workflow-014-add-task-permission-unique-constraint" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_workflow_definition"/>
+                <columnExists tableName="m_workflow_definition" columnName="task_permission_code"/>
+                <not>
+                    <uniqueConstraintExists tableName="m_workflow_definition"
+                                            constraintName="UQ_workflow_definition_task_permission_code"/>
+                </not>
+            </and>
+        </preConditions>
+        <addUniqueConstraint tableName="m_workflow_definition" columnNames="task_permission_code, name"
+                             constraintName="UQ_workflow_definition_task_permission_code"/>
+    </changeSet>
+
+    <changeSet id="workflow-015-add-task-permission-index" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_workflow_definition"/>
+                <columnExists tableName="m_workflow_definition" columnName="task_permission_code"/>
+                <not>
+                    <indexExists tableName="m_workflow_definition" indexName="idx_workflow_definition_task_status"/>
+                </not>
+            </and>
+        </preConditions>
+        <createIndex tableName="m_workflow_definition" indexName="idx_workflow_definition_task_status">
+            <column name="task_permission_code"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

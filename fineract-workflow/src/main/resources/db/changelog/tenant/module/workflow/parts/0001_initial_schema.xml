@@ -34,7 +34,7 @@
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="task_permission_code" type="VARCHAR(100)">
+            <column name="module_name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="name" type="VARCHAR(255)">
@@ -84,7 +84,7 @@
             <column name="id" type="BIGINT" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-            <column name="task_permission_code" type="VARCHAR(100)">
+            <column name="module_name" type="VARCHAR(100)">
                 <constraints nullable="false"/>
             </column>
             <column name="name" type="VARCHAR(255)">
@@ -136,16 +136,16 @@
                                  constraintName="FK_workflow_definition_modified_by" deferrable="false" initiallyDeferred="false"
                                  onDelete="RESTRICT" onUpdate="RESTRICT"
                                  referencedColumnNames="id" referencedTableName="m_appuser" validate="true"/>
-        <addUniqueConstraint tableName="m_workflow_definition" columnNames="task_permission_code, name"
-                             constraintName="UQ_workflow_definition_task_permission_code"/>
+        <addUniqueConstraint tableName="m_workflow_definition" columnNames="module_name, name"
+                             constraintName="UQ_workflow_definition_module_name"/>
     </changeSet>
 
     <changeSet id="workflow-003" author="fineract">
         <preConditions onFail="MARK_RAN">
             <tableExists tableName="m_workflow_definition"/>
         </preConditions>
-        <createIndex tableName="m_workflow_definition" indexName="idx_workflow_definition_task_status">
-            <column name="task_permission_code"/>
+        <createIndex tableName="m_workflow_definition" indexName="idx_workflow_definition_module_status">
+            <column name="module_name"/>
             <column name="status"/>
         </createIndex>
     </changeSet>
