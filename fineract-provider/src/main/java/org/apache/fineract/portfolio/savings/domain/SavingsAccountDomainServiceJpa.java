@@ -41,12 +41,14 @@ import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepos
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.organisation.office.domain.Office;
+import org.apache.fineract.organisation.teller.data.CashierTransactionDataValidator;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
+import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -63,6 +65,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     private final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
+    private final CashierTransactionDataValidator cashierTransactionDataValidator;
 
     @Autowired
     public SavingsAccountDomainServiceJpa(final SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -72,7 +75,8 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final ConfigurationDomainService configurationDomainService, final PlatformSecurityContext context,
             final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
             final BusinessEventNotifierService businessEventNotifierService,
-            final CrossBranchTransactionAccessService crossBranchTransactionAccessService) {
+            final CrossBranchTransactionAccessService crossBranchTransactionAccessService,
+            final CashierTransactionDataValidator cashierTransactionDataValidator) {
         this.savingsAccountRepository = savingsAccountRepository;
         this.savingsAccountTransactionRepository = savingsAccountTransactionRepository;
         this.applicationCurrencyRepositoryWrapper = applicationCurrencyRepositoryWrapper;
@@ -82,6 +86,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         this.depositAccountOnHoldTransactionRepository = depositAccountOnHoldTransactionRepository;
         this.businessEventNotifierService = businessEventNotifierService;
         this.crossBranchTransactionAccessService = crossBranchTransactionAccessService;
+        this.cashierTransactionDataValidator = cashierTransactionDataValidator;
     }
 
     @Transactional
@@ -89,7 +94,9 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill) {
-        context.authenticatedUser();
+        final AppUser currentUser = context.authenticatedUser();
+        validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, transactionBooleanValues.isAccountTransfer(),
+                transactionBooleanValues.isRegularTransaction());
         account.validateForAccountBlock();
         account.validateForDebitBlock();
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -171,7 +178,8 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final boolean isAccountTransfer, final boolean isRegularTransaction,
             final SavingsAccountTransactionType savingsAccountTransactionType, final boolean backdatedTxnsAllowedTill) {
-        context.authenticatedUser();
+        final AppUser currentUser = context.authenticatedUser();
+        validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, isAccountTransfer, isRegularTransaction);
         account.validateForAccountBlock();
         account.validateForCreditBlock();
 
@@ -345,5 +353,13 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, false, backdatedTxnsAllowedTill);
 
         return reversal;
+    }
+
+    private void validateCashierForCashTransactionIfEnabled(final AppUser user, final PaymentDetail paymentDetail,
+            final boolean isAccountTransfer, final boolean isRegularTransaction) {
+        if (isAccountTransfer || !isRegularTransaction) {
+            return;
+        }
+        this.cashierTransactionDataValidator.validateActiveCashierRequiredForCashTransaction(user, paymentDetail);
     }
 }

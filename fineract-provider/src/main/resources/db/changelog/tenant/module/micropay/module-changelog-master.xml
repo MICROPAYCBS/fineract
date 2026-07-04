@@ -83,4 +83,6 @@
   <include relativeToChangelogFile="true" file="parts/3058_add_cashier_read_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/3059_add_organisation_display_name_configuration.xml"/>
   <include relativeToChangelogFile="true" file="parts/3060_fix_loan_purpose_report_parameter_default.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3061_add_prevent_cashier_overdraw_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3062_add_require_cashier_for_cash_transactions_configuration.xml"/>
 </databaseChangeLog>

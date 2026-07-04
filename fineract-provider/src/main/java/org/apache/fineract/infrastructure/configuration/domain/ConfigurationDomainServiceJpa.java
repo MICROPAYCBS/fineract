@@ -503,6 +503,20 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public boolean isPreventCashierOverdrawEnabled() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.PREVENT_CASHIER_OVERDRAW);
+        return property.isEnabled();
+    }
+
+    @Override
+    public boolean isRequireCashierForCashTransactionsEnabled() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS);
+        return property.isEnabled();
+    }
+
+    @Override
     public Integer retrieveSessionIdleTimeoutMinutes() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);

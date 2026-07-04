@@ -140,6 +140,10 @@ public interface ConfigurationDomainService {
 
     boolean isCrossBranchServicingEnabled();
 
+    boolean isPreventCashierOverdrawEnabled();
+
+    boolean isRequireCashierForCashTransactionsEnabled();
+
     Integer retrieveSessionIdleTimeoutMinutes();
 
     Integer retrieveSessionIdleWarningSeconds();

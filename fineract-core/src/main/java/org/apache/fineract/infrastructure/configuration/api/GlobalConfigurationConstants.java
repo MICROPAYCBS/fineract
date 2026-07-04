@@ -99,6 +99,8 @@ public final class GlobalConfigurationConstants {
     public static final String SESSION_IDLE_TIMEOUT_MINUTES = "session-idle-timeout-minutes";
     public static final String SESSION_IDLE_WARNING_SECONDS = "session-idle-warning-seconds";
     public static final String ORGANISATION_DISPLAY_NAME = "organisation-display-name";
+    public static final String PREVENT_CASHIER_OVERDRAW = "prevent-cashier-overdraw";
+    public static final String REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS = "require-cashier-for-cash-transactions";
 
     private GlobalConfigurationConstants() {}
 }
