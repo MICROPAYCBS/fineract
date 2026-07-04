@@ -16,26 +16,18 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.workflow.data;
+package org.apache.fineract.workflow.domain;
 
-import java.math.BigDecimal;
-import java.util.List;
-import lombok.Builder;
-import lombok.Getter;
+import java.util.Optional;
+import org.apache.fineract.useradministration.domain.Permission;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Getter
-@Builder
-public class WorkflowDefinitionData {
+/**
+ * Module-local repository for {@link Permission}, used to validate that a workflow definition's task code references an
+ * existing maker-checker task. The platform's PermissionRepository lives in fineract-provider which depends on this
+ * module, so it cannot be referenced from here without creating a circular dependency.
+ */
+public interface WorkflowPermissionRepository extends JpaRepository<Permission, Long> {
 
-    private final Long id;
-    private final String taskPermissionCode;
-    private final String name;
-    private final String description;
-    private final String status;
-    private final Integer priority;
-    private final String currencyCode;
-    private final BigDecimal minAmount;
-    private final BigDecimal maxAmount;
-    private final List<WorkflowStageData> stages;
-    private final List<WorkflowTransitionData> transitions;
+    Optional<Permission> findOneByCode(String code);
 }

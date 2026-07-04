@@ -30,9 +30,12 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.useradministration.domain.Permission;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionRepository;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionStatus;
+import org.apache.fineract.workflow.domain.WorkflowPermissionRepository;
+import org.apache.fineract.workflow.exception.WorkflowConfigurationException;
 import org.apache.fineract.workflow.exception.WorkflowDefinitionNotFoundException;
 import org.apache.fineract.workflow.exception.WorkflowDefinitionStateException;
 import org.apache.fineract.workflow.serialization.WorkflowDefinitionDataValidator;
@@ -49,6 +52,9 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
     private WorkflowDefinitionRepository repository;
 
     @Mock
+    private WorkflowPermissionRepository permissionRepository;
+
+    @Mock
     private WorkflowDefinitionDataValidator dataValidator;
 
     @Mock
@@ -56,6 +62,9 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
 
     @Mock
     private WorkflowDefinitionStructureValidator structureValidator;
+
+    @Mock
+    private Permission permission;
 
     @InjectMocks
     private WorkflowDefinitionWritePlatformServiceImpl writeService;
@@ -89,13 +98,41 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
         final WorkflowDefinition definition = linearThreeStageDefinition();
         definition.setId(7L);
         when(repository.findById(7L)).thenReturn(Optional.of(definition));
-        when(repository.findByModuleNameAndStatus(anyString(), any())).thenReturn(List.of());
+        when(permissionRepository.findOneByCode(definition.getTaskPermissionCode())).thenReturn(Optional.of(permission));
+        when(permission.hasMakerCheckerEnabled()).thenReturn(true);
+        when(repository.findByTaskPermissionCodeAndStatus(anyString(), any())).thenReturn(List.of());
 
         writeService.activate(7L);
 
         verify(structureValidator).validateForActivation(definition);
         verify(structureValidator).validateNoAmbiguousSelection(definition, List.of());
         assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.ACTIVE);
+    }
+
+    @Test
+    void activationIsRejectedWhenMakerCheckerIsDisabledForTask() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(permissionRepository.findOneByCode(definition.getTaskPermissionCode())).thenReturn(Optional.of(permission));
+        when(permission.hasMakerCheckerEnabled()).thenReturn(false);
+
+        assertThatThrownBy(() -> writeService.activate(7L)) //
+                .isInstanceOf(WorkflowConfigurationException.class) //
+                .hasMessageContaining("Maker-checker is not enabled");
+        assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.DRAFT);
+    }
+
+    @Test
+    void activationIsRejectedWhenTaskDoesNotExist() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(permissionRepository.findOneByCode(definition.getTaskPermissionCode())).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> writeService.activate(7L)) //
+                .isInstanceOf(WorkflowConfigurationException.class) //
+                .hasMessageContaining("does not match any maker-checker task");
     }
 
     @Test

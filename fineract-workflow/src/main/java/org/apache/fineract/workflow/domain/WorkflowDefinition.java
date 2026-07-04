@@ -36,9 +36,9 @@ import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 
 /**
- * Master template for a configurable approval workflow. A definition belongs to a CBS module (e.g. LOAN) and may carry
- * amount-based selection criteria so that several active workflows can coexist for the same module (e.g. large loans
- * follow a longer approval chain).
+ * Master template for a configurable approval workflow. A definition is anchored to a maker-checker task - a Fineract
+ * permission code such as CREATE_LOAN - and may carry amount-based selection criteria so that several active workflows
+ * can coexist for the same task (e.g. large loans follow a longer approval chain).
  */
 @Getter
 @Setter
@@ -47,8 +47,8 @@ import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDa
 @Table(name = "m_workflow_definition")
 public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
-    @Column(name = "module_name", nullable = false, length = 100)
-    private String moduleName;
+    @Column(name = "task_permission_code", nullable = false, length = 100)
+    private String taskPermissionCode;
 
     @Column(name = "name", nullable = false, length = 255)
     private String name;
@@ -80,10 +80,10 @@ public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<L
     @OrderBy("sequenceNo")
     private List<WorkflowTransition> transitions = new ArrayList<>();
 
-    public static WorkflowDefinition create(final String moduleName, final String name, final String description, final Integer priority,
-            final String currencyCode, final BigDecimal minAmount, final BigDecimal maxAmount) {
+    public static WorkflowDefinition create(final String taskPermissionCode, final String name, final String description,
+            final Integer priority, final String currencyCode, final BigDecimal minAmount, final BigDecimal maxAmount) {
         final WorkflowDefinition definition = new WorkflowDefinition();
-        definition.setModuleName(moduleName);
+        definition.setTaskPermissionCode(taskPermissionCode);
         definition.setName(name);
         definition.setDescription(description);
         definition.setStatus(WorkflowDefinitionStatus.DRAFT);

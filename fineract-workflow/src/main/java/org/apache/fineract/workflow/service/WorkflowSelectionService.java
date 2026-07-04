@@ -23,11 +23,11 @@ import java.util.Optional;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 
 /**
- * Selects the workflow which governs a business transaction. Selection considers only ACTIVE definitions of the module,
- * evaluates amount/currency criteria and picks the highest-priority match; a criteria-less definition acts as the
- * module default.
+ * Selects the workflow which governs a held maker-checker command. Selection considers only ACTIVE definitions of the
+ * task (permission code, e.g. CREATE_LOAN), evaluates amount/currency criteria and picks the highest-priority match; a
+ * criteria-less definition acts as the task default.
  */
 public interface WorkflowSelectionService {
 
-    Optional<WorkflowDefinition> selectWorkflow(String moduleName, BigDecimal amount, String currencyCode);
+    Optional<WorkflowDefinition> selectWorkflow(String taskPermissionCode, BigDecimal amount, String currencyCode);
 }

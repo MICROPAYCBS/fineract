@@ -28,7 +28,6 @@ import static org.apache.fineract.workflow.api.WorkflowApiConstants.FROM_STAGE_C
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MAX_AMOUNT_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MIN_AMOUNT_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABLED_PROPERTY;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_NAME_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.NAME_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.PARTICIPANTS_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.PRIORITY_PARAM;
@@ -40,6 +39,7 @@ import static org.apache.fineract.workflow.api.WorkflowApiConstants.SEQUENCE_NO_
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGES_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGE_CODE_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGE_TYPE_PARAM;
+import static org.apache.fineract.workflow.api.WorkflowApiConstants.TASK_PERMISSION_CODE_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.TO_STAGE_CODE_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.TRANSITIONS_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.WORKFLOW_DEFINITION_RESOURCE_NAME;
@@ -92,7 +92,8 @@ public class WorkflowDefinitionDataValidator {
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
                 .resource(WORKFLOW_DEFINITION_RESOURCE_NAME);
 
-        baseDataValidator.reset().parameter(MODULE_NAME_PARAM).value(request.getModuleName()).notBlank().notExceedingLengthOf(100);
+        baseDataValidator.reset().parameter(TASK_PERMISSION_CODE_PARAM).value(request.getTaskPermissionCode()).notBlank()
+                .notExceedingLengthOf(100);
         baseDataValidator.reset().parameter(NAME_PARAM).value(request.getName()).notBlank().notExceedingLengthOf(255);
         baseDataValidator.reset().parameter(PRIORITY_PARAM).value(request.getPriority()).ignoreIfNull().zeroOrPositiveAmount();
         baseDataValidator.reset().parameter(CURRENCY_CODE_PARAM).value(request.getCurrencyCode()).ignoreIfNull().notBlank()

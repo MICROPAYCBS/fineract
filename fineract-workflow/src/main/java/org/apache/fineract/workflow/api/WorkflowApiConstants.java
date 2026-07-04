@@ -29,7 +29,7 @@ public final class WorkflowApiConstants {
     public static final String COMMAND_ACTIVATE = "activate";
     public static final String COMMAND_DEACTIVATE = "deactivate";
 
-    public static final String MODULE_NAME_PARAM = "moduleName";
+    public static final String TASK_PERMISSION_CODE_PARAM = "taskPermissionCode";
     public static final String NAME_PARAM = "name";
     public static final String DESCRIPTION_PARAM = "description";
     public static final String PRIORITY_PARAM = "priority";

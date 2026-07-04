@@ -51,7 +51,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void workflowWithoutStagesIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Empty", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Empty", 0, null, null, null);
 
         assertThatThrownBy(() -> validator.validateForActivation(definition)) //
                 .isInstanceOf(WorkflowConfigurationException.class) //
@@ -60,7 +60,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void duplicateStageCodesAreRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Duplicate", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Duplicate", 0, null, null, null);
         definition.addStage(stage("BRANCH_MANAGER"));
         definition.addStage(stage("BRANCH_MANAGER"));
 
@@ -71,7 +71,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void stageWithoutParticipantsIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "No participants", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "No participants", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
         stage.getParticipants().clear();
         definition.addStage(stage);
@@ -83,7 +83,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void stageWithoutApproveActionIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "No approve", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "No approve", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
         stage.getActions().remove(0);
         definition.addStage(stage);
@@ -116,7 +116,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void selfTransitionIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Self", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Self", 0, null, null, null);
         definition.addStage(stage("BRANCH_MANAGER"));
         connect(definition, "BRANCH_MANAGER", "BRANCH_MANAGER", 1);
 
@@ -127,7 +127,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void multipleEntryStagesAreRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Two entries", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Two entries", 0, null, null, null);
         definition.addStage(stage("A"));
         definition.addStage(stage("B"));
         definition.addStage(stage("C"));
@@ -141,7 +141,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void unreachableStageIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Unreachable", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Unreachable", 0, null, null, null);
         definition.addStage(stage("A"));
         definition.addStage(stage("B"));
         definition.addStage(stage("C"));
@@ -156,7 +156,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void escalationWithoutTargetIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Escalation", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Escalation", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
         stage.setEscalationEnabled(true);
         stage.setExpiryPeriodUnit(WorkflowExpiryPeriodUnit.HOURS);
@@ -170,7 +170,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void escalationWithoutExpiryIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Escalation", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Escalation", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
         stage.setEscalationEnabled(true);
         stage.setEscalationTargetStageCode("REGIONAL_MANAGER");
@@ -185,7 +185,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void escalationToUnknownStageIsRejected() {
-        final WorkflowDefinition definition = definition("LOAN", "Escalation", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Escalation", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
         stage.setEscalationEnabled(true);
         stage.setExpiryPeriodUnit(WorkflowExpiryPeriodUnit.HOURS);
@@ -200,7 +200,7 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void thresholdPolicyRequiresThresholdValue() {
-        final WorkflowDefinition definition = definition("LOAN", "Threshold", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Threshold", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
         stage.setRejectionPolicy(WorkflowRejectionPolicy.THRESHOLD);
         definition.addStage(stage);
@@ -212,9 +212,9 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void overlappingCriteriaAtSamePriorityAreRejected() {
-        final WorkflowDefinition candidate = definition("LOAN", "Large loans", 10, "UGX", new BigDecimal("5000000"), null);
+        final WorkflowDefinition candidate = definition("CREATE_LOAN", "Large loans", 10, "UGX", new BigDecimal("5000000"), null);
         candidate.setId(1L);
-        final WorkflowDefinition existing = definition("LOAN", "Medium loans", 10, "UGX", new BigDecimal("1000000"),
+        final WorkflowDefinition existing = definition("CREATE_LOAN", "Medium loans", 10, "UGX", new BigDecimal("1000000"),
                 new BigDecimal("10000000"));
         existing.setId(2L);
 
@@ -225,9 +225,9 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void disjointAmountBandsAreAllowed() {
-        final WorkflowDefinition candidate = definition("LOAN", "Large loans", 10, "UGX", new BigDecimal("5000000"), null);
+        final WorkflowDefinition candidate = definition("CREATE_LOAN", "Large loans", 10, "UGX", new BigDecimal("5000000"), null);
         candidate.setId(1L);
-        final WorkflowDefinition existing = definition("LOAN", "Small loans", 10, "UGX", null, new BigDecimal("4999999"));
+        final WorkflowDefinition existing = definition("CREATE_LOAN", "Small loans", 10, "UGX", null, new BigDecimal("4999999"));
         existing.setId(2L);
 
         assertThatCode(() -> validator.validateNoAmbiguousSelection(candidate, List.of(existing))).doesNotThrowAnyException();
@@ -235,9 +235,9 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void criteriaWorkflowDoesNotConflictWithDefaultWorkflow() {
-        final WorkflowDefinition candidate = definition("LOAN", "Large loans", 10, "UGX", new BigDecimal("5000000"), null);
+        final WorkflowDefinition candidate = definition("CREATE_LOAN", "Large loans", 10, "UGX", new BigDecimal("5000000"), null);
         candidate.setId(1L);
-        final WorkflowDefinition defaultWorkflow = definition("LOAN", "Default", 10, null, null, null);
+        final WorkflowDefinition defaultWorkflow = definition("CREATE_LOAN", "Default", 10, null, null, null);
         defaultWorkflow.setId(2L);
 
         assertThatCode(() -> validator.validateNoAmbiguousSelection(candidate, List.of(defaultWorkflow))).doesNotThrowAnyException();
@@ -245,9 +245,9 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void twoDefaultWorkflowsAtSamePriorityAreRejected() {
-        final WorkflowDefinition candidate = definition("LOAN", "Default A", 10, null, null, null);
+        final WorkflowDefinition candidate = definition("CREATE_LOAN", "Default A", 10, null, null, null);
         candidate.setId(1L);
-        final WorkflowDefinition existing = definition("LOAN", "Default B", 10, null, null, null);
+        final WorkflowDefinition existing = definition("CREATE_LOAN", "Default B", 10, null, null, null);
         existing.setId(2L);
 
         assertThatThrownBy(() -> validator.validateNoAmbiguousSelection(candidate, List.of(existing))) //
@@ -257,9 +257,9 @@ class WorkflowDefinitionStructureValidatorTest {
 
     @Test
     void differentCurrenciesDoNotOverlap() {
-        final WorkflowDefinition candidate = definition("LOAN", "UGX loans", 10, "UGX", new BigDecimal("5000000"), null);
+        final WorkflowDefinition candidate = definition("CREATE_LOAN", "UGX loans", 10, "UGX", new BigDecimal("5000000"), null);
         candidate.setId(1L);
-        final WorkflowDefinition existing = definition("LOAN", "USD loans", 10, "USD", new BigDecimal("1000"), null);
+        final WorkflowDefinition existing = definition("CREATE_LOAN", "USD loans", 10, "USD", new BigDecimal("1000"), null);
         existing.setId(2L);
 
         assertThatCode(() -> validator.validateNoAmbiguousSelection(candidate, List.of(existing))).doesNotThrowAnyException();

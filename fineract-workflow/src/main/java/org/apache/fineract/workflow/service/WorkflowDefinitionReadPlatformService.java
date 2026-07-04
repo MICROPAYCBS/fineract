@@ -23,7 +23,7 @@ import org.apache.fineract.workflow.data.WorkflowDefinitionData;
 
 public interface WorkflowDefinitionReadPlatformService {
 
-    List<WorkflowDefinitionData> retrieveAll(String moduleName, String status);
+    List<WorkflowDefinitionData> retrieveAll(String taskPermissionCode, String status);
 
     WorkflowDefinitionData retrieveOne(Long definitionId);
 }

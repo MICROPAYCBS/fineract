@@ -25,10 +25,12 @@ import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.useradministration.domain.Permission;
 import org.apache.fineract.workflow.data.WorkflowDefinitionRequest;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionRepository;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionStatus;
+import org.apache.fineract.workflow.domain.WorkflowPermissionRepository;
 import org.apache.fineract.workflow.exception.WorkflowConfigurationException;
 import org.apache.fineract.workflow.exception.WorkflowDefinitionNotFoundException;
 import org.apache.fineract.workflow.exception.WorkflowDefinitionStateException;
@@ -44,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefinitionWritePlatformService {
 
     private final WorkflowDefinitionRepository workflowDefinitionRepository;
+    private final WorkflowPermissionRepository permissionRepository;
     private final WorkflowDefinitionDataValidator dataValidator;
     private final WorkflowDefinitionAssembler assembler;
     private final WorkflowDefinitionStructureValidator structureValidator;
@@ -51,11 +54,13 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
     @Override
     public CommandProcessingResult create(final JsonCommand command) {
         final WorkflowDefinitionRequest request = this.dataValidator.validateAndParse(command.json());
+        validateTaskExists(request.getTaskPermissionCode());
 
-        if (this.workflowDefinitionRepository.existsByModuleNameAndNameIgnoreCase(request.getModuleName(), request.getName())) {
+        if (this.workflowDefinitionRepository.existsByTaskPermissionCodeAndNameIgnoreCase(request.getTaskPermissionCode(),
+                request.getName())) {
             throw new WorkflowConfigurationException("duplicate.name",
-                    "A workflow named " + request.getName() + " already exists for module " + request.getModuleName(), request.getName(),
-                    request.getModuleName());
+                    "A workflow named " + request.getName() + " already exists for task " + request.getTaskPermissionCode(),
+                    request.getName(), request.getTaskPermissionCode());
         }
 
         final WorkflowDefinition definition = this.assembler.assembleNew(request);
@@ -75,6 +80,7 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
         }
 
         final WorkflowDefinitionRequest request = this.dataValidator.validateAndParse(command.json());
+        validateTaskExists(request.getTaskPermissionCode());
         this.assembler.assembleUpdate(definition, request);
         this.workflowDefinitionRepository.saveAndFlush(definition);
 
@@ -105,8 +111,9 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
         }
 
         this.structureValidator.validateForActivation(definition);
+        validateTaskIsMakerCheckerEnabled(definition.getTaskPermissionCode());
         final List<WorkflowDefinition> activeDefinitions = this.workflowDefinitionRepository
-                .findByModuleNameAndStatus(definition.getModuleName(), WorkflowDefinitionStatus.ACTIVE);
+                .findByTaskPermissionCodeAndStatus(definition.getTaskPermissionCode(), WorkflowDefinitionStatus.ACTIVE);
         this.structureValidator.validateNoAmbiguousSelection(definition, activeDefinitions);
 
         definition.setStatus(WorkflowDefinitionStatus.ACTIVE);
@@ -135,5 +142,23 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
     private WorkflowDefinition findDefinition(final Long definitionId) {
         return this.workflowDefinitionRepository.findById(definitionId)
                 .orElseThrow(() -> new WorkflowDefinitionNotFoundException(definitionId));
+    }
+
+    private Permission validateTaskExists(final String taskPermissionCode) {
+        return this.permissionRepository.findOneByCode(taskPermissionCode)
+                .orElseThrow(() -> new WorkflowConfigurationException("unknown.task",
+                        "Task " + taskPermissionCode + " does not match any maker-checker task (permission code)", taskPermissionCode));
+    }
+
+    /**
+     * A workflow only governs commands that the maker-checker pipeline holds, so activation requires maker-checker to
+     * be enabled for the task; otherwise commands would execute immediately and the workflow would never run.
+     */
+    private void validateTaskIsMakerCheckerEnabled(final String taskPermissionCode) {
+        final Permission permission = validateTaskExists(taskPermissionCode);
+        if (!permission.hasMakerCheckerEnabled()) {
+            throw new WorkflowConfigurationException("task.not.maker.checker.enabled", "Maker-checker is not enabled for task "
+                    + taskPermissionCode + "; enable it before activating a workflow for this task", taskPermissionCode);
+        }
     }
 }
