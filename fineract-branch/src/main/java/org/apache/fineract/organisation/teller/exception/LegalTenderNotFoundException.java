@@ -16,28 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.organisation.teller.domain.model.request;
+package org.apache.fineract.organisation.teller.exception;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.util.List;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineRequest;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformResourceNotFoundException;
 
-@Data
-@NoArgsConstructor
-public class CashierTransactionRequest implements Serializable {
+@SuppressWarnings("serial")
+public class LegalTenderNotFoundException extends AbstractPlatformResourceNotFoundException {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    public String currencyCode;
-    public BigDecimal txnAmount;
-    public String txnNote;
-    public String locale;
-    public String dateFormat;
-    public String txnDate;
-    public List<CashierLegalTenderLineRequest> legalTenderLines;
+    public LegalTenderNotFoundException(final Long legalTenderId) {
+        super("error.msg.legal.tender.not.found", "Legal tender with identifier `" + legalTenderId + "` does not exist.", legalTenderId);
+    }
 }

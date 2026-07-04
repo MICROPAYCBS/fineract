@@ -23,10 +23,13 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Collection;
+import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
+import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineData;
+import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineRequest;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.teller.domain.CashierTxnType;
 
@@ -45,6 +48,8 @@ public final class CashierTransactionData implements Serializable {
     private String entityType;
     private String txnNote;
     private OffsetDateTime createdDate;
+    private String currencyCode;
+    private List<CashierLegalTenderLineData> legalTenderLines;
 
     // Template fields
     private Long officeId;

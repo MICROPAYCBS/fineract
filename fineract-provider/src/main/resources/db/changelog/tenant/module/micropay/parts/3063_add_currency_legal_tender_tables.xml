@@ -1,0 +1,332 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3063-create-m-currency-legal-tender" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_currency_legal_tender"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_currency_legal_tender">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="tender_type" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="display_order" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_currency_legal_tender"
+                             columnNames="currency_code, value, tender_type"
+                             constraintName="uk_currency_legal_tender_code_value_type"/>
+        <addForeignKeyConstraint baseTableName="m_currency_legal_tender" baseColumnNames="currency_code"
+                                 referencedTableName="m_currency" referencedColumnNames="code"
+                                 constraintName="fk_currency_legal_tender_currency"/>
+    </changeSet>
+
+    <changeSet id="3063-create-m-cashier-transaction-legal-tender" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_cashier_transaction_legal_tender"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_cashier_transaction_legal_tender">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="cashier_transaction_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="legal_tender_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_cashier_transaction_legal_tender"
+                             columnNames="cashier_transaction_id, legal_tender_id"
+                             constraintName="uk_cashier_txn_legal_tender"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_transaction_legal_tender" baseColumnNames="cashier_transaction_id"
+                                 referencedTableName="m_cashier_transactions" referencedColumnNames="id"
+                                 constraintName="fk_cashier_txn_legal_tender_txn"/>
+        <addForeignKeyConstraint baseTableName="m_cashier_transaction_legal_tender" baseColumnNames="legal_tender_id"
+                                 referencedTableName="m_currency_legal_tender" referencedColumnNames="id"
+                                 constraintName="fk_cashier_txn_legal_tender_master"/>
+    </changeSet>
+
+    <changeSet id="3063-read-legal-tender-permission" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_LEGAL_TENDER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="organisation"/>
+            <column name="code" value="READ_LEGAL_TENDER"/>
+            <column name="entity_name" value="LEGAL_TENDER"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+    <changeSet id="3063-create-legal-tender-permission" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_LEGAL_TENDER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="organisation"/>
+            <column name="code" value="CREATE_LEGAL_TENDER"/>
+            <column name="entity_name" value="LEGAL_TENDER"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+    <changeSet id="3063-update-legal-tender-permission" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_LEGAL_TENDER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="organisation"/>
+            <column name="code" value="UPDATE_LEGAL_TENDER"/>
+            <column name="entity_name" value="LEGAL_TENDER"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+    <changeSet id="3063-delete-legal-tender-permission" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_LEGAL_TENDER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="organisation"/>
+            <column name="code" value="DELETE_LEGAL_TENDER"/>
+            <column name="entity_name" value="LEGAL_TENDER"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3063-seed-ugx-legal-tenders" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM m_currency WHERE code = 'UGX'</sqlCheck>
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_currency_legal_tender WHERE currency_code = 'UGX'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="1000"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="1,000 UGX note"/>
+            <column name="display_order" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="2000"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="2,000 UGX note"/>
+            <column name="display_order" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="5000"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="5,000 UGX note"/>
+            <column name="display_order" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="10000"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="10,000 UGX note"/>
+            <column name="display_order" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="20000"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="20,000 UGX note"/>
+            <column name="display_order" valueNumeric="5"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="50000"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="50,000 UGX note"/>
+            <column name="display_order" valueNumeric="6"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="50"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="50 UGX coin"/>
+            <column name="display_order" valueNumeric="7"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="100"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="100 UGX coin"/>
+            <column name="display_order" valueNumeric="8"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="200"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="200 UGX coin"/>
+            <column name="display_order" valueNumeric="9"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="500"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="500 UGX coin"/>
+            <column name="display_order" valueNumeric="10"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="UGX"/>
+            <column name="value" valueNumeric="1000"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="1,000 UGX coin"/>
+            <column name="display_order" valueNumeric="11"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3063-seed-usd-legal-tenders" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM m_currency WHERE code = 'USD'</sqlCheck>
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_currency_legal_tender WHERE currency_code = 'USD'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="1"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$1 note"/>
+            <column name="display_order" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="2"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$2 note"/>
+            <column name="display_order" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="5"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$5 note"/>
+            <column name="display_order" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="10"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$10 note"/>
+            <column name="display_order" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="20"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$20 note"/>
+            <column name="display_order" valueNumeric="5"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="50"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$50 note"/>
+            <column name="display_order" valueNumeric="6"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="100"/>
+            <column name="tender_type" valueNumeric="1"/>
+            <column name="label" value="$100 note"/>
+            <column name="display_order" valueNumeric="7"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="0.01"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="1¢ coin (penny)"/>
+            <column name="display_order" valueNumeric="8"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="0.05"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="5¢ coin (nickel)"/>
+            <column name="display_order" valueNumeric="9"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="0.10"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="10¢ coin (dime)"/>
+            <column name="display_order" valueNumeric="10"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="0.25"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="25¢ coin (quarter)"/>
+            <column name="display_order" valueNumeric="11"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="0.50"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="50¢ coin (half dollar)"/>
+            <column name="display_order" valueNumeric="12"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_currency_legal_tender">
+            <column name="currency_code" value="USD"/>
+            <column name="value" valueNumeric="1"/>
+            <column name="tender_type" valueNumeric="2"/>
+            <column name="label" value="$1 coin"/>
+            <column name="display_order" valueNumeric="13"/>
+            <column name="is_active" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

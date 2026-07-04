@@ -19,6 +19,8 @@
 package org.apache.fineract.organisation.teller.service;
 
 import jakarta.persistence.PersistenceException;
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.AllArgsConstructor;
@@ -47,6 +49,8 @@ import org.apache.fineract.organisation.teller.data.CashierTransactionDataValida
 import org.apache.fineract.organisation.teller.domain.Cashier;
 import org.apache.fineract.organisation.teller.domain.CashierRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransaction;
+import org.apache.fineract.organisation.teller.domain.CashierTransactionLegalTender;
+import org.apache.fineract.organisation.teller.domain.CashierTransactionLegalTenderRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransactionRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTxnType;
 import org.apache.fineract.organisation.teller.domain.Teller;
@@ -73,6 +77,8 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
     private final JournalEntryRepository glJournalEntryRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
     private final CashierTransactionDataValidator cashierTransactionDataValidator;
+    private final CashierLegalTenderValidator cashierLegalTenderValidator;
+    private final CashierTransactionLegalTenderRepository cashierTransactionLegalTenderRepository;
 
     @Override
     @Transactional
@@ -380,10 +386,20 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
                 }
             }
 
+        final String currencyCode = command.stringValueOfParameterNamed("currencyCode");
+        final BigDecimal txnAmount = command.bigDecimalValueOfParameterNamed("txnAmount");
+        final List<CashierTransactionLegalTender> legalTenderLines = this.cashierLegalTenderValidator
+                .validateAndBuildLines(command, currencyCode, txnAmount);
+
             final CashierTransaction cashierTxn = CashierTransaction.fromJson(cashier, command);
             cashierTxn.setTxnType(txnType.getId());
 
             this.cashierTxnRepository.save(cashierTxn);
+
+            for (CashierTransactionLegalTender line : legalTenderLines) {
+                line.setCashierTransaction(cashierTxn);
+            }
+            this.cashierTransactionLegalTenderRepository.saveAll(legalTenderLines);
 
             // Pass the journal entries
             FinancialActivityAccount mainVaultFinancialActivityAccount = this.financialActivityAccountRepositoryWrapper

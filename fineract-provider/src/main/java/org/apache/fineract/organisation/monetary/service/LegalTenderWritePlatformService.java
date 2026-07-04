@@ -16,28 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.organisation.teller.domain.model.request;
+package org.apache.fineract.organisation.monetary.service;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.math.BigDecimal;
-import java.util.List;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineRequest;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 
-@Data
-@NoArgsConstructor
-public class CashierTransactionRequest implements Serializable {
+public interface LegalTenderWritePlatformService {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    CommandProcessingResult createLegalTender(String currencyCode, JsonCommand command);
 
-    public String currencyCode;
-    public BigDecimal txnAmount;
-    public String txnNote;
-    public String locale;
-    public String dateFormat;
-    public String txnDate;
-    public List<CashierLegalTenderLineRequest> legalTenderLines;
+    CommandProcessingResult updateLegalTender(String currencyCode, Long legalTenderId, JsonCommand command);
+
+    CommandProcessingResult deleteLegalTender(String currencyCode, Long legalTenderId, JsonCommand command);
 }

@@ -16,28 +16,16 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.organisation.teller.domain.model.request;
+package org.apache.fineract.organisation.teller.domain;
 
-import java.io.Serial;
-import java.io.Serializable;
-import java.math.BigDecimal;
+import java.util.Collection;
 import java.util.List;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineRequest;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-@Data
-@NoArgsConstructor
-public class CashierTransactionRequest implements Serializable {
+public interface CashierTransactionLegalTenderRepository extends JpaRepository<CashierTransactionLegalTender, Long> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    public String currencyCode;
-    public BigDecimal txnAmount;
-    public String txnNote;
-    public String locale;
-    public String dateFormat;
-    public String txnDate;
-    public List<CashierLegalTenderLineRequest> legalTenderLines;
+    @Query("select line from CashierTransactionLegalTender line join fetch line.legalTender lt where line.cashierTransaction.id in :txnIds order by lt.displayOrder asc")
+    List<CashierTransactionLegalTender> findByCashierTransactionIds(@Param("txnIds") Collection<Long> txnIds);
 }

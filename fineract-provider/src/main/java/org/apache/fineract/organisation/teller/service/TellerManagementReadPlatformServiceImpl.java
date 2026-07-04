@@ -69,6 +69,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
     private final PaginationHelper paginationHelper;
     private final SqlValidator sqlValidator;
     private final CashierAccessReadService cashierAccessReadService;
+    private final CashierLegalTenderReadPlatformService cashierLegalTenderReadPlatformService;
 
     private static final class TellerMapper implements RowMapper<TellerData> {
 
@@ -373,7 +374,9 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
         // });
         Object[] params = new Object[] { cashierId, currencyCode, cashierId, currencyCode, cashierId, currencyCode, cashierId,
                 currencyCode, };
-        return this.paginationHelper.fetchPage(this.jdbcTemplate, sql, params, ctm);
+        final Page<CashierTransactionData> page = this.paginationHelper.fetchPage(this.jdbcTemplate, sql, params, ctm);
+        this.cashierLegalTenderReadPlatformService.enrichTransactionsWithLegalTenderLines(page.getPageItems());
+        return page;
     }
 
     private static final class CashierMapper implements RowMapper<CashierData> {
@@ -424,6 +427,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(" txn.txn_type AS txn_type, ");
             sqlBuilder.append(" txn.txn_amount AS txn_amount, txn.txn_date AS txn_date, txn.txn_note as txn_note, ");
             sqlBuilder.append(" txn.entity_type AS entity_type, txn.entity_id AS entity_id, txn.created_date AS created_date, ");
+            sqlBuilder.append(" txn.currency_code AS currency_code, ");
             sqlBuilder.append(
                     " o.id AS office_id, o.name AS office_name, t.id AS teller_id, t.name AS teller_name, s.display_name AS cashier_name ");
             sqlBuilder.append(" FROM m_cashier_transactions AS txn ");
@@ -453,6 +457,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(
                     " concat (renum.enum_value, ', Sav:', sav.id, '-', sav.account_no, ',Client:', cl.id, '-',cl.display_name) as txn_note, ");
             sqlBuilder.append(" 'savings' as entity_type, sav.id as entity_id, sav_txn.created_date as created_date, ");
+            sqlBuilder.append(" sav.currency_code as currency_code, ");
             sqlBuilder.append(
                     " o.id as office_id, o.name as office_name, null as teller_id, null as teller_name, staff.display_name as cashier_name ");
             sqlBuilder.append(" from m_savings_account_transaction sav_txn ");
@@ -491,6 +496,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(
                     " concat (renum.enum_value, ', Loan:', loan.id, '-', loan.account_no, ',Client:', cl.id, '-',cl.display_name) as txn_note, ");
             sqlBuilder.append(" 'loans' as entity_type, loan.id as entity_id, loan_txn.created_date as created_date, ");
+            sqlBuilder.append(" loan.currency_code as currency_code, ");
             sqlBuilder.append(
                     " o.id as office_id, o.name as office_name, null as teller_id, null as teller_name, staff.display_name as cashier_name ");
             sqlBuilder.append(" from m_loan_transaction loan_txn ");
@@ -528,6 +534,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(
                     " concat (renum.enum_value, ', Client:', cl.id, '-', cl.account_no, ',Client:', cl.id, '-',cl.display_name) as txn_note, ");
             sqlBuilder.append(" 'client' as entity_type, cl.id as entity_id, cli_txn.created_date as created_date, ");
+            sqlBuilder.append(" cli_txn.currency_code as currency_code, ");
             sqlBuilder.append(
                     " o.id as office_id, o.name as office_name, null as teller_id, null as teller_name, staff.display_name as cashier_name ");
             sqlBuilder.append(" from m_client_transaction cli_txn ");
@@ -572,9 +579,10 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             final Long tellerId = rs.getLong("teller_id");
             final String tellerName = rs.getString("teller_name");
             final String cashierName = rs.getString("cashier_name");
+            final String currencyCode = rs.getString("currency_code");
 
             return CashierTransactionData.instance(id, cashierId, txnType, txnAmount, txnDate, txnNote, entityType, entityId, createdDate,
-                    officeId, officeName, tellerId, tellerName, cashierName, null, null, null);
+                    officeId, officeName, tellerId, tellerName, cashierName, null, null, null).setCurrencyCode(currencyCode);
         }
     }
 
