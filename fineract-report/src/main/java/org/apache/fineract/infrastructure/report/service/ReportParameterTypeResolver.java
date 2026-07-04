@@ -23,4 +23,9 @@ import java.util.Map;
 public interface ReportParameterTypeResolver {
 
     Map<String, String> loadParamFormatTypes(String reportName);
+
+    /**
+     * Returns {@code stretchy_parameter.parameter_default} for each parameter registered on the report.
+     */
+    Map<String, String> loadParamDefaults(String reportName);
 }

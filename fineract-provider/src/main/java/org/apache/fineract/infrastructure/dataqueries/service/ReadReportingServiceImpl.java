@@ -255,6 +255,11 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             normalisedParams.put(key, entry.getValue());
         }
 
+        // Step 4 — apply stretchy parameter defaults for registered params omitted from the request
+        for (Map.Entry<String, String> entry : this.reportParameterTypeResolver.loadParamDefaults(name).entrySet()) {
+            normalisedParams.putIfAbsent(entry.getKey(), entry.getValue());
+        }
+
         return buildPreparedQuery(name, normalisedParams, sql, paramFormatTypes);
     }
 

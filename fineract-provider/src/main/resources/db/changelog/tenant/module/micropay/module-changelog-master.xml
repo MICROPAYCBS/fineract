@@ -82,4 +82,5 @@
   <include relativeToChangelogFile="true" file="parts/3057_drop_office_servicing_access.xml"/>
   <include relativeToChangelogFile="true" file="parts/3058_add_cashier_read_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/3059_add_organisation_display_name_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3060_fix_loan_purpose_report_parameter_default.xml"/>
 </databaseChangeLog>

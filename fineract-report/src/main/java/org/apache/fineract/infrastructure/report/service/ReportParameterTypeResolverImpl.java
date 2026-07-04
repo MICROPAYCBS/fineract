@@ -31,9 +31,7 @@ public final class ReportParameterTypeResolverImpl implements ReportParameterTyp
     private final JdbcTemplate jdbcTemplate;
     private final DatabaseTypeResolver databaseTypeResolver;
 
-    private static final String PARAM_TYPE_SQL_PREFIX = "SELECT sp.parameter_variable, sp.";
-    private static final String PARAM_TYPE_SQL_SUFFIX = """
-             AS format_type
+    private static final String PARAM_LOOKUP_SQL_SUFFIX = """
             FROM stretchy_report_parameter srp
             JOIN stretchy_parameter sp ON sp.id = srp.parameter_id
             WHERE srp.report_id = (SELECT id FROM stretchy_report WHERE report_name = ?)
@@ -52,11 +50,22 @@ public final class ReportParameterTypeResolverImpl implements ReportParameterTyp
     public Map<String, String> loadParamFormatTypes(String reportName) {
         final Map<String, String> formatTypes = new HashMap<>();
         final String quotedColumnName = getQuotedColumnName("parameter_FormatType");
-        final String sql = PARAM_TYPE_SQL_PREFIX + quotedColumnName + PARAM_TYPE_SQL_SUFFIX;
+        final String sql = "SELECT sp.parameter_variable, sp." + quotedColumnName + " AS format_type " + PARAM_LOOKUP_SQL_SUFFIX;
         final SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, reportName);
         while (rs.next()) {
             formatTypes.put(rs.getString("parameter_variable"), rs.getString("format_type"));
         }
         return formatTypes;
+    }
+
+    @Override
+    public Map<String, String> loadParamDefaults(String reportName) {
+        final Map<String, String> defaults = new HashMap<>();
+        final String sql = "SELECT sp.parameter_variable, sp.parameter_default " + PARAM_LOOKUP_SQL_SUFFIX;
+        final SqlRowSet rs = jdbcTemplate.queryForRowSet(sql, reportName);
+        while (rs.next()) {
+            defaults.put(rs.getString("parameter_variable"), rs.getString("parameter_default"));
+        }
+        return defaults;
     }
 }
