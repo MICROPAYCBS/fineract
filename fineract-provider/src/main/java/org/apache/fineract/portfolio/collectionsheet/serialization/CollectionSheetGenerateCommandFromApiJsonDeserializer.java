@@ -123,7 +123,7 @@ public class CollectionSheetGenerateCommandFromApiJsonDeserializer {
         baseDataValidator.reset().parameter(officeIdParamName).value(officeId).longGreaterThanZero();
 
         final Long staffId = this.fromApiJsonHelper.extractLongNamed(staffIdParamName, element);
-        baseDataValidator.reset().parameter(staffIdParamName).value(staffId).longGreaterThanZero();
+        baseDataValidator.reset().parameter(staffIdParamName).value(staffId).ignoreIfNull().longGreaterThanZero();
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
