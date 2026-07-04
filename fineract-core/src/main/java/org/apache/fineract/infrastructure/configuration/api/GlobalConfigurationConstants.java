@@ -98,6 +98,7 @@ public final class GlobalConfigurationConstants {
     public static final String ENABLE_CROSS_BRANCH_SERVICING = "enable-cross-branch-servicing";
     public static final String SESSION_IDLE_TIMEOUT_MINUTES = "session-idle-timeout-minutes";
     public static final String SESSION_IDLE_WARNING_SECONDS = "session-idle-warning-seconds";
+    public static final String ORGANISATION_DISPLAY_NAME = "organisation-display-name";
 
     private GlobalConfigurationConstants() {}
 }
