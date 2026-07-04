@@ -55,8 +55,8 @@ class WorkflowSelectionServiceImplTest {
     void setUp() {
         // "Loans of 5M UGX and above" workflow, plus a criteria-less default. Higher priority first, matching the
         // repository's ORDER BY priority DESC.
-        largeLoanWorkflow = definition("LOAN", "Large Loan Approval", 20, "UGX", new BigDecimal("5000000"), null);
-        defaultWorkflow = definition("LOAN", "Standard Loan Approval", 10, null, null, null);
+        largeLoanWorkflow = definition("CREATE_LOAN", "Large Loan Approval", 20, "UGX", new BigDecimal("5000000"), null);
+        defaultWorkflow = definition("CREATE_LOAN", "Standard Loan Approval", 10, null, null, null);
         lenient().when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
     }
 
@@ -64,7 +64,7 @@ class WorkflowSelectionServiceImplTest {
     void noWorkflowIsSelectedWhenTenantConfigurationIsDisabled() {
         when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(false);
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("7000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "UGX");
 
         assertThat(selected).isEmpty();
         verifyNoInteractions(repository);
@@ -72,65 +72,66 @@ class WorkflowSelectionServiceImplTest {
 
     @Test
     void amountAboveThresholdSelectsLargeLoanWorkflow() {
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("7000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "UGX");
 
         assertThat(selected).containsSame(largeLoanWorkflow);
     }
 
     @Test
     void amountAtExactThresholdSelectsLargeLoanWorkflow() {
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("5000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("5000000"), "UGX");
 
         assertThat(selected).containsSame(largeLoanWorkflow);
     }
 
     @Test
     void amountBelowThresholdFallsBackToDefaultWorkflow() {
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("2000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("2000000"), "UGX");
 
         assertThat(selected).containsSame(defaultWorkflow);
     }
 
     @Test
     void differentCurrencyFallsBackToDefaultWorkflow() {
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("7000000"), "USD");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "USD");
 
         assertThat(selected).containsSame(defaultWorkflow);
     }
 
     @Test
     void noActiveWorkflowsYieldsEmpty() {
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of());
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of());
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("7000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "UGX");
 
         assertThat(selected).isEmpty();
     }
 
     @Test
     void criteriaOnlyWorkflowsWithNoMatchYieldEmpty() {
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of(largeLoanWorkflow));
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("LOAN", new BigDecimal("1000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("1000"), "UGX");
 
         assertThat(selected).isEmpty();
     }
 
     @Test
     void amountBandUpperBoundIsInclusive() {
-        final WorkflowDefinition banded = definition("LOAN", "Medium Loan Approval", 30, "UGX", new BigDecimal("1000000"),
+        final WorkflowDefinition banded = definition("CREATE_LOAN", "Medium Loan Approval", 30, "UGX", new BigDecimal("1000000"),
                 new BigDecimal("4999999"));
-        when(repository.findActiveByModuleNameOrderByPriorityDesc("LOAN")).thenReturn(List.of(banded, largeLoanWorkflow, defaultWorkflow));
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN"))
+                .thenReturn(List.of(banded, largeLoanWorkflow, defaultWorkflow));
 
-        assertThat(selectionService.selectWorkflow("LOAN", new BigDecimal("4999999"), "UGX")).containsSame(banded);
-        assertThat(selectionService.selectWorkflow("LOAN", new BigDecimal("5000000"), "UGX")).containsSame(largeLoanWorkflow);
+        assertThat(selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("4999999"), "UGX")).containsSame(banded);
+        assertThat(selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("5000000"), "UGX")).containsSame(largeLoanWorkflow);
     }
 }

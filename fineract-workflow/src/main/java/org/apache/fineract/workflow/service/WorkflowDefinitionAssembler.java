@@ -54,14 +54,14 @@ public class WorkflowDefinitionAssembler {
 
     public WorkflowDefinition assembleNew(final WorkflowDefinitionRequest request) {
         final Integer priority = request.getPriority() != null ? request.getPriority() : 0;
-        final WorkflowDefinition definition = WorkflowDefinition.create(request.getModuleName(), request.getName(),
+        final WorkflowDefinition definition = WorkflowDefinition.create(request.getTaskPermissionCode(), request.getName(),
                 request.getDescription(), priority, request.getCurrencyCode(), request.getMinAmount(), request.getMaxAmount());
         assembleStructure(definition, request);
         return definition;
     }
 
     public void assembleUpdate(final WorkflowDefinition definition, final WorkflowDefinitionRequest request) {
-        definition.setModuleName(request.getModuleName());
+        definition.setTaskPermissionCode(request.getTaskPermissionCode());
         definition.setName(request.getName());
         definition.setDescription(request.getDescription());
         definition.setPriority(request.getPriority() != null ? request.getPriority() : 0);

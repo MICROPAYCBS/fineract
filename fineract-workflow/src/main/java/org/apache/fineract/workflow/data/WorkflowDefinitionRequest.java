@@ -29,7 +29,7 @@ import lombok.Setter;
 @NoArgsConstructor
 public class WorkflowDefinitionRequest {
 
-    private String moduleName;
+    private String taskPermissionCode;
     private String name;
     private String description;
     private Integer priority;

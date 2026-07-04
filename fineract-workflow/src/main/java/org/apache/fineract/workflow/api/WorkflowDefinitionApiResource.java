@@ -63,12 +63,12 @@ public class WorkflowDefinitionApiResource {
     @GET
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List workflow definitions", description = "Lists workflow definitions with optional module and status filters")
+    @Operation(summary = "List workflow definitions", description = "Lists workflow definitions with optional task and status filters")
     public List<WorkflowDefinitionData> retrieveAll(
-            @QueryParam("moduleName") @Parameter(description = "moduleName") final String moduleName,
+            @QueryParam("taskPermissionCode") @Parameter(description = "taskPermissionCode") final String taskPermissionCode,
             @QueryParam("status") @Parameter(description = "status") final String status) {
         this.context.authenticatedUser().validateHasReadPermission(WORKFLOW_DEFINITION_RESOURCE_NAME);
-        return this.readPlatformService.retrieveAll(moduleName, status);
+        return this.readPlatformService.retrieveAll(taskPermissionCode, status);
     }
 
     @GET

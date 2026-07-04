@@ -27,14 +27,14 @@ import org.springframework.data.repository.query.Param;
 public interface WorkflowDefinitionRepository
         extends JpaRepository<WorkflowDefinition, Long>, JpaSpecificationExecutor<WorkflowDefinition> {
 
-    List<WorkflowDefinition> findByModuleName(String moduleName);
+    List<WorkflowDefinition> findByTaskPermissionCode(String taskPermissionCode);
 
     List<WorkflowDefinition> findByStatus(WorkflowDefinitionStatus status);
 
-    List<WorkflowDefinition> findByModuleNameAndStatus(String moduleName, WorkflowDefinitionStatus status);
+    List<WorkflowDefinition> findByTaskPermissionCodeAndStatus(String taskPermissionCode, WorkflowDefinitionStatus status);
 
-    @Query("SELECT wd FROM WorkflowDefinition wd WHERE wd.moduleName = :moduleName AND wd.status = org.apache.fineract.workflow.domain.WorkflowDefinitionStatus.ACTIVE ORDER BY wd.priority DESC, wd.id ASC")
-    List<WorkflowDefinition> findActiveByModuleNameOrderByPriorityDesc(@Param("moduleName") String moduleName);
+    @Query("SELECT wd FROM WorkflowDefinition wd WHERE wd.taskPermissionCode = :taskPermissionCode AND wd.status = org.apache.fineract.workflow.domain.WorkflowDefinitionStatus.ACTIVE ORDER BY wd.priority DESC, wd.id ASC")
+    List<WorkflowDefinition> findActiveByTaskPermissionCodeOrderByPriorityDesc(@Param("taskPermissionCode") String taskPermissionCode);
 
-    boolean existsByModuleNameAndNameIgnoreCase(String moduleName, String name);
+    boolean existsByTaskPermissionCodeAndNameIgnoreCase(String taskPermissionCode, String name);
 }

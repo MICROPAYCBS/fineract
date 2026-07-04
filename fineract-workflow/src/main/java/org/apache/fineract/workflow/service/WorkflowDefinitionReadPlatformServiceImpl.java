@@ -46,13 +46,13 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
     private final WorkflowDefinitionRepository workflowDefinitionRepository;
 
     @Override
-    public List<WorkflowDefinitionData> retrieveAll(final String moduleName, final String status) {
+    public List<WorkflowDefinitionData> retrieveAll(final String taskPermissionCode, final String status) {
         final List<WorkflowDefinition> definitions;
-        if (StringUtils.isNotBlank(moduleName) && StringUtils.isNotBlank(status)) {
-            definitions = this.workflowDefinitionRepository.findByModuleNameAndStatus(moduleName,
+        if (StringUtils.isNotBlank(taskPermissionCode) && StringUtils.isNotBlank(status)) {
+            definitions = this.workflowDefinitionRepository.findByTaskPermissionCodeAndStatus(taskPermissionCode,
                     WorkflowDefinitionStatus.fromString(status));
-        } else if (StringUtils.isNotBlank(moduleName)) {
-            definitions = this.workflowDefinitionRepository.findByModuleName(moduleName);
+        } else if (StringUtils.isNotBlank(taskPermissionCode)) {
+            definitions = this.workflowDefinitionRepository.findByTaskPermissionCode(taskPermissionCode);
         } else if (StringUtils.isNotBlank(status)) {
             definitions = this.workflowDefinitionRepository.findByStatus(WorkflowDefinitionStatus.fromString(status));
         } else {
@@ -83,7 +83,7 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
 
         return WorkflowDefinitionData.builder() //
                 .id(definition.getId()) //
-                .moduleName(definition.getModuleName()) //
+                .taskPermissionCode(definition.getTaskPermissionCode()) //
                 .name(definition.getName()) //
                 .description(definition.getDescription()) //
                 .status(definition.getStatus().name()) //

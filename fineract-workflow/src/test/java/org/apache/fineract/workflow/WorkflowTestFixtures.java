@@ -32,9 +32,9 @@ public final class WorkflowTestFixtures {
 
     private WorkflowTestFixtures() {}
 
-    public static WorkflowDefinition definition(final String moduleName, final String name, final Integer priority,
+    public static WorkflowDefinition definition(final String taskPermissionCode, final String name, final Integer priority,
             final String currencyCode, final BigDecimal minAmount, final BigDecimal maxAmount) {
-        final WorkflowDefinition definition = WorkflowDefinition.create(moduleName, name, null, priority, currencyCode, minAmount,
+        final WorkflowDefinition definition = WorkflowDefinition.create(taskPermissionCode, name, null, priority, currencyCode, minAmount,
                 maxAmount);
         return definition;
     }
@@ -61,7 +61,7 @@ public final class WorkflowTestFixtures {
      * A valid three-stage linear workflow: BRANCH_MANAGER -> REGIONAL_MANAGER -> HEAD_OFFICE.
      */
     public static WorkflowDefinition linearThreeStageDefinition() {
-        final WorkflowDefinition definition = definition("LOAN", "Loan Application Approval", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Loan Application Approval", 0, null, null, null);
         definition.addStage(stage("BRANCH_MANAGER"));
         definition.addStage(stage("REGIONAL_MANAGER"));
         definition.addStage(stage("HEAD_OFFICE"));

@@ -12,7 +12,7 @@ Build the administration UI for the new **Approval Workflow Configuration** modu
 
 ## Background (what the module does)
 
-The module lets administrators define multi-stage approval chains as data. A **workflow definition** belongs to a CBS module (e.g. `LOAN`), contains **stages** (each with participants, enabled actions, expiry/escalation settings) connected by **transitions**, and may carry **amount-based selection criteria** so several workflows can be active for the same module — e.g. loans of 5,000,000 UGX and above follow a three-level chain while smaller loans use a two-level default. Definitions have a lifecycle: `DRAFT` (editable) → `ACTIVE` (selectable at runtime, structurally frozen) → `INACTIVE`. The whole engine is opt-in per tenant via the `enable-approval-workflows` global configuration entry.
+The module lets administrators define multi-stage approval chains as data. A **workflow definition** is anchored to a **maker-checker task** — a Fineract permission code such as `CREATE_LOAN` or `WRITEOFF_LOAN` — and contains **stages** (each with participants, enabled actions, expiry/escalation settings) connected by **transitions**, and may carry **amount-based selection criteria** so several workflows can be active for the same task — e.g. loans of 5,000,000 UGX and above follow a three-level chain while smaller loans use a two-level default. Definitions have a lifecycle: `DRAFT` (editable) → `ACTIVE` (selectable at runtime, structurally frozen) → `INACTIVE`. The whole engine is opt-in per tenant via the `enable-approval-workflows` global configuration entry.
 
 ## API contract
 
@@ -20,7 +20,7 @@ Base path: `/fineract-provider/api/v1`. Standard Fineract auth plus the `Finerac
 
 | Endpoint | Method | Purpose | Permission |
 |---|---|---|---|
-| `/workflow-definitions?moduleName=&status=` | GET | List definitions (both filters optional) | `READ_WORKFLOW_DEFINITION` |
+| `/workflow-definitions?taskPermissionCode=&status=` | GET | List definitions (both filters optional) | `READ_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | GET | Full detail incl. stages, participants, actions, transitions | `READ_WORKFLOW_DEFINITION` |
 | `/workflow-definitions` | POST | Create (always lands in DRAFT) | `CREATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | PUT | Update a DRAFT definition (structure is fully replaced) | `UPDATE_WORKFLOW_DEFINITION` |
@@ -28,6 +28,7 @@ Base path: `/fineract-provider/api/v1`. Standard Fineract auth plus the `Finerac
 | `/workflow-definitions/{id}?command=deactivate` | POST | Deactivate (stops governing new instances) | `DEACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | DELETE | Delete a DRAFT definition | `DELETE_WORKFLOW_DEFINITION` |
 | `/roles` | GET | Existing endpoint; source for participant role selects | existing |
+| `/permissions?makerCheckerable=true` | GET | Existing endpoint; source for the task dropdown (permission codes eligible for maker-checker) | existing |
 | `/configurations/name/enable-approval-workflows` | GET | Tenant-level engine switch | existing |
 | `/configurations/{configId}` | PUT `{"enabled": true|false}` | Toggle the tenant switch | existing |
 
@@ -35,7 +36,7 @@ Base path: `/fineract-provider/api/v1`. Standard Fineract auth plus the `Finerac
 
 ```json
 {
-  "moduleName": "LOAN",
+  "taskPermissionCode": "CREATE_LOAN",
   "name": "Large Loan Approval",
   "description": "Loans of 5M UGX and above require three approval levels",
   "priority": 20,
@@ -72,17 +73,17 @@ Enums: `stageType` = `REVIEW | APPROVAL | VERIFICATION`; `rejectionPolicy` = `AN
 
 ## Screens to build
 
-1. **Workflow definitions list** (admin/organization area, added to the app's navigation). shadcn DataTable with name, module, status Badge (DRAFT = secondary, ACTIVE = green/success, INACTIVE = amber/warning), priority, selection-criteria summary ("≥ 5,000,000 UGX", "1M–5M UGX", or "Default"), and stage count. Module and status filters. When the tenant switch `enable-approval-workflows` is disabled, show a persistent Alert: "Approval workflows are disabled for this institution" with an inline Switch (or link to the app's existing global-configuration screen if one exists) to enable it — gated on the user's configuration permission.
-2. **Definition detail view**. Read-only: header card with name/module/status/priority/criteria and lifecycle actions (Edit + Delete + Activate for DRAFT; Deactivate for ACTIVE; INACTIVE is view-only). Render the approval chain in transition order as a vertical timeline/stepper — stage code, type, required approvals, participants with role names and approval limits, enabled-action chips (Badge), expiry period, and escalation target. Show conditional transitions with their amount bands. Destructive/lifecycle actions confirm via AlertDialog.
-3. **Create/Edit form** (edit only offered for DRAFT). Multi-section form using the app's form stack (expected: react-hook-form + zod resolver): (a) basics — module name, name, description, priority; (b) selection criteria — currency + min/max amount, with helper text explaining that criteria let several workflows coexist per module; (c) stages — repeatable stage editor (useFieldArray) with participants (role Select populated from `/roles`, optional limit + currency) and action Checkboxes; (d) transitions — from/to Selects constrained to the stage codes defined in (c), sequence number, optional amount band. Zod schema mirrors the backend validation so errors surface before submit: name/module required, currency required when min/max set, min ≤ max, `THRESHOLD` policy requires `rejectionThreshold` (and forbids it otherwise), escalation requires expiry + target stage, each stage needs ≥ 1 participant and the APPROVE action.
-4. **Activation error surfacing**. On activate, the backend runs graph validation (single entry stage, reachability, no cycles, escalation targets, criteria overlap at equal priority). Surface `errors[].developerMessage` from the 403 response verbatim in a Dialog or destructive toast — these messages are written for admins.
+1. **Workflow definitions list** (admin/organization area, added to the app's navigation). shadcn DataTable with name, task (permission code), status Badge (DRAFT = secondary, ACTIVE = green/success, INACTIVE = amber/warning), priority, selection-criteria summary ("≥ 5,000,000 UGX", "1M–5M UGX", or "Default"), and stage count. Task and status filters. When the tenant switch `enable-approval-workflows` is disabled, show a persistent Alert: "Approval workflows are disabled for this institution" with an inline Switch (or link to the app's existing global-configuration screen if one exists) to enable it — gated on the user's configuration permission.
+2. **Definition detail view**. Read-only: header card with name/task/status/priority/criteria and lifecycle actions (Edit + Delete + Activate for DRAFT; Deactivate for ACTIVE; INACTIVE is view-only). Render the approval chain in transition order as a vertical timeline/stepper — stage code, type, required approvals, participants with role names and approval limits, enabled-action chips (Badge), expiry period, and escalation target. Show conditional transitions with their amount bands. Destructive/lifecycle actions confirm via AlertDialog.
+3. **Create/Edit form** (edit only offered for DRAFT). Multi-section form using the app's form stack (expected: react-hook-form + zod resolver): (a) basics — task (searchable Select populated from `/permissions?makerCheckerable=true`, showing the permission code and a "maker-checker enabled" indicator), name, description, priority; (b) selection criteria — currency + min/max amount, with helper text explaining that criteria let several workflows coexist per task; (c) stages — repeatable stage editor (useFieldArray) with participants (role Select populated from `/roles`, optional limit + currency) and action Checkboxes; (d) transitions — from/to Selects constrained to the stage codes defined in (c), sequence number, optional amount band. Zod schema mirrors the backend validation so errors surface before submit: name/task required, currency required when min/max set, min ≤ max, `THRESHOLD` policy requires `rejectionThreshold` (and forbids it otherwise), escalation requires expiry + target stage, each stage needs ≥ 1 participant and the APPROVE action.
+4. **Activation error surfacing**. On activate, the backend runs graph validation (single entry stage, reachability, no cycles, escalation targets, criteria overlap at equal priority) and additionally requires **maker-checker to be enabled for the task** — a workflow only governs commands the maker-checker pipeline holds. Surface `errors[].developerMessage` from the 403 response verbatim in a Dialog or destructive toast — these messages are written for admins. For the maker-checker error specifically (`error.msg.workflow.configuration.task.not.maker.checker.enabled`), add a hint linking to the app's maker-checker tasks configuration screen.
 
 ## Constraints
 
 - Gate routes and action buttons on the permission codes in the table (superusers pass automatically); reuse the app's existing permission utility.
 - Server state via the app's existing data-fetching approach (expected: TanStack Query) with cache invalidation after each mutation; toasts on success/failure.
 - Do NOT build runtime screens (task inbox, approve/reject actions) — the backend for workflow instances does not exist yet. Configuration management only.
-- Module name select seeded with `LOAN`, `SAVINGS`, `CLIENT`, `TRANSACTION` but accepting free text; currency select reuses the app's currency source if one exists.
+- Currency select reuses the app's currency source if one exists.
 
 ## Repo-specific conventions (fill in or let the agent discover)
 

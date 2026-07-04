@@ -192,8 +192,8 @@ public class WorkflowDefinitionStructureValidator {
     }
 
     /**
-     * Guards against two active workflows for the same module with equal priority and overlapping selection criteria,
-     * which would make runtime selection ambiguous.
+     * Guards against two active workflows for the same maker-checker task with equal priority and overlapping selection
+     * criteria, which would make runtime selection ambiguous.
      */
     public void validateNoAmbiguousSelection(final WorkflowDefinition candidate, final List<WorkflowDefinition> activeDefinitions) {
         for (final WorkflowDefinition existing : activeDefinitions) {
@@ -205,9 +205,9 @@ public class WorkflowDefinitionStructureValidator {
             }
             if (criteriaOverlap(candidate, existing)) {
                 throw new WorkflowConfigurationException("ambiguous.selection.criteria",
-                        "Workflow " + candidate.getName() + " overlaps with active workflow " + existing.getName() + " for module "
-                                + candidate.getModuleName() + " at the same priority",
-                        candidate.getName(), existing.getName(), candidate.getModuleName());
+                        "Workflow " + candidate.getName() + " overlaps with active workflow " + existing.getName() + " for task "
+                                + candidate.getTaskPermissionCode() + " at the same priority",
+                        candidate.getName(), existing.getName(), candidate.getTaskPermissionCode());
             }
         }
     }
