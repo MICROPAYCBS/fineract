@@ -130,6 +130,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final ClientIncomeSourcesWritePlatformService clientIncomeSourcesWritePlatformService;
     private final ClientComplianceProfileWritePlatformService clientComplianceProfileWritePlatformService;
     private final ClientIdentifierWritePlatformService clientIdentifierWritePlatformService;
+    private final ClientIdentifierValidationService clientIdentifierValidationService;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
@@ -396,6 +397,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers) != null) {
                 this.clientIdentifierWritePlatformService.addClientIdentifiers(newClient, command);
+            }
+
+            if (newClient.isActive()) {
+                this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonClient(newClient.getId(),
+                        newClient.getLegalForm());
             }
 
             if (newClient.getCustomerClassId() != null && newClient.isActive()) {
@@ -845,6 +851,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 validateCustomerClassReadinessForActivation(client);
             }
             this.clientContactValidationService.validateMandatoryContactsForClient(clientId);
+            this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonClient(clientId, client.getLegalForm());
             validateParentGroupRulesBeforeClientActivation(client);
             final Locale locale = command.extractLocale();
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);

@@ -41,6 +41,7 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
+import org.apache.fineract.portfolio.client.service.ClientIdentifierValidationService;
 import org.apache.fineract.validation.constraints.DateFormatValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -50,13 +51,16 @@ public final class ClientDataValidator {
 
     private final FromJsonHelper fromApiJsonHelper;
     private final ConfigurationReadPlatformService configurationReadPlatformService;
+    private final ClientIdentifierValidationService clientIdentifierValidationService;
     private static final String MOBILE_NUMBER_REGEX = "^\\+?[0-9]{7,15}$";
 
     @Autowired
     public ClientDataValidator(final FromJsonHelper fromApiJsonHelper,
-            final ConfigurationReadPlatformService configurationReadPlatformService) {
+            final ConfigurationReadPlatformService configurationReadPlatformService,
+            final ClientIdentifierValidationService clientIdentifierValidationService) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.configurationReadPlatformService = configurationReadPlatformService;
+        this.clientIdentifierValidationService = clientIdentifierValidationService;
     }
 
     public void validateForCreate(final String json) {
@@ -302,6 +306,8 @@ public final class ClientDataValidator {
         List<ApiParameterError> dataValidationErrorsForClientNonPerson = getDataValidationErrorsForCreateOnClientNonPerson(
                 element.getAsJsonObject().get(ClientApiConstants.clientNonPersonDetailsParamName));
         dataValidationErrors.addAll(dataValidationErrorsForClientNonPerson);
+
+        this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonCreate(element, legalFormId);
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }

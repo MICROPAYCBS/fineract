@@ -18,7 +18,13 @@
  */
 package org.apache.fineract.portfolio.client.service;
 
+import com.google.gson.JsonElement;
+
 public interface ClientIdentifierValidationService {
 
     void validateDocumentKey(Long documentTypeId, String documentKey);
+
+    void validateAtLeastOneIdentifierForPersonCreate(JsonElement clientCreateElement, Integer legalFormId);
+
+    void validateAtLeastOneIdentifierForPersonClient(Long clientId, Integer legalFormId);
 }
