@@ -32,12 +32,12 @@ import org.apache.fineract.organisation.staff.service.StaffReadService;
 import org.apache.fineract.organisation.teller.data.CashierTransactionDataValidator;
 import org.apache.fineract.organisation.teller.domain.CashierRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransactionRepository;
-import org.apache.fineract.organisation.teller.domain.CashierTransactionLegalTenderRepository;
 import org.apache.fineract.organisation.teller.domain.TellerRepositoryWrapper;
 import org.apache.fineract.organisation.teller.serialization.TellerCommandFromApiJsonDeserializer;
 import org.apache.fineract.organisation.teller.service.CashierAccessReadService;
 import org.apache.fineract.organisation.teller.service.CashierLegalTenderReadPlatformService;
-import org.apache.fineract.organisation.teller.service.CashierLegalTenderValidator;
+import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownValidator;
+import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownWritePlatformService;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformService;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformServiceImpl;
 import org.apache.fineract.organisation.teller.service.TellerWritePlatformService;
@@ -69,11 +69,11 @@ public class OrganisationTellerConfiguration {
             OfficeRepositoryWrapper officeRepositoryWrapper, StaffRepository staffRepository, CashierRepository cashierRepository,
             CashierTransactionRepository cashierTxnRepository, JournalEntryRepository glJournalEntryRepository,
             FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
-            CashierTransactionDataValidator cashierTransactionDataValidator, CashierLegalTenderValidator cashierLegalTenderValidator,
-            CashierTransactionLegalTenderRepository cashierTransactionLegalTenderRepository) {
+            CashierTransactionDataValidator cashierTransactionDataValidator, LegalTenderBreakdownValidator legalTenderBreakdownValidator,
+            LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService) {
         return new TellerWritePlatformServiceJpaImpl(context, fromApiJsonDeserializer, tellerRepositoryWrapper, officeRepositoryWrapper,
                 staffRepository, cashierRepository, cashierTxnRepository, glJournalEntryRepository,
-                financialActivityAccountRepositoryWrapper, cashierTransactionDataValidator, cashierLegalTenderValidator,
-                cashierTransactionLegalTenderRepository);
+                financialActivityAccountRepositoryWrapper, cashierTransactionDataValidator, legalTenderBreakdownValidator,
+                legalTenderBreakdownWritePlatformService);
     }
 }

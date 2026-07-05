@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3064-create-m-cash-legal-tender-line" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_cash_legal_tender_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_cash_legal_tender_line">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="source_type" type="SMALLINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="legal_tender_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quantity" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_cash_legal_tender_line"
+                             columnNames="source_type, source_id, legal_tender_id"
+                             constraintName="uk_cash_legal_tender_line_source_tender"/>
+        <addForeignKeyConstraint baseTableName="m_cash_legal_tender_line" baseColumnNames="legal_tender_id"
+                                 referencedTableName="m_currency_legal_tender" referencedColumnNames="id"
+                                 constraintName="fk_cash_legal_tender_line_master"/>
+    </changeSet>
+
+    <changeSet id="3064-migrate-cashier-transaction-legal-tender-data" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_cashier_transaction_legal_tender"/>
+            <tableExists tableName="m_cash_legal_tender_line"/>
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_cash_legal_tender_line</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO m_cash_legal_tender_line (source_type, source_id, legal_tender_id, quantity, line_amount)
+            SELECT 1, cashier_transaction_id, legal_tender_id, quantity, line_amount
+            FROM m_cashier_transaction_legal_tender;
+        </sql>
+    </changeSet>
+
+    <changeSet id="3064-drop-m-cashier-transaction-legal-tender" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_cashier_transaction_legal_tender"/>
+        </preConditions>
+        <dropForeignKeyConstraint baseTableName="m_cashier_transaction_legal_tender" constraintName="fk_cashier_txn_legal_tender_txn"/>
+        <dropForeignKeyConstraint baseTableName="m_cashier_transaction_legal_tender" constraintName="fk_cashier_txn_legal_tender_master"/>
+        <dropTable tableName="m_cashier_transaction_legal_tender"/>
+    </changeSet>
+
+    <changeSet id="3064-capture-legal-tender-for-cash-transactions-config" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'capture-legal-tender-for-cash-transactions'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="capture-legal-tender-for-cash-transactions"/>
+            <column name="value"/>
+            <column name="date_value"/>
+            <column name="string_value" value="OPTIONAL"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="Legal tender capture mode for cash savings deposits and withdrawals: OFF, OPTIONAL, or REQUIRED. Allocate/settle always require denomination breakdown regardless of this setting."/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

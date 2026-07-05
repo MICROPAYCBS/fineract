@@ -46,11 +46,11 @@ import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.organisation.staff.domain.StaffRepository;
 import org.apache.fineract.organisation.staff.exception.StaffNotFoundException;
 import org.apache.fineract.organisation.teller.data.CashierTransactionDataValidator;
+import org.apache.fineract.organisation.teller.domain.CashLegalTenderLine;
+import org.apache.fineract.organisation.teller.domain.CashLegalTenderSourceType;
 import org.apache.fineract.organisation.teller.domain.Cashier;
 import org.apache.fineract.organisation.teller.domain.CashierRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransaction;
-import org.apache.fineract.organisation.teller.domain.CashierTransactionLegalTender;
-import org.apache.fineract.organisation.teller.domain.CashierTransactionLegalTenderRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransactionRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTxnType;
 import org.apache.fineract.organisation.teller.domain.Teller;
@@ -77,8 +77,8 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
     private final JournalEntryRepository glJournalEntryRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
     private final CashierTransactionDataValidator cashierTransactionDataValidator;
-    private final CashierLegalTenderValidator cashierLegalTenderValidator;
-    private final CashierTransactionLegalTenderRepository cashierTransactionLegalTenderRepository;
+    private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
+    private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
 
     @Override
     @Transactional
@@ -388,18 +388,18 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
 
         final String currencyCode = command.stringValueOfParameterNamed("currencyCode");
         final BigDecimal txnAmount = command.bigDecimalValueOfParameterNamed("txnAmount");
-        final List<CashierTransactionLegalTender> legalTenderLines = this.cashierLegalTenderValidator
-                .validateAndBuildLines(command, currencyCode, txnAmount);
+        final List<CashLegalTenderLine> legalTenderLines = this.legalTenderBreakdownValidator.validateAndBuildLinesRequired(command,
+                currencyCode, txnAmount, CashLegalTenderSourceType.CASHIER_TXN, null);
 
             final CashierTransaction cashierTxn = CashierTransaction.fromJson(cashier, command);
             cashierTxn.setTxnType(txnType.getId());
 
             this.cashierTxnRepository.save(cashierTxn);
 
-            for (CashierTransactionLegalTender line : legalTenderLines) {
-                line.setCashierTransaction(cashierTxn);
+            for (CashLegalTenderLine line : legalTenderLines) {
+                line.setSourceId(cashierTxn.getId());
             }
-            this.cashierTransactionLegalTenderRepository.saveAll(legalTenderLines);
+            this.legalTenderBreakdownWritePlatformService.saveLines(legalTenderLines);
 
             // Pass the journal entries
             FinancialActivityAccount mainVaultFinancialActivityAccount = this.financialActivityAccountRepositoryWrapper

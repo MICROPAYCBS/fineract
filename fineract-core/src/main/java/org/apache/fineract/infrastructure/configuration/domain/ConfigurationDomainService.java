@@ -21,6 +21,7 @@ package org.apache.fineract.infrastructure.configuration.domain;
 import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.infrastructure.cache.domain.CacheType;
+import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
 
 public interface ConfigurationDomainService {
 
@@ -143,6 +144,8 @@ public interface ConfigurationDomainService {
     boolean isPreventCashierOverdrawEnabled();
 
     boolean isRequireCashierForCashTransactionsEnabled();
+
+    LegalTenderCaptureMode retrieveLegalTenderCaptureModeForCashTransactions();
 
     Integer retrieveSessionIdleTimeoutMinutes();
 

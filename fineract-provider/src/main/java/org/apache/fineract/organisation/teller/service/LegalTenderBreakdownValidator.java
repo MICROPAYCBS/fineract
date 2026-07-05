@@ -24,6 +24,7 @@ import com.google.gson.JsonObject;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -33,7 +34,9 @@ import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
-import org.apache.fineract.organisation.teller.domain.CashierTransactionLegalTender;
+import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
+import org.apache.fineract.organisation.teller.domain.CashLegalTenderLine;
+import org.apache.fineract.organisation.teller.domain.CashLegalTenderSourceType;
 import org.apache.fineract.organisation.teller.domain.CurrencyLegalTender;
 import org.apache.fineract.organisation.teller.domain.CurrencyLegalTenderRepository;
 import org.apache.fineract.organisation.teller.exception.CashierLegalTenderValidationException;
@@ -42,7 +45,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class CashierLegalTenderValidator {
+public class LegalTenderBreakdownValidator {
 
     public static final String LEGAL_TENDER_LINES = "legalTenderLines";
     public static final String LEGAL_TENDER_ID = "legalTenderId";
@@ -52,27 +55,63 @@ public class CashierLegalTenderValidator {
     private final CurrencyLegalTenderRepository legalTenderRepository;
     private final ApplicationCurrencyRepositoryWrapper applicationCurrencyRepository;
 
-    public List<CashierTransactionLegalTender> validateAndBuildLines(final JsonCommand command, final String currencyCode,
-            final BigDecimal txnAmount) {
+    public List<CashLegalTenderLine> validateAndBuildLinesRequired(final JsonCommand command, final String currencyCode,
+            final BigDecimal txnAmount, final CashLegalTenderSourceType sourceType, final Long sourceId) {
+        return validateAndBuildLines(command, currencyCode, txnAmount, LegalTenderCaptureMode.REQUIRED, sourceType, sourceId);
+    }
+
+    public List<CashLegalTenderLine> validateAndBuildLines(final JsonCommand command, final String currencyCode, final BigDecimal txnAmount,
+            final LegalTenderCaptureMode captureMode, final CashLegalTenderSourceType sourceType, final Long sourceId) {
+        if (captureMode == LegalTenderCaptureMode.OFF) {
+            if (hasLegalTenderLines(command)) {
+                throw new CashierLegalTenderValidationException("error.msg.cashier.legal.tender.lines.not.allowed",
+                        "Legal tender breakdown is not enabled for this transaction type.");
+            }
+            return Collections.emptyList();
+        }
+
+        final JsonElement element = command.parsedJson();
+        final boolean linesProvided = this.fromApiJsonHelper.parameterExists(LEGAL_TENDER_LINES, element);
+        if (!linesProvided) {
+            if (captureMode == LegalTenderCaptureMode.REQUIRED) {
+                throw new CashierLegalTenderValidationException("error.msg.cashier.legal.tender.lines.required",
+                        "At least one legal tender line is required for this transaction.");
+            }
+            return Collections.emptyList();
+        }
+
+        final JsonArray linesArray = this.fromApiJsonHelper.extractJsonArrayNamed(LEGAL_TENDER_LINES, element);
+        if (linesArray == null || linesArray.isEmpty()) {
+            if (captureMode == LegalTenderCaptureMode.REQUIRED) {
+                throw new CashierLegalTenderValidationException("error.msg.cashier.legal.tender.lines.required",
+                        "At least one legal tender line is required for this transaction.");
+            }
+            return Collections.emptyList();
+        }
+
+        return buildLinesFromArray(linesArray, currencyCode, txnAmount, sourceType, sourceId);
+    }
+
+    private boolean hasLegalTenderLines(final JsonCommand command) {
+        final JsonElement element = command.parsedJson();
+        if (!this.fromApiJsonHelper.parameterExists(LEGAL_TENDER_LINES, element)) {
+            return false;
+        }
+        final JsonArray linesArray = this.fromApiJsonHelper.extractJsonArrayNamed(LEGAL_TENDER_LINES, element);
+        return linesArray != null && !linesArray.isEmpty();
+    }
+
+    private List<CashLegalTenderLine> buildLinesFromArray(final JsonArray linesArray, final String currencyCode, final BigDecimal txnAmount,
+            final CashLegalTenderSourceType sourceType, final Long sourceId) {
         if (currencyCode == null || currencyCode.isBlank()) {
             throw new CashierLegalTenderValidationException("error.msg.cashier.legal.tender.currency.mismatch",
                     "Currency code is required for legal tender breakdown.");
-        }
-        final JsonElement element = command.parsedJson();
-        if (!this.fromApiJsonHelper.parameterExists(LEGAL_TENDER_LINES, element)) {
-            throw new CashierLegalTenderValidationException("error.msg.cashier.legal.tender.lines.required",
-                    "At least one legal tender line is required for this transaction.");
-        }
-        final JsonArray linesArray = this.fromApiJsonHelper.extractJsonArrayNamed(LEGAL_TENDER_LINES, element);
-        if (linesArray == null || linesArray.isEmpty()) {
-            throw new CashierLegalTenderValidationException("error.msg.cashier.legal.tender.lines.required",
-                    "At least one legal tender line is required for this transaction.");
         }
 
         final ApplicationCurrency currency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currencyCode);
         final int decimalPlaces = currency.getDecimalPlaces();
         final Set<Long> seenLegalTenderIds = new HashSet<>();
-        final List<CashierTransactionLegalTender> lines = new ArrayList<>();
+        final List<CashLegalTenderLine> lines = new ArrayList<>();
         BigDecimal total = BigDecimal.ZERO.setScale(decimalPlaces, RoundingMode.HALF_UP);
 
         for (JsonElement lineElement : linesArray) {
@@ -104,7 +143,7 @@ public class CashierLegalTenderValidator {
             final BigDecimal lineAmount = legalTender.getValue().multiply(BigDecimal.valueOf(quantity.longValue())).setScale(decimalPlaces,
                     RoundingMode.HALF_UP);
             total = total.add(lineAmount);
-            lines.add(CashierTransactionLegalTender.createNew(null, legalTender, quantity, lineAmount));
+            lines.add(CashLegalTenderLine.createNew(sourceType, sourceId, legalTender, quantity, lineAmount));
         }
 
         final BigDecimal normalizedTxnAmount = txnAmount.setScale(decimalPlaces, RoundingMode.HALF_UP);

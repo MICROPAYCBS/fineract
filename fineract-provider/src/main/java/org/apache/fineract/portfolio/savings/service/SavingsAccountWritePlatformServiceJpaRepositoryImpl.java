@@ -75,8 +75,14 @@ import org.apache.fineract.infrastructure.event.business.domain.savings.SavingsP
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
+import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
+import org.apache.fineract.organisation.teller.domain.CashLegalTenderLine;
+import org.apache.fineract.organisation.teller.domain.CashLegalTenderSourceType;
+import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownValidator;
+import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownWritePlatformService;
+import org.apache.fineract.portfolio.paymentdetail.util.CashPaymentHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
@@ -168,6 +174,8 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final SavingsAccountInterestPostingService savingsAccountInterestPostingService;
     private final ExternalIdFactory externalIdFactory;
     private final ErrorHandler errorHandler;
+    private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
+    private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
 
     @Transactional
     @Override
@@ -311,6 +319,8 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         deposit.updateExternalId(externalId);
         this.savingsAccountTransactionRepository.save(deposit);
 
+        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, deposit);
+
         if (isGsim && (deposit.getId() != null)) {
 
             log.debug("Deposit account has been created: {} ", deposit);
@@ -388,6 +398,8 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 transactionAmount, paymentDetail, transactionBooleanValues, backdatedTxnsAllowedTill);
         withdrawal.updateExternalId(externalId);
         this.savingsAccountTransactionRepository.save(withdrawal);
+
+        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, withdrawal);
 
         if (isGsim && (withdrawal.getId() != null)) {
             GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
@@ -2085,5 +2097,16 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         if (StringUtils.isBlank(reasonForBlock)) {
             throw new PlatformDataIntegrityException("Reason For Block is Mandatory", "error.msg.reason.for.block.mandatory");
         }
+    }
+
+    private void persistCashLegalTenderLinesIfApplicable(final JsonCommand command, final SavingsAccount account,
+            final PaymentDetail paymentDetail, final BigDecimal transactionAmount, final SavingsAccountTransaction transaction) {
+        if (!CashPaymentHelper.isCashPayment(paymentDetail)) {
+            return;
+        }
+        final LegalTenderCaptureMode captureMode = this.configurationDomainService.retrieveLegalTenderCaptureModeForCashTransactions();
+        final List<CashLegalTenderLine> lines = this.legalTenderBreakdownValidator.validateAndBuildLines(command,
+                account.getCurrency().getCode(), transactionAmount, captureMode, CashLegalTenderSourceType.SAVINGS_TXN, transaction.getId());
+        this.legalTenderBreakdownWritePlatformService.saveLines(lines);
     }
 }

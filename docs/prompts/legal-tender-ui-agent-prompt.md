@@ -25,10 +25,11 @@ Related cashier policies (already wired in the web app):
 |---|---|---|
 | `prevent-cashier-overdraw` | on | Settle blocked when amount > net cash (existing guard in `cashier-cash-action-sheet.tsx`) |
 | `require-cashier-for-cash-transactions` | on | Cash deposits/withdrawals require active cashier (existing guards on savings/loan flows) |
+| `capture-legal-tender-for-cash-transactions` | OPTIONAL | Controls denomination capture on **cash savings deposit/withdrawal** only (`OFF` / `OPTIONAL` / `REQUIRED`). Allocate/settle always require lines. |
 
 ## Backend deployment prerequisite
 
-Fineract must include Liquibase migration **`3063_add_currency_legal_tender_tables.xml`** (Micropay module). Until deployed, legal-tender endpoints return 404 and allocate/settle will fail if the backend requires `legalTenderLines`.
+Fineract must include Liquibase migrations **`3063_add_currency_legal_tender_tables.xml`** and **`3064_add_cash_legal_tender_line_table.xml`** (Micropay module). Until deployed, legal-tender endpoints return 404 and allocate/settle will fail if the backend requires `legalTenderLines`.
 
 Base path: `/fineract-provider/api/v1`. Standard Fineract auth + `Fineract-Platform-TenantId` header (reuse `createFineractClient()`).
 
@@ -142,7 +143,59 @@ For allocate (`txnType` 101) and settle (`txnType` 102) rows, response includes:
 }
 ```
 
-Loan/savings-derived rows (types 103/104) have **no** `legalTenderLines` — hide denomination section for those rows.
+Loan/savings-derived rows (types 103/104) include `legalTenderLines` when the deposit/withdrawal was posted with a breakdown. Show the denomination section read-only on those rows when lines are present.
+
+---
+
+## Cash savings deposit / withdrawal (v2)
+
+When payment type is **cash** (`isCashPayment`), extend the existing deposit and withdrawal forms (not allocate/settle).
+
+### Global config: `capture-legal-tender-for-cash-transactions`
+
+Fetch via existing global-configuration pattern (same as `cashier-policy.ts`).
+
+| Value | UI behaviour |
+|---|---|
+| `OFF` | Amount-only (current behaviour). Hide denomination UI. |
+| `OPTIONAL` (default) | **Entry mode toggle:** Amount **or** Denominations. |
+| `REQUIRED` | Denominations required; amount field read-only, computed from grid. |
+
+Allocate/settle remain **always required** regardless of this setting.
+
+### Entry mode toggle (OPTIONAL / REQUIRED)
+
+| Mode | UX |
+|---|---|
+| **Amount** | Existing amount field; omit `legalTenderLines` on submit (OPTIONAL only). |
+| **Denominations** | Grid of active legal tenders for account currency; amount read-only, computed as `sum(value × quantity)`. |
+
+### POST body extension
+
+Existing savings transaction endpoints:
+
+`POST /savingsaccounts/{id}/transactions?command=deposit|withdrawal`
+
+```json
+{
+  "transactionDate": "05 July 2026",
+  "dateFormat": "dd MMMM yyyy",
+  "locale": "en",
+  "transactionAmount": 5000000,
+  "paymentTypeId": 1,
+  "legalTenderLines": [
+    { "legalTenderId": 6, "quantity": 100 }
+  ]
+}
+```
+
+- `transactionAmount` stays authoritative; denomination-first UI computes it client-side before POST.
+- Omit `legalTenderLines` when mode is Amount and config is OPTIONAL or OFF.
+- Reuse validation error mapping from allocate/settle (`cashier-error-messages.ts` codes apply).
+
+### Cashier journal
+
+Show denomination breakdown on savings-derived rows (103 cash in / 104 cash out) when `legalTenderLines` is non-empty.
 
 ---
 
@@ -158,6 +211,7 @@ Map `errors[].userMessageGlobalisationCode` via `translateFineractCode` (pattern
 | `error.msg.cashier.legal.tender.inactive` | Tender disabled | Pick active denomination |
 | `error.msg.cashier.legal.tender.currency.mismatch` | Tender currency ≠ txn currency | Re-select currency |
 | `error.msg.cashier.legal.tender.sum.mismatch` | Sum ≠ `txnAmount` | Show computed vs entered total |
+| `error.msg.cashier.legal.tender.lines.not.allowed` | Lines sent when config is OFF | Hide denomination UI / clear lines |
 | `error.msg.cashier.insufficient.amount.exception` | Settle overdraw | Existing message |
 | `error.msg.cashier.active.session.required.exception` | No cashier session | Existing message |
 | `error.msg.legal.tender.not.found` | Admin CRUD | Standard not found |
@@ -334,10 +388,11 @@ Keep server-side validation as source of truth; client prevents obvious mistakes
 
 ## Out of scope (do not build now)
 
-- Denomination breakdown on savings deposit/withdrawal or loan repayment screens.
 - Vault opening/closing count reconciliation.
-- Denomination mix “on hand” analytics (backend v1.1).
+- Denomination mix “on hand” analytics (backend v2.1).
 - Editing legal tender lines on posted transactions.
+- Loan cash repayment denomination capture (backend phase 2b).
+- ATM cassette logic.
 
 ---
 

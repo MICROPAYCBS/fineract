@@ -31,15 +31,17 @@ import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 
 @Entity
-@Table(name = "m_cashier_transaction_legal_tender")
+@Table(name = "m_cash_legal_tender_line")
 @Getter
 @Setter
 @NoArgsConstructor
-public class CashierTransactionLegalTender extends AbstractPersistableCustom<Long> {
+public class CashLegalTenderLine extends AbstractPersistableCustom<Long> {
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "cashier_transaction_id", nullable = false)
-    private CashierTransaction cashierTransaction;
+    @Column(name = "source_type", nullable = false)
+    private Integer sourceType;
+
+    @Column(name = "source_id", nullable = false)
+    private Long sourceId;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "legal_tender_id", nullable = false)
@@ -51,10 +53,19 @@ public class CashierTransactionLegalTender extends AbstractPersistableCustom<Lon
     @Column(name = "line_amount", nullable = false, scale = 6, precision = 19)
     private BigDecimal lineAmount;
 
-    public static CashierTransactionLegalTender createNew(final CashierTransaction cashierTransaction,
+    public CashLegalTenderSourceType getSourceTypeEnum() {
+        return CashLegalTenderSourceType.fromInt(this.sourceType);
+    }
+
+    public void setSourceTypeEnum(final CashLegalTenderSourceType sourceType) {
+        this.sourceType = sourceType.getId();
+    }
+
+    public static CashLegalTenderLine createNew(final CashLegalTenderSourceType sourceType, final Long sourceId,
             final CurrencyLegalTender legalTender, final Integer quantity, final BigDecimal lineAmount) {
-        final CashierTransactionLegalTender line = new CashierTransactionLegalTender();
-        line.setCashierTransaction(cashierTransaction);
+        final CashLegalTenderLine line = new CashLegalTenderLine();
+        line.setSourceTypeEnum(sourceType);
+        line.setSourceId(sourceId);
         line.setLegalTender(legalTender);
         line.setQuantity(quantity);
         line.setLineAmount(lineAmount);

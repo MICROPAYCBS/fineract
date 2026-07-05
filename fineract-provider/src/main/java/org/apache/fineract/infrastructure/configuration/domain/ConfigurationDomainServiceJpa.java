@@ -29,6 +29,7 @@ import org.apache.fineract.infrastructure.cache.domain.PlatformCache;
 import org.apache.fineract.infrastructure.cache.domain.PlatformCacheRepository;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
 import org.apache.fineract.useradministration.domain.Permission;
 import org.apache.fineract.useradministration.domain.PermissionRepository;
 import org.apache.fineract.useradministration.exception.PermissionNotFoundException;
@@ -514,6 +515,16 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS);
         return property.isEnabled();
+    }
+
+    @Override
+    public LegalTenderCaptureMode retrieveLegalTenderCaptureModeForCashTransactions() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.CAPTURE_LEGAL_TENDER_FOR_CASH_TRANSACTIONS);
+        if (!property.isEnabled()) {
+            return LegalTenderCaptureMode.OFF;
+        }
+        return LegalTenderCaptureMode.fromString(property.getStringValue());
     }
 
     @Override

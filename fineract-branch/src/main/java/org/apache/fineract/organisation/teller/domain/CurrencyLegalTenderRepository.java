@@ -37,6 +37,6 @@ public interface CurrencyLegalTenderRepository extends JpaRepository<CurrencyLeg
 
     boolean existsByCurrencyCodeAndValueAndTenderType(String currencyCode, java.math.BigDecimal value, Integer tenderType);
 
-    @Query("SELECT CASE WHEN COUNT(line) > 0 THEN TRUE ELSE FALSE END FROM CashierTransactionLegalTender line WHERE line.legalTender.id = :legalTenderId")
+    @Query("SELECT CASE WHEN COUNT(line) > 0 THEN TRUE ELSE FALSE END FROM CashLegalTenderLine line WHERE line.legalTender.id = :legalTenderId")
     boolean existsInCashierTransactions(@Param("legalTenderId") Long legalTenderId);
 }

@@ -41,6 +41,8 @@ import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientA
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
+import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownValidator;
+import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownWritePlatformService;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.organisation.staff.service.StaffReadService;
@@ -377,7 +379,8 @@ public class SavingsConfiguration {
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService, AppUserRepositoryWrapper appuserRepository,
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
-            ExternalIdFactory externalIdFactory, ErrorHandler errorHandler) {
+            ExternalIdFactory externalIdFactory, ErrorHandler errorHandler, LegalTenderBreakdownValidator legalTenderBreakdownValidator,
+            LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService) {
         return new SavingsAccountWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper,
                 staffRepository, savingsAccountTransactionRepository, savingAccountAssembler, savingsAccountTransactionDataValidator,
                 savingsAccountChargeDataValidator, paymentDetailWritePlatformService, journalEntryWritePlatformService,
@@ -385,7 +388,7 @@ public class SavingsConfiguration {
                 chargeRepository, savingsAccountChargeRepository, holidayRepository, workingDaysRepository, configurationDomainService,
                 depositAccountOnHoldTransactionRepository, entityDatatableChecksWritePlatformService, appuserRepository,
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
-                externalIdFactory, errorHandler);
+                externalIdFactory, errorHandler, legalTenderBreakdownValidator, legalTenderBreakdownWritePlatformService);
     }
 
     @Bean

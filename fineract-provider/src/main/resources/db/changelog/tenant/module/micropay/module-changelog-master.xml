@@ -86,4 +86,5 @@
   <include relativeToChangelogFile="true" file="parts/3061_add_prevent_cashier_overdraw_configuration.xml"/>
   <include relativeToChangelogFile="true" file="parts/3062_add_require_cashier_for_cash_transactions_configuration.xml"/>
   <include relativeToChangelogFile="true" file="parts/3063_add_currency_legal_tender_tables.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3064_add_cash_legal_tender_line_table.xml"/>
 </databaseChangeLog>

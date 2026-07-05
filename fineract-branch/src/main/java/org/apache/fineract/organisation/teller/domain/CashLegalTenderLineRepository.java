@@ -24,8 +24,13 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface CashierTransactionLegalTenderRepository extends JpaRepository<CashierTransactionLegalTender, Long> {
+public interface CashLegalTenderLineRepository extends JpaRepository<CashLegalTenderLine, Long> {
 
-    @Query("select line from CashierTransactionLegalTender line join fetch line.legalTender lt where line.cashierTransaction.id in :txnIds order by lt.displayOrder asc")
-    List<CashierTransactionLegalTender> findByCashierTransactionIds(@Param("txnIds") Collection<Long> txnIds);
+    @Query("select line from CashLegalTenderLine line join fetch line.legalTender lt "
+            + "where line.sourceType = :sourceType and line.sourceId in :sourceIds order by lt.displayOrder asc")
+    List<CashLegalTenderLine> findBySourceTypeAndSourceIds(@Param("sourceType") Integer sourceType,
+            @Param("sourceIds") Collection<Long> sourceIds);
+
+    @Query("SELECT CASE WHEN COUNT(line) > 0 THEN TRUE ELSE FALSE END FROM CashLegalTenderLine line WHERE line.legalTender.id = :legalTenderId")
+    boolean existsByLegalTenderId(@Param("legalTenderId") Long legalTenderId);
 }

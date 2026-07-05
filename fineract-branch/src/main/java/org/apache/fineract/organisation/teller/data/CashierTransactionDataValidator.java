@@ -20,7 +20,7 @@ package org.apache.fineract.organisation.teller.data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -37,6 +37,7 @@ import org.apache.fineract.organisation.teller.exception.CashierDateRangeOutOfTe
 import org.apache.fineract.organisation.teller.exception.CashierInsufficientAmountException;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformService;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
+import org.apache.fineract.portfolio.paymentdetail.util.CashPaymentHelper;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -118,8 +119,8 @@ public class CashierTransactionDataValidator {
                 + "OR (c.start_date BETWEEN :fromDate AND :endDate OR c.end_date BETWEEN :fromDate AND :endDate))";
 
         if (!cashier.getIsFullDay()) {
-            sql += " AND (TIME(c.start_time) BETWEEN TIME(:startTime) AND TIME(:endTime) "
-                    + "OR TIME(c.end_time) BETWEEN TIME(:startTime) AND TIME(:endTime))";
+            sql += " AND (CAST(c.start_time AS TIME) BETWEEN CAST(:startTime AS TIME) AND CAST(:endTime AS TIME) "
+                    + "OR CAST(c.end_time AS TIME) BETWEEN CAST(:startTime AS TIME) AND CAST(:endTime AS TIME))";
         }
 
         Map<String, Object> paramMap = new HashMap<>();
@@ -147,16 +148,16 @@ public class CashierTransactionDataValidator {
             return Optional.empty();
         }
         LocalDate tenantDate = DateUtils.getLocalDateOfTenant();
-        OffsetDateTime tenantDateTime = DateUtils.getOffsetDateTimeOfTenant();
+        LocalTime tenantTime = DateUtils.getOffsetDateTimeOfTenant().toLocalTime();
         String sql = "SELECT c.id FROM m_cashiers c WHERE c.staff_id = :staffId "
-                + "AND (CASE WHEN c.full_day THEN :tenantDate BETWEEN c.start_date AND c.end_date "
+                + "AND (CASE WHEN COALESCE(c.full_day, false) THEN :tenantDate BETWEEN c.start_date AND c.end_date "
                 + "ELSE (:tenantDate BETWEEN c.start_date AND c.end_date AND "
-                + "TIME(:tenantDateTime) BETWEEN TIME(c.start_time) AND TIME(c.end_time)) END)";
+                + "CAST(:tenantTime AS TIME) BETWEEN CAST(c.start_time AS TIME) AND CAST(c.end_time AS TIME)) END)";
 
         Map<String, Object> paramMap = new HashMap<>();
         paramMap.put("staffId", user.getStaff().getId());
         paramMap.put("tenantDate", tenantDate);
-        paramMap.put("tenantDateTime", tenantDateTime);
+        paramMap.put("tenantTime", tenantTime);
 
         try {
             return Optional.ofNullable(jdbcTemplate.queryForObject(sql, paramMap, Long.class));
@@ -166,12 +167,6 @@ public class CashierTransactionDataValidator {
     }
 
     private boolean isCashPayment(final PaymentDetail paymentDetail) {
-        if (paymentDetail == null) {
-            return true;
-        }
-        if (paymentDetail.getPaymentType() == null) {
-            return false;
-        }
-        return Boolean.TRUE.equals(paymentDetail.getPaymentType().getIsCashPayment());
+        return CashPaymentHelper.isCashPayment(paymentDetail);
     }
 }
