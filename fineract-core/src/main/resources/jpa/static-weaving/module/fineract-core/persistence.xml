@@ -35,6 +35,7 @@
         <class>org.apache.fineract.accounting.glaccount.domain.GLAccount</class>
         <class>org.apache.fineract.commands.domain.CommandSource</class>
         <class>org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat</class>
+        <class>org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequence</class>
         <class>org.apache.fineract.infrastructure.businessdate.domain.BusinessDate</class>
         <class>org.apache.fineract.infrastructure.cache.domain.PlatformCache</class>
         <class>org.apache.fineract.infrastructure.codes.domain.Code</class>

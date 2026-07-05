@@ -34,6 +34,7 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
@@ -46,6 +47,7 @@ import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatData;
+import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatPreviewData;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatConstants;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatReadPlatformService;
@@ -67,10 +69,16 @@ public class AccountNumberFormatsApiResource {
     private final ToApiJsonSerializer<AccountNumberFormatData> toApiJsonSerializer;
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
+    private final ToApiJsonSerializer<AccountNumberFormatPreviewData> previewDataSerializer;
     private static final Set<String> ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList(AccountNumberFormatConstants.idParamName, AccountNumberFormatConstants.accountTypeParamName,
                     AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.accountTypeOptionsParamName,
-                    AccountNumberFormatConstants.prefixTypeOptionsParamName));
+                    AccountNumberFormatConstants.prefixTypeOptionsParamName, AccountNumberFormatConstants.prefixCharacterParamName,
+                    AccountNumberFormatConstants.formatPatternParamName, AccountNumberFormatConstants.sequenceScopeParamName,
+                    AccountNumberFormatConstants.checkDigitAlgorithmParamName, AccountNumberFormatConstants.structuredEnabledParamName,
+                    AccountNumberFormatConstants.sequenceScopeOptionsParamName,
+                    AccountNumberFormatConstants.checkDigitAlgorithmOptionsParamName,
+                    AccountNumberFormatConstants.segmentTokenOptionsParamName));
 
     @GET
     @Path("template")
@@ -124,6 +132,8 @@ public class AccountNumberFormatsApiResource {
             final AccountNumberFormatData templateData = this.accountNumberFormatReadPlatformService
                     .retrieveTemplate(EntityAccountType.fromInt(accountNumberFormatData.getAccountType().getId().intValue()));
             accountNumberFormatData.templateOnTop(templateData.getAccountTypeOptions(), templateData.getPrefixTypeOptions());
+            accountNumberFormatData.structuredTemplateOnTop(templateData.getSequenceScopeOptions(),
+                    templateData.getCheckDigitAlgorithmOptions(), templateData.getSegmentTokenOptions());
         }
 
         return this.toApiJsonSerializer.serialize(settings, accountNumberFormatData, ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS);
@@ -167,6 +177,23 @@ public class AccountNumberFormatsApiResource {
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 
         return this.toApiJsonSerializer.serialize(result);
+    }
+
+    @GET
+    @Path("preview")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Preview structured account number", description = "Dry-run a structured account number without consuming a sequence value.")
+    public String preview(@QueryParam("accountType") final Integer accountType, @QueryParam("officeId") final Long officeId,
+            @QueryParam("productShortName") final String productShortName, @QueryParam("clientTypeLabel") final String clientTypeLabel,
+            @QueryParam("formatPattern") final String formatPattern, @QueryParam("sequenceScope") final Integer sequenceScope,
+            @QueryParam("checkDigitAlgorithm") final Integer checkDigitAlgorithm, @Context final UriInfo uriInfo) {
+
+        this.context.authenticatedUser().validateHasReadPermission(AccountNumberFormatConstants.ENTITY_NAME);
+
+        final AccountNumberFormatPreviewData previewData = this.accountNumberFormatReadPlatformService.previewAccountNumber(accountType,
+                officeId, productShortName, clientTypeLabel, formatPattern, sequenceScope, checkDigitAlgorithm);
+        final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
+        return this.previewDataSerializer.serialize(settings, previewData);
     }
 
     @DELETE

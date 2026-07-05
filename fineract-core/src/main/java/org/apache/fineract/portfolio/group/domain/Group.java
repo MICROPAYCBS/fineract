@@ -130,7 +130,7 @@ public final class Group extends AbstractPersistableCustom<Long> {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "center", orphanRemoval = true)
     private Set<StaffAssignmentHistory> staffHistory;
 
-    @Column(name = "account_no", length = 20, unique = true, nullable = false)
+    @Column(name = "account_no", length = 34, unique = true, nullable = false)
     private String accountNumber;
 
     @OneToMany(mappedBy = "group", cascade = CascadeType.REMOVE)

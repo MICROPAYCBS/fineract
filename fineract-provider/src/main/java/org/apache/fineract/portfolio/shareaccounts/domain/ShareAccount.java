@@ -105,7 +105,7 @@ public class ShareAccount extends AbstractPersistableCustom<Long> {
     @Column(name = "external_id")
     private String externalId;
 
-    @Column(name = "account_no", length = 20, unique = true, nullable = false)
+    @Column(name = "account_no", length = 34, unique = true, nullable = false)
     private String accountNumber;
 
     @Column(name = "total_approved_shares")

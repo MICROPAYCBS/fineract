@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3065-widen-account-no-columns" author="micropay">
+        <modifyDataType tableName="m_client" columnName="account_no" newDataType="VARCHAR(34)"/>
+        <modifyDataType tableName="m_loan" columnName="account_no" newDataType="VARCHAR(34)"/>
+        <modifyDataType tableName="m_savings_account" columnName="account_no" newDataType="VARCHAR(34)"/>
+        <modifyDataType tableName="m_group" columnName="account_no" newDataType="VARCHAR(34)"/>
+        <modifyDataType tableName="m_share_account" columnName="account_no" newDataType="VARCHAR(34)"/>
+        <modifyDataType tableName="m_wc_loan" columnName="account_no" newDataType="VARCHAR(34)"/>
+    </changeSet>
+
+    <changeSet id="3065-add-structured-columns-to-account-number-format" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="c_account_number_format" columnName="format_pattern"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="c_account_number_format">
+            <column name="format_pattern" type="VARCHAR(200)"/>
+            <column name="sequence_scope_enum" type="SMALLINT"/>
+            <column name="check_digit_algorithm_enum" type="SMALLINT" defaultValueNumeric="0"/>
+            <column name="structured_enabled" type="BOOLEAN" defaultValueBoolean="false"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="3065-create-account-number-sequence-table" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_account_number_sequence"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_account_number_sequence">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="scope_key" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="last_value" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="3065-structured-account-number-formats-config" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'structured-account-number-formats'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="structured-account-number-formats"/>
+            <column name="value" valueNumeric="0"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="false"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="When enabled, new account numbers are generated using structured segment rules (branch + product + sequence + check digit). Applies to new accounts only; existing numbers are unchanged."/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -18,20 +18,9 @@
  */
 package org.apache.fineract.infrastructure.accountnumberformat.service;
 
-import java.util.List;
-import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatData;
-import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatPreviewData;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+public interface AccountNumberSequenceWritePlatformService {
 
-public interface AccountNumberFormatReadPlatformService {
+    long nextSequenceValue(String scopeKey);
 
-    List<AccountNumberFormatData> getAllAccountNumberFormats();
-
-    AccountNumberFormatData getAccountNumberFormat(Long id);
-
-    AccountNumberFormatData retrieveTemplate(EntityAccountType entityAccountTypeForTemplate);
-
-    AccountNumberFormatPreviewData previewAccountNumber(Integer accountType, Long officeId, String productShortName,
-            String clientTypeLabel, String formatPattern, Integer sequenceScope, Integer checkDigitAlgorithm);
-
+    long previewNextSequenceValue(String scopeKey);
 }

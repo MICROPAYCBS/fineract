@@ -116,7 +116,7 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     int version;
 
     @Setter
-    @Column(name = "account_no", length = 20, unique = true, nullable = false)
+    @Column(name = "account_no", length = 34, unique = true, nullable = false)
     private String accountNumber;
 
     @Setter

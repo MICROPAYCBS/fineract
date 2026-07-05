@@ -18,20 +18,21 @@
  */
 package org.apache.fineract.infrastructure.accountnumberformat.service;
 
-import java.util.List;
-import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatData;
-import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatPreviewData;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import static org.assertj.core.api.Assertions.assertThat;
 
-public interface AccountNumberFormatReadPlatformService {
+import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
+import org.junit.jupiter.api.Test;
 
-    List<AccountNumberFormatData> getAllAccountNumberFormats();
+public class CheckDigitCalculatorTest {
 
-    AccountNumberFormatData getAccountNumberFormat(Long id);
+    @Test
+    public void normalizesSegmentValues() {
+        assertThat(CheckDigitCalculator.normalizeSegmentValue("1", 3, true)).isEqualTo("001");
+        assertThat(CheckDigitCalculator.normalizeSegmentValue("SAVINGS", 2, false)).isEqualTo("SA");
+    }
 
-    AccountNumberFormatData retrieveTemplate(EntityAccountType entityAccountTypeForTemplate);
-
-    AccountNumberFormatPreviewData previewAccountNumber(Integer accountType, Long officeId, String productShortName,
-            String clientTypeLabel, String formatPattern, Integer sequenceScope, Integer checkDigitAlgorithm);
-
+    @Test
+    public void calculatesLuhnCheckDigit() {
+        assertThat(CheckDigitCalculator.calculate(CheckDigitAlgorithm.LUHN, "7992739871")).isEqualTo("3");
+    }
 }

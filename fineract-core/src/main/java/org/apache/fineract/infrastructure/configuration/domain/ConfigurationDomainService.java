@@ -147,6 +147,8 @@ public interface ConfigurationDomainService {
 
     LegalTenderCaptureMode retrieveLegalTenderCaptureModeForCashTransactions();
 
+    boolean isStructuredAccountNumberFormatsEnabled();
+
     Integer retrieveSessionIdleTimeoutMinutes();
 
     Integer retrieveSessionIdleWarningSeconds();

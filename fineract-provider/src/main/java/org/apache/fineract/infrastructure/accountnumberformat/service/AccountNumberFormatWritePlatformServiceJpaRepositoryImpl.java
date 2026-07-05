@@ -26,6 +26,8 @@ import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumber
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations.AccountNumberPrefixType;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -70,8 +72,14 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
             }
 
             String prefixCharacter = command.stringValueOfParameterNamed(AccountNumberFormatConstants.prefixCharacterParamName);
+            final String formatPattern = command.stringValueOfParameterNamed(AccountNumberFormatConstants.formatPatternParamName);
+            final Integer sequenceScopeId = command.integerValueSansLocaleOfParameterNamed(AccountNumberFormatConstants.sequenceScopeParamName);
+            final Integer checkDigitAlgorithmId = command
+                    .integerValueSansLocaleOfParameterNamed(AccountNumberFormatConstants.checkDigitAlgorithmParamName);
+            final Boolean structuredEnabled = command.booleanObjectValueOfParameterNamed(AccountNumberFormatConstants.structuredEnabledParamName);
 
             AccountNumberFormat accountNumberFormat = new AccountNumberFormat(entityAccountType, accountNumberPrefixType, prefixCharacter);
+            applyStructuredFields(accountNumberFormat, formatPattern, sequenceScopeId, checkDigitAlgorithmId, structuredEnabled);
 
             this.accountNumberFormatRepository.saveAndFlush(accountNumberFormat);
 
@@ -114,6 +122,35 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
                 final String newValue = command.stringValueOfParameterNamed(AccountNumberFormatConstants.prefixCharacterParamName);
                 actualChanges.put(AccountNumberFormatConstants.prefixCharacterParamName, newValue);
                 accountNumberFormatForUpdate.setPrefixCharacter(newValue);
+            }
+
+            if (command.isChangeInStringParameterNamed(AccountNumberFormatConstants.formatPatternParamName,
+                    accountNumberFormatForUpdate.getFormatPattern())) {
+                final String newValue = command.stringValueOfParameterNamed(AccountNumberFormatConstants.formatPatternParamName);
+                actualChanges.put(AccountNumberFormatConstants.formatPatternParamName, newValue);
+                accountNumberFormatForUpdate.setFormatPattern(newValue);
+            }
+
+            if (command.isChangeInIntegerSansLocaleParameterNamed(AccountNumberFormatConstants.sequenceScopeParamName,
+                    accountNumberFormatForUpdate.getSequenceScopeEnum())) {
+                final Integer newValue = command.integerValueSansLocaleOfParameterNamed(AccountNumberFormatConstants.sequenceScopeParamName);
+                actualChanges.put(AccountNumberFormatConstants.sequenceScopeParamName, newValue);
+                accountNumberFormatForUpdate.setSequenceScope(AccountNumberSequenceScope.fromInt(newValue));
+            }
+
+            if (command.isChangeInIntegerSansLocaleParameterNamed(AccountNumberFormatConstants.checkDigitAlgorithmParamName,
+                    accountNumberFormatForUpdate.getCheckDigitAlgorithmEnum())) {
+                final Integer newValue = command
+                        .integerValueSansLocaleOfParameterNamed(AccountNumberFormatConstants.checkDigitAlgorithmParamName);
+                actualChanges.put(AccountNumberFormatConstants.checkDigitAlgorithmParamName, newValue);
+                accountNumberFormatForUpdate.setCheckDigitAlgorithm(CheckDigitAlgorithm.fromInt(newValue));
+            }
+
+            if (command.isChangeInBooleanParameterNamed(AccountNumberFormatConstants.structuredEnabledParamName,
+                    accountNumberFormatForUpdate.getStructuredEnabled())) {
+                final Boolean newValue = command.booleanObjectValueOfParameterNamed(AccountNumberFormatConstants.structuredEnabledParamName);
+                actualChanges.put(AccountNumberFormatConstants.structuredEnabledParamName, newValue);
+                accountNumberFormatForUpdate.setStructuredEnabled(newValue);
             }
 
             if (!actualChanges.isEmpty()) {
@@ -160,5 +197,21 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
         LOG.error("Error occured.", dve);
         throw ErrorHandler.getMappable(dve, "error.msg.account.number.format.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource.");
+    }
+
+    private void applyStructuredFields(final AccountNumberFormat accountNumberFormat, final String formatPattern,
+            final Integer sequenceScopeId, final Integer checkDigitAlgorithmId, final Boolean structuredEnabled) {
+        if (formatPattern != null) {
+            accountNumberFormat.setFormatPattern(formatPattern);
+        }
+        if (sequenceScopeId != null) {
+            accountNumberFormat.setSequenceScope(AccountNumberSequenceScope.fromInt(sequenceScopeId));
+        }
+        if (checkDigitAlgorithmId != null) {
+            accountNumberFormat.setCheckDigitAlgorithm(CheckDigitAlgorithm.fromInt(checkDigitAlgorithmId));
+        }
+        if (structuredEnabled != null) {
+            accountNumberFormat.setStructuredEnabled(structuredEnabled);
+        }
     }
 }

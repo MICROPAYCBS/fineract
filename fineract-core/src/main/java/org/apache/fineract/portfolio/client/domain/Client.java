@@ -59,7 +59,7 @@ import org.apache.fineract.useradministration.domain.AppUser;
         @UniqueConstraint(columnNames = { "mobile_no" }, name = "mobile_no_UNIQUE") })
 public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
-    @Column(name = "account_no", length = 20, unique = true, nullable = false)
+    @Column(name = "account_no", length = 34, unique = true, nullable = false)
     private String accountNumber;
 
     @ManyToOne

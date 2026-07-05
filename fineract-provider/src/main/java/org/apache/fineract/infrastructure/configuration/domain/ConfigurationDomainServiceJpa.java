@@ -528,6 +528,13 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public boolean isStructuredAccountNumberFormatsEnabled() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.STRUCTURED_ACCOUNT_NUMBER_FORMATS);
+        return property.isEnabled();
+    }
+
+    @Override
     public Integer retrieveSessionIdleTimeoutMinutes() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);

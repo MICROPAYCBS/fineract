@@ -33,16 +33,25 @@ public class AccountNumberFormatData implements Serializable {
     // template options
     private List<EnumOptionData> accountTypeOptions;
     private Map<String, List<EnumOptionData>> prefixTypeOptions;
+    private List<EnumOptionData> sequenceScopeOptions;
+    private List<EnumOptionData> checkDigitAlgorithmOptions;
+    private List<String> segmentTokenOptions;
 
     private String prefixCharacter;
+    private String formatPattern;
+    private EnumOptionData sequenceScope;
+    private EnumOptionData checkDigitAlgorithm;
+    private Boolean structuredEnabled;
 
     public AccountNumberFormatData(final Long id, final EnumOptionData accountType, final EnumOptionData prefixType,
-            final String prefixCharacter) {
-        this(id, accountType, prefixType, null, null, prefixCharacter);
+            final String prefixCharacter, final String formatPattern, final EnumOptionData sequenceScope,
+            final EnumOptionData checkDigitAlgorithm, final Boolean structuredEnabled) {
+        this(id, accountType, prefixType, null, null, prefixCharacter, formatPattern, sequenceScope, checkDigitAlgorithm,
+                structuredEnabled, null, null, null);
     }
 
     public AccountNumberFormatData(final List<EnumOptionData> accountTypeOptions, Map<String, List<EnumOptionData>> prefixTypeOptions) {
-        this(null, null, null, accountTypeOptions, prefixTypeOptions, null);
+        this(null, null, null, accountTypeOptions, prefixTypeOptions, null, null, null, null, null, null, null, null);
     }
 
     public void templateOnTop(List<EnumOptionData> accountTypeOptions, Map<String, List<EnumOptionData>> prefixTypeOptions) {
@@ -50,15 +59,31 @@ public class AccountNumberFormatData implements Serializable {
         this.prefixTypeOptions = prefixTypeOptions;
     }
 
+    public void structuredTemplateOnTop(final List<EnumOptionData> sequenceScopeOptions,
+            final List<EnumOptionData> checkDigitAlgorithmOptions, final List<String> segmentTokenOptions) {
+        this.sequenceScopeOptions = sequenceScopeOptions;
+        this.checkDigitAlgorithmOptions = checkDigitAlgorithmOptions;
+        this.segmentTokenOptions = segmentTokenOptions;
+    }
+
     private AccountNumberFormatData(final Long id, final EnumOptionData accountType, final EnumOptionData prefixType,
             final List<EnumOptionData> accountTypeOptions, Map<String, List<EnumOptionData>> prefixTypeOptions,
-            final String prefixCharacter) {
+            final String prefixCharacter, final String formatPattern, final EnumOptionData sequenceScope,
+            final EnumOptionData checkDigitAlgorithm, final Boolean structuredEnabled, final List<EnumOptionData> sequenceScopeOptions,
+            final List<EnumOptionData> checkDigitAlgorithmOptions, final List<String> segmentTokenOptions) {
         this.id = id;
         this.accountType = accountType;
         this.prefixType = prefixType;
         this.accountTypeOptions = accountTypeOptions;
         this.prefixTypeOptions = prefixTypeOptions;
         this.prefixCharacter = prefixCharacter;
+        this.formatPattern = formatPattern;
+        this.sequenceScope = sequenceScope;
+        this.checkDigitAlgorithm = checkDigitAlgorithm;
+        this.structuredEnabled = structuredEnabled;
+        this.sequenceScopeOptions = sequenceScopeOptions;
+        this.checkDigitAlgorithmOptions = checkDigitAlgorithmOptions;
+        this.segmentTokenOptions = segmentTokenOptions;
     }
 
     public Long getId() {
@@ -81,4 +106,35 @@ public class AccountNumberFormatData implements Serializable {
         return this.prefixTypeOptions;
     }
 
+    public String getPrefixCharacter() {
+        return this.prefixCharacter;
+    }
+
+    public String getFormatPattern() {
+        return this.formatPattern;
+    }
+
+    public EnumOptionData getSequenceScope() {
+        return this.sequenceScope;
+    }
+
+    public EnumOptionData getCheckDigitAlgorithm() {
+        return this.checkDigitAlgorithm;
+    }
+
+    public Boolean getStructuredEnabled() {
+        return this.structuredEnabled;
+    }
+
+    public List<EnumOptionData> getSequenceScopeOptions() {
+        return this.sequenceScopeOptions;
+    }
+
+    public List<EnumOptionData> getCheckDigitAlgorithmOptions() {
+        return this.checkDigitAlgorithmOptions;
+    }
+
+    public List<String> getSegmentTokenOptions() {
+        return this.segmentTokenOptions;
+    }
 }

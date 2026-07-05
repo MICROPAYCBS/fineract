@@ -31,6 +31,8 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations.AccountNumberPrefixType;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatConstants;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -52,10 +54,14 @@ public class AccountNumberFormatDataValidator {
 
     private static final Set<String> ACCOUNT_NUMBER_FORMAT_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList(AccountNumberFormatConstants.accountTypeParamName, AccountNumberFormatConstants.prefixTypeParamName,
-                    AccountNumberFormatConstants.prefixCharacterParamName));
+                    AccountNumberFormatConstants.prefixCharacterParamName, AccountNumberFormatConstants.formatPatternParamName,
+                    AccountNumberFormatConstants.sequenceScopeParamName, AccountNumberFormatConstants.checkDigitAlgorithmParamName,
+                    AccountNumberFormatConstants.structuredEnabledParamName));
 
     private static final Set<String> ACCOUNT_NUMBER_FORMAT_UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.prefixCharacterParamName));
+            Arrays.asList(AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.prefixCharacterParamName,
+                    AccountNumberFormatConstants.formatPatternParamName, AccountNumberFormatConstants.sequenceScopeParamName,
+                    AccountNumberFormatConstants.checkDigitAlgorithmParamName, AccountNumberFormatConstants.structuredEnabledParamName));
 
     @Autowired
     public AccountNumberFormatDataValidator(final FromJsonHelper fromApiJsonHelper) {
@@ -110,6 +116,8 @@ public class AccountNumberFormatDataValidator {
                 dataValidatorForValidatingPrefixType.isOneOfTheseValues(validAccountNumberPrefixes.toArray());
             }
         }
+
+        validateStructuredFields(baseDataValidator, element);
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
 
@@ -182,7 +190,30 @@ public class AccountNumberFormatDataValidator {
             baseDataValidator.reset().anyOfNotNull(forceError);
         }
 
+        validateStructuredFields(baseDataValidator, element);
+
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
+    }
+
+    private void validateStructuredFields(final DataValidatorBuilder baseDataValidator, final JsonElement element) {
+        if (this.fromApiJsonHelper.parameterExists(AccountNumberFormatConstants.formatPatternParamName, element)) {
+            final String formatPattern = this.fromApiJsonHelper.extractStringNamed(AccountNumberFormatConstants.formatPatternParamName,
+                    element);
+            baseDataValidator.reset().parameter(AccountNumberFormatConstants.formatPatternParamName).value(formatPattern)
+                    .notExceedingLengthOf(200);
+        }
+        if (this.fromApiJsonHelper.parameterExists(AccountNumberFormatConstants.sequenceScopeParamName, element)) {
+            final Integer sequenceScope = this.fromApiJsonHelper
+                    .extractIntegerSansLocaleNamed(AccountNumberFormatConstants.sequenceScopeParamName, element);
+            baseDataValidator.reset().parameter(AccountNumberFormatConstants.sequenceScopeParamName).value(sequenceScope).ignoreIfNull()
+                    .inMinMaxRange(AccountNumberSequenceScope.GLOBAL.getValue(), AccountNumberSequenceScope.OFFICE_PRODUCT.getValue());
+        }
+        if (this.fromApiJsonHelper.parameterExists(AccountNumberFormatConstants.checkDigitAlgorithmParamName, element)) {
+            final Integer checkDigitAlgorithm = this.fromApiJsonHelper
+                    .extractIntegerSansLocaleNamed(AccountNumberFormatConstants.checkDigitAlgorithmParamName, element);
+            baseDataValidator.reset().parameter(AccountNumberFormatConstants.checkDigitAlgorithmParamName).value(checkDigitAlgorithm)
+                    .ignoreIfNull().inMinMaxRange(CheckDigitAlgorithm.NONE.getValue(), CheckDigitAlgorithm.MOD11.getValue());
+        }
     }
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {

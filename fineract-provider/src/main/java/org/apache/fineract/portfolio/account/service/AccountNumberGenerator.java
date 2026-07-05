@@ -31,7 +31,9 @@ import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNum
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberStructuredGenerationService;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepository;
 import org.apache.fineract.portfolio.group.domain.Group;
@@ -63,12 +65,17 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     private static final String SHARE_PRODUCT_SHORT_NAME = "sharesProductShortName";
     private static final String PREFIX_SHORT_NAME = "prefixShortName";
     private final ConfigurationReadPlatformService configurationReadPlatformService;
+    private final ConfigurationDomainService configurationDomainService;
+    private final AccountNumberStructuredGenerationService accountNumberStructuredGenerationService;
     private final ClientRepository clientRepository;
     private final LoanRepository loanRepository;
     private final SavingsAccountRepository savingsAccountRepository;
     private final WorkingCapitalLoanRepository workingCapitalLoanRepository;
 
     public String generate(Client client, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.CLIENT, client, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, client.getId().toString());
         propertyMap.put(OFFICE_NAME, client.getOffice().getName());
@@ -81,6 +88,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(Loan loan, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.LOAN, loan, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, loan.getId().toString());
         propertyMap.put(OFFICE_NAME, loan.getOffice().getName());
@@ -90,6 +100,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(SavingsAccount savingsAccount, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.SAVINGS, savingsAccount, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, savingsAccount.getId().toString());
         propertyMap.put(OFFICE_NAME, savingsAccount.office().getName());
@@ -99,6 +112,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(ShareAccount shareaccount, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.SHARES, shareaccount, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, shareaccount.getId().toString());
         propertyMap.put(SHARE_PRODUCT_SHORT_NAME, shareaccount.getShareProduct().getShortName());
@@ -107,6 +123,10 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(WorkingCapitalLoan wcl, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.WORKING_CAPITAL_LOAN, wcl, accountNumberFormat,
+                    false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, wcl.getId().toString());
         propertyMap.put(OFFICE_NAME,
@@ -127,6 +147,12 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
             case CENTER, GROUP ->
                 throw new UnsupportedOperationException("Use generateCenterAccountNumber / generateGroupAccountNumber for " + type);
         };
+    }
+
+    private boolean useStructuredGeneration(final AccountNumberFormat accountNumberFormat) {
+        return configurationDomainService.isStructuredAccountNumberFormatsEnabled()
+                && (accountNumberFormat == null || accountNumberFormat.getStructuredEnabled() == null
+                        || Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled()));
     }
 
     private String generateAccountNumber(Map<String, String> propertyMap, AccountNumberFormat accountNumberFormat) {
@@ -286,6 +312,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generateGroupAccountNumber(Group group, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.GROUP, group, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, group.getId().toString());
         propertyMap.put(OFFICE_NAME, group.getOffice().getName());
@@ -294,6 +323,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generateCenterAccountNumber(Group group, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.CENTER, group, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, group.getId().toString());
         propertyMap.put(OFFICE_NAME, group.getOffice().getName());

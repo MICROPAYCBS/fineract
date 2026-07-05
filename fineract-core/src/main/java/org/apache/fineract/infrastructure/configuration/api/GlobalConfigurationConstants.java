@@ -102,6 +102,7 @@ public final class GlobalConfigurationConstants {
     public static final String PREVENT_CASHIER_OVERDRAW = "prevent-cashier-overdraw";
     public static final String REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS = "require-cashier-for-cash-transactions";
     public static final String CAPTURE_LEGAL_TENDER_FOR_CASH_TRANSACTIONS = "capture-legal-tender-for-cash-transactions";
+    public static final String STRUCTURED_ACCOUNT_NUMBER_FORMATS = "structured-account-number-formats";
 
     private GlobalConfigurationConstants() {}
 }
