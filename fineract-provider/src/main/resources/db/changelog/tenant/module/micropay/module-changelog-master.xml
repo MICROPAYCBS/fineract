@@ -88,4 +88,5 @@
   <include relativeToChangelogFile="true" file="parts/3063_add_currency_legal_tender_tables.xml"/>
   <include relativeToChangelogFile="true" file="parts/3064_add_cash_legal_tender_line_table.xml"/>
   <include relativeToChangelogFile="true" file="parts/3065_add_structured_account_number_formats.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3066_add_allow_direct_loan_repayments_configuration.xml"/>
 </databaseChangeLog>

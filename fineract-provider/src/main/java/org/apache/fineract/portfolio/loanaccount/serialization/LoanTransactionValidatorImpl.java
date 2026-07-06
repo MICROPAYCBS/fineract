@@ -1171,4 +1171,17 @@ public class LoanTransactionValidatorImpl implements LoanTransactionValidator {
             }
         }
     }
+
+    @Override
+    public void validateDirectLoanRepaymentPermitted(final LoanTransactionType repaymentTransactionType,
+            final boolean isRecoveryRepayment) {
+        if (this.configurationDomainService.isAllowDirectLoanRepaymentsEnabled()) {
+            return;
+        }
+        if (repaymentTransactionType.isRepayment() || repaymentTransactionType.isDownPayment() || isRecoveryRepayment) {
+            throw new GeneralPlatformDomainRuleException("error.msg.direct.loan.repayment.not.allowed",
+                    "Direct loan repayments are not allowed. Repay the loan by transferring from the client's savings account.",
+                    repaymentTransactionType.getCode());
+        }
+    }
 }

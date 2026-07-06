@@ -613,6 +613,12 @@ public class ProgressiveLoanTransactionValidatorImpl implements ProgressiveLoanT
         loanTransactionValidator.validateClassificationCodeValue(codeName, transactionClassificationId, baseDataValidator);
     }
 
+    @Override
+    public void validateDirectLoanRepaymentPermitted(final LoanTransactionType repaymentTransactionType,
+            final boolean isRecoveryRepayment) {
+        loanTransactionValidator.validateDirectLoanRepaymentPermitted(repaymentTransactionType, isRecoveryRepayment);
+    }
+
     private Set<String> getCapitalizedIncomeParameters() {
         return new HashSet<>(Arrays.asList(TRANSACTION_DATE, DATE_FORMAT, LOCALE, TRANSACTION_AMOUNT, PAYMENT_TYPE_ID, NOTE, EXTERNAL_ID,
                 LoanTransactionApiConstants.TRANSACTION_CLASSIFICATIONID_PARAMNAME));

@@ -1101,6 +1101,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final Long loanId, final JsonCommand command, final boolean isRecoveryRepayment, final String chargeRefundChargeType) {
 
         this.loanUtilService.validateRepaymentTransactionType(repaymentTransactionType);
+        this.loanTransactionValidator.validateDirectLoanRepaymentPermitted(repaymentTransactionType, isRecoveryRepayment);
         this.loanTransactionValidator.validateNewRepaymentTransaction(command.json());
 
         final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
@@ -1159,6 +1160,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         if (repaymentCommand == null) {
             return changes;
         }
+        this.loanTransactionValidator.validateDirectLoanRepaymentPermitted(LoanTransactionType.REPAYMENT, isRecoveryRepayment);
         List<Long> transactionIds = new ArrayList<>();
         boolean isAccountTransfer = false;
         HolidayDetailDTO holidayDetailDTO = null;

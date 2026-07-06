@@ -103,6 +103,7 @@ public final class GlobalConfigurationConstants {
     public static final String REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS = "require-cashier-for-cash-transactions";
     public static final String CAPTURE_LEGAL_TENDER_FOR_CASH_TRANSACTIONS = "capture-legal-tender-for-cash-transactions";
     public static final String STRUCTURED_ACCOUNT_NUMBER_FORMATS = "structured-account-number-formats";
+    public static final String ALLOW_DIRECT_LOAN_REPAYMENTS = "allow-direct-loan-repayments";
 
     private GlobalConfigurationConstants() {}
 }

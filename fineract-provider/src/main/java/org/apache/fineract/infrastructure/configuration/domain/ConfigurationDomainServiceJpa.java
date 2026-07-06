@@ -535,6 +535,13 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public boolean isAllowDirectLoanRepaymentsEnabled() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.ALLOW_DIRECT_LOAN_REPAYMENTS);
+        return property.isEnabled();
+    }
+
+    @Override
     public Integer retrieveSessionIdleTimeoutMinutes() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);

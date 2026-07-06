@@ -149,6 +149,8 @@ public interface ConfigurationDomainService {
 
     boolean isStructuredAccountNumberFormatsEnabled();
 
+    boolean isAllowDirectLoanRepaymentsEnabled();
+
     Integer retrieveSessionIdleTimeoutMinutes();
 
     Integer retrieveSessionIdleWarningSeconds();
