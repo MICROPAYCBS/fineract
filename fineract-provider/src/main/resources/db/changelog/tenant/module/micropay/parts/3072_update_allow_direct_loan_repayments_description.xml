@@ -3,20 +3,14 @@
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
-    <changeSet id="3066-allow-direct-loan-repayments-config" author="micropay">
-        <validCheckSum>9:d97d24d3ab611e78f1f5ccd348a3f12d</validCheckSum>
+    <changeSet id="3072-update-allow-direct-loan-repayments-description" author="micropay">
         <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'allow-direct-loan-repayments'</sqlCheck>
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM c_configuration WHERE name = 'allow-direct-loan-repayments'</sqlCheck>
         </preConditions>
-        <insert tableName="c_configuration">
-            <column name="name" value="allow-direct-loan-repayments"/>
-            <column name="value" valueNumeric="1"/>
-            <column name="date_value"/>
-            <column name="string_value"/>
-            <column name="enabled" valueBoolean="true"/>
-            <column name="is_trap_door" valueBoolean="false"/>
+        <update tableName="c_configuration">
             <column name="description" value="When enabled, loan repayments may also be posted directly on the loan (cash, bank, mobile money, etc.) in addition to savings transfer (always allowed). When disabled, only savings transfer repayments are permitted."/>
-        </insert>
+            <where>name = 'allow-direct-loan-repayments'</where>
+        </update>
     </changeSet>
 
 </databaseChangeLog>

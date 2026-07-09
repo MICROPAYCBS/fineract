@@ -94,4 +94,5 @@
   <include relativeToChangelogFile="true" file="parts/3069_add_journal_entry_department_id.xml"/>
   <include relativeToChangelogFile="true" file="parts/3070_add_department_filter_core_accounting_table_reports.xml"/>
   <include relativeToChangelogFile="true" file="parts/3071_add_require_department_on_manual_journal_pl_lines_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3072_update_allow_direct_loan_repayments_description.xml"/>
 </databaseChangeLog>
