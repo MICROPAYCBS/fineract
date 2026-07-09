@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: General Ledger report GL account filter — ensure stretchy metadata renders as a select.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3073-fix-gl-account-report-parameter-select">
+        <update tableName="stretchy_parameter">
+            <column name="parameter_displayType" value="select"/>
+            <column name="selectOne" value="Y"/>
+            <column name="parameter_sql" value="select id, concat(gl_code, ' - ', name) as name from acc_gl_account order by gl_code"/>
+            <where>parameter_name = 'SelectGLAccountNO'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>
