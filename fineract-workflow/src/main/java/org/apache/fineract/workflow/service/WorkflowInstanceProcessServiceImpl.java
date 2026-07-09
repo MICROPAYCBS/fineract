@@ -88,7 +88,7 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
         if (definition.isTerminalStage(instance.getCurrentStageCode())) {
             instance.setStatus(WorkflowInstanceStatus.COMPLETED);
             this.workflowInstanceRepository.saveAndFlush(instance);
-            return ApprovalWorkflowDecision.PROCEED_TO_EXECUTE;
+            return ApprovalWorkflowDecision.STAGE_RECORDED;
         }
 
         final String nextStageCode = definition.resolveNextStageCode(instance.getCurrentStageCode(), instance.getTransactionAmount())

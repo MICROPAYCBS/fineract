@@ -121,7 +121,7 @@ class WorkflowInstanceProcessServiceImplTest {
     }
 
     @Test
-    void terminalStageApprovalProceedsToExecute() {
+    void terminalStageApprovalCompletesWorkflowAwaitingSystemChecker() {
         instance.setCurrentStageCode("HEAD_OFFICE");
         when(this.tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
         when(this.workflowInstanceRepository.findByCommandSourceIdWithDefinitionGraph(42L)).thenReturn(Optional.of(instance));
@@ -134,7 +134,7 @@ class WorkflowInstanceProcessServiceImplTest {
 
         final ApprovalWorkflowDecision decision = this.service.processCheckerApprove(commandSource, checker);
 
-        assertEquals(ApprovalWorkflowDecision.PROCEED_TO_EXECUTE, decision);
+        assertEquals(ApprovalWorkflowDecision.STAGE_RECORDED, decision);
         assertEquals(WorkflowInstanceStatus.COMPLETED, instance.getStatus());
     }
 
