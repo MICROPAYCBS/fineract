@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: fix GeneralLedgerReport Table opening balance and cumulative running balance.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3074-mysql-general-ledger-balances" context="mysql">
+        <sqlFile path="V3074__general_ledger_report_balance_fix.mysql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="true"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3074-postgresql-general-ledger-balances" context="postgresql">
+        <sqlFile path="V3074__general_ledger_report_balance_fix.postgresql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="true"
+            stripComments="false"/>
+    </changeSet>
+
+</databaseChangeLog>
