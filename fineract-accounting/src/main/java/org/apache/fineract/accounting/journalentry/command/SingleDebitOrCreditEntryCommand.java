@@ -33,6 +33,7 @@ public class SingleDebitOrCreditEntryCommand {
     private final Long glAccountId;
     private final BigDecimal amount;
     private final String comments;
+    private final Long departmentId;
 
     private final Set<String> parametersPassedInRequest;
 
@@ -46,5 +47,9 @@ public class SingleDebitOrCreditEntryCommand {
 
     public boolean isCommentsChanged() {
         return this.parametersPassedInRequest.contains("comments");
+    }
+
+    public boolean isDepartmentIdChanged() {
+        return this.parametersPassedInRequest.contains("departmentId");
     }
 }

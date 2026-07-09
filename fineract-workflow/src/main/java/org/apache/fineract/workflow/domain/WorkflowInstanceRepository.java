@@ -18,11 +18,23 @@
  */
 package org.apache.fineract.workflow.domain;
 
-import org.apache.fineract.useradministration.domain.Role;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
-/**
- * Module-local repository for {@link Role}. The platform's RoleRepository lives in fineract-provider which depends on
- * this module, so it cannot be referenced from here without creating a circular dependency.
- */
-public interface WorkflowRoleRepository extends JpaRepository<Role, Long> {}
+public interface WorkflowInstanceRepository extends JpaRepository<WorkflowInstance, Long> {
+
+    Optional<WorkflowInstance> findByCommandSourceId(Long commandSourceId);
+
+    boolean existsByCommandSourceId(Long commandSourceId);
+
+    @Query("""
+            SELECT wi FROM WorkflowInstance wi
+            JOIN FETCH wi.workflowDefinition wd
+            LEFT JOIN FETCH wd.stages stage
+            LEFT JOIN FETCH stage.actions
+            WHERE wi.commandSourceId = :commandSourceId
+            """)
+    Optional<WorkflowInstance> findByCommandSourceIdWithDefinitionGraph(@Param("commandSourceId") Long commandSourceId);
+}

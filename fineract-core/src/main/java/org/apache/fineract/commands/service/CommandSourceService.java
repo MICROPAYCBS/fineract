@@ -63,6 +63,7 @@ public class CommandSourceService {
     private final CommandSourceRepository commandSourceRepository;
     private final ErrorHandler errorHandler;
     private final FromJsonHelper fromApiJsonHelper;
+    private final ApprovalWorkflowHook approvalWorkflowHook;
 
     @NonNull
     @Transactional(propagation = Propagation.REQUIRES_NEW, isolation = Isolation.REPEATABLE_READ)
@@ -155,6 +156,7 @@ public class CommandSourceService {
                             "Maker-checker command can not be sanitized, please change the permission configuration", permission);
                 }
                 commandSource.markAsAwaitingApproval();
+                this.approvalWorkflowHook.onCommandAwaitingApproval(commandSource, command);
                 throw new RollbackTransactionNotApprovedException(commandSource.getId(), commandSource.getResourceId());
             }
         }

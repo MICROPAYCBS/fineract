@@ -21,20 +21,15 @@ package org.apache.fineract.workflow.service;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABLED_PROPERTY;
 
 import java.util.List;
-import lombok.RequiredArgsConstructor;
-import org.apache.fineract.useradministration.domain.Role;
 import org.apache.fineract.workflow.data.WorkflowDefinitionRequest;
-import org.apache.fineract.workflow.data.WorkflowParticipantRequest;
 import org.apache.fineract.workflow.data.WorkflowStageRequest;
 import org.apache.fineract.workflow.data.WorkflowTransitionRequest;
 import org.apache.fineract.workflow.domain.WorkflowApprovalAction;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowExpiryPeriodUnit;
 import org.apache.fineract.workflow.domain.WorkflowRejectionPolicy;
-import org.apache.fineract.workflow.domain.WorkflowRoleRepository;
 import org.apache.fineract.workflow.domain.WorkflowStage;
 import org.apache.fineract.workflow.domain.WorkflowStageAction;
-import org.apache.fineract.workflow.domain.WorkflowStageParticipant;
 import org.apache.fineract.workflow.domain.WorkflowStageType;
 import org.apache.fineract.workflow.domain.WorkflowTransition;
 import org.apache.fineract.workflow.exception.WorkflowConfigurationException;
@@ -46,11 +41,8 @@ import org.springframework.stereotype.Component;
  * stage entities for transitions; unknown references fail fast with a configuration error.
  */
 @Component
-@RequiredArgsConstructor
 @ConditionalOnProperty(value = MODULE_ENABLED_PROPERTY, havingValue = "true")
 public class WorkflowDefinitionAssembler {
-
-    private final WorkflowRoleRepository roleRepository;
 
     public WorkflowDefinition assembleNew(final WorkflowDefinitionRequest request) {
         final Integer priority = request.getPriority() != null ? request.getPriority() : 0;
@@ -112,20 +104,12 @@ public class WorkflowDefinitionAssembler {
         stage.setAllowCrossBranchAccess(Boolean.TRUE.equals(stageRequest.getAllowCrossBranchAccess()));
         stage.setRequireDistinctApprover(
                 stageRequest.getRequireDistinctApprover() == null || Boolean.TRUE.equals(stageRequest.getRequireDistinctApprover()));
+        stage.setApprovalLimitAmount(stageRequest.getApprovalLimitAmount());
+        stage.setApprovalLimitCurrency(stageRequest.getApprovalLimitCurrency());
 
         final List<String> actions = stageRequest.getActions() != null ? stageRequest.getActions() : List.of();
         for (final String action : actions) {
             stage.addAction(WorkflowStageAction.create(WorkflowApprovalAction.fromString(action)));
-        }
-
-        final List<WorkflowParticipantRequest> participants = stageRequest.getParticipants() != null ? stageRequest.getParticipants()
-                : List.of();
-        for (final WorkflowParticipantRequest participantRequest : participants) {
-            final Role role = this.roleRepository.findById(participantRequest.getRoleId())
-                    .orElseThrow(() -> new WorkflowConfigurationException("participant.unknown.role",
-                            "Stage participant references unknown role " + participantRequest.getRoleId(), participantRequest.getRoleId()));
-            stage.addParticipant(WorkflowStageParticipant.create(role, participantRequest.getApprovalLimitAmount(),
-                    participantRequest.getApprovalLimitCurrency()));
         }
         return stage;
     }

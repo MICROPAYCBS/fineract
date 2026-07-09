@@ -83,7 +83,7 @@ public class JournalEntriesApiResource {
     private static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList("id", "officeId", "officeName", "glAccountName",
             "glAccountId", "glAccountCode", "glAccountType", "transactionDate", "entryType", "amount", "transactionId", "manualEntry",
             "entityType", "entityId", "createdByUserId", "createdDate", "submittedOnDate", "createdByUserName", "comments", "reversed",
-            "referenceNumber", "currency", "transactionDetails"));
+            "referenceNumber", "currency", "departmentId", "departmentName", "transactionDetails"));
 
     private static final String RESOURCE_NAME_FOR_PERMISSION = "JOURNALENTRY";
 
@@ -126,7 +126,8 @@ public class JournalEntriesApiResource {
             @QueryParam("loanId") @Parameter(description = "loanId") final Long loanId,
             @QueryParam("savingsId") @Parameter(description = "savingsId") final Long savingsId,
             @QueryParam("runningBalance") @Parameter(description = "runningBalance") final boolean runningBalance,
-            @QueryParam("transactionDetails") @Parameter(description = "transactionDetails") final boolean transactionDetails) {
+            @QueryParam("transactionDetails") @Parameter(description = "transactionDetails") final boolean transactionDetails,
+            @QueryParam("departmentId") @Parameter(description = "departmentId") final Long departmentId) {
 
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSION);
 
@@ -158,7 +159,7 @@ public class JournalEntriesApiResource {
                 runningBalance);
 
         final Page<JournalEntryData> glJournalEntries = this.journalEntryReadPlatformService.retrieveAll(searchParameters, glAccountId,
-                onlyManualEntries, fromDate, toDate, submittedOnDateFrom, submittedOnDateTo, transactionId, entityType,
+                onlyManualEntries, fromDate, toDate, submittedOnDateFrom, submittedOnDateTo, transactionId, entityType, departmentId,
                 associationParametersData);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.apiJsonSerializerService.serialize(settings, glJournalEntries, RESPONSE_DATA_PARAMETERS);
@@ -252,7 +253,7 @@ public class JournalEntriesApiResource {
         String transactionId = "P" + entryId;
         SearchParameters params = SearchParameters.builder().limit(limit).offset(offset).build();
         Page<JournalEntryData> entries = this.journalEntryReadPlatformService.retrieveAll(params, null, null, null, null, null, null,
-                transactionId, PortfolioProductType.PROVISIONING.getValue(), null);
+                transactionId, PortfolioProductType.PROVISIONING.getValue(), null, null);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.apiJsonSerializerService.serialize(settings, entries, RESPONSE_DATA_PARAMETERS);
     }

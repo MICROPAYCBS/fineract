@@ -20,48 +20,48 @@ package org.apache.fineract.workflow.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
-import org.apache.fineract.useradministration.domain.Role;
 
 /**
- * Defines who may act at a stage: users holding the referenced Fineract role, optionally capped by a currency qualified
- * approval authority limit. Users whose limit is below the instance amount are not eligible.
+ * Audit record of an action taken on a workflow instance at a particular stage.
  */
 @Getter
 @Setter
 @Entity
 @NoArgsConstructor
-@Table(name = "m_workflow_stage_participant")
-public class WorkflowStageParticipant extends AbstractAuditableWithUTCDateTimeCustom<Long> {
+@Table(name = "m_workflow_instance_action")
+public class WorkflowInstanceAction extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "workflow_stage_id", nullable = false)
-    private WorkflowStage stage;
+    @JoinColumn(name = "workflow_instance_id", nullable = false)
+    private WorkflowInstance workflowInstance;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "role_id", nullable = false)
-    private Role role;
+    @Column(name = "stage_code", nullable = false, length = 100)
+    private String stageCode;
 
-    @Column(name = "approval_limit_amount", precision = 19, scale = 6)
-    private BigDecimal approvalLimitAmount;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "action", nullable = false, length = 20)
+    private WorkflowApprovalAction action;
 
-    @Column(name = "approval_limit_currency", length = 3)
-    private String approvalLimitCurrency;
+    @Column(name = "comment", length = 1000)
+    private String comment;
 
-    public static WorkflowStageParticipant create(final Role role, final BigDecimal approvalLimitAmount,
-            final String approvalLimitCurrency) {
-        final WorkflowStageParticipant participant = new WorkflowStageParticipant();
-        participant.setRole(role);
-        participant.setApprovalLimitAmount(approvalLimitAmount);
-        participant.setApprovalLimitCurrency(approvalLimitCurrency);
-        return participant;
+    public static WorkflowInstanceAction create(final WorkflowInstance workflowInstance, final String stageCode,
+            final WorkflowApprovalAction action, final String comment) {
+        final WorkflowInstanceAction instanceAction = new WorkflowInstanceAction();
+        instanceAction.setWorkflowInstance(workflowInstance);
+        instanceAction.setStageCode(stageCode);
+        instanceAction.setAction(action);
+        instanceAction.setComment(comment);
+        return instanceAction;
     }
 }

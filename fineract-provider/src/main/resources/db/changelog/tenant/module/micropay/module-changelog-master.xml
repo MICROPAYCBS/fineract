@@ -89,4 +89,9 @@
   <include relativeToChangelogFile="true" file="parts/3064_add_cash_legal_tender_line_table.xml"/>
   <include relativeToChangelogFile="true" file="parts/3065_add_structured_account_number_formats.xml"/>
   <include relativeToChangelogFile="true" file="parts/3066_add_allow_direct_loan_repayments_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3067_add_department_table.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3068_add_department_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3069_add_journal_entry_department_id.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3070_add_department_filter_core_accounting_table_reports.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3071_add_require_department_on_manual_journal_pl_lines_configuration.xml"/>
 </databaseChangeLog>

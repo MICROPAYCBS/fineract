@@ -75,7 +75,7 @@ public class WorkflowDefinitionApiResource {
     @Path("{definitionId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve a workflow definition", description = "Retrieves a workflow definition with stages, participants, actions and transitions")
+    @Operation(summary = "Retrieve a workflow definition", description = "Retrieves a workflow definition with stages, actions and transitions")
     public WorkflowDefinitionData retrieveOne(@PathParam("definitionId") @Parameter(description = "definitionId") final Long definitionId) {
         this.context.authenticatedUser().validateHasReadPermission(WORKFLOW_DEFINITION_RESOURCE_NAME);
         return this.readPlatformService.retrieveOne(definitionId);
@@ -84,7 +84,7 @@ public class WorkflowDefinitionApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create a workflow definition", description = "Creates a workflow definition in DRAFT status, including stages, participants, actions and transitions")
+    @Operation(summary = "Create a workflow definition", description = "Creates a workflow definition in DRAFT status, including stages, actions and transitions")
     public CommandProcessingResult create(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createWorkflowDefinition().withJson(apiRequestBodyAsJson).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);

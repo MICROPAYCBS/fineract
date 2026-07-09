@@ -29,12 +29,10 @@ import static org.apache.fineract.workflow.api.WorkflowApiConstants.MAX_AMOUNT_P
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MIN_AMOUNT_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.NAME_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.PARTICIPANTS_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.PRIORITY_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.REJECTION_POLICY_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.REJECTION_THRESHOLD_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.REQUIRED_APPROVALS_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.ROLE_ID_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.SEQUENCE_NO_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGES_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGE_CODE_PARAM;
@@ -55,7 +53,6 @@ import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.workflow.data.WorkflowDefinitionRequest;
-import org.apache.fineract.workflow.data.WorkflowParticipantRequest;
 import org.apache.fineract.workflow.data.WorkflowStageRequest;
 import org.apache.fineract.workflow.data.WorkflowTransitionRequest;
 import org.apache.fineract.workflow.domain.WorkflowApprovalAction;
@@ -150,19 +147,11 @@ public class WorkflowDefinitionDataValidator {
                         .isOneOfTheseStringValues(APPROVAL_ACTIONS);
             }
         }
-        if (stage.getParticipants() != null) {
-            for (int p = 0; p < stage.getParticipants().size(); p++) {
-                final WorkflowParticipantRequest participant = stage.getParticipants().get(p);
-                final String participantPrefix = prefix + PARTICIPANTS_PARAM + "[" + p + "].";
-                baseDataValidator.reset().parameter(participantPrefix + ROLE_ID_PARAM).value(participant.getRoleId()).notNull()
-                        .integerGreaterThanZero();
-                baseDataValidator.reset().parameter(participantPrefix + APPROVAL_LIMIT_AMOUNT_PARAM)
-                        .value(participant.getApprovalLimitAmount()).ignoreIfNull().positiveAmount();
-                if (participant.getApprovalLimitAmount() != null && StringUtils.isBlank(participant.getApprovalLimitCurrency())) {
-                    baseDataValidator.reset().parameter(participantPrefix + APPROVAL_LIMIT_CURRENCY_PARAM)
-                            .value(participant.getApprovalLimitCurrency()).failWithCode("required.when.approval.limit.set");
-                }
-            }
+        baseDataValidator.reset().parameter(prefix + APPROVAL_LIMIT_AMOUNT_PARAM).value(stage.getApprovalLimitAmount()).ignoreIfNull()
+                .positiveAmount();
+        if (stage.getApprovalLimitAmount() != null && StringUtils.isBlank(stage.getApprovalLimitCurrency())) {
+            baseDataValidator.reset().parameter(prefix + APPROVAL_LIMIT_CURRENCY_PARAM).value(stage.getApprovalLimitCurrency())
+                    .failWithCode("required.when.approval.limit.set");
         }
     }
 

@@ -82,7 +82,7 @@ public class JournalEntryCommand {
         // validation for credit array elements
         if (this.credits != null) {
             if (this.credits.length == 0) {
-                validateSingleDebitOrCredit(baseDataValidator, "credits", 0, new SingleDebitOrCreditEntryCommand(null, null, null, null));
+                validateSingleDebitOrCredit(baseDataValidator, "credits", 0, new SingleDebitOrCreditEntryCommand(null, null, null, null, null));
             } else {
                 int i = 0;
                 for (final SingleDebitOrCreditEntryCommand credit : this.credits) {
@@ -95,7 +95,7 @@ public class JournalEntryCommand {
         // validation for debit array elements
         if (this.debits != null) {
             if (this.debits.length == 0) {
-                validateSingleDebitOrCredit(baseDataValidator, "debits", 0, new SingleDebitOrCreditEntryCommand(null, null, null, null));
+                validateSingleDebitOrCredit(baseDataValidator, "debits", 0, new SingleDebitOrCreditEntryCommand(null, null, null, null, null));
             } else {
                 int i = 0;
                 for (final SingleDebitOrCreditEntryCommand debit : this.debits) {

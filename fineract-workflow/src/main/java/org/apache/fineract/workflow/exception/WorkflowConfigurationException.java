@@ -22,7 +22,7 @@ import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainR
 
 /**
  * Raised when a workflow definition's structure violates a configuration rule, e.g. circular transitions, unreachable
- * stages, missing participants or an invalid escalation target.
+ * stages, missing actions or an invalid escalation target.
  */
 public class WorkflowConfigurationException extends AbstractPlatformDomainRuleException {
 

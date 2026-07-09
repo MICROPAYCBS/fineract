@@ -72,6 +72,8 @@ public interface JournalEntryMapper {
     @Mapping(target = "transactionDetails", ignore = true)
     @Mapping(target = "savingTransactionId", ignore = true)
     @Mapping(target = "externalAssetOwner", ignore = true)
+    @Mapping(target = "departmentId", source = "departmentId")
+    @Mapping(target = "departmentName", ignore = true)
     JournalEntryData map(JournalEntry journalEntry);
 
     @Named("entityType")

@@ -10,7 +10,9 @@ Align the **Approval Workflow Configuration** UI with the current Fineract backe
 
 ## Background (what the module does)
 
-Administrators define multi-stage approval chains as data. A **workflow definition** is anchored to a **maker-checker task** — a Fineract permission code such as `CREATE_LOAN` or `WRITEOFF_LOAN` — not a coarse product module like `LOAN`. It contains **stages** (participants, enabled actions, expiry/escalation settings) connected by **transitions**, and may carry **amount-based selection criteria** so several workflows can be active for the same task (e.g. loans ≥ 5,000,000 UGX use a three-level chain; smaller loans use a two-level default).
+Administrators define multi-stage approval chains as data. A **workflow definition** is anchored to a **maker-checker task** — a Fineract permission code such as `CREATE_LOAN` or `WRITEOFF_LOAN` — not a coarse product module like `LOAN`. It contains **stages** (enabled actions, optional stage approval limits, expiry/escalation settings) connected by **transitions**, and may carry **amount-based selection criteria** so several workflows can be active for the same task (e.g. loans ≥ 5,000,000 UGX use a three-level chain; smaller loans use a two-level default).
+
+**Who may act at a stage is implied by the task:** holders of `{taskPermissionCode}_CHECKER` (e.g. `APPROVE_LOAN` → `APPROVE_LOAN_CHECKER`). Do **not** configure role participants on stages — listing that checker permission would be redundant. Different people across stages are different **users** in that shared checker pool (`requireDistinctApprover`, `requiredApprovals`). Roles remain how admins **grant** the checker permission in user administration.
 
 Lifecycle: `DRAFT` (editable) → `ACTIVE` (selectable at runtime, structurally frozen) → `INACTIVE`. The engine is opt-in per tenant via global configuration `enable-approval-workflows`. Activation additionally requires **maker-checker to be enabled for that task** — workflows only govern commands the maker-checker pipeline holds.
 
@@ -39,13 +41,12 @@ Base path: `/fineract-provider/api/v1`. Standard Fineract auth plus `Fineract-Pl
 | Endpoint | Method | Purpose | Fineract permission |
 |---|---|---|---|
 | `/workflow-definitions?taskPermissionCode=&status=` | GET | List definitions (both filters optional) | `READ_WORKFLOW_DEFINITION` |
-| `/workflow-definitions/{id}` | GET | Full detail incl. stages, participants, actions, transitions | `READ_WORKFLOW_DEFINITION` |
+| `/workflow-definitions/{id}` | GET | Full detail incl. stages, actions, transitions | `READ_WORKFLOW_DEFINITION` |
 | `/workflow-definitions` | POST | Create (always `DRAFT`) | `CREATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | PUT | Update a `DRAFT` definition (structure fully replaced) | `UPDATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}?command=activate` | POST | Validate structure + activate | `ACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}?command=deactivate` | POST | Deactivate | `DEACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | DELETE | Delete a `DRAFT` definition | `DELETE_WORKFLOW_DEFINITION` |
-| `/roles` | GET | Participant role selects | existing |
 | `/permissions?makerCheckerable=true` | GET | Task dropdown source | `READ_PERMISSION` (via existing PERMISSION resource) |
 | `/configurations/name/enable-approval-workflows` | GET | Tenant engine switch | existing |
 | `/configurations/{configId}` | PUT `{"enabled": true\|false}` | Toggle tenant switch | existing configuration permission |
@@ -95,10 +96,9 @@ For the create/edit form, list **all** maker-checkerable permissions (not only `
       "escalationTargetStageCode": "REGIONAL_MANAGER",
       "allowCrossBranchAccess": false,
       "requireDistinctApprover": true,
-      "actions": ["APPROVE", "REJECT", "RETURN", "ESCALATE"],
-      "participants": [
-        { "roleId": 5, "approvalLimitAmount": 50000000, "approvalLimitCurrency": "UGX" }
-      ]
+      "approvalLimitAmount": 50000000,
+      "approvalLimitCurrency": "UGX",
+      "actions": ["APPROVE", "REJECT", "RETURN", "ESCALATE"]
     }
   ],
   "transitions": [
@@ -107,9 +107,11 @@ For the create/edit form, list **all** maker-checkerable permissions (not only `
 }
 ```
 
+Stage eligibility is **not** in the payload: it is always `{taskPermissionCode}_CHECKER`. Optional `approvalLimitAmount` / `approvalLimitCurrency` sit on the **stage** (currency required when amount is set).
+
 ### GET detail response
 
-Same shape as above plus `id`, `status`, and `roleName` on each participant. Parser must read **`taskPermissionCode`** (not `moduleName`).
+Same shape as above plus `id` and `status`. Parser must read **`taskPermissionCode`** (not `moduleName`). Do **not** expect `participants` / `roleId` / `roleName`.
 
 ### Enums
 
@@ -132,9 +134,9 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 | `error.msg.workflow.configuration.duplicate.name` | Same name already exists for that task |
 | `error.msg.workflow.configuration.no.stages` | No stages |
 | `error.msg.workflow.configuration.duplicate.stage.code` | Duplicate `stageCode` |
-| `error.msg.workflow.configuration.stage.without.participants` | Stage missing participants |
 | `error.msg.workflow.configuration.stage.without.actions` | Stage missing actions |
 | `error.msg.workflow.configuration.stage.without.approve.action` | Stage missing `APPROVE` |
+| `error.msg.workflow.configuration.stage.approval.limit.currency.required` | Limit amount without currency |
 | `error.msg.workflow.configuration.rejection.threshold.missing` | `THRESHOLD` policy without threshold |
 | `error.msg.workflow.configuration.rejection.threshold.not.applicable` | Threshold set when policy ≠ `THRESHOLD` |
 | `error.msg.workflow.configuration.escalation.without.expiry` | Escalation on but no expiry |
@@ -143,7 +145,6 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 | `error.msg.workflow.configuration.escalation.target.unknown` | Unknown escalation target |
 | `error.msg.workflow.configuration.transition.unknown.stage` | Transition references unknown stage |
 | `error.msg.workflow.configuration.transition.self.reference` | Stage transitions to itself |
-| `error.msg.workflow.configuration.participant.unknown.role` | Invalid `roleId` |
 | `error.msg.workflow.configuration.no.entry.stage` | No entry stage in graph |
 | `error.msg.workflow.configuration.multiple.entry.stages` | Multiple entry stages |
 | `error.msg.workflow.configuration.unreachable.stage` | Stage not reachable from entry |
@@ -194,15 +195,15 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 ## Screens
 
 1. **List** — DataTable: name, **task** (`taskPermissionCode`), status Badge (`DRAFT` secondary, `ACTIVE` success, `INACTIVE` warning), priority, selection-criteria summary (“≥ 5,000,000 UGX”, “1M–5M UGX”, or “Default”), stage count. Filters: **task** (from permissions list) and status. When `enable-approval-workflows` is disabled, show persistent Alert with inline Switch (existing `ApprovalWorkflowsDisabledAlert`).
-2. **Detail** — Read-only header (name, task, status, priority, criteria). Lifecycle actions: DRAFT → Edit, Delete, Activate; ACTIVE → Deactivate; INACTIVE view-only. Vertical timeline of stages (participants, limits, action chips, expiry, escalation). Transitions with amount bands. Confirm destructive actions via AlertDialog.
-3. **Create/Edit form** (DRAFT only) — Sections: (a) basics — **task** searchable Select from permissions API, name, description, priority; (b) selection criteria — currency + min/max with helper text; (c) stages — `useFieldArray` editor; (d) transitions — from/to constrained to stage codes. Zod mirrors backend: task/name required, currency when amounts set, min ≤ max, `THRESHOLD` rules, escalation rules, ≥1 participant + `APPROVE` per stage.
+2. **Detail** — Read-only header (name, task, status, priority, criteria). Lifecycle actions: DRAFT → Edit, Delete, Activate; ACTIVE → Deactivate; INACTIVE view-only. Vertical timeline of stages (enabled actions, optional approval limits, expiry, escalation). Helper text: “Actors need `{task}_CHECKER`.” Transitions with amount bands. Confirm destructive actions via AlertDialog.
+3. **Create/Edit form** (DRAFT only) — Sections: (a) basics — **task** searchable Select from permissions API, name, description, priority; (b) selection criteria — currency + min/max with helper text; (c) stages — `useFieldArray` editor **without** role participant multi-select; optional stage `approvalLimitAmount` / `approvalLimitCurrency`; (d) transitions — from/to constrained to stage codes. Zod mirrors backend: task/name required, currency when amounts set, min ≤ max, `THRESHOLD` rules, escalation rules, ≥1 action including `APPROVE` per stage. Show info alert that eligibility = `{taskPermissionCode}_CHECKER` granted via roles in user admin.
 4. **Activation errors** — Show backend message; for `task.not.maker.checker.enabled`, add hint linking to `/system/configure-mc-tasks`.
 
 ## Constraints
 
 - Gate routes and buttons on manifest keys above; reuse `assertCan` / permission utilities.
 - Server state via existing patterns (server components + server actions; revalidate list/detail paths after mutations). Toasts on success/failure.
-- **Do not** build runtime workflow instance screens (inbox, approve/reject) — configuration only.
+- **Runtime inbox / stage approve-reject** — see **`docs/prompts/workflow-runtime-ui-agent-prompt.md`** (maker-checker integration, Sprint 1–2 backend). This file is **configuration only** (`/system/approval-workflows`).
 - Currency select: reuse existing currency source.
 - Do **not** reintroduce `moduleName` or coarse module enums.
 

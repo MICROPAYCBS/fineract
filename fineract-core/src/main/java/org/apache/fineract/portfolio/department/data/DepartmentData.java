@@ -16,19 +16,28 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.workflow.data;
+package org.apache.fineract.portfolio.department.data;
 
-import java.math.BigDecimal;
-import lombok.Getter;
+import java.io.Serial;
+import java.io.Serializable;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
-@Getter
-@Setter
+@Data
+@Builder
+@AllArgsConstructor
 @NoArgsConstructor
-public class WorkflowParticipantRequest {
+public class DepartmentData implements Serializable {
 
-    private Long roleId;
-    private BigDecimal approvalLimitAmount;
-    private String approvalLimitCurrency;
+    @Serial
+    private static final long serialVersionUID = 1L;
+
+    private Long id;
+    private String departmentCode;
+    private String departmentName;
+    private Long officeId;
+    private String officeName;
+    private Boolean active;
 }

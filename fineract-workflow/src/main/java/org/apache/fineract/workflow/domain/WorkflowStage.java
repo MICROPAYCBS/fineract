@@ -28,6 +28,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
@@ -38,7 +39,7 @@ import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDa
 /**
  * A single step in an approval chain. Within a stage, {@code requiredApprovals} distinct approvals complete the stage
  * (N-of-M parallel approval); the {@code rejectionPolicy} determines when the stage - and with it the workflow instance
- * - is rejected.
+ * - is rejected. Eligibility to act is implied by the definition's task: holders of {@code {taskPermissionCode}_CHECKER}.
  */
 @Getter
 @Setter
@@ -90,16 +91,14 @@ public class WorkflowStage extends AbstractAuditableWithUTCDateTimeCustom<Long> 
     @Column(name = "require_distinct_approver", nullable = false)
     private boolean requireDistinctApprover;
 
-    @OneToMany(mappedBy = "stage", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<WorkflowStageParticipant> participants = new ArrayList<>();
+    @Column(name = "approval_limit_amount", precision = 19, scale = 6)
+    private BigDecimal approvalLimitAmount;
+
+    @Column(name = "approval_limit_currency", length = 3)
+    private String approvalLimitCurrency;
 
     @OneToMany(mappedBy = "stage", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WorkflowStageAction> actions = new ArrayList<>();
-
-    public void addParticipant(final WorkflowStageParticipant participant) {
-        participant.setStage(this);
-        this.participants.add(participant);
-    }
 
     public void addAction(final WorkflowStageAction action) {
         action.setStage(this);

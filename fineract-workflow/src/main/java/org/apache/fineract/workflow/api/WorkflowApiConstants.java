@@ -51,9 +51,6 @@ public final class WorkflowApiConstants {
     public static final String ALLOW_CROSS_BRANCH_ACCESS_PARAM = "allowCrossBranchAccess";
     public static final String REQUIRE_DISTINCT_APPROVER_PARAM = "requireDistinctApprover";
     public static final String ACTIONS_PARAM = "actions";
-    public static final String PARTICIPANTS_PARAM = "participants";
-
-    public static final String ROLE_ID_PARAM = "roleId";
     public static final String APPROVAL_LIMIT_AMOUNT_PARAM = "approvalLimitAmount";
     public static final String APPROVAL_LIMIT_CURRENCY_PARAM = "approvalLimitCurrency";
 

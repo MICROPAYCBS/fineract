@@ -239,6 +239,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DEPARTMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SHAREPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMSCAMPAIGN;
@@ -538,6 +539,29 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_SECTOR;
         this.href = "/sectors/" + sectorId;
         this.entityId = sectorId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createDepartment() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_DEPARTMENT;
+        this.href = "/departments";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateDepartment(final long departmentId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_DEPARTMENT;
+        this.href = "/departments/" + departmentId;
+        this.entityId = departmentId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteDepartment(final long departmentId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_DEPARTMENT;
+        this.href = "/departments/" + departmentId;
+        this.entityId = departmentId;
         return this;
     }
 

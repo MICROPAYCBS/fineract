@@ -21,16 +21,22 @@ Fineract supports two ways to post an inbound loan payment:
 | **Direct repayment** | `POST /loans/{loanId}/transactions?command=repayment` | Cash at teller, bank deposit, mobile money — user selects **payment type** and amount |
 | **Savings transfer repayment** | `POST /accounttransfers` | Debit client **savings**, credit **loan** — no payment type; transfer from internal account |
 
-Some institutions require all loan collections to flow through savings (audit trail, float control, mandatory account linkage). Others allow tellers to post cash repayments directly against the loan.
+Some institutions require all loan collections to flow through savings (audit trail, float control, mandatory account linkage). Others also allow tellers to post cash or bank repayments directly against the loan when needed.
 
-Micropay adds global config **`allow-direct-loan-repayments`** (migration `3066`) so each tenant controls which options the UI exposes **and** which direct repayment API calls the backend accepts.
+### Policy (read carefully)
 
-| Config | Default | UI impact | API impact |
+1. **Savings transfer is always available** — `POST /accounttransfers` (savings → loan) is **never** blocked by this config. Every tenant can always repay via savings.
+2. **`allow-direct-loan-repayments` only gates direct posting** — cash / bank / mobile money on `POST .../transactions?command=repayment` (and related direct commands).
+3. **When direct is allowed, both methods coexist** — the UI offers savings transfer **and** direct repayment. **Savings transfer is the preferred / default path**; direct is secondary (e.g. collapsed, alternate tab, or “Other payment method”).
+
+Micropay global config **`allow-direct-loan-repayments`** (migration `3066`):
+
+| Config | Default | UI | API |
 |---|---|---|---|
-| `allow-direct-loan-repayments` | **on** (`enabled: true`) | Show **both** direct repayment and savings-transfer repayment | `POST .../transactions?command=repayment`, `recoverypayment`, `downPayment` allowed |
-| `allow-direct-loan-repayments` | **off** | Show **only** savings-account transfer repayment | Direct repayment commands **rejected** with `error.msg.direct.loan.repayment.not.allowed` |
+| **on** | yes | **Savings transfer shown first (preferred)** + direct repayment as alternate | Both savings transfer and direct commands allowed |
+| **off** | — | **Savings transfer only** (no direct UI) | Savings transfer allowed; direct commands **rejected** with `error.msg.direct.loan.repayment.not.allowed` |
 
-**Savings account transfers** (`POST /accounttransfers`, savings → loan) are **always allowed** when direct repayments are disabled.
+**Savings account transfers are always allowed at the API**, regardless of this flag.
 
 ### Related configs (already in web app)
 
@@ -146,31 +152,37 @@ Do **not** hide non-payment loan actions: `waiveinterest`, `writeoff`, `close`, 
 
 | Screen / entry point | `allow-direct-loan-repayments` = **on** | = **off** |
 |---|---|---|
-| Loan account → **Make repayment** | Show choice: **Direct** \| **From savings** (tabs or radio) | Single path: **Repay from savings** only |
-| Loan account actions menu | "Repayment" + "Transfer from savings" (or combined dialog) | Only "Repay from savings" |
-| Direct repayment form (payment type, amount, date) | Visible | **Hidden** |
-| Savings transfer form (from savings select, amount, date) | Visible | Visible (default) |
-| Bulk / quick repayment widgets | Both options if present | Savings transfer only |
+| Loan account → **Make repayment** | **Default: From savings**; optional “Direct payment” (secondary) | **From savings only** |
+| Loan account actions menu | Primary: “Repay from savings”; secondary: “Direct repayment” (if exposed) | Only “Repay from savings” |
+| Savings transfer form | **Always visible**; **default tab / first screen** when config on | Only path |
+| Direct repayment form | Visible only when user chooses alternate method | **Hidden** |
+| Bulk / quick repayment widgets | Prefer savings transfer; direct only if config on and user opts in | Savings transfer only |
 | System settings | Toggle with description | Same |
 
-### Recommended repayment dialog (when both allowed)
+### Recommended repayment dialog (when direct is allowed)
+
+Savings transfer is the **default selected** method. Direct is not pre-selected.
 
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ Make loan repayment                                      │
 ├─────────────────────────────────────────────────────────┤
-│ Payment method:  (•) Direct   ( ) From savings account   │
+│ Payment method:  (•) From savings account  ( ) Direct    │
+│                  ^ preferred default when both available │
 ├─────────────────────────────────────────────────────────┤
-│ [Direct] Payment type [Cash ▼]  Amount [________]        │
-│          Transaction date [________]                   │
-│ [Savings] From account [SV-0012 ▼]  Amount [________]    │
-│           Transfer date [________]                       │
+│ From account [SV-0012 ▼]  Amount [________]              │
+│ Transfer date [________]                                 │
+│                                                          │
+│ [Direct — only if user switches]                         │
+│ Payment type [Cash ▼]  Amount [________]  Date [____]    │
 ├─────────────────────────────────────────────────────────┤
 │                              [Cancel]  [Submit]          │
 └─────────────────────────────────────────────────────────┘
 ```
 
-When config off, omit the payment-method selector and show only the savings panel.
+Optional UX (config on): use a single savings-first screen with link **“Pay by cash or bank instead”** instead of a prominent dual-tab layout — keeps transfer preferred without hiding direct.
+
+When config is **off**, show only the savings panel (no payment-method selector).
 
 ### Empty states & messaging
 
@@ -188,7 +200,7 @@ Add toggle under **Organization → System** (or Loan / Collections section — 
 
 | Label | **Allow direct loan repayments** |
 |---|---|
-| Help text | When enabled, staff can post repayments with cash, bank, or other payment types directly on the loan. When disabled, repayments must be made by transferring from the client's savings account (the API rejects direct repayment commands). |
+| Help text | Savings-account transfer is always available and is the preferred way to repay. When this setting is on, staff may also post repayments directly on the loan (cash, bank, etc.). When off, only savings transfer is permitted (direct API calls are rejected). |
 | Config name | `allow-direct-loan-repayments` |
 | Default | On |
 
@@ -198,13 +210,9 @@ Reuse existing global configuration list/detail components (`UPDATE_CONFIGURATIO
 
 ## Implementation checklist
 
-- [ ] Read `allow-direct-loan-repayments` in loan repayment feature (hook/context alongside other global configs)
-- [ ] Branch repayment dialog / page on `enabled`
-- [ ] When off: remove routes/menu items that only serve direct repayment; deep-link to savings transfer flow
-- [ ] When on: preserve existing direct repayment + add/surface savings transfer if not already present
-- [ ] Apply same branch to `recoverypayment` and `downpayment` direct entry points
-- [ ] System settings toggle + description
-- [ ] Do **not** call direct repayment API when config is off (backend will reject with `error.msg.direct.loan.repayment.not.allowed`)
+- [ ] **Always** show savings transfer repayment (never gated by config)
+- [ ] When config **on**: default to savings transfer; expose direct as secondary / alternate
+- [ ] When config **off**: savings transfer only; hide direct UI and do not call direct APIs
 
 ---
 
@@ -220,11 +228,11 @@ Map from standard Fineract error envelope `errors[].userMessageGlobalisationCode
 
 ## Acceptance criteria
 
-1. Default tenant (config on): both direct and savings-transfer repayment visible
-2. Config off: no direct repayment form, payment type selector, or cash/legal-tender UI on loan repayment
-3. Config off: savings transfer repayment works end-to-end from loan context
-4. Config off: system settings explains savings-transfer-only policy; API returns clear error if direct repayment attempted
-5. Config on: existing direct repayment behaviour unchanged (including cashier/legal-tender guards for cash)
+1. Savings transfer repayment is available for **all** tenants (config on or off)
+2. Config **on**: savings transfer is the **default/preferred** UI path; direct repayment available as alternate
+3. Config **off**: no direct repayment UI; savings transfer works end-to-end
+4. Config **off**: direct API returns `error.msg.direct.loan.repayment.not.allowed`
+5. Config **on**: direct repayment works with existing cashier/legal-tender rules when user chooses cash
 6. Toggle takes effect without redeploy (re-fetch config after save)
 
 ---

@@ -56,6 +56,9 @@ public class CommandSourceServiceTest {
     @Mock
     private ErrorHandler errorHandler;
 
+    @Mock
+    private ApprovalWorkflowHook approvalWorkflowHook;
+
     @InjectMocks
     private CommandSourceService underTest;
 

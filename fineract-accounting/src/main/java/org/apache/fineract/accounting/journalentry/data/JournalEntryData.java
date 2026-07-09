@@ -76,6 +76,10 @@ public class JournalEntryData {
     @SuppressWarnings("unused")
     private Boolean runningBalanceComputed;
 
+    private Long departmentId;
+    @SuppressWarnings("unused")
+    private String departmentName;
+
     @SuppressWarnings("unused")
     private TransactionDetailData transactionDetails;
     @SuppressWarnings("unused")
@@ -192,7 +196,8 @@ public class JournalEntryData {
             final EnumOptionData entityType, final Long entityId, final Long createdByUserId, final LocalDate submittedOnDate,
             final String createdByUserName, final String comments, final Boolean reversed, final String referenceNumber,
             final BigDecimal officeRunningBalance, final BigDecimal organizationRunningBalance, final Boolean runningBalanceComputed,
-            final TransactionDetailData transactionDetailData, final CurrencyData currency, final String externalAssetOwner) {
+            final TransactionDetailData transactionDetailData, final CurrencyData currency, final Long departmentId,
+            final String departmentName, final String externalAssetOwner) {
         this.id = id;
         this.officeId = officeId;
         this.officeName = officeName;
@@ -219,6 +224,8 @@ public class JournalEntryData {
         this.runningBalanceComputed = runningBalanceComputed;
         this.transactionDetails = transactionDetailData;
         this.currency = currency;
+        this.departmentId = departmentId;
+        this.departmentName = departmentName;
         this.externalAssetOwner = externalAssetOwner;
     }
 
@@ -261,11 +268,13 @@ public class JournalEntryData {
         final Boolean runningBalanceComputed = null;
         final TransactionDetailData transactionDetailData = null;
         final CurrencyData currency = null;
+        final Long departmentId = null;
+        final String departmentName = null;
         final String externalAssetOwner = null;
         return new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glAccountCode, glAccountClassification,
                 transactionDate, entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, submittedOnDate,
                 createdByUserName, comments, reversed, referenceNumber, officeRunningBalance, organizationRunningBalance,
-                runningBalanceComputed, transactionDetailData, currency, externalAssetOwner);
+                runningBalanceComputed, transactionDetailData, currency, departmentId, departmentName, externalAssetOwner);
     }
 
     public Integer getRowIndex() {

@@ -172,9 +172,10 @@
         <!--  fineract-workflow module: -->
         <class>org.apache.fineract.workflow.domain.WorkflowDefinition</class>
         <class>org.apache.fineract.workflow.domain.WorkflowStage</class>
-        <class>org.apache.fineract.workflow.domain.WorkflowStageParticipant</class>
         <class>org.apache.fineract.workflow.domain.WorkflowStageAction</class>
         <class>org.apache.fineract.workflow.domain.WorkflowTransition</class>
+        <class>org.apache.fineract.workflow.domain.WorkflowInstance</class>
+        <class>org.apache.fineract.workflow.domain.WorkflowInstanceAction</class>
 
         <!--  fineract-progressive-loan module: -->
         <class>org.apache.fineract.portfolio.loanaccount.domain.LoanBuyDownFeeBalance</class>

@@ -16,19 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.workflow.data;
+package org.apache.fineract.portfolio.department.domain;
 
-import java.math.BigDecimal;
-import lombok.Builder;
-import lombok.Getter;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Getter
-@Builder
-public class WorkflowStageParticipantData {
+public interface DepartmentRepository extends JpaRepository<Department, Long> {
 
-    private final Long id;
-    private final Long roleId;
-    private final String roleName;
-    private final BigDecimal approvalLimitAmount;
-    private final String approvalLimitCurrency;
+    boolean existsByDepartmentCode(String departmentCode);
+
+    boolean existsByDepartmentCodeAndIdNot(String departmentCode, Long id);
 }

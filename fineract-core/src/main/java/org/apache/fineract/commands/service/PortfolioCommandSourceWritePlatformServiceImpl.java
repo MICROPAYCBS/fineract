@@ -52,6 +52,7 @@ public class PortfolioCommandSourceWritePlatformServiceImpl implements Portfolio
     private final SchedulerJobRunnerReadService schedulerJobRunnerReadService;
     private final ConfigurationDomainService configurationService;
     private final List<CleanupService> cleanupServices;
+    private final ApprovalWorkflowHook approvalWorkflowHook;
 
     @Override
     public CommandProcessingResult logCommandSource(final CommandWrapper wrapper) {
@@ -85,22 +86,18 @@ public class PortfolioCommandSourceWritePlatformServiceImpl implements Portfolio
     public CommandProcessingResult approveEntry(final Long makerCheckerId) {
         final CommandSource commandSourceInput = validateMakerCheckerTransaction(makerCheckerId);
         validateIsUpdateAllowed();
+        final AppUser checker = this.context.authenticatedUser();
 
-        final CommandWrapper wrapper = CommandWrapper.fromExistingCommand(makerCheckerId, commandSourceInput.getActionName(),
-                commandSourceInput.getEntityName(), commandSourceInput.getResourceId(), commandSourceInput.getSubResourceId(),
-                commandSourceInput.getResourceGetUrl(), commandSourceInput.getProductId(), commandSourceInput.getOfficeId(),
-                commandSourceInput.getGroupId(), commandSourceInput.getClientId(), commandSourceInput.getLoanId(),
-                commandSourceInput.getSavingsId(), commandSourceInput.getTransactionId(), commandSourceInput.getCreditBureauId(),
-                commandSourceInput.getOrganisationCreditBureauId(), commandSourceInput.getIdempotencyKey(),
-                commandSourceInput.getLoanExternalId());
-        final JsonElement parsedCommand = this.fromApiJsonHelper.parse(commandSourceInput.getCommandAsJson());
-        final JsonCommand command = JsonCommand.fromExistingCommand(makerCheckerId, commandSourceInput.getCommandAsJson(), parsedCommand,
-                this.fromApiJsonHelper, commandSourceInput.getEntityName(), commandSourceInput.getResourceId(),
-                commandSourceInput.getSubResourceId(), commandSourceInput.getGroupId(), commandSourceInput.getClientId(),
-                commandSourceInput.getLoanId(), commandSourceInput.getSavingsId(), commandSourceInput.getTransactionId(),
-                commandSourceInput.getResourceGetUrl(), commandSourceInput.getProductId(), commandSourceInput.getCreditBureauId(),
-                commandSourceInput.getOrganisationCreditBureauId(), commandSourceInput.getJobName(),
-                commandSourceInput.getLoanExternalId());
+        final ApprovalWorkflowDecision workflowDecision = this.approvalWorkflowHook.onCheckerApprove(commandSourceInput, checker);
+        if (workflowDecision == ApprovalWorkflowDecision.STAGE_RECORDED) {
+            return CommandProcessingResult.commandOnlyResult(makerCheckerId);
+        }
+        if (workflowDecision == ApprovalWorkflowDecision.NOT_APPLICABLE) {
+            checker.validateHasCheckerPermissionTo(commandSourceInput.getPermissionCode());
+        }
+
+        final CommandWrapper wrapper = buildWrapperFromCommandSource(makerCheckerId, commandSourceInput);
+        final JsonCommand command = buildJsonCommandFromCommandSource(makerCheckerId, commandSourceInput);
 
         return this.processAndLogCommandService.executeCommand(wrapper, command, true);
     }
@@ -124,15 +121,13 @@ public class PortfolioCommandSourceWritePlatformServiceImpl implements Portfolio
             throw new CommandNotAwaitingApprovalException(makerCheckerId);
         }
         AppUser appUser = this.context.authenticatedUser();
-        String permissionCode = commandSource.getPermissionCode();
-        appUser.validateHasCheckerPermissionTo(permissionCode);
         if (!configurationService.isSameMakerCheckerEnabled() && !appUser.isCheckerSuperUser()) {
             AppUser maker = commandSource.getMaker();
             if (maker == null) {
-                throw new UnsupportedCommandException(permissionCode, "Maker user is missing.");
+                throw new UnsupportedCommandException(commandSource.getPermissionCode(), "Maker user is missing.");
             }
             if (Objects.equals(appUser.getId(), maker.getId())) {
-                throw new UnsupportedCommandException(permissionCode, "Can not be checked by the same user.");
+                throw new UnsupportedCommandException(commandSource.getPermissionCode(), "Can not be checked by the same user.");
             }
         }
         return commandSource;
@@ -146,8 +141,17 @@ public class PortfolioCommandSourceWritePlatformServiceImpl implements Portfolio
     public Long rejectEntry(final Long makerCheckerId) {
         final CommandSource commandSourceInput = validateMakerCheckerTransaction(makerCheckerId);
         validateIsUpdateAllowed();
-        final AppUser maker = this.context.authenticatedUser();
-        commandSourceInput.markAsRejected(maker);
+        final AppUser checker = this.context.authenticatedUser();
+
+        final ApprovalWorkflowDecision workflowDecision = this.approvalWorkflowHook.onCheckerReject(commandSourceInput, checker);
+        if (workflowDecision == ApprovalWorkflowDecision.STAGE_RECORDED) {
+            return makerCheckerId;
+        }
+        if (workflowDecision == ApprovalWorkflowDecision.NOT_APPLICABLE) {
+            checker.validateHasCheckerPermissionTo(commandSourceInput.getPermissionCode());
+        }
+
+        commandSourceInput.markAsRejected(checker);
         this.commandSourceRepository.save(commandSourceInput);
         if (cleanupServices != null) {
             for (CleanupService cleanupService : cleanupServices) {
@@ -155,5 +159,25 @@ public class PortfolioCommandSourceWritePlatformServiceImpl implements Portfolio
             }
         }
         return makerCheckerId;
+    }
+
+    private CommandWrapper buildWrapperFromCommandSource(final Long makerCheckerId, final CommandSource commandSourceInput) {
+        return CommandWrapper.fromExistingCommand(makerCheckerId, commandSourceInput.getActionName(), commandSourceInput.getEntityName(),
+                commandSourceInput.getResourceId(), commandSourceInput.getSubResourceId(), commandSourceInput.getResourceGetUrl(),
+                commandSourceInput.getProductId(), commandSourceInput.getOfficeId(), commandSourceInput.getGroupId(),
+                commandSourceInput.getClientId(), commandSourceInput.getLoanId(), commandSourceInput.getSavingsId(),
+                commandSourceInput.getTransactionId(), commandSourceInput.getCreditBureauId(),
+                commandSourceInput.getOrganisationCreditBureauId(), commandSourceInput.getIdempotencyKey(),
+                commandSourceInput.getLoanExternalId());
+    }
+
+    private JsonCommand buildJsonCommandFromCommandSource(final Long makerCheckerId, final CommandSource commandSourceInput) {
+        final JsonElement parsedCommand = this.fromApiJsonHelper.parse(commandSourceInput.getCommandAsJson());
+        return JsonCommand.fromExistingCommand(makerCheckerId, commandSourceInput.getCommandAsJson(), parsedCommand, this.fromApiJsonHelper,
+                commandSourceInput.getEntityName(), commandSourceInput.getResourceId(), commandSourceInput.getSubResourceId(),
+                commandSourceInput.getGroupId(), commandSourceInput.getClientId(), commandSourceInput.getLoanId(),
+                commandSourceInput.getSavingsId(), commandSourceInput.getTransactionId(), commandSourceInput.getResourceGetUrl(),
+                commandSourceInput.getProductId(), commandSourceInput.getCreditBureauId(),
+                commandSourceInput.getOrganisationCreditBureauId(), commandSourceInput.getJobName(), commandSourceInput.getLoanExternalId());
     }
 }

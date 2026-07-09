@@ -14,7 +14,7 @@
             <column name="string_value"/>
             <column name="enabled" valueBoolean="true"/>
             <column name="is_trap_door" valueBoolean="false"/>
-            <column name="description" value="When enabled, loan repayments may be posted directly on the loan (cash, bank, mobile money, etc.). When disabled, repayments must be made by transferring from the client's savings account."/>
+            <column name="description" value="When enabled, loan repayments may also be posted directly on the loan (cash, bank, mobile money, etc.) in addition to savings transfer (always allowed). When disabled, only savings transfer repayments are permitted."/>
         </insert>
     </changeSet>
 

@@ -25,7 +25,6 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.workflow.data.WorkflowDefinitionData;
 import org.apache.fineract.workflow.data.WorkflowStageData;
-import org.apache.fineract.workflow.data.WorkflowStageParticipantData;
 import org.apache.fineract.workflow.data.WorkflowTransitionData;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionRepository;
@@ -98,15 +97,6 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
 
     private WorkflowStageData mapToStageData(final WorkflowStage stage) {
         final List<String> actions = stage.getActions().stream().map(WorkflowStageAction::getAction).map(Enum::name).toList();
-        final List<WorkflowStageParticipantData> participants = stage.getParticipants().stream()
-                .map(participant -> WorkflowStageParticipantData.builder() //
-                        .id(participant.getId()) //
-                        .roleId(participant.getRole().getId()) //
-                        .roleName(participant.getRole().getName()) //
-                        .approvalLimitAmount(participant.getApprovalLimitAmount()) //
-                        .approvalLimitCurrency(participant.getApprovalLimitCurrency()) //
-                        .build())
-                .toList();
 
         return WorkflowStageData.builder() //
                 .id(stage.getId()) //
@@ -122,8 +112,9 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
                 .escalationTargetStageCode(stage.getEscalationTargetStageCode()) //
                 .allowCrossBranchAccess(stage.isAllowCrossBranchAccess()) //
                 .requireDistinctApprover(stage.isRequireDistinctApprover()) //
+                .approvalLimitAmount(stage.getApprovalLimitAmount()) //
+                .approvalLimitCurrency(stage.getApprovalLimitCurrency()) //
                 .actions(actions) //
-                .participants(participants) //
                 .build();
     }
 }

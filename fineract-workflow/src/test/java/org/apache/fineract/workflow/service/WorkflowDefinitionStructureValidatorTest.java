@@ -70,15 +70,16 @@ class WorkflowDefinitionStructureValidatorTest {
     }
 
     @Test
-    void stageWithoutParticipantsIsRejected() {
-        final WorkflowDefinition definition = definition("CREATE_LOAN", "No participants", 0, null, null, null);
+    void stageWithApprovalLimitMissingCurrencyIsRejected() {
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Limit without currency", 0, null, null, null);
         final WorkflowStage stage = stage("BRANCH_MANAGER");
-        stage.getParticipants().clear();
+        stage.setApprovalLimitAmount(new BigDecimal("1000000"));
+        stage.setApprovalLimitCurrency(null);
         definition.addStage(stage);
 
         assertThatThrownBy(() -> validator.validateForActivation(definition)) //
                 .isInstanceOf(WorkflowConfigurationException.class) //
-                .hasMessageContaining("no participants");
+                .hasMessageContaining("approval limit currency");
     }
 
     @Test

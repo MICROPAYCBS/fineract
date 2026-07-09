@@ -37,7 +37,7 @@ import org.springframework.stereotype.Component;
  * Enforces the structural rules a workflow definition must satisfy before it can be activated:
  *
  * <ul>
- * <li>at least one stage; every stage has at least one participant and one enabled action</li>
+ * <li>at least one stage; every stage has at least one enabled action including APPROVE</li>
  * <li>stage codes are unique within the definition</li>
  * <li>exactly one entry stage (a stage with no incoming transitions)</li>
  * <li>every stage is reachable from the entry stage</li>
@@ -71,8 +71,9 @@ public class WorkflowDefinitionStructureValidator {
     }
 
     private void validateStage(final WorkflowDefinition definition, final WorkflowStage stage) {
-        if (stage.getParticipants().isEmpty()) {
-            throw new WorkflowConfigurationException("stage.without.participants", "Stage " + stage.getStageCode() + " has no participants",
+        if (stage.getApprovalLimitAmount() != null && (stage.getApprovalLimitCurrency() == null || stage.getApprovalLimitCurrency().isBlank())) {
+            throw new WorkflowConfigurationException("stage.approval.limit.currency.required",
+                    "Stage " + stage.getStageCode() + " defines an approval limit amount but no approval limit currency",
                     stage.getStageCode());
         }
         if (stage.getActions().isEmpty()) {

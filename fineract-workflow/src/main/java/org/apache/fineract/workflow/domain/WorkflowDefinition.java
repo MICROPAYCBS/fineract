@@ -28,8 +28,11 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -143,5 +146,29 @@ public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<L
 
     public boolean hasSelectionCriteria() {
         return this.currencyCode != null || this.minAmount != null || this.maxAmount != null;
+    }
+
+    /**
+     * The entry stage is the sole stage with no incoming transitions (validated at activation).
+     */
+    public Optional<String> findEntryStageCode() {
+        final Set<String> stagesWithIncoming = new HashSet<>();
+        for (final WorkflowTransition transition : this.transitions) {
+            stagesWithIncoming.add(transition.getToStage().getStageCode());
+        }
+        return this.stages.stream().map(WorkflowStage::getStageCode).filter(code -> !stagesWithIncoming.contains(code)).findFirst();
+    }
+
+    public boolean isTerminalStage(final String stageCode) {
+        return this.transitions.stream().noneMatch(transition -> transition.getFromStage().getStageCode().equals(stageCode));
+    }
+
+    public Optional<String> resolveNextStageCode(final String fromStageCode, final BigDecimal amount) {
+        return this.transitions.stream() //
+                .filter(transition -> transition.getFromStage().getStageCode().equals(fromStageCode)) //
+                .sorted(Comparator.comparing(WorkflowTransition::getSequenceNo)) //
+                .filter(transition -> transition.matches(amount)) //
+                .map(transition -> transition.getToStage().getStageCode()) //
+                .findFirst();
     }
 }

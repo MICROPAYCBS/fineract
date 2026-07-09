@@ -19,12 +19,10 @@
 package org.apache.fineract.workflow;
 
 import java.math.BigDecimal;
-import org.apache.fineract.useradministration.domain.Role;
 import org.apache.fineract.workflow.domain.WorkflowApprovalAction;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowStage;
 import org.apache.fineract.workflow.domain.WorkflowStageAction;
-import org.apache.fineract.workflow.domain.WorkflowStageParticipant;
 import org.apache.fineract.workflow.domain.WorkflowStageType;
 import org.apache.fineract.workflow.domain.WorkflowTransition;
 
@@ -34,9 +32,7 @@ public final class WorkflowTestFixtures {
 
     public static WorkflowDefinition definition(final String taskPermissionCode, final String name, final Integer priority,
             final String currencyCode, final BigDecimal minAmount, final BigDecimal maxAmount) {
-        final WorkflowDefinition definition = WorkflowDefinition.create(taskPermissionCode, name, null, priority, currencyCode, minAmount,
-                maxAmount);
-        return definition;
+        return WorkflowDefinition.create(taskPermissionCode, name, null, priority, currencyCode, minAmount, maxAmount);
     }
 
     public static WorkflowStage stage(final String stageCode) {
@@ -45,7 +41,6 @@ public final class WorkflowTestFixtures {
         stage.setStageType(WorkflowStageType.APPROVAL);
         stage.setRequiredApprovals(1);
         stage.setRejectionPolicy(org.apache.fineract.workflow.domain.WorkflowRejectionPolicy.ANY);
-        stage.addParticipant(WorkflowStageParticipant.create(new Role("APPROVER", "Approver role"), null, null));
         stage.addAction(WorkflowStageAction.create(WorkflowApprovalAction.APPROVE));
         stage.addAction(WorkflowStageAction.create(WorkflowApprovalAction.REJECT));
         return stage;
@@ -67,6 +62,17 @@ public final class WorkflowTestFixtures {
         definition.addStage(stage("HEAD_OFFICE"));
         connect(definition, "BRANCH_MANAGER", "REGIONAL_MANAGER", 1);
         connect(definition, "REGIONAL_MANAGER", "HEAD_OFFICE", 1);
+        return definition;
+    }
+
+    /**
+     * Two-stage linear workflow for loan approval tasks.
+     */
+    public static WorkflowDefinition linearTwoStageDefinitionForApproveLoan() {
+        final WorkflowDefinition definition = definition("APPROVE_LOAN", "Loan Approval", 0, null, null, null);
+        definition.addStage(stage("BRANCH_MANAGER"));
+        definition.addStage(stage("HEAD_OFFICE"));
+        connect(definition, "BRANCH_MANAGER", "HEAD_OFFICE", 1);
         return definition;
     }
 }

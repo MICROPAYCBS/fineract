@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet id="workflow-009-stage-approval-limits" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_stage"/>
+            <not>
+                <columnExists tableName="m_workflow_stage" columnName="approval_limit_amount"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_workflow_stage">
+            <column name="approval_limit_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="approval_limit_currency" type="VARCHAR(3)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <!-- Drop m_workflow_stage_participant FKs then table - MySQL -->
+    <changeSet id="workflow-010-drop-participants-mysql" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_stage_participant"/>
+        </preConditions>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_stage"/>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_role"/>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_created_by"/>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_modified_by"/>
+        <dropTable tableName="m_workflow_stage_participant"/>
+    </changeSet>
+
+    <!-- Drop m_workflow_stage_participant FKs then table - PostgreSQL -->
+    <changeSet id="workflow-010-drop-participants-postgresql" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_stage_participant"/>
+        </preConditions>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_stage"/>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_role"/>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_created_by"/>
+        <dropForeignKeyConstraint baseTableName="m_workflow_stage_participant" constraintName="FK_workflow_participant_modified_by"/>
+        <dropTable tableName="m_workflow_stage_participant"/>
+    </changeSet>
+
+</databaseChangeLog>
