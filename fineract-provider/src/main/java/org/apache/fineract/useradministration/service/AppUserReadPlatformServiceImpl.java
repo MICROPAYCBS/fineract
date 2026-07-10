@@ -84,6 +84,13 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
     }
 
     @Override
+    public Collection<AppUserData> retrieveAllSearchTemplate() {
+        final AppUserLookupMapper mapper = new AppUserLookupMapper();
+        final String sql = "select " + mapper.allUsersSchema();
+        return this.jdbcTemplate.query(sql, mapper); // NOSONAR
+    }
+
+    @Override
     public AppUserData retrieveNewUserDetails() {
 
         final Collection<OfficeData> offices = this.officeReadPlatformService.retrieveAllOfficesForDropdown();
@@ -182,6 +189,10 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
         public String schema() {
             return " u.id as id, u.username as username from m_appuser u "
                     + " join m_office o on o.id = u.office_id where o.hierarchy like ? and u.is_deleted=false order by u.username";
+        }
+
+        public String allUsersSchema() {
+            return " u.id as id, u.username as username from m_appuser u where u.is_deleted=false order by u.username";
         }
     }
 

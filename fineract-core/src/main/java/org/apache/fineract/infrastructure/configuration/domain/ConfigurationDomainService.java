@@ -155,6 +155,8 @@ public interface ConfigurationDomainService {
 
     boolean isAllowDirectLoanRepaymentsEnabled();
 
+    boolean isOrganizationWideAuditViewEnabled();
+
     Integer retrieveSessionIdleTimeoutMinutes();
 
     Integer retrieveSessionIdleWarningSeconds();

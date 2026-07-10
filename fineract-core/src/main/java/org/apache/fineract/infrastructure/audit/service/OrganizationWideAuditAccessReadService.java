@@ -16,22 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.useradministration.service;
+package org.apache.fineract.infrastructure.audit.service;
 
-import java.util.Collection;
-import org.apache.fineract.useradministration.data.AppUserData;
+public interface OrganizationWideAuditAccessReadService {
 
-public interface AppUserReadPlatformService {
-
-    Collection<AppUserData> retrieveAllUsers();
-
-    Collection<AppUserData> retrieveSearchTemplate();
-
-    Collection<AppUserData> retrieveAllSearchTemplate();
-
-    AppUserData retrieveNewUserDetails();
-
-    AppUserData retrieveUser(Long userId);
-
-    boolean isUsernameExist(String username);
+    /**
+     * True when organization-wide audit view is enabled globally and the current user may view audit trails outside
+     * their office hierarchy.
+     */
+    boolean isOrganizationWideAuditViewEnabledForCurrentUser();
 }

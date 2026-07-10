@@ -49,7 +49,7 @@ import org.springframework.stereotype.Component;
         + "\n"
         + "Permissions: To search and look at audit entries a user needs to be attached to a role that has one of the ALL_FUNCTIONS, ALL_FUNCTIONS_READ or READ_AUDIT permissions.\n"
         + "\n"
-        + "Data Scope: A user can only see audits that are within their data scope. However, 'head office' users can see all audits including those that aren't office/branch related e.g. Loan Product changes.\")")
+        + "Data Scope: A user can only see audits that are within their data scope. Head office users can see all audits. When enable-organization-wide-audit-view is on and the user also has VIEW_ORGANIZATION_AUDIT, branch users can view audit trails organization-wide. Maker-checker inbox remains branch-scoped.\")")
 @RequiredArgsConstructor
 public class AuditsApiResource {
 

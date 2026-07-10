@@ -16,22 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.useradministration.service;
+package org.apache.fineract.infrastructure.audit.api;
 
-import java.util.Collection;
-import org.apache.fineract.useradministration.data.AppUserData;
+public final class OrganizationWideAuditConstants {
 
-public interface AppUserReadPlatformService {
+    public static final String ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW = "enable-organization-wide-audit-view";
+    public static final String VIEW_ORGANIZATION_AUDIT_PERMISSION = "VIEW_ORGANIZATION_AUDIT";
 
-    Collection<AppUserData> retrieveAllUsers();
-
-    Collection<AppUserData> retrieveSearchTemplate();
-
-    Collection<AppUserData> retrieveAllSearchTemplate();
-
-    AppUserData retrieveNewUserDetails();
-
-    AppUserData retrieveUser(Long userId);
-
-    boolean isUsernameExist(String username);
+    private OrganizationWideAuditConstants() {}
 }

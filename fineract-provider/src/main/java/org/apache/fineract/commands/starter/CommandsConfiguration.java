@@ -20,6 +20,7 @@ package org.apache.fineract.commands.starter;
 
 import org.apache.fineract.commands.service.AuditReadPlatformService;
 import org.apache.fineract.commands.service.AuditReadPlatformServiceImpl;
+import org.apache.fineract.infrastructure.audit.service.OrganizationWideAuditAccessReadService;
 import org.apache.fineract.infrastructure.core.data.PaginationParametersDataValidator;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
@@ -52,11 +53,11 @@ public class CommandsConfiguration {
             PaginationParametersDataValidator paginationParametersDataValidator,
             SavingsProductReadPlatformService savingsProductReadPlatformService,
             DepositProductReadPlatformService depositProductReadPlatformService, ColumnValidator columnValidator,
-            SqlValidator sqlValidator) {
+            SqlValidator sqlValidator, OrganizationWideAuditAccessReadService organizationWideAuditAccessReadService) {
         return new AuditReadPlatformServiceImpl(jdbcTemplate, context, fromApiJsonHelper, appUserReadPlatformService,
                 officeReadPlatformService, clientReadPlatformService, loanProductReadPlatformService, staffReadPlatformService,
                 paginationHelper, sqlGenerator, paginationParametersDataValidator, savingsProductReadPlatformService,
-                depositProductReadPlatformService, columnValidator, sqlValidator);
+                depositProductReadPlatformService, columnValidator, sqlValidator, organizationWideAuditAccessReadService);
     }
 
 }

@@ -716,6 +716,13 @@ public class GlobalConfigurationHelper {
         structuredGlCodeLength.put("trapDoor", false);
         defaults.add(structuredGlCodeLength);
 
+        HashMap<String, Object> enableOrganizationWideAuditView = new HashMap<>();
+        enableOrganizationWideAuditView.put("name", GlobalConfigurationConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW);
+        enableOrganizationWideAuditView.put("value", 0L);
+        enableOrganizationWideAuditView.put("enabled", false);
+        enableOrganizationWideAuditView.put("trapDoor", false);
+        defaults.add(enableOrganizationWideAuditView);
+
         return defaults;
     }
 

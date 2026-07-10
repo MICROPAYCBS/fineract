@@ -559,6 +559,13 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public boolean isOrganizationWideAuditViewEnabled() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW);
+        return property.isEnabled();
+    }
+
+    @Override
     public Integer retrieveSessionIdleTimeoutMinutes() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);

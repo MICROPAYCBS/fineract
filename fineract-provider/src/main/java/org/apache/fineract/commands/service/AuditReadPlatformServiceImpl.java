@@ -38,6 +38,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.data.AuditData;
 import org.apache.fineract.commands.data.AuditSearchData;
 import org.apache.fineract.commands.data.ProcessingResultLookup;
+import org.apache.fineract.infrastructure.audit.service.OrganizationWideAuditAccessReadService;
 import org.apache.fineract.infrastructure.core.data.PaginationParameters;
 import org.apache.fineract.infrastructure.core.data.PaginationParametersDataValidator;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
@@ -94,6 +95,7 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
     private final DepositProductReadPlatformService depositProductReadPlatformService;
     private final ColumnValidator columnValidator;
     private final SqlValidator sqlValidator;
+    private final OrganizationWideAuditAccessReadService organizationWideAuditAccessReadService;
 
     private static final class AuditMapper implements RowMapper<AuditData> {
 
@@ -184,7 +186,7 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
         sqlValidator.validate(parameters.getSortOrder());
         this.paginationParametersDataValidator.validateParameterValues(parameters, supportedOrderByValues, "audits");
         final AppUser currentUser = this.context.authenticatedUser();
-        final String hierarchy = currentUser.getOffice().getHierarchy();
+        final String hierarchy = resolveAuditHierarchyScope(currentUser);
 
         final AuditMapper rm = new AuditMapper();
         final StringBuilder sqlBuilder = new StringBuilder(200);
@@ -223,7 +225,8 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
         }
 
         final AppUser currentUser = this.context.authenticatedUser();
-        final String hierarchy = currentUser.getOffice().getHierarchy();
+        final String hierarchy = useType.equals("audit") ? resolveAuditHierarchyScope(currentUser)
+                : currentUser.getOffice().getHierarchy();
 
         final AuditMapper rm = new AuditMapper();
         String sql = "select " + rm.schema(includeJson, hierarchy);
@@ -251,7 +254,7 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
     public AuditData retrieveAuditEntry(final Long auditId) {
 
         final AppUser currentUser = this.context.authenticatedUser();
-        final String hierarchy = currentUser.getOffice().getHierarchy();
+        final String hierarchy = resolveAuditHierarchyScope(currentUser);
 
         final AuditMapper rm = new AuditMapper();
 
@@ -425,7 +428,10 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
 
         final AppUser currentUser = this.context.authenticatedUser();
 
-        final Collection<AppUserData> appUsers = this.appUserReadPlatformService.retrieveSearchTemplate();
+        final Collection<AppUserData> appUsers = useType.equals("audit")
+                && this.organizationWideAuditAccessReadService.isOrganizationWideAuditViewEnabledForCurrentUser()
+                        ? this.appUserReadPlatformService.retrieveAllSearchTemplate()
+                        : this.appUserReadPlatformService.retrieveSearchTemplate();
 
         String sql = " SELECT distinct(action_name) as actionName, CASE WHEN action_name in ('CREATE', 'DELETE', 'UPDATE') THEN action_name ELSE 'ZZZ' END as classifier "
                 + " FROM m_permission p ";
@@ -469,6 +475,16 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
             sql += "and p.code like '%\\_CHECKER'";
         }
         return sql;
+    }
+
+    private String resolveAuditHierarchyScope(final AppUser currentUser) {
+        if (".".equals(currentUser.getOffice().getHierarchy())) {
+            return ".";
+        }
+        if (this.organizationWideAuditAccessReadService.isOrganizationWideAuditViewEnabledForCurrentUser()) {
+            return ".";
+        }
+        return currentUser.getOffice().getHierarchy();
     }
 
     private static final class ActionNamesMapper implements RowMapper<String> {
