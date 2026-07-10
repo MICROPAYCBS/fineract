@@ -702,6 +702,20 @@ public class GlobalConfigurationHelper {
         enableCrossBranchServicing.put("trapDoor", false);
         defaults.add(enableCrossBranchServicing);
 
+        HashMap<String, Object> enforceStructuredGlCodes = new HashMap<>();
+        enforceStructuredGlCodes.put("name", GlobalConfigurationConstants.ENFORCE_STRUCTURED_GL_CODES);
+        enforceStructuredGlCodes.put("value", 0L);
+        enforceStructuredGlCodes.put("enabled", false);
+        enforceStructuredGlCodes.put("trapDoor", false);
+        defaults.add(enforceStructuredGlCodes);
+
+        HashMap<String, Object> structuredGlCodeLength = new HashMap<>();
+        structuredGlCodeLength.put("name", GlobalConfigurationConstants.STRUCTURED_GL_CODE_LENGTH);
+        structuredGlCodeLength.put("value", 6L);
+        structuredGlCodeLength.put("enabled", true);
+        structuredGlCodeLength.put("trapDoor", false);
+        defaults.add(structuredGlCodeLength);
+
         return defaults;
     }
 

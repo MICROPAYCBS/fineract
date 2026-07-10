@@ -67,6 +67,7 @@ public class GLAccountWritePlatformServiceJpaRepositoryImpl implements GLAccount
     private final GLAccountCommandFromApiJsonDeserializer fromApiJsonDeserializer;
     private final CodeValueRepositoryWrapper codeValueRepositoryWrapper;
     private final JdbcTemplate jdbcTemplate;
+    private final GlAccountStructuredCodeValidator glAccountStructuredCodeValidator;
 
     @Transactional
     @Override
@@ -75,6 +76,9 @@ public class GLAccountWritePlatformServiceJpaRepositoryImpl implements GLAccount
             final GLAccountCommand accountCommand = this.fromApiJsonDeserializer.commandFromApiJson(command.json());
             accountCommand.validateForCreate();
 
+            final Long type = command.longValueOfParameterNamed(GLAccountJsonInputParams.TYPE.getValue());
+            final String glCode = command.stringValueOfParameterNamed(GLAccountJsonInputParams.GL_CODE.getValue());
+
             // check parent is valid
             final Long parentId = command.longValueOfParameterNamed(GLAccountJsonInputParams.PARENT_ID.getValue());
             GLAccount parentGLAccount = null;
@@ -82,9 +86,11 @@ public class GLAccountWritePlatformServiceJpaRepositoryImpl implements GLAccount
                 parentGLAccount = validateParentGLAccount(parentId);
             }
 
+            this.glAccountStructuredCodeValidator.validateIfEnabled(glCode, type != null ? type.intValue() : null,
+                    parentGLAccount != null ? parentGLAccount.getGlCode() : null);
+
             CodeValue glAccountTagType = null;
             final Long tagId = command.longValueOfParameterNamed(GLAccountJsonInputParams.TAGID.getValue());
-            final Long type = command.longValueOfParameterNamed(GLAccountJsonInputParams.TYPE.getValue());
             final GLAccountType accountType = GLAccountType.fromInt(type.intValue());
 
             if (tagId != null) {
@@ -156,6 +162,14 @@ public class GLAccountWritePlatformServiceJpaRepositoryImpl implements GLAccount
                 if (journalEntriesForAccountExist) {
                     throw new GLAccountInvalidUpdateException(GlAccountInvalidUpdateReason.TRANSANCTIONS_LOGGED, glAccountId);
                 }
+            }
+
+            if (changesOnly.containsKey(GLAccountJsonInputParams.GL_CODE.getValue())
+                    || changesOnly.containsKey(GLAccountJsonInputParams.TYPE.getValue())
+                    || changesOnly.containsKey(GLAccountJsonInputParams.PARENT_ID.getValue())) {
+                final GLAccount parentAccount = glAccount.getParent();
+                this.glAccountStructuredCodeValidator.validateIfEnabled(glAccount.getGlCode(), glAccount.getType(),
+                        parentAccount != null ? parentAccount.getGlCode() : null);
             }
 
             if (!changesOnly.isEmpty()) {

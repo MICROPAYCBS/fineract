@@ -97,4 +97,5 @@
   <include relativeToChangelogFile="true" file="parts/3072_update_allow_direct_loan_repayments_description.xml"/>
   <include relativeToChangelogFile="true" file="parts/3073_fix_gl_account_report_parameter_select.xml"/>
   <include relativeToChangelogFile="true" file="parts/3074_fix_general_ledger_report_balances.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3075_enforce_structured_gl_codes.xml"/>
 </databaseChangeLog>

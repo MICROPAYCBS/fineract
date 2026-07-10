@@ -535,6 +535,23 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public boolean isStructuredGlCodesEnforced() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.ENFORCE_STRUCTURED_GL_CODES);
+        return property.isEnabled();
+    }
+
+    @Override
+    public int retrieveStructuredGlCodeLength() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.STRUCTURED_GL_CODE_LENGTH);
+        if (property.getValue() == null || property.getValue() <= 0) {
+            return 6;
+        }
+        return property.getValue().intValue();
+    }
+
+    @Override
     public boolean isAllowDirectLoanRepaymentsEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ALLOW_DIRECT_LOAN_REPAYMENTS);

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3075-enforce-structured-gl-codes-config" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'enforce-structured-gl-codes'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="enforce-structured-gl-codes"/>
+            <column name="value" valueNumeric="0"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="false"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="When enabled, new and updated GL account codes must be numeric, fixed length (see structured-gl-code-length), and start with the digit matching the account class (1=Asset, 2=Liability, 3=Equity, 4=Income, 5=Expense). Existing accounts are unchanged until their code or type is edited."/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3075-structured-gl-code-length-config" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'structured-gl-code-length'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="structured-gl-code-length"/>
+            <column name="value" valueNumeric="6"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="Required length of GL account codes when enforce-structured-gl-codes is enabled (default 6)."/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

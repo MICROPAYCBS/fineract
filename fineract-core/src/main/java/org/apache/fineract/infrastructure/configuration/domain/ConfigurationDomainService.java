@@ -149,6 +149,10 @@ public interface ConfigurationDomainService {
 
     boolean isStructuredAccountNumberFormatsEnabled();
 
+    boolean isStructuredGlCodesEnforced();
+
+    int retrieveStructuredGlCodeLength();
+
     boolean isAllowDirectLoanRepaymentsEnabled();
 
     Integer retrieveSessionIdleTimeoutMinutes();
