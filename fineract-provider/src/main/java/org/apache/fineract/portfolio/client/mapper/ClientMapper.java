@@ -48,6 +48,7 @@ public interface ClientMapper {
     @Mapping(target = "nationality", source = "source", qualifiedByName = "clientNationalityCode")
     @Mapping(target = "customerRiskProfile", source = "source", qualifiedByName = "clientCustomerRiskProfileCode")
     @Mapping(target = "maritalStatus", source = "source", qualifiedByName = "clientMaritalStatusCode")
+    @Mapping(target = "customerClassId", source = "customerClassId")
     @Mapping(target = "imageId", source = "imageId")
     @Mapping(target = "staffId", source = "staff.id")
     @Mapping(target = "staffName", source = "staff.displayName")

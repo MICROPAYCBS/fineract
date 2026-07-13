@@ -21,11 +21,13 @@ package org.apache.fineract.portfolio.client.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -45,6 +47,9 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.mapper.ClientMapper;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
+import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
+import org.apache.fineract.portfolio.customerclass.service.CustomerClassReadPlatformService;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -76,6 +81,10 @@ class ClientReadPlatformServiceImplTest {
     private ClientRepositoryWrapper clientRepositoryWrapper;
     @Mock
     private ClientMapper clientMapper;
+    @Mock
+    private CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+    @Mock
+    private CustomerClassReadPlatformService customerClassReadPlatformService;
 
     @InjectMocks
     private ClientReadPlatformServiceImpl clientReadPlatformService;
@@ -105,6 +114,54 @@ class ClientReadPlatformServiceImplTest {
         // Assert
         assertNotNull(result);
         assertEquals(clientId, result.getId());
+    }
+
+    @Test
+    void testRetrieveOne_EnrichesCustomerClassWhenAssigned() {
+        Long clientId = 1L;
+        Long customerClassId = 2L;
+        String mockHierarchy = "Root/";
+        Client mockClientEntity = mock(Client.class);
+        ClientData mockClientData = ClientData.lookup(clientId, "Test Client", 1L, "Test Office");
+        CustomerClassData customerClassData = CustomerClassData.builder().id(customerClassId).classCode("RETAIL")
+                .className("Retail").build();
+
+        when(context.officeHierarchy()).thenReturn(mockHierarchy);
+        when(clientRepositoryWrapper.getClientByClientIdAndHierarchy(clientId, mockHierarchy + "%")).thenReturn(mockClientEntity);
+        when(clientMapper.map(mockClientEntity)).thenReturn(mockClientData);
+        when(mockClientEntity.getCustomerClassId()).thenReturn(customerClassId);
+        when(customerClassReadPlatformService.retrieveOne(customerClassId)).thenReturn(customerClassData);
+        when(collateralRepoWrapper.getCollateralsPerClient(clientId)).thenReturn(Collections.emptyList());
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), anyLong())).thenReturn(Collections.emptyList());
+
+        ClientData result = clientReadPlatformService.retrieveOne(clientId);
+
+        assertNotNull(result);
+        assertEquals(customerClassId, result.getCustomerClassId());
+        assertNotNull(result.getCustomerClass());
+        assertEquals(customerClassId, result.getCustomerClass().getId());
+        verify(customerClassReadPlatformService).retrieveOne(eq(customerClassId));
+    }
+
+    @Test
+    void testRetrieveOne_DoesNotLoadCustomerClassWhenUnassigned() {
+        Long clientId = 1L;
+        String mockHierarchy = "Root/";
+        Client mockClientEntity = mock(Client.class);
+        ClientData mockClientData = ClientData.lookup(clientId, "Test Client", 1L, "Test Office");
+
+        when(context.officeHierarchy()).thenReturn(mockHierarchy);
+        when(clientRepositoryWrapper.getClientByClientIdAndHierarchy(clientId, mockHierarchy + "%")).thenReturn(mockClientEntity);
+        when(clientMapper.map(mockClientEntity)).thenReturn(mockClientData);
+        when(mockClientEntity.getCustomerClassId()).thenReturn(null);
+        when(collateralRepoWrapper.getCollateralsPerClient(clientId)).thenReturn(Collections.emptyList());
+        when(jdbcTemplate.query(anyString(), any(RowMapper.class), anyLong())).thenReturn(Collections.emptyList());
+
+        ClientData result = clientReadPlatformService.retrieveOne(clientId);
+
+        assertNotNull(result);
+        assertNull(result.getCustomerClassId());
+        assertNull(result.getCustomerClass());
     }
 
     @Test

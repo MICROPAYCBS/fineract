@@ -57,8 +57,9 @@ import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.mapper.ClientMapper;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
-import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
+import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
+import org.apache.fineract.portfolio.customerclass.service.CustomerClassReadPlatformService;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -88,6 +89,7 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
     private final ClientRepositoryWrapper clientRepositoryWrapper;
     private final ClientMapper clientMapper;
     private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+    private final CustomerClassReadPlatformService customerClassReadPlatformService;
 
     @Override
     public Page<ClientData> retrieveAll(final SearchParameters searchParameters) {
@@ -248,10 +250,20 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Collection<GroupGeneralData> parentGroups = this.jdbcTemplate.query(clientGroupsSql, this.clientGroupsMapper, // NOSONAR
                     clientId);
 
-            return ClientData.setParentGroups(clientData, parentGroups, clientCollateralManagementDataSet);
+            final ClientData mergedClientData = ClientData.setParentGroups(clientData, parentGroups, clientCollateralManagementDataSet);
+            enrichCustomerClass(client, mergedClientData);
+            return mergedClientData;
 
         } catch (final EmptyResultDataAccessException e) {
             throw new ClientNotFoundException(clientId, e);
+        }
+    }
+
+    private void enrichCustomerClass(final Client client, final ClientData clientData) {
+        final Long customerClassId = client.getCustomerClassId();
+        clientData.setCustomerClassId(customerClassId);
+        if (customerClassId != null) {
+            clientData.setCustomerClass(this.customerClassReadPlatformService.retrieveOne(customerClassId));
         }
     }
 
