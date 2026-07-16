@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: General Ledger report — show newest period lines first.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3082-postgresql-general-ledger-newest-first" context="postgresql">
+        <sqlFile path="V3082__general_ledger_report_newest_first.postgresql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3082-mysql-general-ledger-newest-first" context="mysql">
+        <sqlFile path="V3082__general_ledger_report_newest_first.mysql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+</databaseChangeLog>

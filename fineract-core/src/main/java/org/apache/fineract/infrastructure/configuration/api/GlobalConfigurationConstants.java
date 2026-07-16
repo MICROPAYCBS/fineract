@@ -108,6 +108,7 @@ public final class GlobalConfigurationConstants {
     public static final String ALLOW_DIRECT_LOAN_REPAYMENTS = "allow-direct-loan-repayments";
     public static final String ENABLE_REQUIRE_DEPARTMENT_ON_MANUAL_JOURNAL_PL_LINES = "enable-require-department-on-manual-journal-pl-lines";
     public static final String ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW = "enable-organization-wide-audit-view";
+    public static final String GL_BALANCE_SNAPSHOT_DAILY_RETENTION_DAYS = "gl-balance-snapshot-daily-retention-days";
 
     private GlobalConfigurationConstants() {}
 }

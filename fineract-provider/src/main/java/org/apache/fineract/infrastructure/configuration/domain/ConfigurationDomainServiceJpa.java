@@ -729,4 +729,14 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(GlobalConfigurationConstants.OFFICE_ID);
         return property.getValue();
     }
+
+    @Override
+    public Integer getGlBalanceSnapshotDailyRetentionDays() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.GL_BALANCE_SNAPSHOT_DAILY_RETENTION_DAYS);
+        if (property.isEnabled() && property.getValue() != null) {
+            return property.getValue().intValue();
+        }
+        return null;
+    }
 }

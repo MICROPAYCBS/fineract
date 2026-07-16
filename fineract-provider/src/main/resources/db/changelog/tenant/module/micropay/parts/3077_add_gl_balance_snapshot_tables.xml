@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: GL balance snapshot tables, configuration, and scheduled jobs.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet author="micropay" id="3077-postgresql-gl-balance-snapshot" context="postgresql">
+        <sqlFile path="V3077__add_gl_balance_snapshot_tables.postgresql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="true"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3077-mysql-gl-balance-snapshot" context="mysql">
+        <sqlFile path="V3077__add_gl_balance_snapshot_tables.mysql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="true"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3077-gl-balance-snapshot-daily-retention-config">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM c_configuration WHERE name = 'gl-balance-snapshot-daily-retention-days'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="gl-balance-snapshot-daily-retention-days"/>
+            <column name="value" valueNumeric="90"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="false"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="Number of calendar days for which DAILY GL balance snapshots are retained (older history uses MONTHLY snapshots)."/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="micropay" id="3077-gl-balance-snapshot-update-job">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'GLB_SNAP'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Update GL Balance Snapshots"/>
+            <column name="display_name" value="Update GL Balance Snapshots"/>
+            <column name="cron_expression" value="0 30 2 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Update GL Balance Snapshots _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="GLB_SNAP"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="micropay" id="3077-gl-balance-snapshot-backfill-job">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'GLB_BBFL'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="GL Balance Snapshot Backfill"/>
+            <column name="display_name" value="GL Balance Snapshot Backfill"/>
+            <column name="cron_expression" value="0 0 1 1 1 ? 2099"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="GL Balance Snapshot Backfill _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="GLB_BBFL"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

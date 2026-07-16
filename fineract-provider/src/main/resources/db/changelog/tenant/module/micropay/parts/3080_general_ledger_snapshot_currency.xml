@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: General Ledger report — snapshot opening balance and currency filter.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3080-general-ledger-currency-parameter">
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT sr.id, 10, 'currencyId'
+            FROM stretchy_report sr
+            WHERE sr.report_name = 'GeneralLedgerReport Table'
+              AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter existing
+                WHERE existing.report_id = sr.id AND existing.parameter_id = 10
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet author="micropay" id="3080-postgresql-general-ledger-snapshot-report" context="postgresql">
+        <sqlFile path="V3080__general_ledger_snapshot_report.postgresql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3080-mysql-general-ledger-snapshot-report" context="mysql">
+        <sqlFile path="V3080__general_ledger_snapshot_report.mysql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+</databaseChangeLog>

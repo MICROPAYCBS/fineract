@@ -62,6 +62,8 @@ public enum JobName {
     JOURNAL_ENTRY_AGGREGATION("Journal Entry Aggregation"), //
     WORKING_CAPITAL_LOAN_COB_JOB("Working Capital Loan COB"), //
     RETAINED_EARNING("Retained Earning Job"), //
+    UPDATE_GL_BALANCE_SNAPSHOTS("Update GL Balance Snapshots"), //
+    GL_BALANCE_SNAPSHOT_BACKFILL("GL Balance Snapshot Backfill"), //
     ; //
 
     private final String name;

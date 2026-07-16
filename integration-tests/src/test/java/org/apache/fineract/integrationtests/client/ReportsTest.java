@@ -145,7 +145,8 @@ public class ReportsTest extends IntegrationTest {
     @Test
     void testGeneralLedgerReportTableReportRunsSuccessfully() {
         Response<RunReportsResponse> response = okR(fineractClient().reportsRun.runReportGetData("GeneralLedgerReport Table",
-                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_GLAccountNO", "1")));
+                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_GLAccountNO", "1",
+                        "R_currencyId", "-1")));
         assertEquals(200, response.code());
     }
 

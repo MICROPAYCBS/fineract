@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -377,6 +378,14 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                 sqlBuilder.append(' ').append(searchParameters.getSortOrder());
                 this.columnValidator.validateSqlInjection(sqlBuilder.toString(), searchParameters.getOrderBy());
             }
+
+            // Same-day / equal primary keys: keep insert order via autoincrement id (matches default ORDER BY).
+            if (!alreadyOrdersByJournalEntryId(searchParameters.getOrderBy())) {
+                sqlBuilder.append(", journalEntry.id");
+                if (searchParameters.hasSortOrder()) {
+                    sqlBuilder.append(' ').append(searchParameters.getSortOrder());
+                }
+            }
         } else {
             sqlBuilder.append(" order by journalEntry.entry_date, journalEntry.id");
         }
@@ -392,6 +401,22 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
 
         final Object[] finalObjectArray = Arrays.copyOf(objectArray, arrayPos);
         return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), finalObjectArray, rm);
+    }
+
+    /**
+     * True when {@code orderBy} already includes {@code id} / {@code journalEntry.id} so we do not append a duplicate
+     * secondary key.
+     */
+    private static boolean alreadyOrdersByJournalEntryId(final String orderBy) {
+        if (StringUtils.isBlank(orderBy)) {
+            return false;
+        }
+        final String normalized = orderBy.toLowerCase(Locale.ROOT).replace(" ", "");
+        if (normalized.contains("journalentry.id")) {
+            return true;
+        }
+        return normalized.equals("id") || normalized.startsWith("id,") || normalized.endsWith(",id")
+                || normalized.contains(",id,");
     }
 
     protected GLJournalEntryMapper getGlJournalEntryMapper(JournalEntryAssociationParametersData associationParametersData) {

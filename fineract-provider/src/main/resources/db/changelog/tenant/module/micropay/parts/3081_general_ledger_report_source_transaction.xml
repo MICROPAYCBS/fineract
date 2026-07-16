@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: General Ledger report — Manual/System source and transaction_id columns.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3081-postgresql-general-ledger-source-transaction" context="postgresql">
+        <sqlFile path="V3081__general_ledger_report_source_transaction.postgresql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3081-mysql-general-ledger-source-transaction" context="mysql">
+        <sqlFile path="V3081__general_ledger_report_source_transaction.mysql.sql"
+            relativeToChangelogFile="true"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+</databaseChangeLog>
