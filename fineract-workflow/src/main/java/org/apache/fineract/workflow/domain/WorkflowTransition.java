@@ -24,16 +24,14 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 
 /**
- * Routing between two stages. Transitions are evaluated in {@code sequenceNo} order; an optional amount range makes a
- * transition conditional (first match wins), enabling mid-flow branching such as routing only very large amounts to an
- * extra authorisation stage. A transition without an amount range is unconditional and acts as the default branch.
+ * Routing between two stages. Transitions are evaluated in {@code sequenceNo} order; the first outgoing transition from
+ * a stage is taken.
  */
 @Getter
 @Setter
@@ -57,33 +55,11 @@ public class WorkflowTransition extends AbstractAuditableWithUTCDateTimeCustom<L
     @Column(name = "sequence_no", nullable = false)
     private Integer sequenceNo;
 
-    @Column(name = "min_amount", precision = 19, scale = 6)
-    private BigDecimal minAmount;
-
-    @Column(name = "max_amount", precision = 19, scale = 6)
-    private BigDecimal maxAmount;
-
-    public static WorkflowTransition create(final WorkflowStage fromStage, final WorkflowStage toStage, final Integer sequenceNo,
-            final BigDecimal minAmount, final BigDecimal maxAmount) {
+    public static WorkflowTransition create(final WorkflowStage fromStage, final WorkflowStage toStage, final Integer sequenceNo) {
         final WorkflowTransition transition = new WorkflowTransition();
         transition.setFromStage(fromStage);
         transition.setToStage(toStage);
         transition.setSequenceNo(sequenceNo);
-        transition.setMinAmount(minAmount);
-        transition.setMaxAmount(maxAmount);
         return transition;
-    }
-
-    public boolean matches(final BigDecimal amount) {
-        if (this.minAmount == null && this.maxAmount == null) {
-            return true;
-        }
-        if (amount == null) {
-            return false;
-        }
-        if (this.minAmount != null && amount.compareTo(this.minAmount) < 0) {
-            return false;
-        }
-        return this.maxAmount == null || amount.compareTo(this.maxAmount) <= 0;
     }
 }

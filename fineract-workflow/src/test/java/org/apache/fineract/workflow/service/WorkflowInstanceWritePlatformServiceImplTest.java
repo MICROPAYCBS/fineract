@@ -26,7 +26,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import org.apache.fineract.commands.domain.CommandSource;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -54,9 +53,6 @@ class WorkflowInstanceWritePlatformServiceImplTest {
     private WorkflowSelectionService workflowSelectionService;
 
     @Mock
-    private WorkflowCommandAmountExtractor amountExtractor;
-
-    @Mock
     private WorkflowInstanceRepository workflowInstanceRepository;
 
     @InjectMocks
@@ -69,7 +65,7 @@ class WorkflowInstanceWritePlatformServiceImplTest {
     void setUp() {
         commandSource = CommandSource.builder().actionName("APPROVE").entityName("LOAN").build();
         commandSource.setId(42L);
-        jsonCommand = JsonCommand.from("{\"transactionAmount\":1000,\"currencyCode\":\"UGX\"}");
+        jsonCommand = JsonCommand.from("{\"principal\":1000}");
     }
 
     @Test
@@ -79,21 +75,18 @@ class WorkflowInstanceWritePlatformServiceImplTest {
         final Optional<WorkflowInstance> result = this.service.createInstanceForHeldCommand(commandSource, jsonCommand);
 
         assertTrue(result.isEmpty());
-        verify(this.workflowSelectionService, never()).selectWorkflow(any(), any(), any());
+        verify(this.workflowSelectionService, never()).selectWorkflow(any());
     }
 
     @Test
     void createsInstanceAtEntryStageWhenDefinitionMatches() {
         when(this.tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
         when(this.workflowInstanceRepository.existsByCommandSourceId(42L)).thenReturn(false);
-        when(this.amountExtractor.extract(commandSource, jsonCommand))
-                .thenReturn(new WorkflowCommandAmountContext(new BigDecimal("1000"), "UGX"));
 
         final WorkflowDefinition definition = WorkflowTestFixtures.linearTwoStageDefinitionForApproveLoan();
         definition.setId(7L);
         definition.setStatus(WorkflowDefinitionStatus.ACTIVE);
-        when(this.workflowSelectionService.selectWorkflow(eq("APPROVE_LOAN"), eq(new BigDecimal("1000")), eq("UGX")))
-                .thenReturn(Optional.of(definition));
+        when(this.workflowSelectionService.selectWorkflow(eq("APPROVE_LOAN"))).thenReturn(Optional.of(definition));
         when(this.workflowInstanceRepository.saveAndFlush(any(WorkflowInstance.class))).thenAnswer(invocation -> {
             final WorkflowInstance instance = invocation.getArgument(0);
             instance.setId(99L);
@@ -111,8 +104,7 @@ class WorkflowInstanceWritePlatformServiceImplTest {
 
         final ArgumentCaptor<WorkflowInstance> captor = ArgumentCaptor.forClass(WorkflowInstance.class);
         verify(this.workflowInstanceRepository).saveAndFlush(captor.capture());
-        assertEquals(new BigDecimal("1000"), captor.getValue().getTransactionAmount());
-        assertEquals("UGX", captor.getValue().getCurrencyCode());
+        assertEquals(definition, captor.getValue().getWorkflowDefinition());
     }
 
     @Test
@@ -127,6 +119,6 @@ class WorkflowInstanceWritePlatformServiceImplTest {
 
         assertTrue(result.isPresent());
         assertEquals(5L, result.get().getId());
-        verify(this.workflowSelectionService, never()).selectWorkflow(any(), any(), any());
+        verify(this.workflowSelectionService, never()).selectWorkflow(any());
     }
 }

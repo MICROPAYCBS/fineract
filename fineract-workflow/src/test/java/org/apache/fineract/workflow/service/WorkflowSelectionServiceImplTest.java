@@ -24,7 +24,6 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
@@ -48,15 +47,14 @@ class WorkflowSelectionServiceImplTest {
     @InjectMocks
     private WorkflowSelectionServiceImpl selectionService;
 
-    private WorkflowDefinition largeLoanWorkflow;
-    private WorkflowDefinition defaultWorkflow;
+    private WorkflowDefinition highPriorityWorkflow;
+    private WorkflowDefinition lowPriorityWorkflow;
 
     @BeforeEach
     void setUp() {
-        // "Loans of 5M UGX and above" workflow, plus a criteria-less default. Higher priority first, matching the
-        // repository's ORDER BY priority DESC.
-        largeLoanWorkflow = definition("CREATE_LOAN", "Large Loan Approval", 20, "UGX", new BigDecimal("5000000"), null);
-        defaultWorkflow = definition("CREATE_LOAN", "Standard Loan Approval", 10, null, null, null);
+        // Repository returns ACTIVE definitions ordered by priority DESC.
+        highPriorityWorkflow = definition("CREATE_LOAN", "Primary Loan Approval", 20);
+        lowPriorityWorkflow = definition("CREATE_LOAN", "Fallback Loan Approval", 10);
         lenient().when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
     }
 
@@ -64,74 +62,37 @@ class WorkflowSelectionServiceImplTest {
     void noWorkflowIsSelectedWhenTenantConfigurationIsDisabled() {
         when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(false);
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN");
 
         assertThat(selected).isEmpty();
         verifyNoInteractions(repository);
     }
 
     @Test
-    void amountAboveThresholdSelectsLargeLoanWorkflow() {
-        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
+    void highestPriorityActiveWorkflowIsSelected() {
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN"))
+                .thenReturn(List.of(highPriorityWorkflow, lowPriorityWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN");
 
-        assertThat(selected).containsSame(largeLoanWorkflow);
+        assertThat(selected).containsSame(highPriorityWorkflow);
     }
 
     @Test
-    void amountAtExactThresholdSelectsLargeLoanWorkflow() {
-        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
+    void singleActiveWorkflowIsSelected() {
+        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(lowPriorityWorkflow));
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("5000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN");
 
-        assertThat(selected).containsSame(largeLoanWorkflow);
-    }
-
-    @Test
-    void amountBelowThresholdFallsBackToDefaultWorkflow() {
-        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
-
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("2000000"), "UGX");
-
-        assertThat(selected).containsSame(defaultWorkflow);
-    }
-
-    @Test
-    void differentCurrencyFallsBackToDefaultWorkflow() {
-        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow, defaultWorkflow));
-
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "USD");
-
-        assertThat(selected).containsSame(defaultWorkflow);
+        assertThat(selected).containsSame(lowPriorityWorkflow);
     }
 
     @Test
     void noActiveWorkflowsYieldsEmpty() {
         when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of());
 
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("7000000"), "UGX");
+        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN");
 
         assertThat(selected).isEmpty();
-    }
-
-    @Test
-    void criteriaOnlyWorkflowsWithNoMatchYieldEmpty() {
-        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN")).thenReturn(List.of(largeLoanWorkflow));
-
-        final Optional<WorkflowDefinition> selected = selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("1000"), "UGX");
-
-        assertThat(selected).isEmpty();
-    }
-
-    @Test
-    void amountBandUpperBoundIsInclusive() {
-        final WorkflowDefinition banded = definition("CREATE_LOAN", "Medium Loan Approval", 30, "UGX", new BigDecimal("1000000"),
-                new BigDecimal("4999999"));
-        when(repository.findActiveByTaskPermissionCodeOrderByPriorityDesc("CREATE_LOAN"))
-                .thenReturn(List.of(banded, largeLoanWorkflow, defaultWorkflow));
-
-        assertThat(selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("4999999"), "UGX")).containsSame(banded);
-        assertThat(selectionService.selectWorkflow("CREATE_LOAN", new BigDecimal("5000000"), "UGX")).containsSame(largeLoanWorkflow);
     }
 }

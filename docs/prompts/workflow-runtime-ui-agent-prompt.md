@@ -51,7 +51,7 @@ All must be true for workflows to run at runtime:
 | Per-task maker-checker enabled (e.g. `APPROVE_LOAN`) | `/system/configure-mc-tasks` → `selected: true` |
 | **ACTIVE** workflow definition for that `taskPermissionCode` | `/system/approval-workflows` |
 
-**First tasks with runtime support:** `APPROVE_LOAN`, `DISBURSE_LOAN` (amount extracted from command JSON: `transactionAmount`, `approvedLoanAmount`, `principal`). Others fall back to classic MC until amount extractors are added.
+**First tasks with runtime support:** `APPROVE_LOAN`, `DISBURSE_LOAN`. Selection is **priority-based** for the task permission code (no amount extraction). Other tasks fall back to classic MC until an ACTIVE workflow is defined for them.
 
 ---
 
@@ -122,10 +122,10 @@ Pass `includeJson=true` on detail views so approvers can review payload before a
 
 | User type | Inbox visibility | Approve behavior |
 |---|---|---|
-| User with `{TASK}_CHECKER` (e.g. `APPROVE_LOAN_CHECKER`) | Sees item in `/makercheckers` (existing filter) | Same permission authorizes every workflow stage for that task (plus office / stage limit / distinct-approver rules). |
+| User with `{TASK}_CHECKER` (e.g. `APPROVE_LOAN_CHECKER`) | Sees item in `/makercheckers` (existing filter) | Same permission authorizes every workflow stage for that task **unless** the stage sets `roleId` — then the user must also hold that role (plus office / distinct-approver rules). |
 | `CHECKER_SUPER_USER` / `ALL_FUNCTIONS` | Sees all / bypasses filters | **Bypasses workflow stages** — approve executes command immediately. |
 
-**Operational guidance:** Grant `{TASK}_CHECKER` via roles to each staff member who should approve at **any** stage of that task’s workflow. Different stages are different people from that shared pool (`requireDistinctApprover`, `requiredApprovals`), not different role lists on the definition.
+**Operational guidance:** Grant `{TASK}_CHECKER` via roles to each staff member who should approve at **any** stage of that task’s workflow. Use optional per-stage `roleId` to further restrict which of those checkers may act at a given step.
 
 ### Workflow runtime error codes
 
@@ -133,7 +133,7 @@ Surface `errors[].defaultUserMessage` / `developerMessage` in destructive toast 
 
 | Globalisation code suffix | When |
 |---|---|
-| `error.msg.workflow.instance.approver.not.authorized` | Missing `{TASK}_CHECKER`, over approval limit, or office not allowed |
+| `error.msg.workflow.instance.approver.not.authorized` | Missing `{TASK}_CHECKER`, missing required stage role, or office not allowed |
 | `error.msg.workflow.instance.same.approver.as.maker` | `requireDistinctApprover` and maker tried to approve |
 | `error.msg.workflow.instance.duplicate.approval` | Same user already approved at this stage |
 | `error.msg.workflow.instance.action.not.enabled` | Stage doesn’t allow APPROVE/REJECT |
@@ -197,7 +197,7 @@ For each inbox row:
 - Show **task** label and entity context (client name, loan account no).
 - **Workflow context (best-effort without instance API):**
   - Fetch **ACTIVE** workflow definitions for `taskPermissionCode` via `GET /workflow-definitions?taskPermissionCode=APPROVE_LOAN&status=ACTIVE`.
-  - If exactly one default (or match amount from JSON when criteria exist), show read-only **stage timeline** from definition (reuse stage timeline component from `/system/approval-workflows/[id]` if possible).
+  - Pick the highest-`priority` ACTIVE definition and show its read-only **stage timeline** (reuse stage timeline component from `/system/approval-workflows/[id]` if possible).
   - Label current position as **“In approval workflow”** without claiming a specific stage until instance API exists.
 - Approve / Reject buttons with confirmation dialog summarizing action.
 
@@ -278,8 +278,8 @@ Workflow **definition** admin permissions (`READ_WORKFLOW_DEFINITION`, etc.) are
 ### Manual E2E (against Fineract with workflow module on)
 
 1. Enable `maker-checker`, `enable-approval-workflows`, MC for `APPROVE_LOAN`.
-2. Activate a 2-stage workflow for `APPROVE_LOAN` (no role participants — eligibility is `APPROVE_LOAN_CHECKER`).
-3. Create users: **maker** (`APPROVE_LOAN` only), **stage1** (`APPROVE_LOAN_CHECKER`), **stage2** (different user with `APPROVE_LOAN_CHECKER`).
+2. Activate a 2-stage workflow for `APPROVE_LOAN` with different `roleId`s per stage (e.g. Branch Manager vs Head Office); eligibility still requires `APPROVE_LOAN_CHECKER`.
+3. Create users: **maker** (`APPROVE_LOAN` only), **stage1** (`APPROVE_LOAN_CHECKER` + stage1 role), **stage2** (different user with `APPROVE_LOAN_CHECKER` + stage2 role). A user with checker but the wrong role must be rejected at that stage.
 4. Maker submits loan approval → toast “submitted for approval”; loan **not** approved in UI.
 5. Stage1 approves from inbox → toast “next stage”; loan **still** not approved; item remains in inbox.
 6. Stage2 approves → loan approved; item leaves inbox.
@@ -293,6 +293,6 @@ Workflow **definition** admin permissions (`READ_WORKFLOW_DEFINITION`, etc.) are
 
 - **Do not** wait for workflow instance read API — ship inbox improvements against `/makercheckers` now.
 - **Do not** show “Approved” / “Disbursed” on intermediate workflow stage responses.
-- Stage eligibility requires `{TASK}_CHECKER` (same as classic MC); do not document “participant role only” workarounds.
+- Stage eligibility requires `{TASK}_CHECKER` (same as classic MC); when a stage has `roleId`, also require that role. Do not document multi-role participant lists — one optional role per stage.
 - Reuse workflow **definition** timeline component for context where helpful; keep admin CRUD in `/system/approval-workflows` only.
 - Match existing design system (shadcn/ui, DataTable, FormSheet patterns).

@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.workflow.data;
 
-import java.math.BigDecimal;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
@@ -40,7 +39,7 @@ public class WorkflowStageData {
     private final String escalationTargetStageCode;
     private final Boolean allowCrossBranchAccess;
     private final Boolean requireDistinctApprover;
-    private final BigDecimal approvalLimitAmount;
-    private final String approvalLimitCurrency;
+    private final Long roleId;
+    private final String roleName;
     private final List<String> actions;
 }

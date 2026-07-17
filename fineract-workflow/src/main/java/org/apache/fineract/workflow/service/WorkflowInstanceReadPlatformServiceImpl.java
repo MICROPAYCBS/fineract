@@ -50,8 +50,6 @@ public class WorkflowInstanceReadPlatformServiceImpl implements WorkflowInstance
                 .taskPermissionCode(instance.getTaskPermissionCode()) //
                 .currentStageCode(instance.getCurrentStageCode()) //
                 .status(instance.getStatus().name()) //
-                .transactionAmount(instance.getTransactionAmount()) //
-                .currencyCode(instance.getCurrencyCode()) //
                 .build();
     }
 }

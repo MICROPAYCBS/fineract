@@ -26,7 +26,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -40,8 +39,8 @@ import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDa
 
 /**
  * Master template for a configurable approval workflow. A definition is anchored to a maker-checker task - a Fineract
- * permission code such as CREATE_LOAN - and may carry amount-based selection criteria so that several active workflows
- * can coexist for the same task (e.g. large loans follow a longer approval chain).
+ * permission code such as CREATE_LOAN. When multiple ACTIVE definitions exist for the same task, the highest priority
+ * wins.
  */
 @Getter
 @Setter
@@ -66,15 +65,6 @@ public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<L
     @Column(name = "priority", nullable = false)
     private Integer priority;
 
-    @Column(name = "currency_code", length = 3)
-    private String currencyCode;
-
-    @Column(name = "min_amount", precision = 19, scale = 6)
-    private BigDecimal minAmount;
-
-    @Column(name = "max_amount", precision = 19, scale = 6)
-    private BigDecimal maxAmount;
-
     @OneToMany(mappedBy = "workflowDefinition", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id")
     private List<WorkflowStage> stages = new ArrayList<>();
@@ -84,16 +74,13 @@ public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<L
     private List<WorkflowTransition> transitions = new ArrayList<>();
 
     public static WorkflowDefinition create(final String taskPermissionCode, final String name, final String description,
-            final Integer priority, final String currencyCode, final BigDecimal minAmount, final BigDecimal maxAmount) {
+            final Integer priority) {
         final WorkflowDefinition definition = new WorkflowDefinition();
         definition.setTaskPermissionCode(taskPermissionCode);
         definition.setName(name);
         definition.setDescription(description);
         definition.setStatus(WorkflowDefinitionStatus.DRAFT);
         definition.setPriority(priority);
-        definition.setCurrencyCode(currencyCode);
-        definition.setMinAmount(minAmount);
-        definition.setMaxAmount(maxAmount);
         return definition;
     }
 
@@ -125,30 +112,6 @@ public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<L
     }
 
     /**
-     * Whether this workflow applies to a business transaction of the given amount and currency. A definition without
-     * criteria matches anything (default workflow); amount criteria only apply to transactions in the same currency.
-     */
-    public boolean matches(final BigDecimal amount, final String transactionCurrencyCode) {
-        if (this.currencyCode == null) {
-            return this.minAmount == null && this.maxAmount == null;
-        }
-        if (!this.currencyCode.equals(transactionCurrencyCode)) {
-            return false;
-        }
-        if (amount == null) {
-            return this.minAmount == null && this.maxAmount == null;
-        }
-        if (this.minAmount != null && amount.compareTo(this.minAmount) < 0) {
-            return false;
-        }
-        return this.maxAmount == null || amount.compareTo(this.maxAmount) <= 0;
-    }
-
-    public boolean hasSelectionCriteria() {
-        return this.currencyCode != null || this.minAmount != null || this.maxAmount != null;
-    }
-
-    /**
      * The entry stage is the sole stage with no incoming transitions (validated at activation).
      */
     public Optional<String> findEntryStageCode() {
@@ -163,11 +126,10 @@ public class WorkflowDefinition extends AbstractAuditableWithUTCDateTimeCustom<L
         return this.transitions.stream().noneMatch(transition -> transition.getFromStage().getStageCode().equals(stageCode));
     }
 
-    public Optional<String> resolveNextStageCode(final String fromStageCode, final BigDecimal amount) {
+    public Optional<String> resolveNextStageCode(final String fromStageCode) {
         return this.transitions.stream() //
                 .filter(transition -> transition.getFromStage().getStageCode().equals(fromStageCode)) //
                 .sorted(Comparator.comparing(WorkflowTransition::getSequenceNo)) //
-                .filter(transition -> transition.matches(amount)) //
                 .map(transition -> transition.getToStage().getStageCode()) //
                 .findFirst();
     }

@@ -33,9 +33,6 @@ public final class WorkflowApiConstants {
     public static final String NAME_PARAM = "name";
     public static final String DESCRIPTION_PARAM = "description";
     public static final String PRIORITY_PARAM = "priority";
-    public static final String CURRENCY_CODE_PARAM = "currencyCode";
-    public static final String MIN_AMOUNT_PARAM = "minAmount";
-    public static final String MAX_AMOUNT_PARAM = "maxAmount";
     public static final String STAGES_PARAM = "stages";
     public static final String TRANSITIONS_PARAM = "transitions";
 
@@ -50,9 +47,8 @@ public final class WorkflowApiConstants {
     public static final String ESCALATION_TARGET_STAGE_CODE_PARAM = "escalationTargetStageCode";
     public static final String ALLOW_CROSS_BRANCH_ACCESS_PARAM = "allowCrossBranchAccess";
     public static final String REQUIRE_DISTINCT_APPROVER_PARAM = "requireDistinctApprover";
+    public static final String ROLE_ID_PARAM = "roleId";
     public static final String ACTIONS_PARAM = "actions";
-    public static final String APPROVAL_LIMIT_AMOUNT_PARAM = "approvalLimitAmount";
-    public static final String APPROVAL_LIMIT_CURRENCY_PARAM = "approvalLimitCurrency";
 
     public static final String FROM_STAGE_CODE_PARAM = "fromStageCode";
     public static final String TO_STAGE_CODE_PARAM = "toStageCode";

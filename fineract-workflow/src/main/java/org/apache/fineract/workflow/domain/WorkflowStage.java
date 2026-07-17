@@ -28,18 +28,19 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
+import org.apache.fineract.useradministration.domain.Role;
 
 /**
  * A single step in an approval chain. Within a stage, {@code requiredApprovals} distinct approvals complete the stage
  * (N-of-M parallel approval); the {@code rejectionPolicy} determines when the stage - and with it the workflow instance
- * - is rejected. Eligibility to act is implied by the definition's task: holders of {@code {taskPermissionCode}_CHECKER}.
+ * - is rejected. Eligibility requires {@code {taskPermissionCode}_CHECKER}; when {@code role} is set, the actor must
+ * also hold that role.
  */
 @Getter
 @Setter
@@ -91,11 +92,9 @@ public class WorkflowStage extends AbstractAuditableWithUTCDateTimeCustom<Long> 
     @Column(name = "require_distinct_approver", nullable = false)
     private boolean requireDistinctApprover;
 
-    @Column(name = "approval_limit_amount", precision = 19, scale = 6)
-    private BigDecimal approvalLimitAmount;
-
-    @Column(name = "approval_limit_currency", length = 3)
-    private String approvalLimitCurrency;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "role_id")
+    private Role role;
 
     @OneToMany(mappedBy = "stage", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<WorkflowStageAction> actions = new ArrayList<>();
@@ -107,5 +106,9 @@ public class WorkflowStage extends AbstractAuditableWithUTCDateTimeCustom<Long> 
 
     public boolean hasExpiry() {
         return this.expiryPeriodUnit != null && this.expiryPeriodValue != null;
+    }
+
+    public boolean hasRoleRestriction() {
+        return this.role != null;
     }
 }

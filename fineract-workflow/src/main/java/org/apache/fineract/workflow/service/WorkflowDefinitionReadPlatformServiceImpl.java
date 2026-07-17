@@ -75,8 +75,6 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
                         .fromStageCode(transition.getFromStage().getStageCode()) //
                         .toStageCode(transition.getToStage().getStageCode()) //
                         .sequenceNo(transition.getSequenceNo()) //
-                        .minAmount(transition.getMinAmount()) //
-                        .maxAmount(transition.getMaxAmount()) //
                         .build())
                 .toList();
 
@@ -87,9 +85,6 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
                 .description(definition.getDescription()) //
                 .status(definition.getStatus().name()) //
                 .priority(definition.getPriority()) //
-                .currencyCode(definition.getCurrencyCode()) //
-                .minAmount(definition.getMinAmount()) //
-                .maxAmount(definition.getMaxAmount()) //
                 .stages(stages) //
                 .transitions(transitions) //
                 .build();
@@ -112,8 +107,8 @@ public class WorkflowDefinitionReadPlatformServiceImpl implements WorkflowDefini
                 .escalationTargetStageCode(stage.getEscalationTargetStageCode()) //
                 .allowCrossBranchAccess(stage.isAllowCrossBranchAccess()) //
                 .requireDistinctApprover(stage.isRequireDistinctApprover()) //
-                .approvalLimitAmount(stage.getApprovalLimitAmount()) //
-                .approvalLimitCurrency(stage.getApprovalLimitCurrency()) //
+                .roleId(stage.getRole() != null ? stage.getRole().getId() : null) //
+                .roleName(stage.getRole() != null ? stage.getRole().getName() : null) //
                 .actions(actions) //
                 .build();
     }

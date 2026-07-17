@@ -18,16 +18,14 @@
  */
 package org.apache.fineract.workflow.service;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 
 /**
- * Selects the workflow which governs a held maker-checker command. Selection considers only ACTIVE definitions of the
- * task (permission code, e.g. CREATE_LOAN), evaluates amount/currency criteria and picks the highest-priority match; a
- * criteria-less definition acts as the task default.
+ * Selects the workflow which governs a held maker-checker command. Selection considers only ACTIVE definitions for the
+ * task (permission code, e.g. CREATE_LOAN) and picks the highest-priority one.
  */
 public interface WorkflowSelectionService {
 
-    Optional<WorkflowDefinition> selectWorkflow(String taskPermissionCode, BigDecimal amount, String currencyCode);
+    Optional<WorkflowDefinition> selectWorkflow(String taskPermissionCode);
 }

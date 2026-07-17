@@ -26,7 +26,6 @@ import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -59,22 +58,14 @@ public class WorkflowInstance extends AbstractAuditableWithUTCDateTimeCustom<Lon
     @Column(name = "status", nullable = false, length = 20)
     private WorkflowInstanceStatus status;
 
-    @Column(name = "transaction_amount", precision = 19, scale = 6)
-    private BigDecimal transactionAmount;
-
-    @Column(name = "currency_code", length = 3)
-    private String currencyCode;
-
-    public static WorkflowInstance create(final Long commandSourceId, final WorkflowDefinition workflowDefinition, final String entryStageCode,
-            final BigDecimal transactionAmount, final String currencyCode) {
+    public static WorkflowInstance create(final Long commandSourceId, final WorkflowDefinition workflowDefinition,
+            final String entryStageCode) {
         final WorkflowInstance instance = new WorkflowInstance();
         instance.setCommandSourceId(commandSourceId);
         instance.setWorkflowDefinition(workflowDefinition);
         instance.setTaskPermissionCode(workflowDefinition.getTaskPermissionCode());
         instance.setCurrentStageCode(entryStageCode);
         instance.setStatus(WorkflowInstanceStatus.IN_PROGRESS);
-        instance.setTransactionAmount(transactionAmount);
-        instance.setCurrencyCode(currencyCode);
         return instance;
     }
 

@@ -28,4 +28,6 @@
   <include relativeToChangelogFile="true" file="parts/0004_rename_module_name_to_task_permission_code.xml"/>
   <include relativeToChangelogFile="true" file="parts/0005_workflow_instance_schema.xml"/>
   <include relativeToChangelogFile="true" file="parts/0006_drop_stage_participants.xml"/>
+  <include relativeToChangelogFile="true" file="parts/0007_drop_workflow_amounts.xml"/>
+  <include relativeToChangelogFile="true" file="parts/0008_stage_role.xml"/>
 </databaseChangeLog>

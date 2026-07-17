@@ -18,13 +18,13 @@
  */
 package org.apache.fineract.workflow.service;
 
-import java.math.BigDecimal;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.commands.domain.CommandSource;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.apache.fineract.useradministration.domain.Role;
 import org.apache.fineract.workflow.domain.WorkflowApprovalAction;
 import org.apache.fineract.workflow.domain.WorkflowInstance;
 import org.apache.fineract.workflow.domain.WorkflowStage;
@@ -33,7 +33,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * Authorizes stage actions using the implied maker-checker permission
- * {@code {taskPermissionCode}_CHECKER}, plus stage office / limit / distinct-approver rules.
+ * {@code {taskPermissionCode}_CHECKER}, optional stage role membership, plus office / distinct-approver rules.
  */
 @Component
 @RequiredArgsConstructor
@@ -45,7 +45,7 @@ public class WorkflowStageAuthorizationService {
             final WorkflowStage stage) {
         validateActionEnabled(stage, WorkflowApprovalAction.APPROVE);
         validateCheckerPermission(actor, instance.getTaskPermissionCode(), stage);
-        validateApprovalLimit(instance, stage);
+        validateStageRole(actor, stage);
         validateOfficeAccess(actor, commandSource, stage);
         validateDistinctApprover(commandSource, actor, stage);
     }
@@ -54,7 +54,7 @@ public class WorkflowStageAuthorizationService {
             final WorkflowStage stage) {
         validateActionEnabled(stage, WorkflowApprovalAction.REJECT);
         validateCheckerPermission(actor, instance.getTaskPermissionCode(), stage);
-        validateApprovalLimit(instance, stage);
+        validateStageRole(actor, stage);
         validateOfficeAccess(actor, commandSource, stage);
     }
 
@@ -63,7 +63,7 @@ public class WorkflowStageAuthorizationService {
         if (!actor.hasAnyPermission(checkerPermissionCode(instance.getTaskPermissionCode()))) {
             return false;
         }
-        if (!isWithinApprovalLimit(stage, instance.getTransactionAmount(), instance.getCurrencyCode())) {
+        if (!hasRequiredStageRole(actor, stage)) {
             return false;
         }
         return isOfficeAccessible(actor, commandSource, stage.isAllowCrossBranchAccess());
@@ -86,29 +86,26 @@ public class WorkflowStageAuthorizationService {
         }
     }
 
+    private void validateStageRole(final AppUser actor, final WorkflowStage stage) {
+        if (!hasRequiredStageRole(actor, stage)) {
+            final Role requiredRole = stage.getRole();
+            throw new WorkflowRuntimeException("approver.not.authorized",
+                    "User is not authorized to act at workflow stage " + stage.getStageCode() + " (requires role " + requiredRole.getName()
+                            + ")",
+                    stage.getStageCode(), requiredRole.getName());
+        }
+    }
+
+    private boolean hasRequiredStageRole(final AppUser actor, final WorkflowStage stage) {
+        if (!stage.hasRoleRestriction()) {
+            return true;
+        }
+        final Long requiredRoleId = stage.getRole().getId();
+        return actor.getRoles() != null && actor.getRoles().stream().anyMatch(role -> Objects.equals(role.getId(), requiredRoleId));
+    }
+
     private String checkerPermissionCode(final String taskPermissionCode) {
         return taskPermissionCode.toUpperCase() + "_CHECKER";
-    }
-
-    private void validateApprovalLimit(final WorkflowInstance instance, final WorkflowStage stage) {
-        if (!isWithinApprovalLimit(stage, instance.getTransactionAmount(), instance.getCurrencyCode())) {
-            throw new WorkflowRuntimeException("approver.not.authorized",
-                    "Transaction amount exceeds approval limit for stage " + stage.getStageCode(), stage.getStageCode());
-        }
-    }
-
-    private boolean isWithinApprovalLimit(final WorkflowStage stage, final BigDecimal transactionAmount,
-            final String transactionCurrencyCode) {
-        if (stage.getApprovalLimitAmount() == null) {
-            return true;
-        }
-        if (transactionAmount == null) {
-            return true;
-        }
-        if (stage.getApprovalLimitCurrency() != null && !stage.getApprovalLimitCurrency().equals(transactionCurrencyCode)) {
-            return false;
-        }
-        return transactionAmount.compareTo(stage.getApprovalLimitAmount()) <= 0;
     }
 
     private void validateOfficeAccess(final AppUser actor, final CommandSource commandSource, final WorkflowStage stage) {

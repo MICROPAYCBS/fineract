@@ -16,20 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.workflow.service;
+package org.apache.fineract.workflow.domain;
 
-import java.math.BigDecimal;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import org.apache.fineract.useradministration.domain.Role;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-@Getter
-@RequiredArgsConstructor
-public class WorkflowCommandAmountContext {
-
-    private final BigDecimal amount;
-    private final String currencyCode;
-
-    public static WorkflowCommandAmountContext empty() {
-        return new WorkflowCommandAmountContext(null, null);
-    }
-}
+/**
+ * Module-local repository for {@link Role}. The platform's RoleRepository lives in fineract-provider which depends on
+ * this module, so it cannot be referenced from here without creating a circular dependency.
+ */
+public interface WorkflowRoleRepository extends JpaRepository<Role, Long> {}

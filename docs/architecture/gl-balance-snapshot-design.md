@@ -52,3 +52,5 @@ General Ledger also supports the `currencyId` and `departmentId` stretchy parame
 | Update GL Balance Snapshots | Nightly incremental extension and month-end sealing |
 
 See `m_gl_balance_snapshot_tracking` for the aggregation watermark (`snapshot_date_to`).
+
+For where `Update GL Balance Snapshots` sits in day-close (after business-date advance and portfolio COB), see [`eod-business-date-runbook.md`](eod-business-date-runbook.md).

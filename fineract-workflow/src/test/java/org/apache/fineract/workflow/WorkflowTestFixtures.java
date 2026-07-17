@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.workflow;
 
-import java.math.BigDecimal;
 import org.apache.fineract.workflow.domain.WorkflowApprovalAction;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowStage;
@@ -30,9 +29,8 @@ public final class WorkflowTestFixtures {
 
     private WorkflowTestFixtures() {}
 
-    public static WorkflowDefinition definition(final String taskPermissionCode, final String name, final Integer priority,
-            final String currencyCode, final BigDecimal minAmount, final BigDecimal maxAmount) {
-        return WorkflowDefinition.create(taskPermissionCode, name, null, priority, currencyCode, minAmount, maxAmount);
+    public static WorkflowDefinition definition(final String taskPermissionCode, final String name, final Integer priority) {
+        return WorkflowDefinition.create(taskPermissionCode, name, null, priority);
     }
 
     public static WorkflowStage stage(final String stageCode) {
@@ -49,14 +47,14 @@ public final class WorkflowTestFixtures {
     public static void connect(final WorkflowDefinition definition, final String fromCode, final String toCode, final int sequenceNo) {
         final WorkflowStage from = definition.findStageByCode(fromCode).orElseThrow();
         final WorkflowStage to = definition.findStageByCode(toCode).orElseThrow();
-        definition.addTransition(WorkflowTransition.create(from, to, sequenceNo, null, null));
+        definition.addTransition(WorkflowTransition.create(from, to, sequenceNo));
     }
 
     /**
      * A valid three-stage linear workflow: BRANCH_MANAGER -> REGIONAL_MANAGER -> HEAD_OFFICE.
      */
     public static WorkflowDefinition linearThreeStageDefinition() {
-        final WorkflowDefinition definition = definition("CREATE_LOAN", "Loan Application Approval", 0, null, null, null);
+        final WorkflowDefinition definition = definition("CREATE_LOAN", "Loan Application Approval", 0);
         definition.addStage(stage("BRANCH_MANAGER"));
         definition.addStage(stage("REGIONAL_MANAGER"));
         definition.addStage(stage("HEAD_OFFICE"));
@@ -69,7 +67,7 @@ public final class WorkflowTestFixtures {
      * Two-stage linear workflow for loan approval tasks.
      */
     public static WorkflowDefinition linearTwoStageDefinitionForApproveLoan() {
-        final WorkflowDefinition definition = definition("APPROVE_LOAN", "Loan Approval", 0, null, null, null);
+        final WorkflowDefinition definition = definition("APPROVE_LOAN", "Loan Approval", 0);
         definition.addStage(stage("BRANCH_MANAGER"));
         definition.addStage(stage("HEAD_OFFICE"));
         connect(definition, "BRANCH_MANAGER", "HEAD_OFFICE", 1);

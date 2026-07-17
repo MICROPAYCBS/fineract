@@ -82,7 +82,7 @@ class WorkflowInstanceProcessServiceImplTest {
         definition = WorkflowTestFixtures.linearTwoStageDefinitionForApproveLoan();
         definition.setId(7L);
         definition.setStatus(WorkflowDefinitionStatus.ACTIVE);
-        instance = WorkflowInstance.create(42L, definition, "BRANCH_MANAGER", null, null);
+        instance = WorkflowInstance.create(42L, definition, "BRANCH_MANAGER");
         instance.setId(1L);
     }
 

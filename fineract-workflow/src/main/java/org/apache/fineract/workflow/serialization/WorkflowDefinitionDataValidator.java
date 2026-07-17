@@ -19,20 +19,16 @@
 package org.apache.fineract.workflow.serialization;
 
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.ACTIONS_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.APPROVAL_LIMIT_AMOUNT_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.APPROVAL_LIMIT_CURRENCY_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.CURRENCY_CODE_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.EXPIRY_PERIOD_UNIT_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.EXPIRY_PERIOD_VALUE_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.FROM_STAGE_CODE_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.MAX_AMOUNT_PARAM;
-import static org.apache.fineract.workflow.api.WorkflowApiConstants.MIN_AMOUNT_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.NAME_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.PRIORITY_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.REJECTION_POLICY_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.REJECTION_THRESHOLD_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.REQUIRED_APPROVALS_PARAM;
+import static org.apache.fineract.workflow.api.WorkflowApiConstants.ROLE_ID_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.SEQUENCE_NO_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGES_PARAM;
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.STAGE_CODE_PARAM;
@@ -93,19 +89,6 @@ public class WorkflowDefinitionDataValidator {
                 .notExceedingLengthOf(100);
         baseDataValidator.reset().parameter(NAME_PARAM).value(request.getName()).notBlank().notExceedingLengthOf(255);
         baseDataValidator.reset().parameter(PRIORITY_PARAM).value(request.getPriority()).ignoreIfNull().zeroOrPositiveAmount();
-        baseDataValidator.reset().parameter(CURRENCY_CODE_PARAM).value(request.getCurrencyCode()).ignoreIfNull().notBlank()
-                .notExceedingLengthOf(3);
-        baseDataValidator.reset().parameter(MIN_AMOUNT_PARAM).value(request.getMinAmount()).ignoreIfNull().positiveAmount();
-        baseDataValidator.reset().parameter(MAX_AMOUNT_PARAM).value(request.getMaxAmount()).ignoreIfNull().positiveAmount();
-
-        if ((request.getMinAmount() != null || request.getMaxAmount() != null) && StringUtils.isBlank(request.getCurrencyCode())) {
-            baseDataValidator.reset().parameter(CURRENCY_CODE_PARAM).value(request.getCurrencyCode())
-                    .failWithCode("required.when.amount.criteria.set");
-        }
-        if (request.getMinAmount() != null && request.getMaxAmount() != null
-                && request.getMinAmount().compareTo(request.getMaxAmount()) > 0) {
-            baseDataValidator.reset().parameter(MIN_AMOUNT_PARAM).value(request.getMinAmount()).failWithCode("greater.than.max.amount");
-        }
 
         if (request.getStages() != null) {
             for (int i = 0; i < request.getStages().size(); i++) {
@@ -140,18 +123,13 @@ public class WorkflowDefinitionDataValidator {
                 .isOneOfTheseStringValues(EXPIRY_PERIOD_UNITS);
         baseDataValidator.reset().parameter(prefix + EXPIRY_PERIOD_VALUE_PARAM).value(stage.getExpiryPeriodValue()).ignoreIfNull()
                 .integerGreaterThanZero();
+        baseDataValidator.reset().parameter(prefix + ROLE_ID_PARAM).value(stage.getRoleId()).ignoreIfNull().longGreaterThanZero();
 
         if (stage.getActions() != null) {
             for (final String action : stage.getActions()) {
                 baseDataValidator.reset().parameter(prefix + ACTIONS_PARAM).value(action).notBlank()
                         .isOneOfTheseStringValues(APPROVAL_ACTIONS);
             }
-        }
-        baseDataValidator.reset().parameter(prefix + APPROVAL_LIMIT_AMOUNT_PARAM).value(stage.getApprovalLimitAmount()).ignoreIfNull()
-                .positiveAmount();
-        if (stage.getApprovalLimitAmount() != null && StringUtils.isBlank(stage.getApprovalLimitCurrency())) {
-            baseDataValidator.reset().parameter(prefix + APPROVAL_LIMIT_CURRENCY_PARAM).value(stage.getApprovalLimitCurrency())
-                    .failWithCode("required.when.approval.limit.set");
         }
     }
 
@@ -163,12 +141,5 @@ public class WorkflowDefinitionDataValidator {
         baseDataValidator.reset().parameter(prefix + TO_STAGE_CODE_PARAM).value(transition.getToStageCode()).notBlank();
         baseDataValidator.reset().parameter(prefix + SEQUENCE_NO_PARAM).value(transition.getSequenceNo()).notNull()
                 .integerGreaterThanZero();
-        baseDataValidator.reset().parameter(prefix + MIN_AMOUNT_PARAM).value(transition.getMinAmount()).ignoreIfNull().positiveAmount();
-        baseDataValidator.reset().parameter(prefix + MAX_AMOUNT_PARAM).value(transition.getMaxAmount()).ignoreIfNull().positiveAmount();
-        if (transition.getMinAmount() != null && transition.getMaxAmount() != null
-                && transition.getMinAmount().compareTo(transition.getMaxAmount()) > 0) {
-            baseDataValidator.reset().parameter(prefix + MIN_AMOUNT_PARAM).value(transition.getMinAmount())
-                    .failWithCode("greater.than.max.amount");
-        }
     }
 }

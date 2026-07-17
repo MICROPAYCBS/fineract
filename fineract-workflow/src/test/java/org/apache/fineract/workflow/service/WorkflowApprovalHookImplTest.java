@@ -48,7 +48,7 @@ class WorkflowApprovalHookImplTest {
     void delegatesHeldCommandToInstanceWriteService() {
         final CommandSource commandSource = CommandSource.builder().actionName("DISBURSE").entityName("LOAN").build();
         commandSource.setId(10L);
-        final JsonCommand command = JsonCommand.from("{\"transactionAmount\":500}");
+        final JsonCommand command = JsonCommand.from("{\"principal\":500}");
 
         this.hook.onCommandAwaitingApproval(commandSource, command);
 

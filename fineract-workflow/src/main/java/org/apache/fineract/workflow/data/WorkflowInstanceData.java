@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.workflow.data;
 
-import java.math.BigDecimal;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -32,6 +31,4 @@ public class WorkflowInstanceData {
     private final String taskPermissionCode;
     private final String currentStageCode;
     private final String status;
-    private final BigDecimal transactionAmount;
-    private final String currencyCode;
 }

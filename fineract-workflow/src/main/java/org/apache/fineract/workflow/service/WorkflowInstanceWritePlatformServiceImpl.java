@@ -41,7 +41,6 @@ public class WorkflowInstanceWritePlatformServiceImpl implements WorkflowInstanc
 
     private final WorkflowTenantConfiguration tenantConfiguration;
     private final WorkflowSelectionService workflowSelectionService;
-    private final WorkflowCommandAmountExtractor amountExtractor;
     private final WorkflowInstanceRepository workflowInstanceRepository;
 
     @Override
@@ -62,10 +61,7 @@ public class WorkflowInstanceWritePlatformServiceImpl implements WorkflowInstanc
         }
 
         final String taskPermissionCode = commandSource.getPermissionCode();
-        final WorkflowCommandAmountContext amountContext = this.amountExtractor.extract(commandSource, command);
-
-        final Optional<WorkflowDefinition> selectedDefinition = this.workflowSelectionService.selectWorkflow(taskPermissionCode,
-                amountContext.getAmount(), amountContext.getCurrencyCode());
+        final Optional<WorkflowDefinition> selectedDefinition = this.workflowSelectionService.selectWorkflow(taskPermissionCode);
         if (selectedDefinition.isEmpty()) {
             return Optional.empty();
         }
@@ -78,8 +74,7 @@ public class WorkflowInstanceWritePlatformServiceImpl implements WorkflowInstanc
             return Optional.empty();
         }
 
-        final WorkflowInstance instance = WorkflowInstance.create(commandSourceId, definition, entryStageCode.get(), amountContext.getAmount(),
-                amountContext.getCurrencyCode());
+        final WorkflowInstance instance = WorkflowInstance.create(commandSourceId, definition, entryStageCode.get());
         return Optional.of(this.workflowInstanceRepository.saveAndFlush(instance));
     }
 }

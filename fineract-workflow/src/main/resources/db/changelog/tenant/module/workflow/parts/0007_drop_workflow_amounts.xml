@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <!-- Keep highest-priority ACTIVE definition per task; deactivate the rest. -->
+    <changeSet id="workflow-011-dedupe-active-definitions-mysql" author="fineract" context="mysql">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_definition"/>
+        </preConditions>
+        <sql>
+            UPDATE m_workflow_definition d
+            INNER JOIN (
+                SELECT task_permission_code, MAX(priority) AS keep_priority
+                FROM m_workflow_definition
+                WHERE status = 'ACTIVE'
+                GROUP BY task_permission_code
+                HAVING COUNT(*) &gt; 1
+            ) keepers ON d.task_permission_code = keepers.task_permission_code
+            SET d.status = 'INACTIVE'
+            WHERE d.status = 'ACTIVE'
+              AND d.priority &lt; keepers.keep_priority;
+        </sql>
+        <sql>
+            UPDATE m_workflow_definition d
+            INNER JOIN (
+                SELECT task_permission_code, priority, MIN(id) AS keep_id
+                FROM m_workflow_definition
+                WHERE status = 'ACTIVE'
+                GROUP BY task_permission_code, priority
+                HAVING COUNT(*) &gt; 1
+            ) keepers ON d.task_permission_code = keepers.task_permission_code
+                      AND d.priority = keepers.priority
+            SET d.status = 'INACTIVE'
+            WHERE d.status = 'ACTIVE'
+              AND d.id &lt;&gt; keepers.keep_id;
+        </sql>
+    </changeSet>
+
+    <changeSet id="workflow-011-dedupe-active-definitions-postgresql" author="fineract" context="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="m_workflow_definition"/>
+        </preConditions>
+        <sql>
+            UPDATE m_workflow_definition d
+            SET status = 'INACTIVE'
+            FROM (
+                SELECT task_permission_code, MAX(priority) AS keep_priority
+                FROM m_workflow_definition
+                WHERE status = 'ACTIVE'
+                GROUP BY task_permission_code
+                HAVING COUNT(*) &gt; 1
+            ) keepers
+            WHERE d.task_permission_code = keepers.task_permission_code
+              AND d.status = 'ACTIVE'
+              AND d.priority &lt; keepers.keep_priority;
+        </sql>
+        <sql>
+            UPDATE m_workflow_definition d
+            SET status = 'INACTIVE'
+            FROM (
+                SELECT task_permission_code, priority, MIN(id) AS keep_id
+                FROM m_workflow_definition
+                WHERE status = 'ACTIVE'
+                GROUP BY task_permission_code, priority
+                HAVING COUNT(*) &gt; 1
+            ) keepers
+            WHERE d.task_permission_code = keepers.task_permission_code
+              AND d.priority = keepers.priority
+              AND d.status = 'ACTIVE'
+              AND d.id &lt;&gt; keepers.keep_id;
+        </sql>
+    </changeSet>
+
+    <changeSet id="workflow-012-drop-definition-amount-columns" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="m_workflow_definition" columnName="min_amount"/>
+        </preConditions>
+        <dropColumn tableName="m_workflow_definition" columnName="currency_code"/>
+        <dropColumn tableName="m_workflow_definition" columnName="min_amount"/>
+        <dropColumn tableName="m_workflow_definition" columnName="max_amount"/>
+    </changeSet>
+
+    <changeSet id="workflow-013-drop-transition-amount-columns" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="m_workflow_transition" columnName="min_amount"/>
+        </preConditions>
+        <dropColumn tableName="m_workflow_transition" columnName="min_amount"/>
+        <dropColumn tableName="m_workflow_transition" columnName="max_amount"/>
+    </changeSet>
+
+    <changeSet id="workflow-014-drop-stage-approval-limit-columns" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="m_workflow_stage" columnName="approval_limit_amount"/>
+        </preConditions>
+        <dropColumn tableName="m_workflow_stage" columnName="approval_limit_amount"/>
+        <dropColumn tableName="m_workflow_stage" columnName="approval_limit_currency"/>
+    </changeSet>
+
+    <changeSet id="workflow-015-drop-instance-amount-columns" author="fineract">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="m_workflow_instance" columnName="transaction_amount"/>
+        </preConditions>
+        <dropColumn tableName="m_workflow_instance" columnName="transaction_amount"/>
+        <dropColumn tableName="m_workflow_instance" columnName="currency_code"/>
+    </changeSet>
+
+</databaseChangeLog>

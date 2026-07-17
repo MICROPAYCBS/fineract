@@ -91,7 +91,7 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
             return ApprovalWorkflowDecision.STAGE_RECORDED;
         }
 
-        final String nextStageCode = definition.resolveNextStageCode(instance.getCurrentStageCode(), instance.getTransactionAmount())
+        final String nextStageCode = definition.resolveNextStageCode(instance.getCurrentStageCode())
                 .orElseThrow(() -> new WorkflowRuntimeException("transition.not.found",
                         "No transition is configured from stage " + instance.getCurrentStageCode(), instance.getCurrentStageCode()));
         instance.setCurrentStageCode(nextStageCode);

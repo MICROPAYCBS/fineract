@@ -71,10 +71,10 @@ public class WorkflowDefinitionStructureValidator {
     }
 
     private void validateStage(final WorkflowDefinition definition, final WorkflowStage stage) {
-        if (stage.getApprovalLimitAmount() != null && (stage.getApprovalLimitCurrency() == null || stage.getApprovalLimitCurrency().isBlank())) {
-            throw new WorkflowConfigurationException("stage.approval.limit.currency.required",
-                    "Stage " + stage.getStageCode() + " defines an approval limit amount but no approval limit currency",
-                    stage.getStageCode());
+        if (stage.hasRoleRestriction() && Boolean.TRUE.equals(stage.getRole().isDisabled())) {
+            throw new WorkflowConfigurationException("role.disabled",
+                    "Stage " + stage.getStageCode() + " references disabled role " + stage.getRole().getName(), stage.getStageCode(),
+                    stage.getRole().getName());
         }
         if (stage.getActions().isEmpty()) {
             throw new WorkflowConfigurationException("stage.without.actions", "Stage " + stage.getStageCode() + " has no enabled actions",
@@ -193,8 +193,8 @@ public class WorkflowDefinitionStructureValidator {
     }
 
     /**
-     * Guards against two active workflows for the same maker-checker task with equal priority and overlapping selection
-     * criteria, which would make runtime selection ambiguous.
+     * Guards against two active workflows for the same maker-checker task at the same priority, which would make
+     * runtime selection ambiguous.
      */
     public void validateNoAmbiguousSelection(final WorkflowDefinition candidate, final List<WorkflowDefinition> activeDefinitions) {
         for (final WorkflowDefinition existing : activeDefinitions) {
@@ -204,31 +204,10 @@ public class WorkflowDefinitionStructureValidator {
             if (!existing.getPriority().equals(candidate.getPriority())) {
                 continue;
             }
-            if (criteriaOverlap(candidate, existing)) {
-                throw new WorkflowConfigurationException("ambiguous.selection.criteria",
-                        "Workflow " + candidate.getName() + " overlaps with active workflow " + existing.getName() + " for task "
-                                + candidate.getTaskPermissionCode() + " at the same priority",
-                        candidate.getName(), existing.getName(), candidate.getTaskPermissionCode());
-            }
+            throw new WorkflowConfigurationException("duplicate.priority.for.task",
+                    "Workflow " + candidate.getName() + " shares priority " + candidate.getPriority() + " with active workflow "
+                            + existing.getName() + " for task " + candidate.getTaskPermissionCode(),
+                    candidate.getName(), existing.getName(), candidate.getTaskPermissionCode(), candidate.getPriority());
         }
-    }
-
-    private boolean criteriaOverlap(final WorkflowDefinition first, final WorkflowDefinition second) {
-        if (!first.hasSelectionCriteria() && !second.hasSelectionCriteria()) {
-            return true;
-        }
-        if (!first.hasSelectionCriteria() || !second.hasSelectionCriteria()) {
-            // A criteria-less default only matches transactions no criteria workflow matches, so no ambiguity.
-            return false;
-        }
-        if (first.getCurrencyCode() != null && second.getCurrencyCode() != null
-                && !first.getCurrencyCode().equals(second.getCurrencyCode())) {
-            return false;
-        }
-        final boolean firstEndsBeforeSecondStarts = first.getMaxAmount() != null && second.getMinAmount() != null
-                && first.getMaxAmount().compareTo(second.getMinAmount()) < 0;
-        final boolean secondEndsBeforeFirstStarts = second.getMaxAmount() != null && first.getMinAmount() != null
-                && second.getMaxAmount().compareTo(first.getMinAmount()) < 0;
-        return !firstEndsBeforeSecondStarts && !secondEndsBeforeFirstStarts;
     }
 }

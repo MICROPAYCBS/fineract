@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.workflow.data;
 
-import java.math.BigDecimal;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -31,6 +30,4 @@ public class WorkflowTransitionRequest {
     private String fromStageCode;
     private String toStageCode;
     private Integer sequenceNo;
-    private BigDecimal minAmount;
-    private BigDecimal maxAmount;
 }

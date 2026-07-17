@@ -20,7 +20,6 @@ package org.apache.fineract.workflow.service;
 
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABLED_PROPERTY;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -40,8 +39,7 @@ public class WorkflowSelectionServiceImpl implements WorkflowSelectionService {
     private final WorkflowTenantConfiguration tenantConfiguration;
 
     @Override
-    public Optional<WorkflowDefinition> selectWorkflow(final String taskPermissionCode, final BigDecimal amount,
-            final String currencyCode) {
+    public Optional<WorkflowDefinition> selectWorkflow(final String taskPermissionCode) {
         // Tenant-level opt-in: when the enable-approval-workflows global configuration is disabled, no workflow
         // governs any transaction of this tenant, even if active definitions exist.
         if (!this.tenantConfiguration.isApprovalWorkflowsEnabled()) {
@@ -50,18 +48,6 @@ public class WorkflowSelectionServiceImpl implements WorkflowSelectionService {
 
         final List<WorkflowDefinition> activeDefinitions = this.workflowDefinitionRepository
                 .findActiveByTaskPermissionCodeOrderByPriorityDesc(taskPermissionCode);
-
-        // Criteria-bearing workflows are examined first (in priority order); a criteria-less definition is the
-        // task default and only wins when no criteria match.
-        final Optional<WorkflowDefinition> criteriaMatch = activeDefinitions.stream() //
-                .filter(WorkflowDefinition::hasSelectionCriteria) //
-                .filter(definition -> definition.matches(amount, currencyCode)) //
-                .findFirst();
-        if (criteriaMatch.isPresent()) {
-            return criteriaMatch;
-        }
-        return activeDefinitions.stream() //
-                .filter(definition -> !definition.hasSelectionCriteria()) //
-                .findFirst();
+        return activeDefinitions.stream().findFirst();
     }
 }
