@@ -102,6 +102,29 @@ class ClientDataValidatorTest {
     }
 
     @Test
+    void validateForCreate_withContactsArray_doesNotThrowUnsupportedParameter() {
+        String json = """
+                {
+                  "officeId": 1,
+                  "firstname": "John",
+                  "lastname": "Doe",
+                  "active": false,
+                  "legalFormId": 1,
+                  "locale": "en",
+                  "dateFormat": "dd MMMM yyyy",
+                  "contacts": [
+                    { "contactTypeId": 1, "contactValue": "+256700000001", "primary": true }
+                  ],
+                  "clientIdentifiers": [
+                    { "documentTypeId": 1, "documentKey": "CM123456", "status": "Active" }
+                  ]
+                }
+                """;
+
+        assertDoesNotThrow(() -> validator.validateForCreate(json));
+    }
+
+    @Test
     void validateForCreate_withValidDateFormat_doesNotThrow() {
         String json = validMinimalCreateJson("dd MMMM yyyy");
 

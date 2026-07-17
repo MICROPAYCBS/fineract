@@ -250,7 +250,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
         sqlBuilder.append("select ").append(sqlGenerator.calcFoundRows()).append(" ");
         sqlBuilder.append(rm.schema());
 
-        final Object[] objectArray = new Object[16];
+        final Object[] objectArray = new Object[18];
         int arrayPos = 0;
         String whereClose = " where ";
 
@@ -283,6 +283,14 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
         if (searchParameters.hasCurrencyCode()) {
             sqlBuilder.append(whereClose).append(" journalEntry.currency_code = ?");
             objectArray[arrayPos] = searchParameters.getCurrencyCode();
+            arrayPos = arrayPos + 1;
+
+            whereClose = " and ";
+        }
+
+        if (searchParameters.hasCreatedByUserId()) {
+            sqlBuilder.append(whereClose).append(" journalEntry.created_by = ?");
+            objectArray[arrayPos] = searchParameters.getCreatedByUserId();
             arrayPos = arrayPos + 1;
 
             whereClose = " and ";

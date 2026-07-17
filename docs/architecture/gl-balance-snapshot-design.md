@@ -35,7 +35,7 @@ When no snapshot exists, delta scans from the beginning of time (same as legacy 
 | Trial Balance Table | Opening at `startDate - 1` and closing at `endDate` | Delta after snapshot watermark only |
 | GeneralLedgerReport Table | **Opening balance only** at `startDate - 1` | Full period lines (`startDate`..`endDate`) for detail and running movement |
 
-General Ledger also supports the `currencyId` stretchy parameter (`-1` = all currencies), consistent with other core accounting table reports. Period lines expose `source` (`Manual` / `System` from `manual_entry`) and `transaction_id` instead of the legacy JE-id `transtype` column. Lines are ordered newest-first (`entry_date DESC`); `cumulative_sum` is still computed chronologically, so the top row shows the period-end running balance.
+General Ledger also supports the `currencyId` and `departmentId` stretchy parameters (`-1` = all), consistent with other core accounting table reports. Period lines expose `source` (`Manual` / `System` from `manual_entry`) and `transaction_id` instead of the legacy JE-id `transtype` column. Lines are ordered newest-first (`entry_date DESC`); `cumulative_sum` is still computed chronologically, so the top row shows the period-end running balance.
 
 ## Archiving contract
 

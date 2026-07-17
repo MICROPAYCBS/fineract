@@ -462,6 +462,7 @@ public class ClientsApiResource {
             clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
             clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
             clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
+            clientData.setContactTypeOptions(templateData.getContactTypeOptions());
             Collection<SavingsAccountData> savingAccountOptions = savingsAccountReadPlatformService.retrieveForLookup(clientId, null);
             if (savingAccountOptions != null && savingAccountOptions.size() > 0) {
                 clientData = ClientData.templateWithSavingAccountOptions(clientData, savingAccountOptions);
@@ -476,6 +477,7 @@ public class ClientsApiResource {
                 clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
                 clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
                 clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
+                clientData.setContactTypeOptions(templateData.getContactTypeOptions());
             }
         }
         return clientData;

@@ -138,6 +138,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final CustomerClassClientValidationService customerClassClientValidationService;
     private final ClientTitleWritePlatformService clientTitleWritePlatformService;
     private final ClientContactValidationService clientContactValidationService;
+    private final ClientContactWritePlatformService clientContactWritePlatformService;
 
     @Transactional
     @Override
@@ -385,6 +386,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed("familyMembers") != null) {
                 this.clientFamilyMembersWritePlatformService.addClientFamilyMember(newClient, command);
+            }
+
+            if (command.arrayOfParameterNamed(ClientApiConstants.contacts) != null) {
+                this.clientContactWritePlatformService.addClientContacts(newClient, command);
             }
 
             if (command.arrayOfParameterNamed(ClientApiConstants.incomeSources) != null) {

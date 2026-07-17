@@ -25,8 +25,8 @@ import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 
 public class ClientApiCollectionConstants extends ClientApiConstants {
 
-    protected static final Set<String> CLIENT_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(familyMembers, incomeSources,
-            complianceProfile, clientIdentifiers, address,
+    protected static final Set<String> CLIENT_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(familyMembers, contacts,
+            incomeSources, complianceProfile, clientIdentifiers, address,
             localeParamName, dateFormatParamName, groupIdParamName, accountNoParamName, externalIdParamName, mobileNoParamName,
             emailAddressParamName, taxIdentificationNumberParamName, alternativeMobileNoParamName, alternativeEmailAddressParamName,
             subIndustryIdParamName, customerClassIdParamName, titleIdParamName, nationalityCountryIdParamName, customerRiskProfileIdParamName,
@@ -36,7 +36,7 @@ public class ClientApiCollectionConstants extends ClientApiConstants {
             clientNonPersonDetailsParamName, displaynameParamName, legalFormIdParamName, datatables, isStaffParamName));
 
     protected static final Set<String> CLIENT_NON_PERSON_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(familyMembers, incomeSources, clientIdentifiers, address, localeParamName, dateFormatParamName,
+            Arrays.asList(familyMembers, contacts, incomeSources, clientIdentifiers, address, localeParamName, dateFormatParamName,
                     incorpNumberParamName, remarksParamName, incorpValidityTillParamName, constitutionIdParamName,
                     mainBusinessLineIdParamName, datatables));
 

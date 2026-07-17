@@ -70,6 +70,7 @@ public class ClientApiConstants {
     public static final String dateFormatParamName = "dateFormat";
     public static final String address = "address";
     public static final String familyMembers = "familyMembers";
+    public static final String contacts = "contacts";
     public static final String incomeSources = "incomeSources";
     public static final String complianceProfile = "complianceProfile";
     public static final String clientIdentifiers = "clientIdentifiers";
@@ -201,6 +202,7 @@ public class ClientApiConstants {
     public static final String maritalStatusOptionsParamName = "maritalStatusOptions";
     public static final String customerClassParamName = "customerClass";
     public static final String customerClassOptionsParamName = "customerClassOptions";
+    public static final String contactTypeOptionsParamName = "contactTypeOptions";
 
     public static final String datatables = "datatables";
     public static final String obligeeData = "ObligeeDetails";
@@ -221,7 +223,7 @@ public class ClientApiConstants {
             subIndustryIdParamName, customerClassIdParamName, titleIdParamName, nationalityCountryIdParamName,
             customerRiskProfileIdParamName, maritalStatusIdParamName, titleParamName, nationalityParamName,
             customerRiskProfileParamName, maritalStatusParamName, customerClassParamName,
-            customerClassOptionsParamName, officeIdParamName, officeNameParamName, transferToOfficeIdParamName,
+            customerClassOptionsParamName, contactTypeOptionsParamName, officeIdParamName, officeNameParamName, transferToOfficeIdParamName,
             transferToOfficeNameParamName, hierarchyParamName, imageIdParamName, imagePresentParamName, staffIdParamName,
             staffNameParamName, timelineParamName, groupsParamName, officeOptionsParamName, staffOptionsParamName, genderOptionsParamName,
             titleOptionsParamName, nationalityOptionsParamName, customerRiskProfileOptionsParamName, maritalStatusOptionsParamName,

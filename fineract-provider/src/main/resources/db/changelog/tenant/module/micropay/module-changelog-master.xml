@@ -104,4 +104,5 @@
   <include relativeToChangelogFile="true" file="parts/3080_general_ledger_snapshot_currency.xml"/>
   <include relativeToChangelogFile="true" file="parts/3081_general_ledger_report_source_transaction.xml"/>
   <include relativeToChangelogFile="true" file="parts/3082_general_ledger_report_newest_first.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3083_general_ledger_report_department_filter.xml"/>
 </databaseChangeLog>

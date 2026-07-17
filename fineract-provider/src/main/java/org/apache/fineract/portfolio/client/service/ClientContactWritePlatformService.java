@@ -20,10 +20,13 @@ package org.apache.fineract.portfolio.client.service;
 
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.portfolio.client.domain.Client;
 
 public interface ClientContactWritePlatformService {
 
     CommandProcessingResult createClientContact(Long clientId, JsonCommand command);
+
+    CommandProcessingResult addClientContacts(Client client, JsonCommand command);
 
     CommandProcessingResult updateClientContact(Long clientId, Long clientContactId, JsonCommand command);
 

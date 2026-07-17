@@ -18,13 +18,21 @@
  */
 package org.apache.fineract.portfolio.client.service;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientContact;
 import org.apache.fineract.portfolio.client.domain.ClientContactRepository;
@@ -76,6 +84,69 @@ public class ClientContactWritePlatformServiceImpl implements ClientContactWrite
 
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withOfficeId(client.officeId())
                 .withClientId(clientId).withEntityId(clientContact.getId()).build();
+    }
+
+    @Override
+    @Transactional
+    public CommandProcessingResult addClientContacts(final Client client, final JsonCommand command) {
+        this.context.authenticatedUser();
+
+        final JsonArray contacts = command.arrayOfParameterNamed(ClientApiConstants.contacts);
+        if (contacts == null || contacts.isEmpty()) {
+            return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withOfficeId(client.officeId())
+                    .withClientId(client.getId()).build();
+        }
+
+        validateSinglePrimaryPerTypeInBatch(contacts);
+
+        ClientContact lastSaved = null;
+        for (final JsonElement contactElement : contacts) {
+            this.apiJsonDeserializer.validateForCreate(contactElement.toString());
+
+            final JsonObject json = contactElement.getAsJsonObject();
+            final Long contactTypeId = this.fromApiJsonHelper.extractLongNamed(ClientContactCommandFromApiJsonDeserializer.CONTACT_TYPE_ID,
+                    json);
+            final ContactType contactType = this.contactTypeWritePlatformService.findWithNotFoundDetection(contactTypeId);
+            final String contactValue = this.fromApiJsonHelper.extractStringNamed(ClientContactCommandFromApiJsonDeserializer.CONTACT_VALUE,
+                    json);
+            this.clientContactValidationService.validateContactValue(contactType, contactValue);
+
+            final Boolean primary = this.fromApiJsonHelper.extractBooleanNamed(ClientContactCommandFromApiJsonDeserializer.PRIMARY, json);
+            if (Boolean.TRUE.equals(primary)) {
+                this.clientContactValidationService.clearOtherPrimaryFlags(client.getId(), contactTypeId, null);
+            }
+
+            final ClientContact clientContact = new ClientContact();
+            clientContact.setClient(client);
+            clientContact.setContactTypeId(contactTypeId);
+            clientContact.setContactValue(contactValue);
+            clientContact.setPrimary(primary);
+            this.clientContactRepository.saveAndFlush(clientContact);
+            lastSaved = clientContact;
+        }
+
+        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withOfficeId(client.officeId())
+                .withClientId(client.getId()).withEntityId(lastSaved != null ? lastSaved.getId() : null).build();
+    }
+
+    private void validateSinglePrimaryPerTypeInBatch(final JsonArray contacts) {
+        final Set<Long> primaryContactTypeIds = new HashSet<>();
+        for (final JsonElement contactElement : contacts) {
+            final JsonObject json = contactElement.getAsJsonObject();
+            final Boolean primary = this.fromApiJsonHelper.extractBooleanNamed(ClientContactCommandFromApiJsonDeserializer.PRIMARY, json);
+            if (!Boolean.TRUE.equals(primary)) {
+                continue;
+            }
+            final Long contactTypeId = this.fromApiJsonHelper.extractLongNamed(ClientContactCommandFromApiJsonDeserializer.CONTACT_TYPE_ID,
+                    json);
+            if (contactTypeId != null && !primaryContactTypeIds.add(contactTypeId)) {
+                final ApiParameterError error = ApiParameterError.parameterError(
+                        "validation.msg.client.contact.duplicate.primary.for.type",
+                        "Only one primary contact is allowed per contact type in the contacts array.",
+                        ClientContactCommandFromApiJsonDeserializer.PRIMARY, contactTypeId);
+                throw new PlatformApiDataValidationException(List.of(error));
+            }
+        }
     }
 
     @Override

@@ -69,6 +69,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
     private final ConfigurationDomainService configurationDomainService;
     private final CustomerClassReadPlatformService customerClassReadPlatformService;
     private final ClientTitleReadPlatformService clientTitleReadPlatformService;
+    private final ContactTypeReadPlatformService contactTypeReadPlatformService;
 
     @Override
     public ClientData retrieveTemplate(final Long officeId, final boolean staffInSelectedOfficeOnly) {
@@ -144,6 +145,7 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         templateData.setCustomerRiskProfileOptions(customerRiskProfileOptions);
         templateData.setMaritalStatusOptions(maritalStatusOptions);
         templateData.setCustomerClassOptions(this.customerClassReadPlatformService.retrieveActiveForClientDropdown());
+        templateData.setContactTypeOptions(this.contactTypeReadPlatformService.retrieveActiveForClientDropdown());
         return templateData;
     }
 

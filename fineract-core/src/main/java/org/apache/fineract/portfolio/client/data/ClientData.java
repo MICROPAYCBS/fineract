@@ -123,6 +123,7 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
     private Collection<CodeValueData> clientNonPersonMainBusinessLineOptions;
     private List<EnumOptionData> clientLegalFormOptions;
     private ClientFamilyMembersData familyMemberOptions;
+    private List<ContactTypeData> contactTypeOptions;
 
     private ClientNonPersonData clientNonPersonDetails;
 
