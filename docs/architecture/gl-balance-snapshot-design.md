@@ -54,3 +54,5 @@ General Ledger also supports the `currencyId` and `departmentId` stretchy parame
 See `m_gl_balance_snapshot_tracking` for the aggregation watermark (`snapshot_date_to`).
 
 For where `Update GL Balance Snapshots` sits in day-close (after business-date advance and portfolio COB), see [`eod-business-date-runbook.md`](eod-business-date-runbook.md).
+
+Operational enquiry (latest hybrid balance by branch × GL × currency, no date param) is exposed as `GET /v1/glaccounts/enquiry` — see [`docs/prompts/gl-account-enquiry-ui-agent-prompt.md`](../prompts/gl-account-enquiry-ui-agent-prompt.md).
