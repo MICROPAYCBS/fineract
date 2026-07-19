@@ -645,6 +645,27 @@ public final class BatchHelper {
     }
 
     /**
+     * Creates and returns a {@link org.apache.fineract.batch.command.internal.SubmitClientCommandStrategy} Request with
+     * given requestId and reference.
+     *
+     * @param requestId
+     * @param reference
+     * @return BatchRequest
+     */
+    public static BatchRequest submitClientRequest(final Long requestId, final Long reference) {
+
+        final BatchRequest br = new BatchRequest();
+
+        br.setRequestId(requestId);
+        br.setRelativeUrl("v1/clients/$.clientId?command=submit");
+        br.setReference(reference);
+        br.setMethod("POST");
+        br.setBody("{}");
+
+        return br;
+    }
+
+    /**
      * Creates and returns a {@link org.apache.fineract.batch.command.internal.ActivateClientCommandStrategy} Request
      * with given requestId and reference.
      *

@@ -21,12 +21,12 @@ package org.apache.fineract.portfolio.client.exception;
 import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
 /**
- * A {@link RuntimeException} thrown when attempting to delete clients
+ * A {@link RuntimeException} thrown when attempting to activate a client that is not in Pending status.
  */
-public class ClientMustBePendingToBeDeletedException extends AbstractPlatformDomainRuleException {
+public class ClientMustBePendingToBeActivatedException extends AbstractPlatformDomainRuleException {
 
-    public ClientMustBePendingToBeDeletedException(final Long id) {
-        super("error.msg.clients.cannot.be.deleted",
-                "Client with identifier " + id + " cannot be deleted as it is not in Draft or Pending state.", id);
+    public ClientMustBePendingToBeActivatedException(final Long id) {
+        super("error.msg.clients.must.be.pending.to.activate",
+                "Client with identifier " + id + " cannot be activated as it is not in Pending state.", id);
     }
 }

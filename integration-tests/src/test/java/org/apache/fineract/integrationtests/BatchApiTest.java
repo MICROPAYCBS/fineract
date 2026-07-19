@@ -273,8 +273,11 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4718L, "");
 
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54718L, 4718L);
+
         // Create a activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4719L, 4718L);
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4719L, 54718L);
 
         // Create a ApplyLoan Request
         final BatchRequest br3 = BatchHelper.applyLoanRequest(4720L, 4719L, productId, clientCollateralId);
@@ -282,6 +285,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
         batchRequests.add(br3);
 
@@ -318,8 +322,11 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4720L, "");
 
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54720L, 4720L);
+
         // Create a activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4721L, 4720L);
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4721L, 54720L);
 
         // Create a applySavings Request
         final BatchRequest br3 = BatchHelper.applySavingsRequest(4722L, 4721L, productId);
@@ -327,6 +334,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
         batchRequests.add(br3);
 
@@ -374,8 +382,11 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4722L, "");
 
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54722L, 4722L);
+
         // Create a activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4723L, 4722L);
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4723L, 54722L);
 
         // Create a ApplyLoan Request
         final BatchRequest br3 = BatchHelper.applyLoanRequest(4724L, 4723L, productId, clientCollateralId);
@@ -386,6 +397,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
         batchRequests.add(br3);
         batchRequests.add(br4);
@@ -395,7 +407,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchResponse> response = BatchHelper.postBatchRequestsWithoutEnclosingTransaction(this.requestSpec, this.responseSpec,
                 jsonifiedRequest);
 
-        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(3).getStatusCode(), "Verify Status Code 200 for Create Loan Charge");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(4).getStatusCode(), "Verify Status Code 200 for Create Loan Charge");
     }
 
     /**
@@ -674,8 +686,11 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4730L, "");
 
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54730L, 4730L);
+
         // Create a activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4731L, 4730L);
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4731L, 54730L);
 
         // Create a ApplyLoan Request
         final BatchRequest br3 = BatchHelper.applyLoanRequest(4732L, 4731L, productId, clientCollateralId);
@@ -695,6 +710,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
         batchRequests.add(br3);
         batchRequests.add(br4);
@@ -707,8 +723,8 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchResponse> response = BatchHelper.postBatchRequestsWithoutEnclosingTransaction(this.requestSpec, this.responseSpec,
                 jsonifiedRequest);
 
-        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(5).getStatusCode(), "Verify Status Code 200 for Repayment");
         Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(6).getStatusCode(), "Verify Status Code 200 for Repayment");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(7).getStatusCode(), "Verify Status Code 200 for Repayment");
     }
 
     /**
@@ -930,12 +946,16 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4726L, "");
 
-        // Create an activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4727L, 4726L);
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54726L, 4726L);
+
+        // Create a activateClient Request
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4727L, 54726L);
 
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
 
         final String jsonifiedRequest = BatchHelper.toJsonString(batchRequests);
@@ -944,7 +964,8 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
                 jsonifiedRequest);
 
         Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(0).getStatusCode(), "Verify Status Code 200 for Create Client");
-        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(1).getStatusCode(), "Verify Status Code 200 for Activate Client");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(1).getStatusCode(), "Verify Status Code 200 for Submit Client");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(2).getStatusCode(), "Verify Status Code 200 for Activate Client");
     }
 
     /**
@@ -981,8 +1002,11 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4730L, "");
 
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54730L, 4730L);
+
         // Create a activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4731L, 4730L);
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4731L, 54730L);
 
         // Create an ApplyLoan Request
         final BatchRequest br3 = BatchHelper.applyLoanRequest(4732L, 4731L, productId, clientCollateralId);
@@ -996,6 +1020,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
         batchRequests.add(br3);
         batchRequests.add(br4);
@@ -1006,8 +1031,8 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchResponse> response = BatchHelper.postBatchRequestsWithoutEnclosingTransaction(this.requestSpec, this.responseSpec,
                 jsonifiedRequest);
 
-        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(3).getStatusCode(), "Verify Status Code 200 for Approve Loan");
-        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(4).getStatusCode(), "Verify Status Code 200 for Disburse Loan");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(4).getStatusCode(), "Verify Status Code 200 for Approve Loan");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(5).getStatusCode(), "Verify Status Code 200 for Disburse Loan");
     }
 
     /**
@@ -2643,8 +2668,11 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         // Create a createClient Request
         final BatchRequest br1 = BatchHelper.createClientRequest(4730L, "");
 
+        // Submit draft client before activation
+        final BatchRequest brSubmit = BatchHelper.submitClientRequest(54730L, 4730L);
+
         // Create a activateClient Request
-        final BatchRequest br2 = BatchHelper.activateClientRequest(4731L, 4730L);
+        final BatchRequest br2 = BatchHelper.activateClientRequest(4731L, 54730L);
 
         // Create a ApplyLoan Request
         final BatchRequest br3 = BatchHelper.applyLoanRequest(4732L, 4731L, productId, clientCollateralId);
@@ -2666,6 +2694,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchRequest> batchRequests = new ArrayList<>();
 
         batchRequests.add(br1);
+        batchRequests.add(brSubmit);
         batchRequests.add(br2);
         batchRequests.add(br3);
         batchRequests.add(br4);
@@ -2679,7 +2708,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
         final List<BatchResponse> response = BatchHelper.postBatchRequestsWithoutEnclosingTransaction(this.requestSpec, this.responseSpec,
                 jsonifiedRequest);
 
-        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(7).getStatusCode(), "Verify Status Code 200 for ChargeOff");
+        Assertions.assertEquals(HttpStatus.SC_OK, (long) response.get(8).getStatusCode(), "Verify Status Code 200 for ChargeOff");
     }
 
     /**

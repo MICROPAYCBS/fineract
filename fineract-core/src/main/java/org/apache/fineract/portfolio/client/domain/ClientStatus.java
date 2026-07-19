@@ -26,6 +26,7 @@ import org.springframework.util.StringUtils;
 public enum ClientStatus {
 
     INVALID(0, "clientStatusType.invalid"), //
+    DRAFT(50, "clientStatusType.draft"), //
     PENDING(100, "clientStatusType.pending"), //
     ACTIVE(300, "clientStatusType.active"), //
     TRANSFER_IN_PROGRESS(303, "clientStatusType.transfer.in.progress"), //
@@ -40,6 +41,7 @@ public enum ClientStatus {
     public static ClientStatus fromInt(final Integer statusValue) {
 
         return switch (statusValue) {
+            case 50 -> ClientStatus.DRAFT;
             case 100 -> ClientStatus.PENDING;
             case 300 -> ClientStatus.ACTIVE;
             case 303 -> ClientStatus.TRANSFER_IN_PROGRESS;
@@ -60,7 +62,9 @@ public enum ClientStatus {
             return clientStatus;
         }
 
-        if (clientString.equalsIgnoreCase(ClientStatus.PENDING.toString())) {
+        if (clientString.equalsIgnoreCase(ClientStatus.DRAFT.toString())) {
+            clientStatus = ClientStatus.DRAFT;
+        } else if (clientString.equalsIgnoreCase(ClientStatus.PENDING.toString())) {
             clientStatus = ClientStatus.PENDING;
         } else if (clientString.equalsIgnoreCase(ClientStatus.ACTIVE.toString())) {
             clientStatus = ClientStatus.ACTIVE;
@@ -94,6 +98,10 @@ public enum ClientStatus {
 
     public String getCode() {
         return this.code;
+    }
+
+    public boolean isDraft() {
+        return this.value.equals(ClientStatus.DRAFT.getValue());
     }
 
     public boolean isPending() {

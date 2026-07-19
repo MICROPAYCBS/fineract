@@ -105,4 +105,5 @@
   <include relativeToChangelogFile="true" file="parts/3081_general_ledger_report_source_transaction.xml"/>
   <include relativeToChangelogFile="true" file="parts/3082_general_ledger_report_newest_first.xml"/>
   <include relativeToChangelogFile="true" file="parts/3083_general_ledger_report_department_filter.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3084_add_client_draft_status_and_submit_permission.xml"/>
 </databaseChangeLog>

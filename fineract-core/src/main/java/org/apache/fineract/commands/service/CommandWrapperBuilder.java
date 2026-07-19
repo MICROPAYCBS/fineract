@@ -121,6 +121,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVECOLLECTIONSHEET;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SETFRAUD;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SETTLECASHFROMCASHIER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBMIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_TRANSFERCLIENTS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNASSIGNROLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNASSIGNSTAFF;
@@ -1234,6 +1235,15 @@ public class CommandWrapperBuilder {
         this.entityId = clientId;
         this.clientId = clientId;
         this.href = "/clients/" + clientId + "?command=activate&template=true";
+        return this;
+    }
+
+    public CommandWrapperBuilder submitClient(final Long clientId) {
+        this.actionName = ACTION_SUBMIT;
+        this.entityName = ENTITY_CLIENT;
+        this.entityId = clientId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "?command=submit";
         return this;
     }
 

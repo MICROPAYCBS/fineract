@@ -48,6 +48,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class FeignClientLifecycleTest extends FeignIntegrationTest {
 
+    private static final String STATUS_DRAFT = "clientStatusType.draft";
     private static final String STATUS_PENDING = "clientStatusType.pending";
     private static final String STATUS_ACTIVE = "clientStatusType.active";
     private static final String STATUS_CLOSED = "clientStatusType.closed";
@@ -82,17 +83,25 @@ public class FeignClientLifecycleTest extends FeignIntegrationTest {
 
     @Test
     @Order(1)
-    void testCreatePendingAndActivateClient() {
+    void testCreateDraftSubmitAndActivateClient() {
         String today = Utils.dateFormatter.format(Utils.getLocalDateOfTenant());
 
-        PostClientsResponse pending = clientHelper.createClientPending(today);
-        assertNotNull(pending.getClientId());
-        assertClientStatus(pending.getClientId(), STATUS_PENDING);
+        PostClientsResponse draft = clientHelper.createClientDraft(today);
+        assertNotNull(draft.getClientId());
+        assertClientStatus(draft.getClientId(), STATUS_DRAFT);
 
-        PostClientsClientIdResponse activateResp = clientHelper.activateClient(pending.getClientId(),
+        CallFailedRuntimeException activateDraftError = clientHelper.activateClientExpectingError(draft.getClientId(),
+                ClientRequestBuilders.activateClient(today));
+        assertEquals(403, activateDraftError.getStatus());
+
+        PostClientsClientIdResponse submitResp = clientHelper.submitClient(draft.getClientId());
+        assertNotNull(submitResp.getClientId());
+        assertClientStatus(draft.getClientId(), STATUS_PENDING);
+
+        PostClientsClientIdResponse activateResp = clientHelper.activateClient(draft.getClientId(),
                 ClientRequestBuilders.activateClient(today));
         assertNotNull(activateResp.getClientId());
-        assertClientStatus(pending.getClientId(), STATUS_ACTIVE);
+        assertClientStatus(draft.getClientId(), STATUS_ACTIVE);
     }
 
     @Test
@@ -202,11 +211,27 @@ public class FeignClientLifecycleTest extends FeignIntegrationTest {
 
     @Test
     @Order(8)
+    void testDeleteDraftClient() {
+        String today = Utils.dateFormatter.format(Utils.getLocalDateOfTenant());
+
+        PostClientsResponse draft = clientHelper.createClientDraft(today);
+        assertNotNull(draft.getClientId());
+        assertClientStatus(draft.getClientId(), STATUS_DRAFT);
+
+        clientHelper.deleteClient(draft.getClientId());
+
+        CallFailedRuntimeException exception = clientHelper.getClientExpectingError(draft.getClientId());
+        assertEquals(404, exception.getStatus());
+    }
+
+    @Test
+    @Order(9)
     void testDeletePendingClient() {
         String today = Utils.dateFormatter.format(Utils.getLocalDateOfTenant());
 
         PostClientsResponse pending = clientHelper.createClientPending(today);
         assertNotNull(pending.getClientId());
+        assertClientStatus(pending.getClientId(), STATUS_PENDING);
 
         clientHelper.deleteClient(pending.getClientId());
 
@@ -215,7 +240,7 @@ public class FeignClientLifecycleTest extends FeignIntegrationTest {
     }
 
     @Test
-    @Order(9)
+    @Order(10)
     void testSearchClient() {
         String today = Utils.dateFormatter.format(Utils.getLocalDateOfTenant());
 
@@ -233,7 +258,7 @@ public class FeignClientLifecycleTest extends FeignIntegrationTest {
     }
 
     @Test
-    @Order(10)
+    @Order(11)
     void testGetClientAccounts() {
         String today = Utils.dateFormatter.format(Utils.getLocalDateOfTenant());
 

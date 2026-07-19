@@ -84,6 +84,7 @@ public class ClientHelper {
     public static final String CLOSE_CLIENT_COMMAND = "close";
     public static final String REACTIVATE_CLIENT_COMMAND = "reactivate";
     public static final String REJECT_CLIENT_COMMAND = "reject";
+    public static final String SUBMIT_CLIENT_COMMAND = "submit";
     public static final String ACTIVATE_CLIENT_COMMAND = "activate";
     public static final String WITHDRAW_CLIENT_COMMAND = "withdraw";
     public static final String UNDOREJECT_CLIENT_COMMAND = "undoRejection";
@@ -299,8 +300,28 @@ public class ClientHelper {
     public static Integer createClientPending(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
             final String submittedOnDate, final String officeId) {
         log.info("---------------------------------CREATING A CLIENT IN PENDING---------------------------------------------");
-        return Utils.performServerPost(requestSpec, responseSpec, CREATE_CLIENT_URL, getTestClientAsJSONPending(submittedOnDate, officeId),
+        final Integer clientId = Utils.performServerPost(requestSpec, responseSpec, CREATE_CLIENT_URL,
+                getTestClientAsJSONPending(submittedOnDate, officeId), "clientId");
+        submitClient(requestSpec, responseSpec, clientId);
+        return clientId;
+    }
+
+    public static Integer createClientDraft(final RequestSpecification requestSpec, final ResponseSpecification responseSpec) {
+        return createClientDraft(requestSpec, responseSpec, "04 March 2014");
+    }
+
+    public static Integer createClientDraft(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
+            final String submittedOnDate) {
+        log.info("---------------------------------CREATING A CLIENT IN DRAFT---------------------------------------------");
+        return Utils.performServerPost(requestSpec, responseSpec, CREATE_CLIENT_URL, getTestClientAsJSONPending(submittedOnDate, "1"),
                 "clientId");
+    }
+
+    public static void submitClient(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
+            final Integer clientId) {
+        log.info("--------------------------------- SUBMIT CLIENT -------------------------------");
+        Utils.performServerPost(requestSpec, responseSpec,
+                CLIENT_URL + "/" + clientId + "?command=" + SUBMIT_CLIENT_COMMAND + "&" + Utils.TENANT_IDENTIFIER, "{}", "clientId");
     }
 
     // TODO: Rewrite to use fineract-client instead!

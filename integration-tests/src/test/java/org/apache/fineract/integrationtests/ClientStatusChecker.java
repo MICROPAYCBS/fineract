@@ -48,6 +48,12 @@ public final class ClientStatusChecker {
         LOG.info("Client Status: {} \n", clientStatusHashMap);
     }
 
+    public static void verifyClientDraft(final HashMap<String, Object> clientStatusHashMap) {
+        LOG.info("\n-------------------------------------- VERIFYING CLIENT IS DRAFT ------------------------------------");
+        assertEquals(50, (int) clientStatusHashMap.get("id"));
+        LOG.info("Client Status: {} \n", clientStatusHashMap);
+    }
+
     public static void verifyClientPending(final HashMap<String, Object> clientStatusHashMap) {
         LOG.info("\n-------------------------------------- VERIFYING CLIENT IS PENDING ------------------------------------");
         assertEquals(100, (int) clientStatusHashMap.get("id"));

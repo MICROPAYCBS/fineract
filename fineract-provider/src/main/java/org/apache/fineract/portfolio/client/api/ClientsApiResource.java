@@ -217,9 +217,12 @@ public class ClientsApiResource {
     @Path("{clientId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Activate a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClient", description = "Activate a Client:\n\n"
-            + "Clients can be created in a Pending state. This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
-            + "\n" + "If the client happens to be already active this API will result in an error.\n\n" + "Close a Client:\n\n"
+    @Operation(summary = "Activate a Client | Submit a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClient", description = "Submit a Client:\n\n"
+            + "Clients created as Draft (active=false) must be submitted before they can be activated. This API moves a client from Draft to Pending.\n"
+            + "\n" + "If the client is not in Draft status this API will result in an error.\n\n" + "Activate a Client:\n\n"
+            + "Clients can be activated when they are in Pending status (formally submitted). This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
+            + "\n" + "If the client happens to be already active or still in Draft this API will result in an error.\n\n"
+            + "Close a Client:\n\n"
             + "Clients can be closed if they do not have any non-closed loans/savingsAccount. This API exists to close a client .\n" + "\n"
             + "If the client have any active loans/savingsAccount this API will result in an error.\n\n" + "Reject a Client:\n\n"
             + "Clients can be rejected when client is in pending for activation status.\n" + "\n"
@@ -356,9 +359,12 @@ public class ClientsApiResource {
     @Path("/external-id/{externalId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Activate a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClientByExternalId", description = "Activate a Client:\n\n"
-            + "Clients can be created in a Pending state. This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
-            + "\n" + "If the client happens to be already active this API will result in an error.\n\n" + "Close a Client:\n\n"
+    @Operation(summary = "Activate a Client | Submit a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClientByExternalId", description = "Submit a Client:\n\n"
+            + "Clients created as Draft (active=false) must be submitted before they can be activated. This API moves a client from Draft to Pending.\n"
+            + "\n" + "If the client is not in Draft status this API will result in an error.\n\n" + "Activate a Client:\n\n"
+            + "Clients can be activated when they are in Pending status (formally submitted). This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
+            + "\n" + "If the client happens to be already active or still in Draft this API will result in an error.\n\n"
+            + "Close a Client:\n\n"
             + "Clients can be closed if they do not have any non-closed loans/savingsAccount. This API exists to close a client .\n" + "\n"
             + "If the client have any active loans/savingsAccount this API will result in an error.\n\n" + "Reject a Client:\n\n"
             + "Clients can be rejected when client is in pending for activation status.\n" + "\n"
@@ -499,6 +505,8 @@ public class ClientsApiResource {
         CommandWrapper commandRequest = null;
         if (CommandParameterUtil.is(commandParam, "activate")) {
             commandRequest = builder.activateClient(clientId).build();
+        } else if (CommandParameterUtil.is(commandParam, "submit")) {
+            commandRequest = builder.submitClient(clientId).build();
         } else if (CommandParameterUtil.is(commandParam, "assignStaff")) {
             commandRequest = builder.assignClientStaff(clientId).build();
         } else if (CommandParameterUtil.is(commandParam, "unassignStaff")) {
@@ -531,7 +539,7 @@ public class ClientsApiResource {
 
         if (commandRequest == null) {
             throw new UnrecognizedQueryParamException("command", commandParam,
-                    new Object[] { "activate", "unassignStaff", "assignStaff", "close", "proposeTransfer", "withdrawTransfer",
+                    new Object[] { "activate", "submit", "unassignStaff", "assignStaff", "close", "proposeTransfer", "withdrawTransfer",
                             "acceptTransfer", "rejectTransfer", "updateSavingsAccount", "reject", "withdraw", "reactivate" });
         }
 

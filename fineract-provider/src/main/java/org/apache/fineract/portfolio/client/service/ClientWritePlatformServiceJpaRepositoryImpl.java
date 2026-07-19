@@ -78,6 +78,8 @@ import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepositor
 import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
 import org.apache.fineract.portfolio.customerclass.service.CustomerClassClientValidationService;
 import org.apache.fineract.portfolio.client.exception.ClientHasNoStaffException;
+import org.apache.fineract.portfolio.client.exception.ClientMustBeDraftToBeSubmittedException;
+import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeActivatedException;
 import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeDeletedException;
 import org.apache.fineract.portfolio.client.exception.InvalidClientSavingProductException;
 import org.apache.fineract.portfolio.client.exception.InvalidClientStateTransitionException;
@@ -146,7 +148,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
         try {
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
 
-            if (client.isNotPending()) {
+            if (!client.isDraftOrPending()) {
                 throw new ClientMustBePendingToBeDeletedException(clientId);
             }
             final List<Note> relatedNotes = this.noteRepository.findByClient(client);
@@ -288,7 +290,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final boolean isStaff = command.booleanPrimitiveValueOfParameterNamed(ClientApiConstants.isStaffParamName);
             final LocalDate dataOfBirth = command.localDateValueOfParameterNamed(ClientApiConstants.dateOfBirthParamName);
 
-            ClientStatus status = ClientStatus.PENDING;
+            ClientStatus status = ClientStatus.DRAFT;
             boolean active = false;
             if (command.hasParameter("active")) {
                 active = command.booleanPrimitiveValueOfParameterNamed(ClientApiConstants.activeParamName);
@@ -852,6 +854,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             this.fromApiJsonDeserializer.validateActivation(command);
 
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId, true);
+            if (client.isNotPending()) {
+                throw new ClientMustBePendingToBeActivatedException(clientId);
+            }
             if (client.getCustomerClassId() != null) {
                 validateCustomerClassReadinessForActivation(client);
             }
@@ -882,6 +887,27 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             handleDataIntegrityIssues(command, dve.getMostSpecificCause(), dve);
             return CommandProcessingResult.empty();
         }
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult submitClient(final Long clientId, final JsonCommand command) {
+        this.context.authenticatedUser();
+
+        final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
+        if (client.isNotDraft()) {
+            throw new ClientMustBeDraftToBeSubmittedException(clientId);
+        }
+        client.submit();
+        this.clientRepository.saveAndFlush(client);
+
+        return new CommandProcessingResultBuilder() //
+                .withCommandId(command.commandId()) //
+                .withOfficeId(client.officeId()) //
+                .withEntityExternalId(client.getExternalId()) //
+                .withClientId(clientId) //
+                .withEntityId(clientId) //
+                .build();
     }
 
     private CommandProcessingResult openSavingsAccount(final Client client, final DateTimeFormatter fmt) {

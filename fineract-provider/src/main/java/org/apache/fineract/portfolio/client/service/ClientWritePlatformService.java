@@ -29,6 +29,8 @@ public interface ClientWritePlatformService {
 
     CommandProcessingResult activateClient(Long clientId, JsonCommand command);
 
+    CommandProcessingResult submitClient(Long clientId, JsonCommand command);
+
     CommandProcessingResult deleteClient(Long clientId);
 
     CommandProcessingResult unassignClientStaff(Long clientId, JsonCommand command);

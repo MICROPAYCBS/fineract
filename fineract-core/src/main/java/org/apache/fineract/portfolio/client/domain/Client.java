@@ -366,6 +366,17 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
 
+        if (isNotPending()) {
+            final String defaultUserMessage = "Cannot activate client. Client must be in Pending status.";
+            final ApiParameterError error = ApiParameterError.parameterError("error.msg.clients.must.be.pending.to.activate",
+                    defaultUserMessage, ClientApiConstants.activationDateParamName, activationLocalDate.format(formatter));
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+
         this.activationDate = activationLocalDate;
         this.activatedBy = currentUser;
         this.officeJoiningDate = this.activationDate;
@@ -377,6 +388,20 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.closedBy = null;
 
         validate();
+    }
+
+    public void submit() {
+        if (isNotDraft()) {
+            final String defaultUserMessage = "Cannot submit client. Client must be in Draft status.";
+            final ApiParameterError error = ApiParameterError.generalError("error.msg.clients.must.be.draft.to.submit",
+                    defaultUserMessage);
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+        this.status = ClientStatus.PENDING.getValue();
     }
 
     public boolean isNotActive() {
@@ -409,6 +434,18 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public boolean isPending() {
         return ClientStatus.fromInt(this.status).isPending();
+    }
+
+    public boolean isNotDraft() {
+        return !isDraft();
+    }
+
+    public boolean isDraft() {
+        return ClientStatus.fromInt(this.status).isDraft();
+    }
+
+    public boolean isDraftOrPending() {
+        return isDraft() || isPending();
     }
 
     public boolean isRejected() {

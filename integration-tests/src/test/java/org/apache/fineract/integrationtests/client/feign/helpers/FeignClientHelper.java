@@ -43,6 +43,7 @@ import org.apache.fineract.integrationtests.common.Utils;
 public class FeignClientHelper {
 
     private static final String ACTIVATE_COMMAND = "activate";
+    private static final String SUBMIT_COMMAND = "submit";
     private static final String CLOSE_COMMAND = "close";
     private static final String REJECT_COMMAND = "reject";
     private static final String REACTIVATE_COMMAND = "reactivate";
@@ -90,7 +91,25 @@ public class FeignClientHelper {
     }
 
     public PostClientsResponse createClientPending(PostClientsRequest request) {
-        return ok(() -> fineractClient.clients().createClient(request));
+        PostClientsResponse draft = ok(() -> fineractClient.clients().createClient(request));
+        submitClient(draft.getClientId());
+        return draft;
+    }
+
+    public PostClientsResponse createClientDraft() {
+        return createClientDraft(Utils.dateFormatter.format(Utils.getLocalDateOfTenant()));
+    }
+
+    public PostClientsResponse createClientDraft(String submittedOnDate) {
+        return ok(() -> fineractClient.clients().createClient(ClientRequestBuilders.createPendingClient(submittedOnDate)));
+    }
+
+    public PostClientsClientIdResponse submitClient(Long clientId) {
+        return ok(() -> fineractClient.clients().handleCommandClient(clientId, new PostClientsClientIdRequest(), SUBMIT_COMMAND));
+    }
+
+    public CallFailedRuntimeException activateClientExpectingError(Long clientId, PostClientsClientIdRequest request) {
+        return fail(() -> fineractClient.clients().handleCommandClient(clientId, request, ACTIVATE_COMMAND));
     }
 
     public GetClientsClientIdResponse getClient(Long clientId) {

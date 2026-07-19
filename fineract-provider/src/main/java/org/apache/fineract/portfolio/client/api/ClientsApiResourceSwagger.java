@@ -139,11 +139,11 @@ final class ClientsApiResourceSwagger {
 
                 private GetClientStatus() {}
 
-                @Schema(example = "100")
+                @Schema(example = "50")
                 public Long id;
-                @Schema(example = "clientStatusType.pending")
+                @Schema(example = "clientStatusType.draft")
                 public String code;
-                @Schema(example = "Pending")
+                @Schema(example = "Draft")
                 public String description;
             }
 

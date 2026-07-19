@@ -21,12 +21,12 @@ package org.apache.fineract.portfolio.client.exception;
 import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
 /**
- * A {@link RuntimeException} thrown when attempting to delete clients
+ * A {@link RuntimeException} thrown when attempting to submit a client that is not in Draft status.
  */
-public class ClientMustBePendingToBeDeletedException extends AbstractPlatformDomainRuleException {
+public class ClientMustBeDraftToBeSubmittedException extends AbstractPlatformDomainRuleException {
 
-    public ClientMustBePendingToBeDeletedException(final Long id) {
-        super("error.msg.clients.cannot.be.deleted",
-                "Client with identifier " + id + " cannot be deleted as it is not in Draft or Pending state.", id);
+    public ClientMustBeDraftToBeSubmittedException(final Long id) {
+        super("error.msg.clients.must.be.draft.to.submit",
+                "Client with identifier " + id + " cannot be submitted as it is not in Draft state.", id);
     }
 }
