@@ -84,6 +84,7 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
                 .glPrefix("1") //
                 .ledgerNumber("0001") //
                 .officeId(1L) //
+                .departmentId(2L) //
                 .currencyCode("UGX") //
                 .disabled(false) //
                 .build();
@@ -100,8 +101,11 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
         final String sql = sqlCaptor.getValue();
         assertThat(sql).contains("m_gl_balance_snapshot");
         assertThat(sql).contains("acc_gl_journal_entry");
+        assertThat(sql).contains("m_department");
+        assertThat(sql).contains("COALESCE(department_id, 0)");
         assertThat(sql).contains("aga.gl_code LIKE ?");
         assertThat(sql).contains("balances.office_id = ?");
+        assertThat(sql).contains("balances.department_id = ?");
         assertThat(sql).contains("balances.currency_code = ?");
         assertThat(sql).contains("aga.disabled = ?");
 
@@ -112,6 +116,7 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
         assertThat(params).contains("1%");
         assertThat(params).contains("%0001%");
         assertThat(params).contains(1L);
+        assertThat(params).contains(2L);
         assertThat(params).contains("UGX");
         assertThat(params).contains(false);
     }

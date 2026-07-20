@@ -37,6 +37,7 @@ public class GlAccountEnquiryDataValidator {
             baseDataValidator.reset().parameter("filters").failWithCode("at.least.one.required");
         }
         baseDataValidator.reset().parameter("officeId").value(request.getOfficeId()).ignoreIfNull().longGreaterThanZero();
+        baseDataValidator.reset().parameter("departmentId").value(request.getDepartmentId()).ignoreIfNull().longGreaterThanZero();
         baseDataValidator.reset().parameter("glPrefix").value(request.getGlPrefix()).ignoreIfNull().notExceedingLengthOf(100);
         baseDataValidator.reset().parameter("ledgerNumber").value(request.getLedgerNumber()).ignoreIfNull().notExceedingLengthOf(100);
         baseDataValidator.reset().parameter("currencyCode").value(request.getCurrencyCode()).ignoreIfNull().notExceedingLengthOf(3);

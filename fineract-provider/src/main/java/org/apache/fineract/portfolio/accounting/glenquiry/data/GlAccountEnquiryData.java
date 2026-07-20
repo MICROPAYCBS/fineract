@@ -28,6 +28,8 @@ public class GlAccountEnquiryData {
 
     private final Long officeId;
     private final String officeName;
+    private final Long departmentId;
+    private final String departmentName;
     private final Long glAccountId;
     private final String glCode;
     private final String glAccountName;

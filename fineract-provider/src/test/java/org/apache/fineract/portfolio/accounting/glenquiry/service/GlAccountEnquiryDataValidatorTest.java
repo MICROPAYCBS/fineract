@@ -62,6 +62,11 @@ class GlAccountEnquiryDataValidatorTest {
     }
 
     @Test
+    void acceptsDepartmentIdOnly() {
+        validator.validate(GlAccountEnquiryRequest.builder().departmentId(2L).build());
+    }
+
+    @Test
     void acceptsCurrencyCodeOnly() {
         validator.validate(GlAccountEnquiryRequest.builder().currencyCode("UGX").build());
     }
@@ -69,6 +74,12 @@ class GlAccountEnquiryDataValidatorTest {
     @Test
     void rejectsNonPositiveOfficeId() {
         assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().officeId(0L).build()))
+                .isInstanceOf(PlatformApiDataValidationException.class);
+    }
+
+    @Test
+    void rejectsNonPositiveDepartmentId() {
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().departmentId(0L).build()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
     }
 }

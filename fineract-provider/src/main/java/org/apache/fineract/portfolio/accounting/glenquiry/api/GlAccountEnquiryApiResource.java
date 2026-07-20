@@ -51,15 +51,16 @@ import org.springframework.stereotype.Component;
 @Component
 @Tag(name = "Advanced GL Account Enquiry", description = """
         Search GL accounts with hybrid running balances (snapshot + journal delta through the tenant business date).
-        All filters are optional but at least one must be provided. Each result row is one office × GL account × currency.
+        All filters are optional but at least one must be provided. Each result row is one office × department × GL account × currency.
         """)
 @RequiredArgsConstructor
 public class GlAccountEnquiryApiResource {
 
     private static final String RESOURCE_NAME_FOR_PERMISSION = "GLACCOUNT";
 
-    private static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList("officeId", "officeName", "glAccountId",
-            "glCode", "glAccountName", "currencyCode", "balance", "disabled"));
+    private static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(
+            Arrays.asList("officeId", "officeName", "departmentId", "departmentName", "glAccountId", "glCode", "glAccountName",
+                    "currencyCode", "balance", "disabled"));
 
     private final PlatformSecurityContext context;
     private final GlAccountEnquiryReadPlatformService glAccountEnquiryReadPlatformService;
@@ -70,8 +71,8 @@ public class GlAccountEnquiryApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Advanced GL account enquiry", description = """
-            Returns matching branch × GL × currency rows with latest hybrid balances.
-            Filters: glPrefix, ledgerNumber, officeId, currencyCode, disabled — at least one required.
+            Returns matching branch × department × GL × currency rows with latest hybrid balances.
+            Filters: glPrefix, ledgerNumber, officeId, departmentId, currencyCode, disabled — at least one required.
             Balance is as-of the tenant business date (no date parameter).
             """)
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = GlAccountEnquiryApiResourceSwagger.GetGlAccountEnquiryResponse.class))))
@@ -79,6 +80,7 @@ public class GlAccountEnquiryApiResource {
             @QueryParam("glPrefix") @Parameter(description = "GL code prefix (starts-with)") final String glPrefix,
             @QueryParam("ledgerNumber") @Parameter(description = "Partial GL code match") final String ledgerNumber,
             @QueryParam("officeId") @Parameter(description = "Branch office id") final Long officeId,
+            @QueryParam("departmentId") @Parameter(description = "Department id") final Long departmentId,
             @QueryParam("currencyCode") @Parameter(description = "Currency code") final String currencyCode,
             @QueryParam("disabled") @Parameter(description = "Account disabled status") final Boolean disabled) {
 
@@ -88,6 +90,7 @@ public class GlAccountEnquiryApiResource {
                 .glPrefix(glPrefix) //
                 .ledgerNumber(ledgerNumber) //
                 .officeId(officeId) //
+                .departmentId(departmentId) //
                 .currencyCode(currencyCode) //
                 .disabled(disabled) //
                 .build();

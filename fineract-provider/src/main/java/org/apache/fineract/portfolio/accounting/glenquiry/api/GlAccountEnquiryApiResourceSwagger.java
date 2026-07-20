@@ -34,6 +34,10 @@ final class GlAccountEnquiryApiResourceSwagger {
         public Long officeId;
         @Schema(example = "Head Office")
         public String officeName;
+        @Schema(example = "2")
+        public Long departmentId;
+        @Schema(example = "Information Technology")
+        public String departmentName;
         @Schema(example = "15")
         public Long glAccountId;
         @Schema(example = "100001")

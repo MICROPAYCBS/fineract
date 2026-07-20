@@ -53,20 +53,23 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
         final StringBuilder sql = new StringBuilder();
         final List<Object> params = new ArrayList<>();
 
-        sql.append("SELECT o.id AS officeId, o.name AS officeName, aga.id AS glAccountId, aga.gl_code AS glCode, ");
+        sql.append("SELECT o.id AS officeId, o.name AS officeName, balances.department_id AS departmentId, ");
+        sql.append("d.department_name AS departmentName, aga.id AS glAccountId, aga.gl_code AS glCode, ");
         sql.append("aga.name AS glAccountName, aga.classification_enum AS classification, aga.disabled AS disabled, ");
         sql.append("balances.currency_code AS currencyCode, ");
         sql.append("COALESCE(balances.signed_net, 0) AS signedNet ");
         sql.append("FROM ( ");
-        sql.append("  SELECT grain.office_id, grain.gl_account_id, grain.currency_code, ");
+        sql.append("  SELECT grain.office_id, grain.department_id, grain.gl_account_id, grain.currency_code, ");
         sql.append("         COALESCE(snap.net_balance, 0) + COALESCE(delta.net_balance, 0) AS signed_net ");
         sql.append("  FROM ( ");
-        sql.append("    SELECT office_id, gl_account_id, currency_code FROM m_gl_balance_snapshot ");
+        sql.append("    SELECT office_id, department_id, gl_account_id, currency_code FROM m_gl_balance_snapshot ");
         sql.append("    UNION ");
-        sql.append("    SELECT office_id, account_id AS gl_account_id, currency_code FROM acc_gl_journal_entry ");
+        sql.append("    SELECT office_id, COALESCE(department_id, 0) AS department_id, account_id AS gl_account_id, currency_code ");
+        sql.append("    FROM acc_gl_journal_entry ");
         sql.append("  ) grain ");
         sql.append("  LEFT JOIN ( ");
-        sql.append("    SELECT s.office_id, s.gl_account_id, s.currency_code, SUM(s.closing_balance_foreign) AS net_balance ");
+        sql.append("    SELECT s.office_id, s.department_id, s.gl_account_id, s.currency_code, ");
+        sql.append("           SUM(s.closing_balance_foreign) AS net_balance ");
         sql.append("    FROM m_gl_balance_snapshot s ");
         sql.append("    WHERE 1 = 1 ");
         if (watermark.baselineDate() != null) {
@@ -76,11 +79,12 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
         } else {
             sql.append("      AND 1 = 0 ");
         }
-        sql.append("    GROUP BY s.office_id, s.gl_account_id, s.currency_code ");
-        sql.append("  ) snap ON snap.office_id = grain.office_id AND snap.gl_account_id = grain.gl_account_id ");
-        sql.append("         AND snap.currency_code = grain.currency_code ");
+        sql.append("    GROUP BY s.office_id, s.department_id, s.gl_account_id, s.currency_code ");
+        sql.append("  ) snap ON snap.office_id = grain.office_id AND snap.department_id = grain.department_id ");
+        sql.append("         AND snap.gl_account_id = grain.gl_account_id AND snap.currency_code = grain.currency_code ");
         sql.append("  LEFT JOIN ( ");
-        sql.append("    SELECT je.office_id, je.account_id AS gl_account_id, je.currency_code, ");
+        sql.append("    SELECT je.office_id, COALESCE(je.department_id, 0) AS department_id, je.account_id AS gl_account_id, ");
+        sql.append("           je.currency_code, ");
         sql.append("           SUM(CASE WHEN je.type_enum = 2 THEN je.amount ELSE -je.amount END) AS net_balance ");
         sql.append("    FROM acc_gl_journal_entry je ");
         sql.append("    WHERE je.entry_date <= ? ");
@@ -89,16 +93,17 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
             sql.append("      AND je.entry_date > ? ");
             params.add(java.sql.Date.valueOf(watermark.baselineDate()));
         }
-        sql.append("    GROUP BY je.office_id, je.account_id, je.currency_code ");
-        sql.append("  ) delta ON delta.office_id = grain.office_id AND delta.gl_account_id = grain.gl_account_id ");
-        sql.append("         AND delta.currency_code = grain.currency_code ");
+        sql.append("    GROUP BY je.office_id, COALESCE(je.department_id, 0), je.account_id, je.currency_code ");
+        sql.append("  ) delta ON delta.office_id = grain.office_id AND delta.department_id = grain.department_id ");
+        sql.append("         AND delta.gl_account_id = grain.gl_account_id AND delta.currency_code = grain.currency_code ");
         sql.append(") balances ");
         sql.append("INNER JOIN acc_gl_account aga ON aga.id = balances.gl_account_id ");
         sql.append("INNER JOIN m_office o ON o.id = balances.office_id ");
+        sql.append("LEFT JOIN m_department d ON d.id = balances.department_id ");
         sql.append("WHERE 1 = 1 ");
 
         appendAccountAndDimensionFilters(sql, params, request);
-        sql.append("ORDER BY o.name, aga.gl_code, balances.currency_code ");
+        sql.append("ORDER BY o.name, d.department_name, aga.gl_code, balances.currency_code ");
 
         return this.jdbcTemplate.query(sql.toString(), new GlAccountEnquiryMapper(), params.toArray());
     }
@@ -116,6 +121,10 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
         if (request.getOfficeId() != null) {
             sql.append(" AND balances.office_id = ? ");
             params.add(request.getOfficeId());
+        }
+        if (request.getDepartmentId() != null) {
+            sql.append(" AND balances.department_id = ? ");
+            params.add(request.getDepartmentId());
         }
         if (StringUtils.isNotBlank(request.getCurrencyCode())) {
             sql.append(" AND balances.currency_code = ? ");
@@ -173,6 +182,8 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
             return GlAccountEnquiryData.builder() //
                     .officeId(JdbcSupport.getLong(rs, "officeId")) //
                     .officeName(rs.getString("officeName")) //
+                    .departmentId(JdbcSupport.getLong(rs, "departmentId")) //
+                    .departmentName(rs.getString("departmentName")) //
                     .glAccountId(JdbcSupport.getLong(rs, "glAccountId")) //
                     .glCode(rs.getString("glCode")) //
                     .glAccountName(rs.getString("glAccountName")) //

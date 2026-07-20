@@ -29,6 +29,7 @@ public class GlAccountEnquiryRequest {
     private final String glPrefix;
     private final String ledgerNumber;
     private final Long officeId;
+    private final Long departmentId;
     private final String currencyCode;
     private final Boolean disabled;
 
@@ -36,6 +37,7 @@ public class GlAccountEnquiryRequest {
         return StringUtils.isNotBlank(this.glPrefix) //
                 || StringUtils.isNotBlank(this.ledgerNumber) //
                 || this.officeId != null //
+                || this.departmentId != null //
                 || StringUtils.isNotBlank(this.currencyCode) //
                 || this.disabled != null;
     }
