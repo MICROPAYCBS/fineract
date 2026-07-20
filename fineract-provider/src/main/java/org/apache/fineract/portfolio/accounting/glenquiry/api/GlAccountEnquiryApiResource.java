@@ -51,7 +51,8 @@ import org.springframework.stereotype.Component;
 @Component
 @Tag(name = "Advanced GL Account Enquiry", description = """
         Search GL accounts with hybrid running balances (snapshot + journal delta through the tenant business date).
-        All filters are optional but at least one must be provided. Each result row is one office × department × GL account × currency.
+        All filters are optional but at least one must be provided (description or zeroBalance=true count).
+        Each result row is one office × department × GL account × currency.
         """)
 @RequiredArgsConstructor
 public class GlAccountEnquiryApiResource {
@@ -72,7 +73,7 @@ public class GlAccountEnquiryApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Advanced GL account enquiry", description = """
             Returns matching branch × department × GL × currency rows with latest hybrid balances.
-            Filters: glPrefix, ledgerNumber, officeId, departmentId, currencyCode, disabled — at least one required.
+            Filters: glPrefix, ledgerNumber, officeId, departmentId, currencyCode, disabled, description, zeroBalance — at least one required.
             Balance is as-of the tenant business date (no date parameter).
             """)
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = GlAccountEnquiryApiResourceSwagger.GetGlAccountEnquiryResponse.class))))
@@ -82,7 +83,9 @@ public class GlAccountEnquiryApiResource {
             @QueryParam("officeId") @Parameter(description = "Branch office id") final Long officeId,
             @QueryParam("departmentId") @Parameter(description = "Department id") final Long departmentId,
             @QueryParam("currencyCode") @Parameter(description = "Currency code") final String currencyCode,
-            @QueryParam("disabled") @Parameter(description = "Account disabled status") final Boolean disabled) {
+            @QueryParam("disabled") @Parameter(description = "Account disabled status") final Boolean disabled,
+            @QueryParam("description") @Parameter(description = "Case-insensitive contains match on GL account name or description") final String description,
+            @QueryParam("zeroBalance") @Parameter(description = "When true, only rows with enquiry balance exactly zero") final Boolean zeroBalance) {
 
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSION);
 
@@ -93,6 +96,8 @@ public class GlAccountEnquiryApiResource {
                 .departmentId(departmentId) //
                 .currencyCode(currencyCode) //
                 .disabled(disabled) //
+                .description(description) //
+                .zeroBalance(zeroBalance) //
                 .build();
 
         final Collection<GlAccountEnquiryData> results = this.glAccountEnquiryReadPlatformService.enquire(request);

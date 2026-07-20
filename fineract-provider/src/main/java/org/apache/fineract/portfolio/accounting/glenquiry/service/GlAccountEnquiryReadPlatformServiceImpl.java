@@ -24,6 +24,7 @@ import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
@@ -133,6 +134,16 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
         if (request.getDisabled() != null) {
             sql.append(" AND aga.disabled = ? ");
             params.add(request.getDisabled());
+        }
+        if (StringUtils.isNotBlank(request.getDescription())) {
+            final String descriptionPattern = "%" + request.getDescription().trim().toLowerCase(Locale.ROOT) + "%";
+            sql.append(" AND (LOWER(aga.name) LIKE ? OR LOWER(COALESCE(aga.description, '')) LIKE ?) ");
+            params.add(descriptionPattern);
+            params.add(descriptionPattern);
+        }
+        if (Boolean.TRUE.equals(request.getZeroBalance())) {
+            // Presentation balance is a sign flip of signed_net; zero is unchanged either way.
+            sql.append(" AND COALESCE(balances.signed_net, 0) = 0 ");
         }
     }
 

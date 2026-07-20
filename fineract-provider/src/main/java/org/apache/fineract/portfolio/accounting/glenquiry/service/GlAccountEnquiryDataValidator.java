@@ -41,6 +41,7 @@ public class GlAccountEnquiryDataValidator {
         baseDataValidator.reset().parameter("glPrefix").value(request.getGlPrefix()).ignoreIfNull().notExceedingLengthOf(100);
         baseDataValidator.reset().parameter("ledgerNumber").value(request.getLedgerNumber()).ignoreIfNull().notExceedingLengthOf(100);
         baseDataValidator.reset().parameter("currencyCode").value(request.getCurrencyCode()).ignoreIfNull().notExceedingLengthOf(3);
+        baseDataValidator.reset().parameter("description").value(request.getDescription()).ignoreIfNull().notExceedingLengthOf(500);
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);

@@ -32,6 +32,8 @@ public class GlAccountEnquiryRequest {
     private final Long departmentId;
     private final String currencyCode;
     private final Boolean disabled;
+    private final String description;
+    private final Boolean zeroBalance;
 
     public boolean hasAnyFilter() {
         return StringUtils.isNotBlank(this.glPrefix) //
@@ -39,6 +41,8 @@ public class GlAccountEnquiryRequest {
                 || this.officeId != null //
                 || this.departmentId != null //
                 || StringUtils.isNotBlank(this.currencyCode) //
-                || this.disabled != null;
+                || this.disabled != null //
+                || StringUtils.isNotBlank(this.description) //
+                || Boolean.TRUE.equals(this.zeroBalance);
     }
 }

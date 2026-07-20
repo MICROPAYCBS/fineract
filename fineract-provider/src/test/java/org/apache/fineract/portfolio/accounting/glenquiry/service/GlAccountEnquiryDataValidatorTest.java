@@ -72,6 +72,28 @@ class GlAccountEnquiryDataValidatorTest {
     }
 
     @Test
+    void acceptsDescriptionOnly() {
+        validator.validate(GlAccountEnquiryRequest.builder().description("cash").build());
+    }
+
+    @Test
+    void acceptsZeroBalanceTrueOnly() {
+        validator.validate(GlAccountEnquiryRequest.builder().zeroBalance(true).build());
+    }
+
+    @Test
+    void rejectsZeroBalanceFalseAlone() {
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().zeroBalance(false).build()))
+                .isInstanceOf(PlatformApiDataValidationException.class);
+    }
+
+    @Test
+    void rejectsBlankDescriptionAlone() {
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().description("   ").build()))
+                .isInstanceOf(PlatformApiDataValidationException.class);
+    }
+
+    @Test
     void rejectsNonPositiveOfficeId() {
         assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().officeId(0L).build()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
