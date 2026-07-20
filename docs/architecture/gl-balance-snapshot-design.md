@@ -29,13 +29,29 @@ balance(as_of) = snapshot(last_snapshot_on_or_before(as_of)) + delta(journal ent
 
 When no snapshot exists, delta scans from the beginning of time (same as legacy reports).
 
-| Report | Snapshot usage | Journal entries |
-|--------|------------------|-----------------|
+| Report / API | Snapshot usage | Journal entries |
+|--------------|----------------|-----------------|
 | Balance Sheet Table | Full position as-of `endDate` | Delta after snapshot watermark only |
 | Trial Balance Table | Opening at `startDate - 1` and closing at `endDate` | Delta after snapshot watermark only |
 | GeneralLedgerReport Table | **Opening balance only** at `startDate - 1` | Full period lines (`startDate`..`endDate`) for detail and running movement |
+| `GET /v1/glaccounts/{glAccountId}/ledger` | Same hybrid opening at `startDate - 1` | Structured `{ summary, entries }` for the inclusive period |
 
-General Ledger also supports the `currencyId` and `departmentId` stretchy parameters (`-1` = all), consistent with other core accounting table reports. Period lines expose `source` (`Manual` / `System` from `manual_entry`) and `transaction_id` instead of the legacy JE-id `transtype` column. Lines are ordered newest-first (`entry_date DESC`); `cumulative_sum` is still computed chronologically, so the top row shows the period-end running balance.
+General Ledger stretchy report also supports the `currencyId` and `departmentId` parameters (`-1` = all), consistent with other core accounting table reports. Period lines expose `source` (`Manual` / `System` from `manual_entry`) and `transaction_id` instead of the legacy JE-id `transtype` column. Lines are ordered newest-first (`entry_date DESC`); `cumulative_sum` is still computed chronologically, so the top row shows the period-end running balance.
+
+### GL account ledger API (structured details)
+
+Enquiry **details** (period movement + balances) use `GET /v1/glaccounts/{glAccountId}/ledger` rather than deriving summary from stretchy `GeneralLedgerReport Table` rows.
+
+| Param | Required | Meaning |
+|-------|----------|---------|
+| `startDate` / `endDate` | Yes | Inclusive period (`yyyy-MM-dd`) |
+| `officeId` | Yes | Branch (office hierarchy-scoped) |
+| `currencyCode` | Yes | Exact currency (same grain as list enquiry) |
+| `departmentId` | No | Omit = all departments aggregated; set = filter that dept (`0` = unassigned) |
+
+Response always includes `summary` (`openingBalance`, `totalDebit`, `totalCredit`, `closingBalance`, `lastUpdated`) plus `entries` (newest-first, each with `runningBalance`). Opening uses the same hybrid watermark + JE delta and classification sign flip as GeneralLedgerReport Table. Empty periods return `entries: []`, `totalDebit`/`totalCredit` = 0, `closingBalance` = `openingBalance`, and `lastUpdated` = `null`. `lastUpdated` is `MAX(created_on_utc)` over matching period lines when activity exists.
+
+Permission: `READ_GLACCOUNT`. List enquiry (`GET /v1/glaccounts/enquiry`) is unchanged. UI wiring: [`docs/prompts/gl-account-ledger-details-ui-agent-prompt.md`](../prompts/gl-account-ledger-details-ui-agent-prompt.md).
 
 ## Archiving contract
 
@@ -55,4 +71,4 @@ See `m_gl_balance_snapshot_tracking` for the aggregation watermark (`snapshot_da
 
 For where `Update GL Balance Snapshots` sits in day-close (after business-date advance and portfolio COB), see [`eod-business-date-runbook.md`](eod-business-date-runbook.md).
 
-Operational enquiry (latest hybrid balance by branch × department × GL × currency, no date param) is exposed as `GET /v1/glaccounts/enquiry` — see [`docs/prompts/gl-account-enquiry-ui-agent-prompt.md`](../prompts/gl-account-enquiry-ui-agent-prompt.md).
+Operational enquiry (latest hybrid balance by branch × department × GL × currency, no date param) is exposed as `GET /v1/glaccounts/enquiry` — see [`docs/prompts/gl-account-enquiry-ui-agent-prompt.md`](../prompts/gl-account-enquiry-ui-agent-prompt.md). Period ledger details for a selected account use `GET /v1/glaccounts/{glAccountId}/ledger` — see [`docs/prompts/gl-account-ledger-details-ui-agent-prompt.md`](../prompts/gl-account-ledger-details-ui-agent-prompt.md).

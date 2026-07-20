@@ -99,6 +99,7 @@ Reuse office and department dropdown sources (and prefix→office/department res
 
 ## Out of scope
 
-- General Ledger movement report (`GeneralLedgerReport Table`)
+- Period ledger movements (use `GET /glaccounts/{glAccountId}/ledger` — see `gl-account-ledger-details-ui-agent-prompt.md`)
+- General Ledger stretchy report (`GeneralLedgerReport Table`) for list or details
 - Editing GL accounts or posting journals from this screen
 - Sending `glPrefix` to the enquiry API (backend may still accept it for other clients; this UI does not use it)
