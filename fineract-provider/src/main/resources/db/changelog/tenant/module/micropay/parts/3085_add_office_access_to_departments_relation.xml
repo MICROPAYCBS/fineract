@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: office → department entity-to-entity relation (same pattern as office → loan products).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3085-office-access-to-departments-relation" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_entity_relation WHERE code_name = 'office_access_to_departments'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_entity_relation">
+            <column name="id" valueNumeric="6"/>
+            <column name="from_entity_type" valueNumeric="1"/>
+            <column name="to_entity_type" valueNumeric="6"/>
+            <column name="code_name" value="office_access_to_departments"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

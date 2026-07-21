@@ -16,18 +16,17 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.department.service;
+package org.apache.fineract.infrastructure.entityaccess.exception;
 
-import java.util.List;
-import org.apache.fineract.portfolio.department.data.DepartmentData;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-public interface DepartmentReadPlatformService {
+/**
+ * Thrown when a department is not mapped to the journal (or request) office via entity-to-entity mapping.
+ */
+public class DepartmentNotMappedToOfficeException extends AbstractPlatformDomainRuleException {
 
-    List<DepartmentData> retrieveAll();
-
-    List<DepartmentData> retrieveActiveMappedToOffice(Long officeId);
-
-    DepartmentData retrieveOne(Long departmentId);
-
-    List<DepartmentData> retrieveActiveForDropdown();
+    public DepartmentNotMappedToOfficeException(final Long departmentId, final Long officeId) {
+        super("error.msg.department.not.mapped.to.office",
+                "Department with id " + departmentId + " is not available for office with id " + officeId + ".", departmentId, officeId);
+    }
 }

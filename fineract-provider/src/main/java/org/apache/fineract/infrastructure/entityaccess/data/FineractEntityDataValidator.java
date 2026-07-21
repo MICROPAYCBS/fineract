@@ -37,6 +37,8 @@ import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.entityaccess.api.FineractEntityApiResourceConstants;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.department.domain.DepartmentRepository;
+import org.apache.fineract.portfolio.department.exception.DepartmentNotFoundException;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.portfolio.loanproduct.exception.LoanProductNotFoundException;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
@@ -55,6 +57,7 @@ public class FineractEntityDataValidator {
     private final SavingsProductRepository savingsProductRepository;
     private final ChargeRepositoryWrapper chargeRepositoryWrapper;
     private final RoleRepository roleRepository;
+    private final DepartmentRepository departmentRepository;
     private static final Set<String> CREATE_ENTITY_MAPPING_REQUEST_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList(FineractEntityApiResourceConstants.fromEnityType, FineractEntityApiResourceConstants.toEntityType,
                     FineractEntityApiResourceConstants.startDate, FineractEntityApiResourceConstants.LOCALE,
@@ -69,13 +72,15 @@ public class FineractEntityDataValidator {
     @Autowired
     public FineractEntityDataValidator(final FromJsonHelper fromApiJsonHelper, final OfficeRepositoryWrapper officeRepositoryWrapper,
             final LoanProductRepository loanProductRepository, final SavingsProductRepository savingsProductRepository,
-            final ChargeRepositoryWrapper chargeRepositoryWrapper, final RoleRepository roleRepository) {
+            final ChargeRepositoryWrapper chargeRepositoryWrapper, final RoleRepository roleRepository,
+            final DepartmentRepository departmentRepository) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.officeRepositoryWrapper = officeRepositoryWrapper;
         this.loanProductRepository = loanProductRepository;
         this.savingsProductRepository = savingsProductRepository;
         this.chargeRepositoryWrapper = chargeRepositoryWrapper;
         this.roleRepository = roleRepository;
+        this.departmentRepository = departmentRepository;
     }
 
     public void validateForCreate(final String json) {
@@ -148,6 +153,10 @@ public class FineractEntityDataValidator {
                 checkForRoles(fromId);
                 checkForSavingsProducts(toId);
             break;
+            case "6":
+                checkForOffice(fromId);
+                checkForDepartment(toId);
+            break;
 
         }
 
@@ -171,6 +180,10 @@ public class FineractEntityDataValidator {
 
     public void checkForRoles(final Long id) {
         this.roleRepository.findById(id).orElseThrow(() -> new RoleNotFoundException(id));
+    }
+
+    public void checkForDepartment(final Long id) {
+        this.departmentRepository.findById(id).orElseThrow(() -> new DepartmentNotFoundException(id));
     }
 
     public void validateForUpdate(final String json) {

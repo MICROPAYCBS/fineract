@@ -18,11 +18,15 @@
  */
 package org.apache.fineract.portfolio.department.service;
 
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.department.data.DepartmentData;
 import org.apache.fineract.portfolio.department.exception.DepartmentNotFoundException;
@@ -60,6 +64,22 @@ public class DepartmentReadPlatformServiceImpl implements DepartmentReadPlatform
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME);
         final DepartmentMapper mapper = new DepartmentMapper();
         return this.jdbcTemplate.query("SELECT " + mapper.schema() + " ORDER BY d.department_name", mapper);
+    }
+
+    @Override
+    public List<DepartmentData> retrieveActiveMappedToOffice(final Long officeId) {
+        this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME);
+        final DepartmentMapper mapper = new DepartmentMapper();
+        final LocalDate asOf = DateUtils.getBusinessLocalDate();
+        final String sql = "SELECT " + mapper.schema() //
+                + " INNER JOIN m_entity_to_entity_mapping eem ON eem.to_id = d.id" //
+                + " INNER JOIN m_entity_relation er ON er.id = eem.rel_id AND er.code_name = ?" //
+                + " WHERE d.active = true AND eem.from_id = ?" //
+                + " AND (eem.start_date IS NULL OR eem.start_date <= ?)" //
+                + " AND (eem.end_date IS NULL OR eem.end_date >= ?)" //
+                + " ORDER BY d.department_name";
+        return this.jdbcTemplate.query(sql, mapper, FineractEntityAccessType.OFFICE_ACCESS_TO_DEPARTMENTS.getStr(), officeId,
+                Date.valueOf(asOf), Date.valueOf(asOf));
     }
 
     @Override

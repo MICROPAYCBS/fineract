@@ -266,6 +266,8 @@ public class FineractEntityAccessReadServiceImpl implements FineractEntityAccess
                 o.name
                 when 'office_access_to_fees/charges' then
                 o.name
+                when 'office_access_to_departments' then
+                o.name
                 when 'role_access_to_loan_products' then
                 r.name
                 when 'role_access_to_savings_products' then
@@ -278,6 +280,8 @@ public class FineractEntityAccessReadServiceImpl implements FineractEntityAccess
                 sp.name
                 when 'office_access_to_fees/charges' then
                 charge.name
+                when 'office_access_to_departments' then
+                dept.department_name
                 when 'role_access_to_loan_products' then
                 lp.name
                 when 'role_access_to_savings_products' then
@@ -291,6 +295,7 @@ public class FineractEntityAccessReadServiceImpl implements FineractEntityAccess
                 left join m_product_loan lp on er.to_entity_type = 2 and eem.to_id = lp.id
                 left join m_savings_product sp on er.to_entity_type = 3 and eem.to_id = sp.id
                 left join m_charge charge on er.to_entity_type = 4 and eem.to_id = charge.id
+                left join m_department dept on er.to_entity_type = 6 and eem.to_id = dept.id
                 where
                 er.id = ? and
                 ( ? = 0 or from_id = ? ) and

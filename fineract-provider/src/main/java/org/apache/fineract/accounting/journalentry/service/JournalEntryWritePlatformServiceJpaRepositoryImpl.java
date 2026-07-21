@@ -108,6 +108,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepositor
 import org.apache.fineract.portfolio.loanproduct.service.LoanEnumerations;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
+import org.apache.fineract.portfolio.department.service.OfficeDepartmentMappingValidator;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.NonTransientDataAccessException;
@@ -140,6 +141,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
     private final ExternalAssetOwnerRepository externalAssetOwnerRepository;
     private final LoanAmortizationAllocationMappingRepository loanAmortizationAllocationMappingRepository;
     private final LoanTransactionRepository loanTransactionRepository;
+    private final OfficeDepartmentMappingValidator officeDepartmentMappingValidator;
 
     @Transactional
     @Override
@@ -676,6 +678,11 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
                                 "Department is required for income and expense journal entry lines.");
                     }
                 }
+            }
+
+            if (singleDebitOrCreditEntryCommand.getDepartmentId() != null) {
+                this.officeDepartmentMappingValidator.validateDepartmentAvailableForOffice(
+                        singleDebitOrCreditEntryCommand.getDepartmentId(), office.getId(), transactionDate);
             }
 
             String comments = command.getComments();

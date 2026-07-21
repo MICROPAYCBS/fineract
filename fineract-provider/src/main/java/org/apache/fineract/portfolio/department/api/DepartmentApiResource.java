@@ -28,6 +28,7 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
 import java.util.HashMap;
 import java.util.List;
@@ -58,8 +59,12 @@ public class DepartmentApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List departments", operationId = "retrieveAllDepartments")
-    public List<DepartmentData> retrieveAll() {
+    @Operation(summary = "List departments", description = "When officeId is provided, returns active departments mapped to that office "
+            + "via entity-to-entity mapping (office_access_to_departments). Otherwise returns all departments.", operationId = "retrieveAllDepartments")
+    public List<DepartmentData> retrieveAll(@QueryParam("officeId") final Long officeId) {
+        if (officeId != null) {
+            return this.readPlatformService.retrieveActiveMappedToOffice(officeId);
+        }
         return this.readPlatformService.retrieveAll();
     }
 
