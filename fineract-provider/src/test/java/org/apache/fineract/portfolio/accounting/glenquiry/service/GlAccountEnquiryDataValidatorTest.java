@@ -77,13 +77,10 @@ class GlAccountEnquiryDataValidatorTest {
     }
 
     @Test
-    void acceptsZeroBalanceTrueOnly() {
-        validator.validate(GlAccountEnquiryRequest.builder().zeroBalance(true).build());
-    }
-
-    @Test
-    void rejectsZeroBalanceFalseAlone() {
-        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().zeroBalance(false).build()))
+    void rejectsExcludeZeroBalanceAlone() {
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().excludeZeroBalance(false).build()))
+                .isInstanceOf(PlatformApiDataValidationException.class);
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().excludeZeroBalance(true).build()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
     }
 

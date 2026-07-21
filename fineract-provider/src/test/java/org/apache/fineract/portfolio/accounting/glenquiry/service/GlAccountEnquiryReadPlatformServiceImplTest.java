@@ -88,7 +88,7 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
                 .currencyCode("UGX") //
                 .disabled(false) //
                 .description(" Cash ") //
-                .zeroBalance(true) //
+                .excludeZeroBalance(true) //
                 .build();
 
         final List<GlAccountEnquiryData> results = this.service.enquire(request);
@@ -111,7 +111,7 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
         assertThat(sql).contains("balances.currency_code = ?");
         assertThat(sql).contains("aga.disabled = ?");
         assertThat(sql).contains("LOWER(aga.name) LIKE ? OR LOWER(COALESCE(aga.description, '')) LIKE ?");
-        assertThat(sql).contains("COALESCE(balances.signed_net, 0) = 0");
+        assertThat(sql).contains("COALESCE(balances.signed_net, 0) <> 0");
 
         final Object[] params = paramsCaptor.getValue();
         assertThat(params).contains(Date.valueOf(LocalDate.of(2026, 7, 18)));
@@ -127,15 +127,29 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
     }
 
     @Test
-    void enquireDoesNotApplyZeroBalanceFilterWhenFalse() {
+    void enquireExcludesZeroBalanceByDefaultWhenParamOmitted() {
         when(this.jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(), any(), any()))
                 .thenReturn(LocalDate.of(2026, 7, 18));
         when(this.jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(Collections.emptyList());
 
-        this.service.enquire(GlAccountEnquiryRequest.builder().officeId(1L).zeroBalance(false).build());
+        this.service.enquire(GlAccountEnquiryRequest.builder().officeId(1L).build());
 
         final ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
         verify(this.jdbcTemplate).query(sqlCaptor.capture(), any(RowMapper.class), any(Object[].class));
+        assertThat(sqlCaptor.getValue()).contains("COALESCE(balances.signed_net, 0) <> 0");
+    }
+
+    @Test
+    void enquireIncludesZeroBalanceWhenExcludeFalse() {
+        when(this.jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(), any(), any()))
+                .thenReturn(LocalDate.of(2026, 7, 18));
+        when(this.jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(Collections.emptyList());
+
+        this.service.enquire(GlAccountEnquiryRequest.builder().officeId(1L).excludeZeroBalance(false).build());
+
+        final ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(this.jdbcTemplate).query(sqlCaptor.capture(), any(RowMapper.class), any(Object[].class));
+        assertThat(sqlCaptor.getValue()).doesNotContain("COALESCE(balances.signed_net, 0) <> 0");
         assertThat(sqlCaptor.getValue()).doesNotContain("COALESCE(balances.signed_net, 0) = 0");
     }
 

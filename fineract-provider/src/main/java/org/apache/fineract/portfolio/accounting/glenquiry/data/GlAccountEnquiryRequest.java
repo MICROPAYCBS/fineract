@@ -33,7 +33,8 @@ public class GlAccountEnquiryRequest {
     private final String currencyCode;
     private final Boolean disabled;
     private final String description;
-    private final Boolean zeroBalance;
+    /** Result modifier only — omitted/true excludes zero balances; false includes them. Not a search criterion. */
+    private final Boolean excludeZeroBalance;
 
     public boolean hasAnyFilter() {
         return StringUtils.isNotBlank(this.glPrefix) //
@@ -42,7 +43,11 @@ public class GlAccountEnquiryRequest {
                 || this.departmentId != null //
                 || StringUtils.isNotBlank(this.currencyCode) //
                 || this.disabled != null //
-                || StringUtils.isNotBlank(this.description) //
-                || Boolean.TRUE.equals(this.zeroBalance);
+                || StringUtils.isNotBlank(this.description);
+    }
+
+    /** Default ON: exclude zeros unless the client explicitly sends false. */
+    public boolean shouldExcludeZeroBalance() {
+        return !Boolean.FALSE.equals(this.excludeZeroBalance);
     }
 }

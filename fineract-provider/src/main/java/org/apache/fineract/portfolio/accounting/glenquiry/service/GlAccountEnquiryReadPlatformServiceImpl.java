@@ -141,9 +141,9 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
             params.add(descriptionPattern);
             params.add(descriptionPattern);
         }
-        if (Boolean.TRUE.equals(request.getZeroBalance())) {
+        if (request.shouldExcludeZeroBalance()) {
             // Presentation balance is a sign flip of signed_net; zero is unchanged either way.
-            sql.append(" AND COALESCE(balances.signed_net, 0) = 0 ");
+            sql.append(" AND COALESCE(balances.signed_net, 0) <> 0 ");
         }
     }
 
