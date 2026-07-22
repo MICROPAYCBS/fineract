@@ -44,6 +44,8 @@ public class AccountRequest implements Serializable {
     private String externalId;
     private String minimumActivePeriodFrequencyType;
     private Long savingsAccountId;
+    /** When true, opening purchase is funded from linked savings (default false / omitted). */
+    private Boolean useSavings;
     private String locale;
     private String submittedDate;
     private String approvedDate;

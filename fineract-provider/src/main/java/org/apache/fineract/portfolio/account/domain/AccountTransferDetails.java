@@ -95,6 +95,26 @@ public class AccountTransferDetails extends AbstractPersistableCustom<Long> {
                 transferType, null);
     }
 
+    /**
+     * Savings-funded share purchase: outward transfer from savings with no loan/savings destination account row
+     * (share side is recorded on the share account / journals). Still creates transfer metadata so savings
+     * transactions display as transfers rather than cash withdrawals.
+     */
+    public static AccountTransferDetails savingsToShareTransfer(final Office fromOffice, final Client fromClient,
+            final SavingsAccount fromSavingsAccount, final Office toOffice, final Client toClient, final Integer transferType) {
+        return new AccountTransferDetails(fromOffice, fromClient, fromSavingsAccount, null, toOffice, toClient, null, null, transferType,
+                null);
+    }
+
+    /**
+     * Share redemption credited to savings: inward transfer to savings with no loan/savings source account row.
+     */
+    public static AccountTransferDetails shareToSavingsTransfer(final Office fromOffice, final Client fromClient, final Office toOffice,
+            final Client toClient, final SavingsAccount toSavingsAccount, final Integer transferType) {
+        return new AccountTransferDetails(fromOffice, fromClient, null, null, toOffice, toClient, toSavingsAccount, null, transferType,
+                null);
+    }
+
     public static AccountTransferDetails loanTosavingsTransfer(final Office fromOffice, final Client fromClient, final Loan fromLoanAccount,
             final Office toOffice, final Client toClient, final SavingsAccount toSavingsAccount, Integer transferType) {
         return new AccountTransferDetails(fromOffice, fromClient, null, fromLoanAccount, toOffice, toClient, toSavingsAccount, null,
