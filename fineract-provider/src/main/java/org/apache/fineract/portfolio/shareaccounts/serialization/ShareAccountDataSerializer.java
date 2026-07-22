@@ -106,7 +106,8 @@ public class ShareAccountDataSerializer {
 
     private static final Set<String> addtionalSharesParameters = new HashSet<>(Arrays.asList(ShareAccountApiConstants.locale_paramname,
             ShareAccountApiConstants.requesteddate_paramname, ShareAccountApiConstants.requestedshares_paramname,
-            ShareAccountApiConstants.purchasedprice_paramname, ShareAccountApiConstants.dateformat_paramname));
+            ShareAccountApiConstants.purchasedprice_paramname, ShareAccountApiConstants.dateformat_paramname,
+            ShareAccountApiConstants.usesavings_paramname));
 
     @Autowired
     public ShareAccountDataSerializer(final PlatformSecurityContext platformSecurityContext, final FromJsonHelper fromApiJsonHelper,
@@ -215,6 +216,7 @@ public class ShareAccountDataSerializer {
         Long pendingShares = requestedShares;
         BigDecimal unitPrice = shareProduct.deriveMarketPrice(applicationDate);
         ShareAccountTransaction transaction = new ShareAccountTransaction(applicationDate, requestedShares, unitPrice);
+        transaction.setUseSavings(extractUseSavings(element));
         Set<ShareAccountTransaction> sharesPurchased = new HashSet<>();
         sharesPurchased.add(transaction);
 
@@ -233,6 +235,12 @@ public class ShareAccountDataSerializer {
             }
         }
         createChargeTransaction(account);
+        if (transaction.isUseSavings()) {
+            validateAvailableSavingsBalance(savingsAccount, transaction.amountDue(), baseDataValidator);
+        }
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
         return account;
     }
 
@@ -721,8 +729,15 @@ public class ShareAccountDataSerializer {
         }
         final BigDecimal unitPrice = shareProduct.deriveMarketPrice(requestedDate);
         ShareAccountTransaction purchaseTransaction = new ShareAccountTransaction(requestedDate, sharesRequested, unitPrice);
+        purchaseTransaction.setUseSavings(extractUseSavings(element));
         account.addAdditionalPurchasedShares(purchaseTransaction);
         handleAdditionalSharesChargeTransactions(account, purchaseTransaction);
+        if (purchaseTransaction.isUseSavings()) {
+            validateAvailableSavingsBalance(account.getSavingsAccount(), purchaseTransaction.amountDue(), baseDataValidator);
+            if (!dataValidationErrors.isEmpty()) {
+                throw new PlatformApiDataValidationException(dataValidationErrors);
+            }
+        }
         actualChanges.put(ShareAccountApiConstants.additionalshares_paramname, purchaseTransaction);
         return actualChanges;
     }
@@ -1042,5 +1057,26 @@ public class ShareAccountDataSerializer {
         handleRedeemSharesChargeTransactions(account, transaction);
         actualChanges.put(ShareAccountApiConstants.requestedshares_paramname, transaction);
         return actualChanges;
+    }
+
+    private boolean extractUseSavings(final JsonElement element) {
+        if (!this.fromApiJsonHelper.parameterExists(ShareAccountApiConstants.usesavings_paramname, element)) {
+            return false;
+        }
+        final Boolean value = this.fromApiJsonHelper.extractBooleanNamed(ShareAccountApiConstants.usesavings_paramname, element);
+        return Boolean.TRUE.equals(value);
+    }
+
+    private void validateAvailableSavingsBalance(final SavingsAccount savingsAccount, final BigDecimal amountDue,
+            final DataValidatorBuilder baseDataValidator) {
+        if (savingsAccount == null) {
+            baseDataValidator.reset().parameter(ShareAccountApiConstants.savingsaccountid_paramname)
+                    .failWithCode("required.when.useSavings.is.true");
+            return;
+        }
+        if (savingsAccount.getWithdrawableBalance().compareTo(amountDue) < 0) {
+            baseDataValidator.reset().parameter(ShareAccountApiConstants.usesavings_paramname).value(amountDue)
+                    .failWithCode("insufficient.available.balance.on.linked.savings");
+        }
     }
 }

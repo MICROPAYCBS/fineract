@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: flag share purchase transactions funded from linked savings (useSavings).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3086-share-transaction-use-savings" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_share_account_transactions" columnName="use_savings"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_share_account_transactions">
+            <column name="use_savings" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

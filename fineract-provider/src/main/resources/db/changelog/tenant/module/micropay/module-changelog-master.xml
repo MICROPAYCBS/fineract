@@ -107,4 +107,5 @@
   <include relativeToChangelogFile="true" file="parts/3083_general_ledger_report_department_filter.xml"/>
   <include relativeToChangelogFile="true" file="parts/3084_add_client_draft_status_and_submit_permission.xml"/>
   <include relativeToChangelogFile="true" file="parts/3085_add_office_access_to_departments_relation.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3086_add_share_transaction_use_savings.xml"/>
 </databaseChangeLog>

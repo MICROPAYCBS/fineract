@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.shareaccounts.service;
 import jakarta.persistence.PersistenceException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,6 +39,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.event.business.domain.share.ShareAccountApproveBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.share.ShareAccountCreateBusinessEvent;
@@ -46,6 +48,11 @@ import org.apache.fineract.portfolio.account.service.AccountNumberGenerator;
 import org.apache.fineract.portfolio.accounts.constants.ShareAccountApiConstants;
 import org.apache.fineract.portfolio.note.domain.Note;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
+import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
+import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.shareaccounts.data.ShareAccountTransactionEnumData;
 import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
 import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccountChargePaidBy;
@@ -75,6 +82,8 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
     private final NoteRepository noteRepository;
 
     private final BusinessEventNotifierService businessEventNotifierService;
+
+    private final SavingsAccountDomainService savingsAccountDomainService;
 
     @Override
     public CommandProcessingResult createShareAccount(JsonCommand jsonCommand) {
@@ -145,6 +154,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
             transactionDto.put("chargeAmount", transaction.chargeAmount());
             transactionDto.put("paymentTypeId", null); // FIXME::make it cash
                                                        // payment
+            transactionDto.put("useSavings", transaction.isUseSavings());
             if (transaction.getChargesPaidBy() != null && !transaction.getChargesPaidBy().isEmpty()) {
                 final List<Map<String, Object>> chargesPaidData = new ArrayList<>();
                 transactionDto.put("chargesPaid", chargesPaidData);
@@ -254,6 +264,9 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
             ShareProduct shareProduct = account.getShareProduct();
             shareProduct.addSubscribedShares(totalSubsribedShares);
             this.shareProductRepository.save(shareProduct);
+
+            final LocalDate approvalDate = jsonCommand.localDateValueOfParameterNamed(ShareAccountApiConstants.approveddate_paramname);
+            fundPurchasesFromSavingsIfRequired(account, journalTransactions, approvalDate);
 
             this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, journalTransactions));
 
@@ -381,6 +394,7 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
                         transactions.add(transaction);
                         totalSubscribedShares += transaction.getTotalShares();
                     }
+                    fundPurchasesFromSavingsIfRequired(account, transactions, DateUtils.getBusinessLocalDate());
                     this.journalEntryWritePlatformService.createJournalEntriesForShares(populateJournalEntries(account, transactions));
                 }
                 if (!totalSubscribedShares.equals(Long.valueOf(0))) {
@@ -496,6 +510,41 @@ public class ShareAccountWritePlatformServiceJpaRepositoryImpl implements ShareA
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
             handleDataIntegrityIssues(jsonCommand, dve.getMostSpecificCause(), dve);
             return CommandProcessingResult.empty();
+        }
+    }
+
+    private void fundPurchasesFromSavingsIfRequired(final ShareAccount account, final Set<ShareAccountTransaction> transactions,
+            final LocalDate transactionDate) {
+        for (final ShareAccountTransaction transaction : transactions) {
+            if (transaction == null || !transaction.isUseSavings()) {
+                continue;
+            }
+            final SavingsAccount savingsAccount = account.getSavingsAccount();
+            if (savingsAccount == null) {
+                throw new GeneralPlatformDomainRuleException("error.msg.shareaccount.useSavings.requires.linked.savings",
+                        "Linked savings account is required when funding share purchases from savings.");
+            }
+            final BigDecimal amountDue = transaction.amountDue();
+            if (savingsAccount.getWithdrawableBalance().compareTo(amountDue) < 0) {
+                throw new GeneralPlatformDomainRuleException("error.msg.shareaccount.insufficient.available.balance.on.linked.savings",
+                        "Insufficient available balance on linked savings account to fund share purchase.", amountDue,
+                        savingsAccount.getWithdrawableBalance());
+            }
+            final boolean isAccountTransfer = true;
+            final boolean isRegularTransaction = true;
+            final boolean isInterestTransfer = false;
+            final boolean isWithdrawBalance = false;
+            final SavingsTransactionBooleanValues booleanValues = new SavingsTransactionBooleanValues(isAccountTransfer,
+                    isRegularTransaction, savingsAccount.isWithdrawalFeeApplicableForTransfer(), isInterestTransfer, isWithdrawBalance);
+            final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MMMM yyyy");
+            final PaymentDetail paymentDetail = null;
+            final boolean backdatedTxnsAllowedTill = false;
+            final SavingsAccountTransaction withdrawal = this.savingsAccountDomainService.handleWithdrawal(savingsAccount, fmt,
+                    transactionDate != null ? transactionDate : DateUtils.getBusinessLocalDate(), amountDue, paymentDetail, booleanValues,
+                    backdatedTxnsAllowedTill);
+            final String accountNo = account.getAccountNumber() != null ? account.getAccountNumber() : String.valueOf(account.getId());
+            final String narration = "Share purchase - " + accountNo + " - " + transaction.getTotalShares() + " shares";
+            this.noteRepository.save(Note.savingsTransactionNote(savingsAccount, withdrawal, narration));
         }
     }
 

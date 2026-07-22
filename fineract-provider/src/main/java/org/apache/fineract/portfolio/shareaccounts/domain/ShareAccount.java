@@ -347,6 +347,10 @@ public class ShareAccount extends AbstractPersistableCustom<Long> {
         return this.savingsAccount.getAccountNumber();
     }
 
+    public SavingsAccount getSavingsAccount() {
+        return this.savingsAccount;
+    }
+
     public void addAddtionalShares(Set<ShareAccountTransaction> additionalShares) {
         this.shareAccountTransactions.addAll(additionalShares);
     }

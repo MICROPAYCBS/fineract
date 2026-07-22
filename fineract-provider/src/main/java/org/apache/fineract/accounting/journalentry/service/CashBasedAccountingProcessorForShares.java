@@ -24,6 +24,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.closure.domain.GLClosure;
 import org.apache.fineract.accounting.common.AccountingConstants.CashAccountsForShares;
+import org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity;
 import org.apache.fineract.accounting.journalentry.data.ChargePaymentDTO;
 import org.apache.fineract.accounting.journalentry.data.SharesDTO;
 import org.apache.fineract.accounting.journalentry.data.SharesTransactionDTO;
@@ -90,6 +91,10 @@ public class CashBasedAccountingProcessorForShares implements AccountingProcesso
             SharesTransactionDTO transactionDTO, final LocalDate transactionDate, final String transactionId, final Office office,
             final Long paymentTypeId, final BigDecimal amount, final BigDecimal chargeAmount, final List<ChargePaymentDTO> feePayments) {
         if (transactionDTO.getTransactionStatus().isApplied()) {
+            // Savings-funded purchases skip cash REFERENCE → SUSPENSE; money moves only on approve.
+            if (transactionDTO.isUseSavings()) {
+                return;
+            }
             if (chargeAmount == null || chargeAmount.compareTo(BigDecimal.ZERO) <= 0) {
                 this.helper.createJournalEntriesForShares(office, currencyCode, CashAccountsForShares.SHARES_REFERENCE.getValue(),
                         CashAccountsForShares.SHARES_SUSPENSE.getValue(), shareProductId, paymentTypeId, shareAccountId, transactionId,
@@ -107,10 +112,27 @@ public class CashBasedAccountingProcessorForShares implements AccountingProcesso
             if (chargeAmount != null && chargeAmount.compareTo(BigDecimal.ZERO) > 0) {
                 amountForJE = amount.subtract(chargeAmount);
             }
-            this.helper.createJournalEntriesForShares(office, currencyCode, CashAccountsForShares.SHARES_SUSPENSE.getValue(),
-                    CashAccountsForShares.SHARES_EQUITY.getValue(), shareProductId, paymentTypeId, shareAccountId, transactionId,
-                    transactionDate, amountForJE);
+            if (transactionDTO.isUseSavings()) {
+                // Pair with savings account-transfer withdrawal (Cr LIABILITY_TRANSFER): Dr LIABILITY_TRANSFER, Cr EQUITY
+                this.helper.createJournalEntriesForShares(office, currencyCode, FinancialActivity.LIABILITY_TRANSFER.getValue(),
+                        CashAccountsForShares.SHARES_EQUITY.getValue(), shareProductId, paymentTypeId, shareAccountId, transactionId,
+                        transactionDate, amountForJE);
+                if (chargeAmount != null && chargeAmount.compareTo(BigDecimal.ZERO) > 0) {
+                    this.helper.createDebitJournalEntryForShares(office, currencyCode, FinancialActivity.LIABILITY_TRANSFER.getValue(),
+                            shareProductId, paymentTypeId, shareAccountId, transactionId, transactionDate, chargeAmount);
+                    this.helper.createCashBasedJournalEntryForSharesCharges(office, currencyCode, CashAccountsForShares.INCOME_FROM_FEES,
+                            shareProductId, shareAccountId, transactionId, transactionDate, chargeAmount, feePayments);
+                }
+            } else {
+                this.helper.createJournalEntriesForShares(office, currencyCode, CashAccountsForShares.SHARES_SUSPENSE.getValue(),
+                        CashAccountsForShares.SHARES_EQUITY.getValue(), shareProductId, paymentTypeId, shareAccountId, transactionId,
+                        transactionDate, amountForJE);
+            }
         } else if (transactionDTO.getTransactionStatus().isRejected()) {
+            if (transactionDTO.isUseSavings()) {
+                // No apply-time journals for savings-funded purchases — nothing to reverse.
+                return;
+            }
             if (chargeAmount != null && chargeAmount.compareTo(BigDecimal.ZERO) > 0) {
                 this.helper.revertCashBasedJournalEntryForSharesCharges(office, currencyCode, CashAccountsForShares.INCOME_FROM_FEES,
                         shareProductId, shareAccountId, transactionId, transactionDate, chargeAmount, feePayments);

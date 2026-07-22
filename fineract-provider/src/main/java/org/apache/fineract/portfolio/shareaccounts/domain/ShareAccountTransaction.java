@@ -67,6 +67,9 @@ public class ShareAccountTransaction extends AbstractPersistableCustom<Long> {
     @Column(name = "is_active", nullable = false)
     private boolean active = true;
 
+    @Column(name = "use_savings", nullable = false)
+    private boolean useSavings = false;
+
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "shareAccountTransaction", orphanRemoval = true, fetch = FetchType.EAGER)
     private Set<ShareAccountChargePaidBy> shareAccountChargesPaid = new HashSet<>();
 
@@ -248,7 +251,22 @@ public class ShareAccountTransaction extends AbstractPersistableCustom<Long> {
         return this.active;
     }
 
+    public boolean isUseSavings() {
+        return this.useSavings;
+    }
+
+    public void setUseSavings(final boolean useSavings) {
+        this.useSavings = useSavings;
+    }
+
     public BigDecimal shareValue() {
         return this.shareValue;
+    }
+
+    /**
+     * Total amount to collect for this purchase (includes purchase charges rolled into amount).
+     */
+    public BigDecimal amountDue() {
+        return this.amount == null ? BigDecimal.ZERO : this.amount;
     }
 }
