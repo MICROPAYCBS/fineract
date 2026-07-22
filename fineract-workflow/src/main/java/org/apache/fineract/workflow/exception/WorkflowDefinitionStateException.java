@@ -21,13 +21,25 @@ package org.apache.fineract.workflow.exception;
 import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
 /**
- * Raised when an operation is not allowed in the workflow definition's current lifecycle status, e.g. structurally
- * editing or deleting a definition which is not in DRAFT status.
+ * Raised when an operation is not allowed in the workflow definition's current lifecycle status, e.g. deleting a
+ * definition which is not in DRAFT status, or updating while in-progress instances still reference the definition.
  */
 public class WorkflowDefinitionStateException extends AbstractPlatformDomainRuleException {
 
     public WorkflowDefinitionStateException(final String action, final Long id, final String status) {
         super("error.msg.workflow.definition.invalid.state",
                 "Workflow definition " + id + " cannot be " + action + " while in status " + status, action, id, status);
+    }
+
+    public static WorkflowDefinitionStateException cannotUpdateWithInProgressInstances(final Long id,
+            final long inProgressCount) {
+        return new WorkflowDefinitionStateException(id, inProgressCount);
+    }
+
+    private WorkflowDefinitionStateException(final Long id, final long inProgressCount) {
+        super("error.msg.workflow.definition.cannot.be.updated.with.in.progress.instances",
+                "Workflow definition " + id + " cannot be updated while " + inProgressCount
+                        + " instance(s) are still IN_PROGRESS",
+                id, inProgressCount);
     }
 }

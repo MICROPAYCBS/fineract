@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,9 +32,12 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.useradministration.domain.Permission;
+import org.apache.fineract.workflow.data.WorkflowDefinitionRequest;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionRepository;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionStatus;
+import org.apache.fineract.workflow.domain.WorkflowInstanceRepository;
+import org.apache.fineract.workflow.domain.WorkflowInstanceStatus;
 import org.apache.fineract.workflow.domain.WorkflowPermissionRepository;
 import org.apache.fineract.workflow.exception.WorkflowConfigurationException;
 import org.apache.fineract.workflow.exception.WorkflowDefinitionNotFoundException;
@@ -50,6 +54,9 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
 
     @Mock
     private WorkflowDefinitionRepository repository;
+
+    @Mock
+    private WorkflowInstanceRepository workflowInstanceRepository;
 
     @Mock
     private WorkflowPermissionRepository permissionRepository;
@@ -70,15 +77,95 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
     private WorkflowDefinitionWritePlatformServiceImpl writeService;
 
     @Test
-    void updateIsRejectedWhenDefinitionIsActive() {
+    void updateSucceedsForDraftDefinition() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        definition.setStatus(WorkflowDefinitionStatus.DRAFT);
+        final WorkflowDefinitionRequest request = updateRequest(definition);
+        final JsonCommand command = JsonCommand.from("{}");
+
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(dataValidator.validateAndParse(anyString())).thenReturn(request);
+        when(permissionRepository.findOneByCode(request.getTaskPermissionCode())).thenReturn(Optional.of(permission));
+
+        writeService.update(7L, command);
+
+        verify(assembler).assembleUpdate(definition, request);
+        verify(repository).saveAndFlush(definition);
+        verify(workflowInstanceRepository, never()).countByWorkflowDefinitionIdAndStatus(any(), any());
+        verify(structureValidator, never()).validateForActivation(any());
+        assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.DRAFT);
+    }
+
+    @Test
+    void updateSucceedsForActiveDefinitionWhenNoInProgressInstances() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        definition.setStatus(WorkflowDefinitionStatus.ACTIVE);
+        final WorkflowDefinitionRequest request = updateRequest(definition);
+        final JsonCommand command = JsonCommand.from("{}");
+
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(workflowInstanceRepository.countByWorkflowDefinitionIdAndStatus(7L, WorkflowInstanceStatus.IN_PROGRESS)).thenReturn(0L);
+        when(dataValidator.validateAndParse(anyString())).thenReturn(request);
+        when(permissionRepository.findOneByCode(request.getTaskPermissionCode())).thenReturn(Optional.of(permission));
+
+        writeService.update(7L, command);
+
+        verify(assembler).assembleUpdate(definition, request);
+        verify(repository).saveAndFlush(definition);
+        verify(structureValidator).validateForActivation(definition);
+        assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.ACTIVE);
+    }
+
+    @Test
+    void updateIsRejectedForActiveDefinitionWhenInProgressInstancesExist() {
         final WorkflowDefinition definition = linearThreeStageDefinition();
         definition.setId(7L);
         definition.setStatus(WorkflowDefinitionStatus.ACTIVE);
         when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(workflowInstanceRepository.countByWorkflowDefinitionIdAndStatus(7L, WorkflowInstanceStatus.IN_PROGRESS)).thenReturn(3L);
 
-        assertThatThrownBy(() -> writeService.update(7L, JsonCommand.fromJsonElement(7L, null))) //
+        assertThatThrownBy(() -> writeService.update(7L, JsonCommand.from("{}"))) //
                 .isInstanceOf(WorkflowDefinitionStateException.class) //
-                .hasMessageContaining("ACTIVE");
+                .hasMessageContaining("IN_PROGRESS");
+        verify(assembler, never()).assembleUpdate(any(), any());
+        verify(repository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void updateSucceedsForInactiveDefinitionWhenNoInProgressInstances() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        definition.setStatus(WorkflowDefinitionStatus.INACTIVE);
+        final WorkflowDefinitionRequest request = updateRequest(definition);
+        final JsonCommand command = JsonCommand.from("{}");
+
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(workflowInstanceRepository.countByWorkflowDefinitionIdAndStatus(7L, WorkflowInstanceStatus.IN_PROGRESS)).thenReturn(0L);
+        when(dataValidator.validateAndParse(anyString())).thenReturn(request);
+        when(permissionRepository.findOneByCode(request.getTaskPermissionCode())).thenReturn(Optional.of(permission));
+
+        writeService.update(7L, command);
+
+        verify(assembler).assembleUpdate(definition, request);
+        verify(repository).saveAndFlush(definition);
+        verify(structureValidator, never()).validateForActivation(any());
+        assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.INACTIVE);
+    }
+
+    @Test
+    void updateIsRejectedForInactiveDefinitionWhenInProgressInstancesExist() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        definition.setStatus(WorkflowDefinitionStatus.INACTIVE);
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(workflowInstanceRepository.countByWorkflowDefinitionIdAndStatus(eq(7L), eq(WorkflowInstanceStatus.IN_PROGRESS)))
+                .thenReturn(1L);
+
+        assertThatThrownBy(() -> writeService.update(7L, JsonCommand.from("{}"))) //
+                .isInstanceOf(WorkflowDefinitionStateException.class);
+        verify(assembler, never()).assembleUpdate(any(), any());
     }
 
     @Test
@@ -172,5 +259,14 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> writeService.activate(99L)).isInstanceOf(WorkflowDefinitionNotFoundException.class);
+    }
+
+    private static WorkflowDefinitionRequest updateRequest(final WorkflowDefinition definition) {
+        final WorkflowDefinitionRequest request = new WorkflowDefinitionRequest();
+        request.setTaskPermissionCode(definition.getTaskPermissionCode());
+        request.setName(definition.getName());
+        request.setDescription(definition.getDescription());
+        request.setPriority(definition.getPriority());
+        return request;
     }
 }

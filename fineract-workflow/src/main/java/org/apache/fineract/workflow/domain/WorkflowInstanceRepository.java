@@ -29,6 +29,8 @@ public interface WorkflowInstanceRepository extends JpaRepository<WorkflowInstan
 
     boolean existsByCommandSourceId(Long commandSourceId);
 
+    long countByWorkflowDefinitionIdAndStatus(Long workflowDefinitionId, WorkflowInstanceStatus status);
+
     @Query("""
             SELECT wi FROM WorkflowInstance wi
             JOIN FETCH wi.workflowDefinition wd

@@ -30,6 +30,8 @@ import org.apache.fineract.workflow.data.WorkflowDefinitionRequest;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionRepository;
 import org.apache.fineract.workflow.domain.WorkflowDefinitionStatus;
+import org.apache.fineract.workflow.domain.WorkflowInstanceRepository;
+import org.apache.fineract.workflow.domain.WorkflowInstanceStatus;
 import org.apache.fineract.workflow.domain.WorkflowPermissionRepository;
 import org.apache.fineract.workflow.exception.WorkflowConfigurationException;
 import org.apache.fineract.workflow.exception.WorkflowDefinitionNotFoundException;
@@ -46,6 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefinitionWritePlatformService {
 
     private final WorkflowDefinitionRepository workflowDefinitionRepository;
+    private final WorkflowInstanceRepository workflowInstanceRepository;
     private final WorkflowPermissionRepository permissionRepository;
     private final WorkflowDefinitionDataValidator dataValidator;
     private final WorkflowDefinitionAssembler assembler;
@@ -75,19 +78,36 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
     @Override
     public CommandProcessingResult update(final Long definitionId, final JsonCommand command) {
         final WorkflowDefinition definition = findDefinition(definitionId);
-        if (!definition.isDraft()) {
-            throw new WorkflowDefinitionStateException("updated", definitionId, definition.getStatus().name());
-        }
+        assertDefinitionMayBeUpdated(definition);
 
         final WorkflowDefinitionRequest request = this.dataValidator.validateAndParse(command.json());
         validateTaskExists(request.getTaskPermissionCode());
         this.assembler.assembleUpdate(definition, request);
         this.workflowDefinitionRepository.saveAndFlush(definition);
 
+        if (definition.isActive()) {
+            this.structureValidator.validateForActivation(definition);
+        }
+
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
                 .withEntityId(definition.getId()) //
                 .build();
+    }
+
+    /**
+     * DRAFT may always be replaced. ACTIVE and INACTIVE may be replaced only when no IN_PROGRESS instances still
+     * resolve stages live from this definition.
+     */
+    private void assertDefinitionMayBeUpdated(final WorkflowDefinition definition) {
+        if (definition.isDraft()) {
+            return;
+        }
+        final long inProgressCount = this.workflowInstanceRepository.countByWorkflowDefinitionIdAndStatus(definition.getId(),
+                WorkflowInstanceStatus.IN_PROGRESS);
+        if (inProgressCount > 0) {
+            throw WorkflowDefinitionStateException.cannotUpdateWithInProgressInstances(definition.getId(), inProgressCount);
+        }
     }
 
     @Override

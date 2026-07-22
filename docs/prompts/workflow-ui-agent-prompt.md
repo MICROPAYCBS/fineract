@@ -14,7 +14,7 @@ Administrators define multi-stage approval chains as data. A **workflow definiti
 
 **Who may act at a stage:** holders of `{taskPermissionCode}_CHECKER` (e.g. `APPROVE_LOAN` → `APPROVE_LOAN_CHECKER`). Optionally set **`roleId`** on a stage so only users who also hold that Fineract role may approve/reject there (e.g. Branch Manager role at stage 1, Head Office role at stage 2). Omit `roleId` to allow any checker for that task. Roles are still how admins **grant** the checker permission in user administration; the stage `roleId` further narrows who may act at that step.
 
-Lifecycle: `DRAFT` (editable) → `ACTIVE` (selectable at runtime, structurally frozen) → `INACTIVE`. The engine is opt-in per tenant via global configuration `enable-approval-workflows`. Activation additionally requires **maker-checker to be enabled for that task** — workflows only govern commands the maker-checker pipeline holds.
+Lifecycle: `DRAFT` (editable) → `ACTIVE` (selectable at runtime) → `INACTIVE`. **PUT** may update `DRAFT`, `ACTIVE`, and `INACTIVE` in place (same id). Updates on `ACTIVE`/`INACTIVE` are blocked while any `IN_PROGRESS` instances still reference the definition (instances resolve stages live from it). After an `ACTIVE` update, the backend re-runs activation structure validation. **DELETE** remains `DRAFT` only. The engine is opt-in per tenant via global configuration `enable-approval-workflows`. Activation additionally requires **maker-checker to be enabled for that task** — workflows only govern commands the maker-checker pipeline holds.
 
 ## Critical contract change (must fix everywhere)
 
@@ -43,7 +43,7 @@ Base path: `/fineract-provider/api/v1`. Standard Fineract auth plus `Fineract-Pl
 | `/workflow-definitions?taskPermissionCode=&status=` | GET | List definitions (both filters optional) | `READ_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | GET | Full detail incl. stages, actions, transitions | `READ_WORKFLOW_DEFINITION` |
 | `/workflow-definitions` | POST | Create (always `DRAFT`) | `CREATE_WORKFLOW_DEFINITION` |
-| `/workflow-definitions/{id}` | PUT | Update a `DRAFT` definition (structure fully replaced) | `UPDATE_WORKFLOW_DEFINITION` |
+| `/workflow-definitions/{id}` | PUT | Update definition (structure fully replaced). Allowed for `DRAFT`, `ACTIVE`, and `INACTIVE`; blocked if any `IN_PROGRESS` instances exist for this definition | `UPDATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}?command=activate` | POST | Validate structure + activate | `ACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}?command=deactivate` | POST | Deactivate | `DEACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | DELETE | Delete a `DRAFT` definition | `DELETE_WORKFLOW_DEFINITION` |
@@ -148,7 +148,8 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 | `error.msg.workflow.configuration.unreachable.stage` | Stage not reachable from entry |
 | `error.msg.workflow.configuration.circular.transitions` | Cycle detected |
 | `error.msg.workflow.configuration.duplicate.priority.for.task` | Two ACTIVE workflows at same priority for same task |
-| `error.msg.workflow.definition.invalid.state` | Wrong status for edit/delete/activate/deactivate |
+| `error.msg.workflow.definition.invalid.state` | Wrong status for delete/activate/deactivate |
+| `error.msg.workflow.definition.cannot.be.updated.with.in.progress.instances` | PUT while definition still has `IN_PROGRESS` instances — wait for them to finish (or reject via maker-checker), or deactivate (stops new selections), finish in-flight, then edit |
 | `error.msg.workflow.definition.not.found` | Unknown id |
 
 ## Existing web scaffold (migrate, do not duplicate)
@@ -160,7 +161,7 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 | `/system/approval-workflows` | List |
 | `/system/approval-workflows/create` | Create form |
 | `/system/approval-workflows/[definitionId]` | Detail |
-| `/system/approval-workflows/[definitionId]/edit` | Edit (DRAFT only) |
+| `/system/approval-workflows/[definitionId]/edit` | Edit (`DRAFT` / `ACTIVE` / `INACTIVE`; surface in-progress block error) |
 
 **RBAC** (`packages/auth/permissions.manifest.json` → Fineract permission):
 
@@ -193,8 +194,8 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 ## Screens
 
 1. **List** — DataTable: name, **task** (`taskPermissionCode`), status Badge (`DRAFT` secondary, `ACTIVE` success, `INACTIVE` warning), priority, stage count. Filters: **task** (from permissions list) and status. When `enable-approval-workflows` is disabled, show persistent Alert with inline Switch (existing `ApprovalWorkflowsDisabledAlert`).
-2. **Detail** — Read-only header (name, task, status, priority). Lifecycle actions: DRAFT → Edit, Delete, Activate; ACTIVE → Deactivate; INACTIVE view-only. Vertical timeline of stages (enabled actions, optional role name, expiry, escalation). Helper text: “Actors need `{task}_CHECKER`” plus role when set. Linear transitions (no amount bands). Confirm destructive actions via AlertDialog.
-3. **Create/Edit form** (DRAFT only) — Sections: (a) basics — **task** searchable Select from permissions API, name, description, priority (higher wins at runtime when multiple ACTIVE defs exist for the task); (b) stages — `useFieldArray` editor with optional **role** Select from `GET /roles` (`roleId`; clearable); **without** approval-limit fields; (c) transitions — from/to constrained to stage codes, `sequenceNo` only. Zod mirrors backend: task/name required, optional positive `roleId`, `THRESHOLD` rules, escalation rules, ≥1 action including `APPROVE` per stage. Show info alert that eligibility = `{taskPermissionCode}_CHECKER`, optionally narrowed by stage role. **Remove** any selection-criteria (currency/min/max) UI.
+2. **Detail** — Read-only header (name, task, status, priority). Lifecycle actions: DRAFT → Edit, Delete, Activate; ACTIVE → Edit, Deactivate; INACTIVE → Edit (and Activate when appropriate). Vertical timeline of stages (enabled actions, optional role name, expiry, escalation). Helper text: “Actors need `{task}_CHECKER`” plus role when set. Linear transitions (no amount bands). Confirm destructive actions via AlertDialog. On edit failure with `cannot.be.updated.with.in.progress.instances`, show the backend message and hint to finish or reject open approvals first.
+3. **Create/Edit form** — Same form for create and for edit of `DRAFT` / `ACTIVE` / `INACTIVE`. Sections: (a) basics — **task** searchable Select from permissions API, name, description, priority (higher wins at runtime when multiple ACTIVE defs exist for the task); (b) stages — `useFieldArray` editor with optional **role** Select from `GET /roles` (`roleId`; clearable); **without** approval-limit fields; (c) transitions — from/to constrained to stage codes, `sequenceNo` only. Zod mirrors backend: task/name required, optional positive `roleId`, `THRESHOLD` rules, escalation rules, ≥1 action including `APPROVE` per stage. Show info alert that eligibility = `{taskPermissionCode}_CHECKER`, optionally narrowed by stage role. On ACTIVE/INACTIVE edit, note that save is blocked while approvals are mid-flight. **Remove** any selection-criteria (currency/min/max) UI.
 4. **Activation errors** — Show backend message; for `task.not.maker.checker.enabled`, add hint linking to `/system/configure-mc-tasks`.
 
 ## Constraints
