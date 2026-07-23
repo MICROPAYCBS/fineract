@@ -155,6 +155,9 @@ public class CommandSourceService {
                     throw new GeneralPlatformDomainRuleException("error.msg.invalid.sanitization",
                             "Maker-checker command can not be sanitized, please change the permission configuration", permission);
                 }
+                // Stamp office/client/loan ids from the handler result before hold. Held commands never reach the
+                // success-path updateForAudit, and the maker-checker inbox scopes by office_id for branch users.
+                commandSource.updateForAudit(result);
                 commandSource.markAsAwaitingApproval();
                 this.approvalWorkflowHook.onCommandAwaitingApproval(commandSource, command);
                 throw new RollbackTransactionNotApprovedException(commandSource.getId(), commandSource.getResourceId());

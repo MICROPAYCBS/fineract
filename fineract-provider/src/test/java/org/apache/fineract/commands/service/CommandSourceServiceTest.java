@@ -19,7 +19,11 @@
 package org.apache.fineract.commands.service;
 
 import static org.apache.fineract.commands.domain.CommandProcessingResultType.UNDER_PROCESSING;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.time.ZoneId;
 import java.util.Optional;
@@ -27,9 +31,13 @@ import org.apache.fineract.batch.exception.ErrorInfo;
 import org.apache.fineract.commands.domain.CommandSource;
 import org.apache.fineract.commands.domain.CommandSourceRepository;
 import org.apache.fineract.commands.domain.CommandWrapper;
+import org.apache.fineract.commands.exception.RollbackTransactionNotApprovedException;
+import org.apache.fineract.commands.handler.NewCommandSourceHandler;
 import org.apache.fineract.infrastructure.codes.exception.CodeNotFoundException;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
@@ -113,5 +121,37 @@ public class CommandSourceServiceTest {
         Assertions.assertEquals(404, result.getStatusCode());
         Assertions.assertEquals(1001, result.getErrorCode());
         Assertions.assertTrue(result.getMessage().contains("Code with name `foo` does not exist"));
+    }
+
+    @Test
+    public void processCommandStampsAuditFieldsBeforeMakerCheckerHold() {
+        final NewCommandSourceHandler handler = Mockito.mock(NewCommandSourceHandler.class);
+        final JsonCommand jsonCommand = JsonCommand.from("{}");
+        final CommandSource commandSource = Mockito.mock(CommandSource.class);
+        final AppUser maker = Mockito.mock(AppUser.class);
+        final CommandProcessingResult handlerResult = new CommandProcessingResultBuilder() //
+                .withEntityId(3L) //
+                .withOfficeId(2L) //
+                .withLoanId(3L) //
+                .withClientId(1L) //
+                .build();
+
+        when(handler.processCommand(jsonCommand)).thenReturn(handlerResult);
+        when(commandSource.getPermissionCode()).thenReturn("APPROVE_LOAN");
+        when(commandSource.isSanitized()).thenReturn(false);
+        when(commandSource.getId()).thenReturn(32L);
+        when(commandSource.getResourceId()).thenReturn(3L);
+        when(configurationDomainService.isMakerCheckerEnabledForTask("APPROVE_LOAN")).thenReturn(true);
+        when(maker.isCheckerSuperUser()).thenReturn(false);
+
+        assertThrows(RollbackTransactionNotApprovedException.class,
+                () -> underTest.processCommand(handler, jsonCommand, commandSource, maker, false));
+
+        final ArgumentCaptor<CommandProcessingResult> resultCaptor = ArgumentCaptor.forClass(CommandProcessingResult.class);
+        verify(commandSource).updateForAudit(resultCaptor.capture());
+        Assertions.assertEquals(2L, resultCaptor.getValue().getOfficeId());
+        Assertions.assertEquals(3L, resultCaptor.getValue().getLoanId());
+        verify(commandSource).markAsAwaitingApproval();
+        verify(approvalWorkflowHook).onCommandAwaitingApproval(eq(commandSource), eq(jsonCommand));
     }
 }
