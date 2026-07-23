@@ -139,6 +139,9 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
         for (final JobSequenceStep step : enabledSteps) {
             final Long runStepId = beginStep(runId, step);
             try {
+                if (skipInactiveSchedulerJobIfNeeded(step, runStepId)) {
+                    continue;
+                }
                 executeStep(step);
                 completeStep(runStepId);
             } catch (final Exception ex) {
@@ -151,6 +154,35 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
             }
         }
         completeRun(runId);
+    }
+
+    /**
+     * Inactive or missing scheduler jobs do not fail the sequence — they are recorded as SKIPPED and the run continues.
+     *
+     * @return true when the step was skipped
+     */
+    private boolean skipInactiveSchedulerJobIfNeeded(final JobSequenceStep step, final Long runStepId) {
+        if (step.getStepType() != JobSequenceStepType.SCHEDULER_JOB) {
+            return false;
+        }
+        final String shortName = step.getJobShortName();
+        if (shortName == null || shortName.isBlank()) {
+            skipStep(runStepId, "Skipped, inactive");
+            return true;
+        }
+        final Long jobId = this.scheduledJobDetailRepository.findIdByShortName(shortName).orElse(null);
+        if (jobId == null) {
+            log.warn("Skipping sequence step {}: scheduler job {} not found", step.getStepOrder(), shortName);
+            skipStep(runStepId, "Skipped, inactive");
+            return true;
+        }
+        final ScheduledJobDetail jobDetail = this.scheduledJobDetailRepository.findByJobId(jobId);
+        if (jobDetail == null || !jobDetail.isActiveSchedular()) {
+            log.warn("Skipping sequence step {}: scheduler job {} is inactive", step.getStepOrder(), shortName);
+            skipStep(runStepId, "Skipped, inactive");
+            return true;
+        }
+        return false;
     }
 
     private void executeStep(final JobSequenceStep step) {
@@ -251,6 +283,21 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
                             "Job sequence run step " + runStepId + " not found", runStepId));
             runStep.setStatus(JobSequenceRunStatus.COMPLETED);
             runStep.setFinishedAt(DateUtils.getAuditOffsetDateTime());
+            this.jobSequenceRunStepRepository.saveAndFlush(runStep);
+        });
+    }
+
+    private void skipStep(final Long runStepId, final String message) {
+        if (runStepId == null) {
+            throw new JobSequenceDomainRuleException("run.step.id.missing", "Job sequence run step id is required");
+        }
+        this.transactionTemplate.executeWithoutResult(status -> {
+            final JobSequenceRunStep runStep = this.jobSequenceRunStepRepository.findById(runStepId)
+                    .orElseThrow(() -> new JobSequenceDomainRuleException("run.step.not.found",
+                            "Job sequence run step " + runStepId + " not found", runStepId));
+            runStep.setStatus(JobSequenceRunStatus.SKIPPED);
+            runStep.setFinishedAt(DateUtils.getAuditOffsetDateTime());
+            runStep.setErrorMessage(trimMessage(message));
             this.jobSequenceRunStepRepository.saveAndFlush(runStep);
         });
     }

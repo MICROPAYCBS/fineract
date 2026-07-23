@@ -22,7 +22,9 @@ public enum JobSequenceRunStatus {
     RUNNING, //
     COMPLETED, //
     FAILED, //
-    CANCELLED;
+    CANCELLED, //
+    /** Scheduler job step skipped because the target job is missing or inactive. */
+    SKIPPED;
 
     public static JobSequenceRunStatus fromString(final String value) {
         return JobSequenceRunStatus.valueOf(value.trim().toUpperCase());

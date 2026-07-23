@@ -37,6 +37,7 @@ import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.businessdate.service.BusinessDateWritePlatformService;
 import org.apache.fineract.infrastructure.core.domain.FineractContext;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.infrastructure.jobs.domain.ScheduledJobDetail;
 import org.apache.fineract.infrastructure.jobs.domain.ScheduledJobDetailRepository;
 import org.apache.fineract.infrastructure.jobs.service.JobRegisterService;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequence;
@@ -147,6 +148,64 @@ class JobSequenceExecutionServiceImplTest {
 
         verify(this.jobRegisterService, never()).executeJobWithParameters(anyLong(), any());
         verify(this.jobSequenceRunRepository, Mockito.atLeastOnce()).saveAndFlush(any(JobSequenceRun.class));
+    }
+
+    @Test
+    void executeRunSkipsInactiveSchedulerJobAndContinues() {
+        final JobSequence sequence = new JobSequence();
+        sequence.setId(1L);
+        sequence.setName("END_OF_DAY");
+        sequence.setActive(true);
+        final JobSequenceStep inactiveJob = new JobSequenceStep();
+        inactiveJob.setId(2L);
+        inactiveJob.setStepOrder(1);
+        inactiveJob.setStepType(JobSequenceStepType.SCHEDULER_JOB);
+        inactiveJob.setJobShortName("GLB_SNAP");
+        inactiveJob.setEnabled(true);
+        inactiveJob.setStopOnFailure(true);
+        final JobSequenceStep op = new JobSequenceStep();
+        op.setId(1L);
+        op.setStepOrder(2);
+        op.setStepType(JobSequenceStepType.OPERATION);
+        op.setOperationCode("ADVANCE_BUSINESS_DATE");
+        op.setEnabled(true);
+        op.setStopOnFailure(true);
+        sequence.setSteps(List.of(inactiveJob, op));
+
+        final JobSequenceRun run = new JobSequenceRun();
+        run.setId(10L);
+        run.setSequence(sequence);
+        run.setStatus(JobSequenceRunStatus.RUNNING);
+        run.setSteps(new ArrayList<>());
+
+        final ScheduledJobDetail inactiveDetail = new ScheduledJobDetail();
+        inactiveDetail.setActiveSchedular(false);
+
+        when(this.jobSequenceRunRepository.findById(10L)).thenReturn(Optional.of(run));
+        when(this.jobSequenceRunRepository.findByIdWithSteps(10L)).thenReturn(Optional.of(run));
+        when(this.jobSequenceRepository.findByIdWithSteps(1L)).thenReturn(Optional.of(sequence));
+        when(this.scheduledJobDetailRepository.findIdByShortName("GLB_SNAP")).thenReturn(Optional.of(99L));
+        when(this.scheduledJobDetailRepository.findByJobId(99L)).thenReturn(inactiveDetail);
+        when(this.jobSequenceRunStepRepository.saveAndFlush(any(JobSequenceRunStep.class))).thenAnswer(inv -> {
+            final JobSequenceRunStep step = inv.getArgument(0);
+            if (step.getId() == null) {
+                step.setId(100L + step.getStepOrder());
+            }
+            return step;
+        });
+        when(this.jobSequenceRunStepRepository.findById(anyLong())).thenAnswer(inv -> {
+            final JobSequenceRunStep step = new JobSequenceRunStep();
+            step.setId(inv.getArgument(0));
+            step.setRun(run);
+            step.setStatus(JobSequenceRunStatus.RUNNING);
+            return Optional.of(step);
+        });
+        when(this.jobSequenceRunRepository.saveAndFlush(any(JobSequenceRun.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        this.underTest.executeRun(10L);
+
+        verify(this.jobRegisterService, never()).executeJobWithParameters(anyLong(), any());
+        verify(this.businessDateWritePlatformService).increaseDateByTypeByOneDay(BusinessDateType.BUSINESS_DATE);
     }
 
     @Test
