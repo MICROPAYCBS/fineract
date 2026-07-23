@@ -241,6 +241,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DEPARTMENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOBSEQUENCE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SHAREPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMSCAMPAIGN;
@@ -563,6 +564,37 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_DEPARTMENT;
         this.href = "/departments/" + departmentId;
         this.entityId = departmentId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createJobSequence() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_JOBSEQUENCE;
+        this.href = "/jobsequences";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateJobSequence(final long sequenceId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOBSEQUENCE;
+        this.href = "/jobsequences/" + sequenceId;
+        this.entityId = sequenceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteJobSequence(final long sequenceId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_JOBSEQUENCE;
+        this.href = "/jobsequences/" + sequenceId;
+        this.entityId = sequenceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder executeJobSequence(final long sequenceId) {
+        this.actionName = ACTION_EXECUTE;
+        this.entityName = ENTITY_JOBSEQUENCE;
+        this.href = "/jobsequences/" + sequenceId + "?command=execute";
+        this.entityId = sequenceId;
         return this;
     }
 

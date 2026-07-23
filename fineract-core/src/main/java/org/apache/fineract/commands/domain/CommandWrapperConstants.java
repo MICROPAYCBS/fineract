@@ -175,6 +175,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_CONTACTTYPE = "CONTACTTYPE";
     public static final String ENTITY_SECTOR = "SECTOR";
     public static final String ENTITY_DEPARTMENT = "DEPARTMENT";
+    public static final String ENTITY_JOBSEQUENCE = "JOBSEQUENCE";
     public static final String ENTITY_INDUSTRY = "INDUSTRY";
     public static final String ENTITY_SUBINDUSTRY = "SUBINDUSTRY";
     public static final String ENTITY_IDENTITYTYPE = "IDENTITYTYPE";

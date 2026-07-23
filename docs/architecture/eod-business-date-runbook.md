@@ -2,10 +2,11 @@
 
 Operational guide for Micropay CBS (Fineract) to close business day **D** and open **D+1**.
 
-There is **no bank-wide EOD orchestrator**. Date advance, Loan COB, Working Capital Loan COB, savings jobs, and GL snapshots are **independent** jobs/APIs. Ops (or an external scheduler) runs them in order.
+There is **no hard-coded single EOD job**. Ops can use **configurable job sequences** (named ordered lists of jobs/operations) via `/v1/jobsequences` — see [`job-sequences.md`](job-sequences.md). Date advance, Loan COB, Working Capital Loan COB, savings jobs, and GL snapshots remain **independent** jobs; the default seeded sequence `END_OF_DAY` chains them when executed.
 
 Upstream concepts: `fineract-doc/src/docs/en/chapters/architecture/business-date.adoc`.  
 Micropay GL snapshots: [`gl-balance-snapshot-design.md`](gl-balance-snapshot-design.md).
+Job sequences: [`job-sequences.md`](job-sequences.md).
 
 ## Model
 
@@ -170,11 +171,12 @@ Configure steps via `GET/PUT /v1/jobs/{jobName}/steps`.
 
 | Gap | Implication |
 |-----|-------------|
-| No bank-wide EOD job | Sequence externally (scheduler, ops, or future Micropay orchestrator) |
+| Sequences are user-triggered (v1) | Use `/v1/jobsequences/{id}?command=execute` or an external scheduler calling that API; no cron on the sequence itself yet |
 | No pre-flight gate on date advance | System does not block advance if COB incomplete |
-| Jobs often seeded inactive | Must enable/schedule deliberately |
+| Jobs often seeded inactive | Must enable/schedule deliberately; sequence steps fail if target job is inactive |
 | Savings COB incomplete | Use classic savings jobs, not a full savings COB EOD |
 | Archiving not daily EOD | Separate from day-close |
+| No daily txn recon / offline drain | See [`job-sequences.md`](job-sequences.md) RFP mapping |
 
 ## Local / DEV shortcut
 
