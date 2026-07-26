@@ -55,6 +55,9 @@ final class JournalEntriesApiResourceSwagger {
 
         @Schema(description = "1")
         public Long officeId;
+
+        @Schema(example = "Corrected narration for this journal transaction", description = "Narration/description. Required for command=updateNarration (max 500). Optional for command=reverse.")
+        public String comments;
     }
 
     @Schema(description = "PostJournalEntriesTransactionIdResponse")
@@ -66,6 +69,9 @@ final class JournalEntriesApiResourceSwagger {
 
         @Schema(description = "1")
         public Long officeId;
+
+        @Schema(example = "PB37X8Y21EQUY4S")
+        public String transactionId;
     }
 
     public static final class CurrencyItem {

@@ -2073,6 +2073,15 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder updateJournalEntryNarration(final String transactionId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOURNALENTRY;
+        this.entityId = null;
+        this.transactionId = transactionId;
+        this.href = "/journalentries/" + transactionId;
+        return this;
+    }
+
     public CommandWrapperBuilder updateRunningBalanceForJournalEntry() {
         this.actionName = ACTION_UPDATERUNNINGBALANCE;
         this.entityName = ENTITY_JOURNALENTRY;

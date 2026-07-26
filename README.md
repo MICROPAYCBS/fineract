@@ -78,6 +78,20 @@ cd fineract
 
 After a minute or two, Fineract will be listening for API requests on port 8443.
 
+### Create an additional tenant
+
+After the default tenant is running (so `fineract_tenants` exists and connection `id=1` is seeded), register another empty tenant database and row with:
+
+```bash
+./gradlew :fineract-provider:createNewTenant -PtenantIdentifier=demo
+```
+
+This creates database `fineract_demo`, inserts `tenant_server_connections` + `tenants` (default name `Demo Tenant`, timezone `Asia/Kolkata`), and reuses the encrypted DB password from connection `id=1` when credentials match. Optional overrides: `-PtenantName`, `-PtenantTimezone`, `-PtenantDbHost`, `-PtenantDbPort`, `-PtenantDbUser`, `-PtenantDbPassword`, `-PtenantAdminUser`, `-PtenantAdminPassword`, `-PmasterPassword`, `-PdbType=postgresql|mariadb|mysql`.
+
+If you see `permission denied to create database`, either grant `CREATEDB` to the app user, create the empty DB first (`./gradlew createPGDB -PdbName=fineract_demo` then re-run), or pass a privileged admin user via `-PtenantAdminUser` / `-PtenantAdminPassword`.
+
+**Restart Fineract** (or re-run `devRun` / `bootRun`) so `TenantDatabaseUpgradeService` Liquibase-migrates the new schema. Then use header `Fineract-Platform-TenantId: demo`. The task does not run Liquibase itself.
+
 > [!TIP]
 > Java properties or environment variables can be used to override default settings. See `fineract-provider/src/main/resources/application.properties`.
 

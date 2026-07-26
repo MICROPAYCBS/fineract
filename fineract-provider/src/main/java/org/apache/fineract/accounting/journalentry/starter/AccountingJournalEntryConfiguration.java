@@ -36,6 +36,7 @@ import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlat
 import org.apache.fineract.accounting.producttoaccountmapping.domain.ProductToGLAccountMappingRepository;
 import org.apache.fineract.accounting.rule.domain.AccountingRuleRepository;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
+import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
@@ -91,9 +92,10 @@ public class AccountingJournalEntryConfiguration {
             OfficeRepositoryWrapper officeRepositoryWrapper, AccountingProcessorForLoanFactory accountingProcessorForLoanFactory,
             AccountingProcessorForSavingsFactory accountingProcessorForSavingsFactory,
             AccountingProcessorForSharesFactory accountingProcessorForSharesFactory, AccountingProcessorHelper helper,
-            JournalEntryCommandFromApiJsonDeserializer fromApiJsonDeserializer, AccountingRuleRepository accountingRuleRepository,
-            GLAccountReadPlatformService glAccountReadPlatformService, OrganisationCurrencyRepositoryWrapper organisationCurrencyRepository,
-            PlatformSecurityContext context, PaymentDetailWritePlatformService paymentDetailWritePlatformService,
+            JournalEntryCommandFromApiJsonDeserializer fromApiJsonDeserializer, FromJsonHelper fromApiJsonHelper,
+            AccountingRuleRepository accountingRuleRepository, GLAccountReadPlatformService glAccountReadPlatformService,
+            OrganisationCurrencyRepositoryWrapper organisationCurrencyRepository, PlatformSecurityContext context,
+            PaymentDetailWritePlatformService paymentDetailWritePlatformService,
             FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
             CashBasedAccountingProcessorForClientTransactions accountingProcessorForClientTransactions,
             ConfigurationReadPlatformService configurationReadPlatformService, AccountingService accountingService,
@@ -102,7 +104,7 @@ public class AccountingJournalEntryConfiguration {
             LoanTransactionRepository loanTransactionRepository, OfficeDepartmentMappingValidator officeDepartmentMappingValidator) {
         return new JournalEntryWritePlatformServiceJpaRepositoryImpl(glClosureRepository, glAccountRepository, glJournalEntryRepository,
                 officeRepositoryWrapper, accountingProcessorForLoanFactory, accountingProcessorForSavingsFactory,
-                accountingProcessorForSharesFactory, helper, fromApiJsonDeserializer, accountingRuleRepository,
+                accountingProcessorForSharesFactory, helper, fromApiJsonDeserializer, fromApiJsonHelper, accountingRuleRepository,
                 glAccountReadPlatformService, organisationCurrencyRepository, context, paymentDetailWritePlatformService,
                 financialActivityAccountRepositoryWrapper, accountingProcessorForClientTransactions, configurationReadPlatformService,
                 accountingService, externalAssetOwnerRepository, loanAmortizationAllocationMappingRepository, loanTransactionRepository,

@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: remove duplicate m_permission rows created by legacy seed data that
+  stored trailing spaces on codes (e.g. CREATE_STANDINGINSTRUCTION ) while later
+  migrations inserted the clean codes.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3090-remove-trailing-space-permission-duplicates" author="micropay" dbms="postgresql">
+        <comment>
+            Prefer trimmed permission codes. Merge can_maker_checker from padded duplicates,
+            re-point m_role_permission links, delete padded twins, and trim any padded-only rows.
+        </comment>
+        <sql splitStatements="false"><![CDATA[
+-- Propagate maker-checker enablement from padded duplicate -> clean twin
+UPDATE m_permission AS keep
+SET can_maker_checker = TRUE
+FROM m_permission AS drop_row
+WHERE TRIM(BOTH FROM drop_row.code) = keep.code
+  AND drop_row.code <> keep.code
+  AND keep.code = TRIM(BOTH FROM keep.code)
+  AND drop_row.can_maker_checker IS TRUE
+  AND keep.can_maker_checker IS NOT TRUE;
+
+-- Re-point role grants from padded permission to clean twin
+INSERT INTO m_role_permission (role_id, permission_id)
+SELECT DISTINCT rp.role_id, keep.id
+FROM m_role_permission rp
+INNER JOIN m_permission drop_row ON drop_row.id = rp.permission_id
+INNER JOIN m_permission keep
+  ON keep.code = TRIM(BOTH FROM drop_row.code)
+ AND keep.id <> drop_row.id
+ AND keep.code = TRIM(BOTH FROM keep.code)
+WHERE drop_row.code <> TRIM(BOTH FROM drop_row.code)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM m_role_permission existing
+    WHERE existing.role_id = rp.role_id
+      AND existing.permission_id = keep.id
+  );
+
+-- Drop role grants still pointing at padded twins
+DELETE FROM m_role_permission rp
+USING m_permission drop_row, m_permission keep
+WHERE rp.permission_id = drop_row.id
+  AND drop_row.code <> TRIM(BOTH FROM drop_row.code)
+  AND keep.code = TRIM(BOTH FROM drop_row.code)
+  AND keep.id <> drop_row.id
+  AND keep.code = TRIM(BOTH FROM keep.code);
+
+-- Delete padded permissions that have a clean twin
+DELETE FROM m_permission drop_row
+USING m_permission keep
+WHERE drop_row.code <> TRIM(BOTH FROM drop_row.code)
+  AND keep.code = TRIM(BOTH FROM drop_row.code)
+  AND keep.id <> drop_row.id
+  AND keep.code = TRIM(BOTH FROM keep.code);
+
+-- Trim remaining padded-only permission rows (no clean twin)
+UPDATE m_permission
+SET
+  code = TRIM(BOTH FROM code),
+  entity_name = CASE
+    WHEN entity_name IS NULL THEN NULL
+    ELSE TRIM(BOTH FROM entity_name)
+  END
+WHERE code <> TRIM(BOTH FROM code)
+   OR (entity_name IS NOT NULL AND entity_name <> TRIM(BOTH FROM entity_name));
+]]></sql>
+    </changeSet>
+
+    <changeSet id="3090-trim-workflow-task-permission-codes" author="micropay" dbms="postgresql">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_workflow_definition"/>
+                <columnExists tableName="m_workflow_definition" columnName="task_permission_code"/>
+            </and>
+        </preConditions>
+        <comment>Normalize workflow definition task codes that stored trailing spaces.</comment>
+        <sql>
+            UPDATE m_workflow_definition
+            SET task_permission_code = TRIM(BOTH FROM task_permission_code)
+            WHERE task_permission_code &lt;&gt; TRIM(BOTH FROM task_permission_code);
+        </sql>
+    </changeSet>
+
+    <changeSet id="3090-remove-trailing-space-permission-duplicates-mysql" author="micropay" dbms="mysql,mariadb">
+        <comment>
+            Prefer trimmed permission codes. Merge can_maker_checker from padded duplicates,
+            re-point m_role_permission links, delete padded twins, and trim any padded-only rows.
+        </comment>
+        <sql splitStatements="false"><![CDATA[
+-- Propagate maker-checker enablement from padded duplicate -> clean twin
+UPDATE m_permission keep
+INNER JOIN m_permission drop_row
+  ON TRIM(BOTH FROM drop_row.code) = keep.code
+ AND drop_row.code <> keep.code
+ AND keep.code = TRIM(BOTH FROM keep.code)
+SET keep.can_maker_checker = 1
+WHERE drop_row.can_maker_checker = 1
+  AND IFNULL(keep.can_maker_checker, 0) <> 1;
+
+-- Re-point role grants from padded permission to clean twin
+INSERT INTO m_role_permission (role_id, permission_id)
+SELECT DISTINCT rp.role_id, keep.id
+FROM m_role_permission rp
+INNER JOIN m_permission drop_row ON drop_row.id = rp.permission_id
+INNER JOIN m_permission keep
+  ON keep.code = TRIM(BOTH FROM drop_row.code)
+ AND keep.id <> drop_row.id
+ AND keep.code = TRIM(BOTH FROM keep.code)
+WHERE drop_row.code <> TRIM(BOTH FROM drop_row.code)
+  AND NOT EXISTS (
+    SELECT 1
+    FROM m_role_permission existing
+    WHERE existing.role_id = rp.role_id
+      AND existing.permission_id = keep.id
+  );
+
+-- Drop role grants still pointing at padded twins
+DELETE rp
+FROM m_role_permission rp
+INNER JOIN m_permission drop_row ON drop_row.id = rp.permission_id
+INNER JOIN m_permission keep
+  ON keep.code = TRIM(BOTH FROM drop_row.code)
+ AND keep.id <> drop_row.id
+ AND keep.code = TRIM(BOTH FROM keep.code)
+WHERE drop_row.code <> TRIM(BOTH FROM drop_row.code);
+
+-- Delete padded permissions that have a clean twin
+DELETE drop_row
+FROM m_permission drop_row
+INNER JOIN m_permission keep
+  ON keep.code = TRIM(BOTH FROM drop_row.code)
+ AND keep.id <> drop_row.id
+ AND keep.code = TRIM(BOTH FROM keep.code)
+WHERE drop_row.code <> TRIM(BOTH FROM drop_row.code);
+
+-- Trim remaining padded-only permission rows (no clean twin)
+UPDATE m_permission
+SET
+  code = TRIM(BOTH FROM code),
+  entity_name = CASE
+    WHEN entity_name IS NULL THEN NULL
+    ELSE TRIM(BOTH FROM entity_name)
+  END
+WHERE code <> TRIM(BOTH FROM code)
+   OR (entity_name IS NOT NULL AND entity_name <> TRIM(BOTH FROM entity_name));
+]]></sql>
+    </changeSet>
+
+    <changeSet id="3090-trim-workflow-task-permission-codes-mysql" author="micropay" dbms="mysql,mariadb">
+        <preConditions onFail="MARK_RAN">
+            <and>
+                <tableExists tableName="m_workflow_definition"/>
+                <columnExists tableName="m_workflow_definition" columnName="task_permission_code"/>
+            </and>
+        </preConditions>
+        <comment>Normalize workflow definition task codes that stored trailing spaces.</comment>
+        <sql>
+            UPDATE m_workflow_definition
+            SET task_permission_code = TRIM(BOTH FROM task_permission_code)
+            WHERE task_permission_code &lt;&gt; TRIM(BOTH FROM task_permission_code);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

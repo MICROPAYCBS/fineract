@@ -18,17 +18,22 @@
  */
 package org.apache.fineract.accounting.journalentry.service;
 
+import com.google.gson.JsonElement;
+import com.google.gson.reflect.TypeToken;
+import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -75,7 +80,9 @@ import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -129,6 +136,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
     private final AccountingProcessorForSharesFactory accountingProcessorForSharesFactory;
     private final AccountingProcessorHelper helper;
     private final JournalEntryCommandFromApiJsonDeserializer fromApiJsonDeserializer;
+    private final FromJsonHelper fromApiJsonHelper;
     private final AccountingRuleRepository accountingRuleRepository;
     private final GLAccountReadPlatformService glAccountReadPlatformService;
     private final OrganisationCurrencyRepositoryWrapper organisationCurrencyRepository;
@@ -355,6 +363,53 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         return new CommandProcessingResultBuilder() //
                 .withTransactionId(reversalTransactionId) //
                 .build();
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult updateJournalEntryNarration(final JsonCommand command) {
+        final String transactionId = command.getTransactionId();
+        final String comments = validateAndExtractNarration(command.json());
+
+        // Narration edits are limited to manual journal entries (same scope as reverse)
+        final List<JournalEntry> journalEntries = this.glJournalEntryRepository
+                .findUnReversedManualJournalEntriesByTransactionId(transactionId);
+        if (journalEntries == null || journalEntries.isEmpty()) {
+            throw new JournalEntriesNotFoundException(transactionId);
+        }
+
+        for (final JournalEntry journalEntry : journalEntries) {
+            journalEntry.updateDescription(comments);
+            this.helper.persistJournalEntry(journalEntry);
+        }
+
+        return new CommandProcessingResultBuilder() //
+                .withTransactionId(transactionId) //
+                .build();
+    }
+
+    private String validateAndExtractNarration(final String json) {
+        if (StringUtils.isBlank(json)) {
+            throw new InvalidJsonException();
+        }
+
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+        final Set<String> supportedParameters = new HashSet<>();
+        supportedParameters.add(JournalEntryJsonInputParams.COMMENTS.getValue());
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, supportedParameters);
+
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final String comments = this.fromApiJsonHelper.extractStringNamed(JournalEntryJsonInputParams.COMMENTS.getValue(), element);
+
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("GLJournalEntry");
+        baseDataValidator.reset().parameter(JournalEntryJsonInputParams.COMMENTS.getValue()).value(comments).notNull()
+                .notExceedingLengthOf(500);
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
+                    dataValidationErrors);
+        }
+        return comments;
     }
 
     @Override

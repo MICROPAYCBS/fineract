@@ -151,7 +151,7 @@ class JobSequenceExecutionServiceImplTest {
     }
 
     @Test
-    void executeRunSkipsInactiveSchedulerJobAndContinues() {
+    void executeRunSkipsInactiveSchedulerJobAndContinues() throws Exception {
         final JobSequence sequence = new JobSequence();
         sequence.setId(1L);
         sequence.setName("END_OF_DAY");

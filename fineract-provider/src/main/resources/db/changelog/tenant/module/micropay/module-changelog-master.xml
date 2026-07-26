@@ -111,4 +111,6 @@
   <include relativeToChangelogFile="true" file="parts/3087_add_job_sequence_tables.xml"/>
   <include relativeToChangelogFile="true" file="parts/3088_add_job_sequence_permissions.xml"/>
   <include relativeToChangelogFile="true" file="parts/3089_seed_end_of_day_job_sequence.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3090_remove_trailing_space_permission_duplicates.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3091_add_update_journalentry_permission.xml"/>
 </databaseChangeLog>

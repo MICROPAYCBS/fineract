@@ -169,4 +169,8 @@ public class JournalEntry extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return JournalEntryType.CREDIT.getValue().equals(this.type);
     }
 
+    public void updateDescription(final String description) {
+        this.description = StringUtils.defaultIfEmpty(description, null);
+    }
+
 }

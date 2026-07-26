@@ -263,6 +263,305 @@ tasks.register('setBlankPassword') {
     }
 }
 
+tasks.register('createNewTenant') {
+    group = 'Database'
+    description = 'Creates empty tenant DB fineract_<id> and registers it in fineract_tenants. Requires -PtenantIdentifier=<id>. Restart Fineract afterwards so Liquibase migrates the schema.'
+    dependsOn ':fineract-core:classes'
+
+    doLast {
+        if (!project.hasProperty('tenantIdentifier') || !tenantIdentifier?.toString()?.trim()) {
+            throw new GradleException('Missing required property -PtenantIdentifier=<id> (e.g. -PtenantIdentifier=demo)')
+        }
+        def identifier = tenantIdentifier.toString().trim()
+        if (!(identifier ==~ /^[a-zA-Z0-9_-]+$/)) {
+            throw new GradleException("Invalid tenantIdentifier '${identifier}'. Allowed pattern: [a-zA-Z0-9_-]+")
+        }
+
+        def dbType = (project.hasProperty('dbType') ? dbType.toString() : 'postgresql').toLowerCase()
+        // Use plain java.lang.String (not GString) for all JDBC bind values — PostgreSQL cannot infer GStringImpl
+        def schemaName = ('fineract_' + identifier).toString()
+        def tenantDisplayName = project.hasProperty('tenantName')
+                ? tenantName.toString()
+                : (identifier.substring(0, 1).toUpperCase() + identifier.substring(1) + ' Tenant').toString()
+        def timezoneId = project.hasProperty('tenantTimezone') ? tenantTimezone.toString() : 'Asia/Kolkata'
+        def masterPassword = project.hasProperty('masterPassword') ? masterPassword.toString() : 'fineract'
+        def asJdbcString = { v -> v == null ? null : v.toString() }
+
+        def defaultHost = 'localhost'
+        def defaultPort
+        def defaultUser
+        def defaultPlainPassword
+        def driverClass
+        def adminBaseUrl
+        def tenantsJdbcUrl
+        def quoteIdent = { String name -> name }
+
+        switch (dbType) {
+            case 'postgresql':
+                defaultPort = '5432'
+                defaultUser = pgUser
+                defaultPlainPassword = pgPassword
+                driverClass = 'org.postgresql.Driver'
+                break
+            case 'mariadb':
+                defaultPort = '3306'
+                defaultUser = mysqlUser
+                defaultPlainPassword = mysqlPassword
+                driverClass = 'org.mariadb.jdbc.Driver'
+                quoteIdent = { String name -> "`${name}`" }
+                break
+            case 'mysql':
+                defaultPort = '3306'
+                defaultUser = mysqlUser
+                defaultPlainPassword = mysqlPassword
+                driverClass = 'com.mysql.cj.jdbc.Driver'
+                quoteIdent = { String name -> "`${name}`" }
+                break
+            default:
+                throw new GradleException("Unsupported -PdbType=${dbType}. Use postgresql, mariadb, or mysql.")
+        }
+
+        def host = project.hasProperty('tenantDbHost') ? tenantDbHost.toString() : defaultHost
+        def port = project.hasProperty('tenantDbPort') ? tenantDbPort.toString() : defaultPort
+        // Credentials for fineract_tenants reads/writes (local Gradle defaults / Hikari user)
+        def tenantsUser = defaultUser
+        def tenantsPassword = defaultPlainPassword
+        // Credentials for CREATE DATABASE — often need a superuser / CREATEDB role (override if app user lacks privilege)
+        def adminUser = project.hasProperty('tenantAdminUser') ? tenantAdminUser.toString() : tenantsUser
+        def adminPassword = project.hasProperty('tenantAdminPassword') ? tenantAdminPassword.toString() : tenantsPassword
+
+        // PostgreSQL JDBC with no database name defaults to the username as DB (e.g. "root") — use "postgres"
+        def adminDbName = project.hasProperty('tenantAdminDb') ? tenantAdminDb.toString() : 'postgres'
+        switch (dbType) {
+            case 'postgresql':
+                adminBaseUrl = ("jdbc:postgresql://${host}:${port}/${adminDbName}").toString()
+                tenantsJdbcUrl = ("jdbc:postgresql://${host}:${port}/fineract_tenants").toString()
+                break
+            case 'mariadb':
+                adminBaseUrl = ("jdbc:mariadb://${host}:${port}/").toString()
+                tenantsJdbcUrl = ("jdbc:mariadb://${host}:${port}/fineract_tenants").toString()
+                break
+            case 'mysql':
+                adminBaseUrl = ("jdbc:mysql://${host}:${port}/").toString()
+                tenantsJdbcUrl = ("jdbc:mysql://${host}:${port}/fineract_tenants").toString()
+                break
+        }
+
+        def tenantsSql
+        try {
+            tenantsSql = Sql.newInstance(tenantsJdbcUrl, tenantsUser.toString(), tenantsPassword.toString(), driverClass)
+        } catch (Exception e) {
+            throw new GradleException("Cannot connect to fineract_tenants at ${tenantsJdbcUrl}: ${e.message}", e)
+        }
+
+        def connectionId
+        try {
+            def existingIdentifier = tenantsSql.firstRow('SELECT id FROM tenants WHERE identifier = ?', [asJdbcString(identifier)])
+            if (existingIdentifier != null) {
+                throw new GradleException("Tenant identifier '${identifier}' is already registered in tenants (id=${existingIdentifier.id})")
+            }
+            def existingSchema = tenantsSql.firstRow('SELECT id FROM tenant_server_connections WHERE schema_name = ?', [asJdbcString(schemaName)])
+            if (existingSchema != null) {
+                throw new GradleException("Schema '${schemaName}' is already registered in tenant_server_connections (id=${existingSchema.id})")
+            }
+
+            // deadlock_max_retries / deadlock_max_retry_interval were dropped in tenant-store 0006
+            def defaultConn = tenantsSql.firstRow('''
+                SELECT schema_server, schema_server_port, schema_username, schema_password, master_password_hash,
+                       pool_initial_size, pool_validation_interval, pool_remove_abandoned, pool_remove_abandoned_timeout,
+                       pool_log_abandoned, pool_abandon_when_percentage_full, pool_test_on_borrow, pool_max_active,
+                       pool_min_idle, pool_max_idle, pool_suspect_timeout, pool_time_between_eviction_runs_millis,
+                       pool_min_evictable_idle_time_millis, schema_connection_parameters
+                FROM tenant_server_connections WHERE id = 1
+                ''')
+
+            if (!project.hasProperty('tenantDbHost') && defaultConn?.schema_server) {
+                host = defaultConn.schema_server.toString()
+            }
+            if (!project.hasProperty('tenantDbPort') && defaultConn?.schema_server_port) {
+                port = defaultConn.schema_server_port.toString()
+            }
+            switch (dbType) {
+                case 'postgresql':
+                    adminBaseUrl = ("jdbc:postgresql://${host}:${port}/${adminDbName}").toString()
+                    break
+                case 'mariadb':
+                    adminBaseUrl = ("jdbc:mariadb://${host}:${port}/").toString()
+                    break
+                case 'mysql':
+                    adminBaseUrl = ("jdbc:mysql://${host}:${port}/").toString()
+                    break
+            }
+
+            def schemaUsername = project.hasProperty('tenantDbUser')
+                    ? tenantDbUser.toString()
+                    : (defaultConn?.schema_username?.toString() ?: defaultUser)
+            def schemaPlainPassword = project.hasProperty('tenantDbPassword')
+                    ? tenantDbPassword.toString()
+                    : defaultPlainPassword
+
+            // Prefer copying encrypted password from id=1 when schema creds match that connection's username
+            // and plain password was not overridden to a non-default value (typical local case).
+            def passwordOverridden = project.hasProperty('tenantDbPassword') && schemaPlainPassword != defaultPlainPassword
+            def masterOverridden = project.hasProperty('masterPassword') && masterPassword != 'fineract'
+            def canCopyEncrypted = defaultConn?.schema_password && defaultConn?.master_password_hash && !passwordOverridden && !masterOverridden
+
+            def encryptedPassword
+            def masterPasswordHash
+            if (canCopyEncrypted) {
+                encryptedPassword = defaultConn.schema_password.toString()
+                masterPasswordHash = defaultConn.master_password_hash.toString()
+                logger.lifecycle("Reusing encrypted schema_password and master_password_hash from tenant_server_connections id=1")
+            } else {
+                def baos = new ByteArrayOutputStream()
+                project.javaexec {
+                    classpath = project(':fineract-core').sourceSets.main.runtimeClasspath
+                    mainClass = 'org.apache.fineract.infrastructure.core.service.database.DatabasePasswordEncryptor'
+                    args = [masterPassword, schemaPlainPassword]
+                    standardOutput = baos
+                }
+                def encryptOutput = baos.toString('UTF-8')
+                def encMatcher = (encryptOutput =~ /The encrypted password: (.+)/)
+                def hashMatcher = (encryptOutput =~ /The master password hash is: (.+)/)
+                if (!encMatcher.find() || !hashMatcher.find()) {
+                    throw new GradleException("Failed to encrypt schema password. Encryptor output:\n${encryptOutput}")
+                }
+                encryptedPassword = encMatcher.group(1).trim()
+                masterPasswordHash = hashMatcher.group(1).trim()
+                logger.lifecycle('Encrypted schema password with DatabasePasswordEncryptor')
+            }
+
+            def adminSql
+            try {
+                adminSql = Sql.newInstance(adminBaseUrl, adminUser.toString(), adminPassword.toString(), driverClass)
+            } catch (Exception e) {
+                throw new GradleException("Cannot connect to database server at ${adminBaseUrl}: ${e.message}", e)
+            }
+            try {
+                if (dbType == 'postgresql') {
+                    def exists = adminSql.firstRow('SELECT 1 AS ok FROM pg_database WHERE datname = ?', [asJdbcString(schemaName)])
+                    if (exists != null) {
+                        logger.lifecycle("Database '${schemaName}' already exists; continuing with registration")
+                    } else {
+                        adminSql.execute('CREATE DATABASE ' + asJdbcString(schemaName))
+                        logger.lifecycle("Created database '${schemaName}' (as user '${adminUser}')")
+                    }
+                } else {
+                    adminSql.execute('CREATE DATABASE IF NOT EXISTS ' + quoteIdent(schemaName) + ' CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci')
+                    logger.lifecycle("Ensured database '${schemaName}' exists (as user '${adminUser}')")
+                }
+            } catch (Exception e) {
+                def hint = ''
+                if (e.message?.toLowerCase()?.contains('permission denied') || e.message?.toLowerCase()?.contains('access denied')) {
+                    hint = """
+
+User '${adminUser}' cannot CREATE DATABASE. Options:
+  1) Grant privilege (PostgreSQL):  ALTER USER ${adminUser} WITH CREATEDB;
+  2) Create DB with a privileged user, then re-run this task (it continues if the DB already exists):
+       ./gradlew :fineract-provider:createPGDB -PdbName=${schemaName}
+     or:  psql -U postgres -c "CREATE DATABASE ${schemaName};"
+  3) Re-run with admin credentials that have CREATEDB:
+       ./gradlew :fineract-provider:createNewTenant -PtenantIdentifier=${identifier} -PtenantAdminUser=postgres -PtenantAdminPassword=<password>
+"""
+                }
+                throw new GradleException("Failed to create database '${schemaName}'. Check DB create permissions: ${e.message}${hint}", e)
+            } finally {
+                adminSql.close()
+            }
+
+            def poolInitial = defaultConn?.pool_initial_size ?: 5
+            def poolValidation = defaultConn?.pool_validation_interval ?: 30000
+            def poolRemoveAbandoned = defaultConn?.pool_remove_abandoned ?: 1
+            def poolRemoveAbandonedTimeout = defaultConn?.pool_remove_abandoned_timeout ?: 60
+            def poolLogAbandoned = defaultConn?.pool_log_abandoned ?: 1
+            def poolAbandonPct = defaultConn?.pool_abandon_when_percentage_full ?: 50
+            def poolTestOnBorrow = defaultConn?.pool_test_on_borrow ?: 1
+            def poolMaxActive = defaultConn?.pool_max_active ?: 40
+            def poolMinIdle = defaultConn?.pool_min_idle ?: 20
+            def poolMaxIdle = defaultConn?.pool_max_idle ?: 10
+            def poolSuspect = defaultConn?.pool_suspect_timeout ?: 60
+            def poolEviction = defaultConn?.pool_time_between_eviction_runs_millis ?: 34000
+            def poolMinEvictable = defaultConn?.pool_min_evictable_idle_time_millis ?: 60000
+            def connectionParams = asJdbcString(defaultConn?.schema_connection_parameters)
+
+            try {
+                tenantsSql.withTransaction {
+                    def connectionParamsList = [
+                            asJdbcString(host), asJdbcString(schemaName), asJdbcString(port),
+                            asJdbcString(schemaUsername), asJdbcString(encryptedPassword),
+                            poolInitial, poolValidation, poolRemoveAbandoned,
+                            poolRemoveAbandonedTimeout, poolLogAbandoned, poolAbandonPct,
+                            poolTestOnBorrow, poolMaxActive, poolMinIdle, poolMaxIdle, poolSuspect,
+                            poolEviction, poolMinEvictable, connectionParams,
+                            asJdbcString(masterPasswordHash)
+                    ]
+                    if (dbType == 'postgresql') {
+                        def inserted = tenantsSql.firstRow('''
+                            INSERT INTO tenant_server_connections (
+                                schema_server, schema_name, schema_server_port, schema_username, schema_password,
+                                auto_update, pool_initial_size, pool_validation_interval, pool_remove_abandoned,
+                                pool_remove_abandoned_timeout, pool_log_abandoned, pool_abandon_when_percentage_full,
+                                pool_test_on_borrow, pool_max_active, pool_min_idle, pool_max_idle, pool_suspect_timeout,
+                                pool_time_between_eviction_runs_millis, pool_min_evictable_idle_time_millis,
+                                schema_connection_parameters, master_password_hash
+                            ) VALUES (
+                                ?, ?, ?, ?, ?,
+                                1, ?, ?, ?,
+                                ?, ?, ?,
+                                ?, ?, ?, ?, ?,
+                                ?, ?,
+                                ?, ?
+                            ) RETURNING id
+                            ''', connectionParamsList)
+                        connectionId = inserted.id
+                    } else {
+                        def keys = tenantsSql.executeInsert('''
+                            INSERT INTO tenant_server_connections (
+                                schema_server, schema_name, schema_server_port, schema_username, schema_password,
+                                auto_update, pool_initial_size, pool_validation_interval, pool_remove_abandoned,
+                                pool_remove_abandoned_timeout, pool_log_abandoned, pool_abandon_when_percentage_full,
+                                pool_test_on_borrow, pool_max_active, pool_min_idle, pool_max_idle, pool_suspect_timeout,
+                                pool_time_between_eviction_runs_millis, pool_min_evictable_idle_time_millis,
+                                schema_connection_parameters, master_password_hash
+                            ) VALUES (
+                                ?, ?, ?, ?, ?,
+                                1, ?, ?, ?,
+                                ?, ?, ?,
+                                ?, ?, ?, ?, ?,
+                                ?, ?,
+                                ?, ?
+                            )
+                            ''', connectionParamsList)
+                        connectionId = keys[0][0]
+                    }
+
+                    tenantsSql.executeInsert('''
+                        INSERT INTO tenants (identifier, name, timezone_id, oltp_id, report_id)
+                        VALUES (?, ?, ?, ?, ?)
+                        ''', [asJdbcString(identifier), asJdbcString(tenantDisplayName), asJdbcString(timezoneId), connectionId, connectionId])
+                }
+            } catch (GradleException ge) {
+                throw ge
+            } catch (Exception e) {
+                throw new GradleException("Failed to register tenant in fineract_tenants: ${e.message}", e)
+            }
+        } finally {
+            tenantsSql.close()
+        }
+
+        logger.lifecycle('')
+        logger.lifecycle("Tenant '${identifier}' registered successfully.")
+        logger.lifecycle("  name         : ${tenantDisplayName}")
+        logger.lifecycle("  schema/DB    : ${schemaName}")
+        logger.lifecycle("  connection id: ${connectionId}")
+        logger.lifecycle("  timezone     : ${timezoneId}")
+        logger.lifecycle('')
+        logger.lifecycle('NEXT STEP: Restart Fineract (e.g. ./gradlew :fineract-provider:bootRun or devRun)')
+        logger.lifecycle("so TenantDatabaseUpgradeService can Liquibase-migrate '${schemaName}'.")
+        logger.lifecycle("Then call APIs with header: Fineract-Platform-TenantId: ${identifier}")
+    }
+}
+
 tasks.named('sourcesJar') {
     dependsOn(processResources, generateGitProperties, resolve)
     mustRunAfter(processResources, generateGitProperties, resolve)

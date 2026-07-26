@@ -225,9 +225,12 @@ public class JournalEntriesApiResource {
     @Path("{transactionId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update Running balances for Journal Entries", tags = {
-            "Journal Entries" }, description = "This API calculates the running balances for office. If office ID not provided this API calculates running balances for all offices. \n"
-                    + "Mandatory Fields\n" + "officeId")
+    @Operation(summary = "Reverse journal entries or update narration", tags = {
+            "Journal Entries" }, description = "Use command=reverse to reverse an unreversed manual journal transaction.\n"
+                    + "Use command=updateNarration to update only the narration (comments/description) on all unreversed "
+                    + "manual journal lines for the given transactionId (system-generated entries are not editable). "
+                    + "Requires UPDATE_JOURNALENTRY permission.\n\n"
+                    + "updateNarration Mandatory Fields\n" + "comments (max 500 characters)")
     @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdResponse.class)))
     public String createReversalJournalEntry(@Parameter(hidden = true) final String jsonRequestBody,
@@ -237,6 +240,10 @@ public class JournalEntriesApiResource {
         if (is(commandParam, "reverse")) {
             final CommandWrapper commandRequest = new CommandWrapperBuilder().reverseJournalEntry(transactionId).withJson(jsonRequestBody)
                     .build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        } else if (is(commandParam, "updateNarration")) {
+            final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryNarration(transactionId)
+                    .withJson(jsonRequestBody).build();
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);
