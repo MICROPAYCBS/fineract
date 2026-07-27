@@ -37,6 +37,12 @@ public class UpdateJournalEntryCommandHandler implements NewCommandSourceHandler
     @Transactional
     @Override
     public CommandProcessingResult processCommand(final JsonCommand command) {
+        if (command.parameterExists("entries")) {
+            return this.writePlatformService.updateJournalEntryLineNarrations(command);
+        }
+        if (command.entityId() != null) {
+            return this.writePlatformService.updateJournalEntryLineNarration(command);
+        }
         return this.writePlatformService.updateJournalEntryNarration(command);
     }
 }

@@ -98,6 +98,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                     .append(" journalEntry.type_enum as entryType,journalEntry.amount as amount, journalEntry.transaction_id as transactionId,")
                     .append(" journalEntry.entity_type_enum as entityType, journalEntry.entity_id as entityId, creatingUser.id as createdByUserId, ")
                     .append(" creatingUser.username as createdByUserName, journalEntry.description as comments, ")
+                    .append(" journalEntry.transaction_comment as transactionComments, ")
                     .append(" journalEntry.submitted_on_date as submittedOnDate, journalEntry.reversed as reversed, ")
                     .append(" journalEntry.currency_code as currencyCode, curr.name as currencyName, curr.internationalized_name_code as currencyNameCode, ")
                     .append(" curr.display_symbol as currencyDisplaySymbol, curr.decimal_places as currencyDigits, curr.currency_multiplesof as inMultiplesOf, ")
@@ -163,6 +164,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             final LocalDate submittedOnDate = JdbcSupport.getLocalDate(rs, "submittedOnDate");
             final String createdByUserName = rs.getString("createdByUserName");
             final String comments = rs.getString("comments");
+            final String transactionComments = rs.getString("transactionComments");
             final Boolean reversed = rs.getBoolean("reversed");
             final String referenceNumber = rs.getString("referenceNumber");
             BigDecimal officeRunningBalance = null;
@@ -233,10 +235,12 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             final Long departmentId = JdbcSupport.getLong(rs, "departmentId");
             final String departmentName = rs.getString("departmentName");
 
-            return new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glCode, accountType, transactionDate,
-                    entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, submittedOnDate,
+            final JournalEntryData data = new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glCode, accountType,
+                    transactionDate, entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, submittedOnDate,
                     createdByUserName, comments, reversed, referenceNumber, officeRunningBalance, organizationRunningBalance,
                     runningBalanceComputed, transactionDetailData, currency, departmentId, departmentName, externalAssetOwner);
+            data.setTransactionComments(transactionComments);
+            return data;
         }
     }
 

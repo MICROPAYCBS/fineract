@@ -82,8 +82,8 @@ public class JournalEntriesApiResource {
 
     private static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList("id", "officeId", "officeName", "glAccountName",
             "glAccountId", "glAccountCode", "glAccountType", "transactionDate", "entryType", "amount", "transactionId", "manualEntry",
-            "entityType", "entityId", "createdByUserId", "createdDate", "submittedOnDate", "createdByUserName", "comments", "reversed",
-            "referenceNumber", "currency", "departmentId", "departmentName", "transactionDetails"));
+            "entityType", "entityId", "createdByUserId", "createdDate", "submittedOnDate", "createdByUserName", "comments",
+            "transactionComments", "reversed", "referenceNumber", "currency", "departmentId", "departmentName", "transactionDetails"));
 
     private static final String RESOURCE_NAME_FOR_PERMISSION = "JOURNALENTRY";
 
@@ -225,12 +225,15 @@ public class JournalEntriesApiResource {
     @Path("{transactionId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Reverse journal entries or update narration", tags = {
+    @Operation(summary = "Reverse journal entries or update narrations", tags = {
             "Journal Entries" }, description = "Use command=reverse to reverse an unreversed manual journal transaction.\n"
-                    + "Use command=updateNarration to update only the narration (comments/description) on all unreversed "
-                    + "manual journal lines for the given transactionId (system-generated entries are not editable). "
-                    + "Requires UPDATE_JOURNALENTRY permission.\n\n"
-                    + "updateNarration Mandatory Fields\n" + "comments (max 500 characters)")
+                    + "Use command=updateNarration to update the shared transactionComments on all unreversed manual lines "
+                    + "(does not change per-line comments).\n"
+                    + "Use command=updateLineNarrations to update per-line comments for specific entry ids in the transaction.\n"
+                    + "System-generated entries are not editable. Requires UPDATE_JOURNALENTRY permission.\n\n"
+                    + "updateNarration Mandatory Fields\n" + "transactionComments (max 500 characters)\n\n"
+                    + "updateLineNarrations Mandatory Fields\n"
+                    + "entries[{id, comments}] — each comments max 500 characters")
     @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdResponse.class)))
     public String createReversalJournalEntry(@Parameter(hidden = true) final String jsonRequestBody,
@@ -245,10 +248,35 @@ public class JournalEntriesApiResource {
             final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryNarration(transactionId)
                     .withJson(jsonRequestBody).build();
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        } else if (is(commandParam, "updateLineNarrations")) {
+            final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryLineNarrations(transactionId)
+                    .withJson(jsonRequestBody).build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }
 
+        return this.apiJsonSerializerService.serialize(result);
+    }
+
+    @POST
+    @Path("entries/{journalEntryId}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Update a single journal line narration", tags = {
+            "Journal Entries" }, description = "Updates per-line comments (description) for one unreversed manual journal entry line. "
+                    + "Requires UPDATE_JOURNALENTRY permission.\n\n" + "Mandatory Fields\n" + "comments (max 500 characters)")
+    @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesLineNarrationRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdResponse.class)))
+    public String updateJournalEntryLineNarration(@Parameter(hidden = true) final String jsonRequestBody,
+            @PathParam("journalEntryId") @Parameter(description = "journalEntryId") final Long journalEntryId,
+            @QueryParam("command") @Parameter(description = "command") final String commandParam) {
+        if (!is(commandParam, "updateLineNarration")) {
+            throw new UnrecognizedQueryParamException("command", commandParam);
+        }
+        final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryLineNarration(journalEntryId)
+                .withJson(jsonRequestBody).build();
+        final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         return this.apiJsonSerializerService.serialize(result);
     }
 

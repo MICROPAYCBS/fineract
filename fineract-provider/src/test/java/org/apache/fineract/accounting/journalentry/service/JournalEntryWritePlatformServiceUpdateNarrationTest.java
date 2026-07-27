@@ -36,6 +36,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.fineract.accounting.closure.domain.GLClosureRepository;
 import org.apache.fineract.accounting.financialactivityaccount.domain.FinancialActivityAccountRepositoryWrapper;
 import org.apache.fineract.accounting.glaccount.domain.GLAccount;
@@ -71,6 +72,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class JournalEntryWritePlatformServiceUpdateNarrationTest {
@@ -145,63 +147,115 @@ class JournalEntryWritePlatformServiceUpdateNarrationTest {
     }
 
     @Test
-    void updatesDescriptionOnAllUnreversedLines() {
-        final JournalEntry debit = journalEntry(JournalEntryType.DEBIT, "old debit");
-        final JournalEntry credit = journalEntry(JournalEntryType.CREDIT, "old credit");
+    void updateNarrationUpdatesTransactionCommentOnly() {
+        final JournalEntry debit = journalEntry(101L, JournalEntryType.DEBIT, "IT Salaries", "Old month");
+        final JournalEntry credit = journalEntry(102L, JournalEntryType.CREDIT, "Ops Salaries", "Old month");
         when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID))
                 .thenReturn(List.of(debit, credit));
         when(helper.persistJournalEntry(any(JournalEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        final CommandProcessingResult result = underTest.updateJournalEntryNarration(command("{\"comments\":\"Corrected narration\"}"));
+        final CommandProcessingResult result = underTest
+                .updateJournalEntryNarration(txCommand("{\"transactionComments\":\"January Salaries\"}"));
 
         assertThat(result.getTransactionId()).isEqualTo(TRANSACTION_ID);
-        assertThat(debit.getDescription()).isEqualTo("Corrected narration");
-        assertThat(credit.getDescription()).isEqualTo("Corrected narration");
+        assertThat(debit.getTransactionComment()).isEqualTo("January Salaries");
+        assertThat(credit.getTransactionComment()).isEqualTo("January Salaries");
+        assertThat(debit.getDescription()).isEqualTo("IT Salaries");
+        assertThat(credit.getDescription()).isEqualTo("Ops Salaries");
         verify(helper, times(2)).persistJournalEntry(any(JournalEntry.class));
     }
 
     @Test
+    void updateLineNarrationUpdatesDescriptionOnly() {
+        final JournalEntry debit = journalEntry(101L, JournalEntryType.DEBIT, "old", "January Salaries");
+        when(glJournalEntryRepository.findById(101L)).thenReturn(Optional.of(debit));
+        when(helper.persistJournalEntry(any(JournalEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        final CommandProcessingResult result = underTest
+                .updateJournalEntryLineNarration(lineCommand(101L, "{\"comments\":\"IT Salaries\"}"));
+
+        assertThat(result.getResourceId()).isEqualTo(101L);
+        assertThat(debit.getDescription()).isEqualTo("IT Salaries");
+        assertThat(debit.getTransactionComment()).isEqualTo("January Salaries");
+    }
+
+    @Test
+    void updateLineNarrationsBatchUpdatesMatchingLines() {
+        final JournalEntry debit = journalEntry(101L, JournalEntryType.DEBIT, "old1", "January Salaries");
+        final JournalEntry credit = journalEntry(102L, JournalEntryType.CREDIT, "old2", "January Salaries");
+        when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID))
+                .thenReturn(List.of(debit, credit));
+        when(helper.persistJournalEntry(any(JournalEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        underTest.updateJournalEntryLineNarrations(txCommand(
+                "{\"entries\":[{\"id\":101,\"comments\":\"IT Salaries\"},{\"id\":102,\"comments\":\"Ops Salaries\"}]}"));
+
+        assertThat(debit.getDescription()).isEqualTo("IT Salaries");
+        assertThat(credit.getDescription()).isEqualTo("Ops Salaries");
+        assertThat(debit.getTransactionComment()).isEqualTo("January Salaries");
+    }
+
+    @Test
     void failsWhenTransactionHasNoUnreversedManualEntries() {
-        // Covers missing, reversed, and system-generated (non-manual) transactions
         when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID))
                 .thenReturn(Collections.emptyList());
 
-        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(command("{\"comments\":\"x\"}")))
+        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(txCommand("{\"transactionComments\":\"x\"}")))
                 .isInstanceOf(JournalEntriesNotFoundException.class);
         verify(helper, never()).persistJournalEntry(any());
     }
 
     @Test
-    void rejectsUnsupportedParameters() {
-        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(command("{\"comments\":\"ok\",\"officeId\":1}")))
+    void rejectsUnsupportedParametersOnTransactionNarration() {
+        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(txCommand("{\"transactionComments\":\"ok\",\"officeId\":1}")))
                 .isInstanceOf(UnsupportedParameterException.class);
         verify(glJournalEntryRepository, never()).findUnReversedManualJournalEntriesByTransactionId(any());
     }
 
     @Test
-    void rejectsOversizedComments() {
+    void rejectsOversizedTransactionComments() {
         final String tooLong = "x".repeat(501);
 
-        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(command("{\"comments\":\"" + tooLong + "\"}")))
+        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(txCommand("{\"transactionComments\":\"" + tooLong + "\"}")))
                 .isInstanceOf(PlatformApiDataValidationException.class);
         verify(glJournalEntryRepository, never()).findUnReversedManualJournalEntriesByTransactionId(eq(TRANSACTION_ID));
     }
 
     @Test
-    void rejectsMissingComments() {
-        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(command("{}")))
+    void rejectsMissingTransactionComments() {
+        assertThatThrownBy(() -> underTest.updateJournalEntryNarration(txCommand("{}")))
                 .isInstanceOf(PlatformApiDataValidationException.class);
     }
 
-    private JsonCommand command(final String json) {
+    @Test
+    void rejectsSystemGeneratedLineNarration() {
+        final JournalEntry systemLine = journalEntry(101L, JournalEntryType.DEBIT, "x", null);
+        ReflectionTestUtils.setField(systemLine, "manualEntry", false);
+        when(glJournalEntryRepository.findById(101L)).thenReturn(Optional.of(systemLine));
+
+        assertThatThrownBy(() -> underTest.updateJournalEntryLineNarration(lineCommand(101L, "{\"comments\":\"nope\"}")))
+                .isInstanceOf(JournalEntriesNotFoundException.class);
+        verify(helper, never()).persistJournalEntry(any());
+    }
+
+    private JsonCommand txCommand(final String json) {
         return JsonCommand.from(json, JsonParser.parseString(json), fromApiJsonHelper, "JOURNALENTRY", null, null, null, null, null, null,
                 TRANSACTION_ID, "/journalentries/" + TRANSACTION_ID, null, null, null, null, null);
     }
 
-    private JournalEntry journalEntry(final JournalEntryType type, final String description) {
+    private JsonCommand lineCommand(final Long journalEntryId, final String json) {
+        return JsonCommand.from(json, JsonParser.parseString(json), fromApiJsonHelper, "JOURNALENTRY", journalEntryId, null, null, null,
+                null, null, null, "/journalentries/entries/" + journalEntryId, null, null, null, null, null);
+    }
+
+    private JournalEntry journalEntry(final Long id, final JournalEntryType type, final String description,
+            final String transactionComment) {
         final Office office = Office.headOffice("HO", LocalDate.now(ZoneId.systemDefault()), null);
         final GLAccount glAccount = mock(GLAccount.class);
-        return JournalEntry.createNew(office, null, glAccount, "USD", TRANSACTION_ID, true, LocalDate.now(ZoneId.systemDefault()), type,
-                BigDecimal.TEN, description, null, null, null, null, null, null, null);
+        final JournalEntry entry = JournalEntry.createNew(office, null, glAccount, "USD", TRANSACTION_ID, true,
+                LocalDate.now(ZoneId.systemDefault()), type, BigDecimal.TEN, description, null, null, null, null, null, null, null);
+        entry.updateTransactionComment(transactionComment);
+        ReflectionTestUtils.setField(entry, "id", id);
+        return entry;
     }
 }

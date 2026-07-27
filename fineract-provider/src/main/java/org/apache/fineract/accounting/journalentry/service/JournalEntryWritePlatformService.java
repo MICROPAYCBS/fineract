@@ -38,6 +38,10 @@ public interface JournalEntryWritePlatformService {
 
     CommandProcessingResult updateJournalEntryNarration(JsonCommand command);
 
+    CommandProcessingResult updateJournalEntryLineNarration(JsonCommand command);
+
+    CommandProcessingResult updateJournalEntryLineNarrations(JsonCommand command);
+
     void createJournalEntriesForLoan(AccountingBridgeDataDTO accountingBridgeData);
 
     void createJournalEntriesForSavings(Map<String, Object> accountingBridgeData);

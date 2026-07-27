@@ -365,13 +365,15 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
                 .build();
     }
 
+    private static final String PARAM_TRANSACTION_COMMENTS = "transactionComments";
+    private static final String PARAM_ENTRIES = "entries";
+
     @Transactional
     @Override
     public CommandProcessingResult updateJournalEntryNarration(final JsonCommand command) {
         final String transactionId = command.getTransactionId();
-        final String comments = validateAndExtractNarration(command.json());
+        final String transactionComments = validateAndExtractTransactionComments(command.json());
 
-        // Narration edits are limited to manual journal entries (same scope as reverse)
         final List<JournalEntry> journalEntries = this.glJournalEntryRepository
                 .findUnReversedManualJournalEntriesByTransactionId(transactionId);
         if (journalEntries == null || journalEntries.isEmpty()) {
@@ -379,6 +381,73 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         }
 
         for (final JournalEntry journalEntry : journalEntries) {
+            journalEntry.updateTransactionComment(transactionComments);
+            this.helper.persistJournalEntry(journalEntry);
+        }
+
+        return new CommandProcessingResultBuilder() //
+                .withTransactionId(transactionId) //
+                .build();
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult updateJournalEntryLineNarration(final JsonCommand command) {
+        final Long journalEntryId = command.entityId();
+        final String comments = validateAndExtractLineComments(command.json());
+
+        final JournalEntry journalEntry = this.glJournalEntryRepository.findById(journalEntryId)
+                .orElseThrow(() -> new JournalEntriesNotFoundException(journalEntryId));
+        validateManualUnreversedLine(journalEntry, journalEntryId);
+
+        journalEntry.updateDescription(comments);
+        this.helper.persistJournalEntry(journalEntry);
+
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(journalEntryId) //
+                .withTransactionId(journalEntry.getTransactionId()) //
+                .build();
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult updateJournalEntryLineNarrations(final JsonCommand command) {
+        final String transactionId = command.getTransactionId();
+        final List<JournalEntry> manualEntries = this.glJournalEntryRepository
+                .findUnReversedManualJournalEntriesByTransactionId(transactionId);
+        if (manualEntries == null || manualEntries.isEmpty()) {
+            throw new JournalEntriesNotFoundException(transactionId);
+        }
+
+        final Map<Long, JournalEntry> byId = new HashMap<>();
+        for (final JournalEntry entry : manualEntries) {
+            byId.put(entry.getId(), entry);
+        }
+
+        final JsonElement element = this.fromApiJsonHelper.parse(command.json());
+        validateLineNarrationsPayload(command.json(), element);
+
+        final com.google.gson.JsonArray entriesArray = element.getAsJsonObject().getAsJsonArray(PARAM_ENTRIES);
+        for (final JsonElement entryElement : entriesArray) {
+            final JsonElement idElement = entryElement.getAsJsonObject().get("id");
+            final Long lineId = idElement == null || idElement.isJsonNull() ? null : idElement.getAsLong();
+            final String comments = this.fromApiJsonHelper.extractStringNamed(JournalEntryJsonInputParams.COMMENTS.getValue(),
+                    entryElement);
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("GLJournalEntry");
+            baseDataValidator.reset().parameter("id").value(lineId).notNull().integerGreaterThanZero();
+            baseDataValidator.reset().parameter(JournalEntryJsonInputParams.COMMENTS.getValue()).value(comments).notNull()
+                    .notExceedingLengthOf(500);
+            if (!dataValidationErrors.isEmpty()) {
+                throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
+                        dataValidationErrors);
+            }
+
+            final JournalEntry journalEntry = byId.get(lineId);
+            if (journalEntry == null) {
+                throw new JournalEntriesNotFoundException(transactionId + ":" + lineId);
+            }
             journalEntry.updateDescription(comments);
             this.helper.persistJournalEntry(journalEntry);
         }
@@ -388,7 +457,36 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
                 .build();
     }
 
-    private String validateAndExtractNarration(final String json) {
+    private void validateManualUnreversedLine(final JournalEntry journalEntry, final Long journalEntryId) {
+        if (!journalEntry.isManualEntry() || journalEntry.isReversed()) {
+            throw new JournalEntriesNotFoundException(journalEntryId);
+        }
+    }
+
+    private String validateAndExtractTransactionComments(final String json) {
+        if (StringUtils.isBlank(json)) {
+            throw new InvalidJsonException();
+        }
+
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+        final Set<String> supportedParameters = new HashSet<>();
+        supportedParameters.add(PARAM_TRANSACTION_COMMENTS);
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, supportedParameters);
+
+        final JsonElement element = this.fromApiJsonHelper.parse(json);
+        final String transactionComments = this.fromApiJsonHelper.extractStringNamed(PARAM_TRANSACTION_COMMENTS, element);
+
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("GLJournalEntry");
+        baseDataValidator.reset().parameter(PARAM_TRANSACTION_COMMENTS).value(transactionComments).notNull().notExceedingLengthOf(500);
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
+                    dataValidationErrors);
+        }
+        return transactionComments;
+    }
+
+    private String validateAndExtractLineComments(final String json) {
         if (StringUtils.isBlank(json)) {
             throw new InvalidJsonException();
         }
@@ -410,6 +508,28 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
                     dataValidationErrors);
         }
         return comments;
+    }
+
+    private void validateLineNarrationsPayload(final String json, final JsonElement element) {
+        if (StringUtils.isBlank(json)) {
+            throw new InvalidJsonException();
+        }
+        final Type typeOfMap = new TypeToken<Map<String, Object>>() {}.getType();
+        final Set<String> supportedParameters = new HashSet<>();
+        supportedParameters.add(PARAM_ENTRIES);
+        this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, supportedParameters);
+
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("GLJournalEntry");
+        if (element == null || !element.isJsonObject() || !element.getAsJsonObject().has(PARAM_ENTRIES)
+                || !element.getAsJsonObject().get(PARAM_ENTRIES).isJsonArray()
+                || element.getAsJsonObject().getAsJsonArray(PARAM_ENTRIES).isEmpty()) {
+            baseDataValidator.reset().parameter(PARAM_ENTRIES).failWithCode("must.not.be.empty");
+        }
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
+                    dataValidationErrors);
+        }
     }
 
     @Override
@@ -740,14 +860,15 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
                         singleDebitOrCreditEntryCommand.getDepartmentId(), office.getId(), transactionDate);
             }
 
-            String comments = command.getComments();
-            if (!StringUtils.isBlank(singleDebitOrCreditEntryCommand.getComments())) {
-                comments = singleDebitOrCreditEntryCommand.getComments();
-            }
+            // Top-level comments = shared transaction memo; per-line comments = line description only
+            final String transactionComment = command.getComments();
+            final String lineComments = StringUtils.isBlank(singleDebitOrCreditEntryCommand.getComments()) ? null
+                    : singleDebitOrCreditEntryCommand.getComments();
 
             final JournalEntry glJournalEntry = JournalEntry.createNew(office, paymentDetail, glAccount, currencyCode, transactionId,
-                    manualEntry, transactionDate, type, singleDebitOrCreditEntryCommand.getAmount(), comments, null, null, referenceNumber,
-                    null, null, null, null, singleDebitOrCreditEntryCommand.getDepartmentId());
+                    manualEntry, transactionDate, type, singleDebitOrCreditEntryCommand.getAmount(), lineComments, null, null,
+                    referenceNumber, null, null, null, null, singleDebitOrCreditEntryCommand.getDepartmentId());
+            glJournalEntry.updateTransactionComment(transactionComment);
             helper.persistJournalEntry(glJournalEntry);
 
             accountingService.createMappingToOwner(externalAssetOwner, glJournalEntry);
@@ -845,7 +966,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         }
         validateGLAccountForTransaction(contraAccount);
         final JournalEntryType contraType = getContraType(type);
-        String comments = command.getComments();
+        final String transactionComment = command.getComments();
 
         /** Validate current code is appropriate **/
         this.organisationCurrencyRepository.findOneWithNotFoundDetection(currencyCode);
@@ -856,17 +977,19 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
             validateGLAccountForTransaction(glAccount);
 
-            if (!StringUtils.isBlank(singleDebitOrCreditEntryCommand.getComments())) {
-                comments = singleDebitOrCreditEntryCommand.getComments();
-            }
+            final String lineComments = StringUtils.isBlank(singleDebitOrCreditEntryCommand.getComments()) ? null
+                    : singleDebitOrCreditEntryCommand.getComments();
 
             final JournalEntry glJournalEntry = JournalEntry.createNew(office, null, glAccount, currencyCode, transactionId, manualEntry,
-                    transactionDate, type, singleDebitOrCreditEntryCommand.getAmount(), comments, null, null, null, null, null, null, null);
+                    transactionDate, type, singleDebitOrCreditEntryCommand.getAmount(), lineComments, null, null, null, null, null, null,
+                    null);
+            glJournalEntry.updateTransactionComment(transactionComment);
             helper.persistJournalEntry(glJournalEntry);
 
             final JournalEntry contraEntry = JournalEntry.createNew(office, null, contraAccount, currencyCode, transactionId, manualEntry,
-                    transactionDate, contraType, singleDebitOrCreditEntryCommand.getAmount(), comments, null, null, null, null, null, null,
-                    null);
+                    transactionDate, contraType, singleDebitOrCreditEntryCommand.getAmount(), lineComments, null, null, null, null, null,
+                    null, null);
+            contraEntry.updateTransactionComment(transactionComment);
             helper.persistJournalEntry(contraEntry);
         }
     }

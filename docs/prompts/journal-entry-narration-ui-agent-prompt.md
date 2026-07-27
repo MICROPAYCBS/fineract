@@ -6,103 +6,119 @@ Copy everything below the line into the coding agent working on the frontend rep
 
 ## Task
 
-Add UI to **edit only the narration** of an existing **manual** journal transaction (all unreversed manual lines share one narration after save). Do **not** allow editing amounts, accounts, dates, offices, or other journal fields from this flow — correction of those remains **reverse + re-post**.
+Add UI to edit narrations on **manual** journal transactions:
 
-**System-generated** journal entries (loan/savings/etc. postings where `manualEntry === false`) must **not** offer Edit narration — the API rejects them the same as reverse does for non-manual txs.
+1. **Transaction narration** (shared) — `transactionComments` on all lines of a `transactionId`
+2. **Line narration** — per debit/credit `comments` (DB `description`)
 
-Extend the existing accounting journal-entries area. Reuse list/detail/reverse patterns already used under `/accounting/journal-entries`.
+Do **not** allow editing amounts, accounts, dates, offices, or other fields — those remain reverse + re-post.
 
-Backend lives in `MICROPAYCBS/fineract` (Micropay): `POST /journalentries/{transactionId}?command=updateNarration` + permission `UPDATE_JOURNALENTRY` (Liquibase `3091`).
+**System-generated** journals (`manualEntry === false`) must not offer edit actions.
+
+Backend: `MICROPAYCBS/fineract` — permission `UPDATE_JOURNALENTRY` (Liquibase `3091`), column `transaction_comment` (`3092`).
 
 ## Background
 
-Each journal **line** stores narration in DB column `description`, exposed in API/list payloads as **`comments`**. A single Fineract **transaction** (`transactionId`) has multiple debit/credit lines. The new API updates narration on **all unreversed manual** lines for that `transactionId` (`manual_entry = true` only).
+| Concept | API field | Storage |
+|---|---|---|
+| Shared memo for whole JE (e.g. "January Salaries") | `transactionComments` | `acc_gl_journal_entry.transaction_comment` (same on every line) |
+| Per debit/credit text (e.g. "IT Salaries") | `comments` | `acc_gl_journal_entry.description` |
 
-Not editable: reversed transactions, or system-generated transactions (no matching manual unreversed lines → not found).
+On **create**, top-level `comments` becomes `transactionComments`; each debit/credit `comments` becomes that line’s `comments`. Line comments may be omitted (null).
 
 ## Backend prerequisites
 
-- Tenant has applied Micropay Liquibase part `3091_add_update_journalentry_permission.xml`.
-- Roles that should edit narration have **`UPDATE_JOURNALENTRY`** (separate from `CREATE_JOURNALENTRY` / `REVERSE_JOURNALENTRY`).
-- Restart / migrate so permission exists before testing RBAC.
+- Liquibase `3091` + `3092` applied; roles granted `UPDATE_JOURNALENTRY`.
 
 ## API contract
 
-Base path: `/fineract-provider/api/v1`. Standard Fineract auth + `Fineract-Platform-TenantId`. Reuse `createFineractClient()` and existing journal-entry helpers (see `apps/web/src/actions/journal-entries.ts` patterns from reverse).
+Base path: `/fineract-provider/api/v1`. Auth + `Fineract-Platform-TenantId`. Reuse journal-entry helpers.
 
 | Endpoint | Method | Permission |
 |---|---|---|
 | `/journalentries/{transactionId}?command=updateNarration` | POST | `UPDATE_JOURNALENTRY` |
+| `/journalentries/{transactionId}?command=updateLineNarrations` | POST | `UPDATE_JOURNALENTRY` |
+| `/journalentries/entries/{journalEntryId}?command=updateLineNarration` | POST | `UPDATE_JOURNALENTRY` |
+| `/journalentries?transactionId=` | GET | `READ_JOURNALENTRY` |
 
-### Request body
-
-Only `comments` is allowed. Max length **500**. Required (including empty string if product allows clearing — send the key).
+### A) Shared transaction narration
 
 ```json
+POST /journalentries/{transactionId}?command=updateNarration
+{ "transactionComments": "January Salaries" }
+```
+
+Updates `transactionComments` on all unreversed **manual** lines. Does **not** change per-line `comments`.
+
+### B) Single line narration
+
+```json
+POST /journalentries/entries/{journalEntryId}?command=updateLineNarration
+{ "comments": "IT Salaries" }
+```
+
+`journalEntryId` = numeric line `id` from GET (not `transactionId`).
+
+### C) Batch line narrations
+
+```json
+POST /journalentries/{transactionId}?command=updateLineNarrations
 {
-  "comments": "Corrected narration for this journal transaction"
+  "entries": [
+    { "id": 101, "comments": "IT Salaries" },
+    { "id": 102, "comments": "Ops Salaries" }
+  ]
 }
 ```
 
-### Success
+Each `id` must belong to that unreversed manual transaction.
 
-Standard command result; includes `transactionId` (same as path). Refetch journal lines for that transaction after success.
+### Read
 
-### Errors (surface via toast / form)
+Each journal line in GET responses includes both:
 
-| Situation | Typical outcome |
+- `transactionComments` — show once in a transaction header
+- `comments` — show per row
+
+### Errors
+
+| Situation | Outcome |
 |---|---|
-| Missing / oversized `comments` | Validation envelope (`PlatformApiDataValidationException`) |
-| Extra JSON fields (e.g. `officeId`) | Unsupported parameter |
-| Unknown, fully reversed, or **system-generated** `transactionId` | Journal entries not found |
-| No permission | 403 / unauthorized |
-
-Related existing APIs (do not replace; keep as-is):
-
-| Endpoint | Purpose | Permission |
-|---|---|---|
-| `GET /journalentries?transactionId=` | Load lines for detail / dialog | `READ_JOURNALENTRY` |
-| `POST /journalentries/{transactionId}?command=reverse` | Reverse | `REVERSE_JOURNALENTRY` |
-| `POST /journalentries` | Create | `CREATE_JOURNALENTRY` |
+| Validation / length > 500 / unsupported params | Validation envelope |
+| Missing, reversed, or system-generated target | Not found |
+| No permission | 403 |
 
 ## UI behavior
 
-1. **Entry points** — On journal transaction detail (and optionally each row grouped by `transactionId` on the list):
-   - Show **Edit narration** when the user has `UPDATE_JOURNALENTRY`, the transaction is **manual** (`manualEntry === true` on the lines), **and** not reversed (`reversed === false`).
-   - Hide or disable when reversed; tooltip: “Reversed transactions cannot be edited — reverse creates a new transaction.”
-   - Hide or disable when system-generated (`manualEntry === false`); tooltip: “Only manually entered journal entries can have their narration edited.”
-2. **Dialog / drawer** — Single field labeled **Narration** (or Comments), prefilled from current `comments`/`description` (if lines differ, prefer the first unreversed manual line or the common value; after save they will match).
-   - Max length 500; client-side counter optional.
-   - Submit calls `updateNarration` with `transactionId` from the selected transaction (string id, **not** numeric journal entry line id).
-3. **After success** — Toast success; refetch `GET /journalentries?transactionId=…` (or invalidate the list query) so all lines show the new narration.
-4. **Do not** offer inline edit of amount, GL account, date, office, or department on this screen.
-5. **RBAC** — Gate control with `assertCan('UPDATE_JOURNALENTRY')` (or whatever helper mirrors `CREATE_JOURNALENTRY` / `REVERSE_JOURNALENTRY` on create/reverse). Users with only READ see narration as read-only.
+1. **Entry points** — On manual, unreversed transaction detail (and optionally list groups):
+   - **Edit transaction narration** → `updateNarration` with `transactionComments`
+   - **Edit line narration** (per row) → `updateLineNarration` or batch `updateLineNarrations`
+   - Hide/disable when `manualEntry === false` or `reversed === true`
+2. **Layout** — Header field for shared `transactionComments`; table columns include line `comments`
+3. **After success** — Toast; refetch `GET /journalentries?transactionId=…`
+4. **RBAC** — `assertCan('UPDATE_JOURNALENTRY')` for edit controls
 
 ## Implementation notes (mifos-web-next)
 
 | Area | Suggested path |
 |---|---|
-| Client helper | `apps/web/src/lib/fineract/journal-entries.ts` — e.g. `updateJournalEntryNarration(transactionId, { comments })` |
-| Server action | `apps/web/src/actions/journal-entries.ts` — e.g. `updateJournalEntryNarrationAction` with `assertCan` for `UPDATE_JOURNALENTRY` |
-| UI | Detail view / modal under `apps/web/src/app/(platform)/accounting/journal-entries/…` |
-| Types | Extend existing journal entry types; request body `{ comments: string }` |
-
-Reuse reverse’s `transactionId` plumbing (`revertJournalEntryTransaction` / similar) so path encoding of special transaction ids stays consistent.
+| Client | `updateJournalEntryNarration`, `updateJournalEntryLineNarration`, `updateJournalEntryLineNarrations` |
+| Actions | `apps/web/src/actions/journal-entries.ts` with `UPDATE_JOURNALENTRY` |
+| UI | Detail / modal under accounting journal-entries routes |
+| Types | Include `transactionComments` on journal entry DTOs |
 
 ## Acceptance checklist
 
-- [ ] User with `UPDATE_JOURNALENTRY` can open Edit narration on an unreversed **manual** transaction and save.
-- [ ] After save, all manual lines for that `transactionId` show the new comments/narration.
-- [ ] User without `UPDATE_JOURNALENTRY` does not see the action (or gets 403 if forced).
-- [ ] Reversed transaction: action hidden/disabled; API not called.
-- [ ] System-generated transaction (`manualEntry === false`): action hidden/disabled; API not called.
-- [ ] Validation: empty missing key / >500 chars / unsupported fields show clear errors.
-- [ ] Reverse and Create flows unchanged.
+- [ ] Shared narration edit updates `transactionComments` on all lines; line `comments` unchanged
+- [ ] Line edit updates only that row’s `comments`
+- [ ] Batch line edit works for multiple ids
+- [ ] System-generated / reversed: no edit actions
+- [ ] Create still sends top-level comments as shared memo and optional per-line comments
+- [ ] Reverse / create flows unchanged otherwise
 
 ## Out of scope
 
-- Editing narration on system-generated journal entries
-- Per-line different narrations after update (API sets one value on all unreversed manual lines)
+- Editing narration on system-generated journals
 - Editing amounts / accounts / dates in place
 - Maker-checker for `UPDATE_JOURNALENTRY`
-- New top-level nav item (stay inside journal entries)
+- New top-level nav item

@@ -56,7 +56,34 @@ final class JournalEntriesApiResourceSwagger {
         @Schema(description = "1")
         public Long officeId;
 
-        @Schema(example = "Corrected narration for this journal transaction", description = "Narration/description. Required for command=updateNarration (max 500). Optional for command=reverse.")
+        @Schema(example = "Reversal comments", description = "Optional for command=reverse.")
+        public String comments;
+
+        @Schema(example = "January Salaries", description = "Shared transaction memo. Required for command=updateNarration (max 500).")
+        public String transactionComments;
+
+        @Schema(description = "Required for command=updateLineNarrations")
+        public java.util.List<JournalEntryLineNarrationItem> entries;
+    }
+
+    @Schema(description = "JournalEntryLineNarrationItem")
+    public static final class JournalEntryLineNarrationItem {
+
+        private JournalEntryLineNarrationItem() {}
+
+        @Schema(example = "101")
+        public Long id;
+
+        @Schema(example = "IT Salaries")
+        public String comments;
+    }
+
+    @Schema(description = "PostJournalEntriesLineNarrationRequest")
+    public static final class PostJournalEntriesLineNarrationRequest {
+
+        private PostJournalEntriesLineNarrationRequest() {}
+
+        @Schema(example = "IT Salaries", description = "Per-line narration (max 500)")
         public String comments;
     }
 
@@ -167,8 +194,10 @@ final class JournalEntriesApiResourceSwagger {
         public boolean reversed;
         @Schema(example = "false")
         public boolean manualEntry;
-        @Schema(example = "Manual entry")
+        @Schema(example = "IT Salaries")
         public String comments;
+        @Schema(example = "January Salaries")
+        public String transactionComments;
         @Schema(example = "QWERTY")
         public String referenceNumber;
         @Schema(example = "1234.56")

@@ -2082,6 +2082,23 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder updateJournalEntryLineNarration(final Long journalEntryId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOURNALENTRY;
+        this.entityId = journalEntryId;
+        this.href = "/journalentries/entries/" + journalEntryId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateJournalEntryLineNarrations(final String transactionId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOURNALENTRY;
+        this.entityId = null;
+        this.transactionId = transactionId;
+        this.href = "/journalentries/" + transactionId;
+        return this;
+    }
+
     public CommandWrapperBuilder updateRunningBalanceForJournalEntry() {
         this.actionName = ACTION_UPDATERUNNINGBALANCE;
         this.entityName = ENTITY_JOURNALENTRY;

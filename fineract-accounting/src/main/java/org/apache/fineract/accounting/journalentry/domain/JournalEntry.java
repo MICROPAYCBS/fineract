@@ -94,6 +94,10 @@ public class JournalEntry extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "description", length = 500)
     private String description;
 
+    /** Shared memo for all lines of the same transactionId (denormalized). */
+    @Column(name = "transaction_comment", length = 500)
+    private String transactionComment;
+
     @Column(name = "entity_type_enum", length = 50)
     private Integer entityType;
 
@@ -171,6 +175,10 @@ public class JournalEntry extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public void updateDescription(final String description) {
         this.description = StringUtils.defaultIfEmpty(description, null);
+    }
+
+    public void updateTransactionComment(final String transactionComment) {
+        this.transactionComment = StringUtils.defaultIfEmpty(transactionComment, null);
     }
 
 }

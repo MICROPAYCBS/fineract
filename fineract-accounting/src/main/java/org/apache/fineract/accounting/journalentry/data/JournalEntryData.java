@@ -66,6 +66,8 @@ public class JournalEntryData {
     @SuppressWarnings("unused")
     private String comments;
     @SuppressWarnings("unused")
+    private String transactionComments;
+    @SuppressWarnings("unused")
     private Boolean reversed;
     @SuppressWarnings("unused")
     private String referenceNumber;
