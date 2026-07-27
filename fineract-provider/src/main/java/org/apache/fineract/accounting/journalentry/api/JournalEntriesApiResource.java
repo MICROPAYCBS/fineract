@@ -197,9 +197,11 @@ public class JournalEntriesApiResource {
     @Operation(summary = "Create \"Balanced\" Journal Entries", tags = {
             "Journal Entries" }, description = "Note: A Balanced (simple) Journal entry would have atleast one \"Debit\" and one \"Credit\" entry whose amounts are equal \n"
                     + "Compound Journal entries may have \"n\" debits and \"m\" credits where both \"m\" and \"n\" are greater than 0 and the net sum or all debits and credits are equal \n\n"
+                    + "Inter-branch Journal entries: each debit/credit line may carry its own officeId (defaults to the header officeId). "
+                    + "All lines are posted under a single transactionId; when exactly two offices are left unbalanced, bridging legs on the configured inter-branch clearing account are added automatically \n\n"
                     + "\n" + "Mandatory Fields\n" + "officeId, transactionDate\n\n" + "\ncredits- glAccountId, amount, comments\n\n "
                     + "\ndebits-  glAccountId, amount, comments\n\n " + "\n" + "Optional Fields\n"
-                    + "paymentTypeId, accountNumber, checkNumber, routingCode, receiptNumber, bankNumber")
+                    + "paymentTypeId, accountNumber, checkNumber, routingCode, receiptNumber, bankNumber, officeId (per debit/credit line)")
     @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntryCommand.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesResponse.class)))
     public String createGLJournalEntry(@Parameter(hidden = true) final String jsonRequestBody,
@@ -232,8 +234,7 @@ public class JournalEntriesApiResource {
                     + "Use command=updateLineNarrations to update per-line comments for specific entry ids in the transaction.\n"
                     + "System-generated entries are not editable. Requires UPDATE_JOURNALENTRY permission.\n\n"
                     + "updateNarration Mandatory Fields\n" + "transactionComments (max 500 characters)\n\n"
-                    + "updateLineNarrations Mandatory Fields\n"
-                    + "entries[{id, comments}] — each comments max 500 characters")
+                    + "updateLineNarrations Mandatory Fields\n" + "entries[{id, comments}] — each comments max 500 characters")
     @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdResponse.class)))
     public String createReversalJournalEntry(@Parameter(hidden = true) final String jsonRequestBody,

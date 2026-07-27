@@ -131,8 +131,13 @@ public class JournalEntryCommandFromApiJsonDeserializer extends AbstractFromApiJ
                 departmentId = this.fromApiJsonHelper.extractLongNamed("departmentId", creditElement);
                 parametersPassedInForCreditsCommand.add("departmentId");
             }
+            Long officeId = null;
+            if (this.fromApiJsonHelper.parameterExists("officeId", creditElement)) {
+                officeId = this.fromApiJsonHelper.extractLongNamed("officeId", creditElement);
+                parametersPassedInForCreditsCommand.add("officeId");
+            }
 
-            debitOrCredits[i] = new SingleDebitOrCreditEntryCommand(glAccountId, amount, comments, departmentId,
+            debitOrCredits[i] = new SingleDebitOrCreditEntryCommand(glAccountId, amount, comments, departmentId, officeId,
                     parametersPassedInForCreditsCommand);
         }
         return debitOrCredits;

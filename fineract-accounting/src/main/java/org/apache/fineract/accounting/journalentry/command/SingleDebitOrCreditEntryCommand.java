@@ -34,6 +34,7 @@ public class SingleDebitOrCreditEntryCommand {
     private final BigDecimal amount;
     private final String comments;
     private final Long departmentId;
+    private final Long officeId;
 
     private final Set<String> parametersPassedInRequest;
 
@@ -51,5 +52,9 @@ public class SingleDebitOrCreditEntryCommand {
 
     public boolean isDepartmentIdChanged() {
         return this.parametersPassedInRequest.contains("departmentId");
+    }
+
+    public boolean isOfficeIdChanged() {
+        return this.parametersPassedInRequest.contains("officeId");
     }
 }

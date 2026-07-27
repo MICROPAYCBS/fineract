@@ -56,6 +56,8 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchGlAccountReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.investor.domain.ExternalAssetOwnerRepository;
 import org.apache.fineract.investor.service.AccountingService;
@@ -123,6 +125,10 @@ class JournalEntryWritePlatformServiceUpdateNarrationTest {
     private LoanTransactionRepository loanTransactionRepository;
     @Mock
     private OfficeDepartmentMappingValidator officeDepartmentMappingValidator;
+    @Mock
+    private InterBranchGlAccountReadService interBranchGlAccountReadService;
+    @Mock
+    private CrossBranchTransactionAccessService crossBranchTransactionAccessService;
 
     private JournalEntryWritePlatformServiceJpaRepositoryImpl underTest;
     private final FromJsonHelper fromApiJsonHelper = new FromJsonHelper();
@@ -130,15 +136,15 @@ class JournalEntryWritePlatformServiceUpdateNarrationTest {
     @BeforeEach
     void setUp() {
         final LocalDate today = LocalDate.of(2026, 7, 26);
-        ThreadLocalContextUtil.setBusinessDates(
-                new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, today, BusinessDateType.COB_DATE, today)));
+        ThreadLocalContextUtil
+                .setBusinessDates(new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, today, BusinessDateType.COB_DATE, today)));
         underTest = new JournalEntryWritePlatformServiceJpaRepositoryImpl(glClosureRepository, glAccountRepository,
                 glJournalEntryRepository, officeRepositoryWrapper, accountingProcessorForLoanFactory, accountingProcessorForSavingsFactory,
                 accountingProcessorForSharesFactory, helper, fromApiJsonDeserializer, fromApiJsonHelper, accountingRuleRepository,
                 glAccountReadPlatformService, organisationCurrencyRepository, context, paymentDetailWritePlatformService,
                 financialActivityAccountRepositoryWrapper, accountingProcessorForClientTransactions, configurationReadPlatformService,
                 accountingService, externalAssetOwnerRepository, loanAmortizationAllocationMappingRepository, loanTransactionRepository,
-                officeDepartmentMappingValidator);
+                officeDepartmentMappingValidator, interBranchGlAccountReadService, crossBranchTransactionAccessService);
     }
 
     @AfterEach
@@ -150,8 +156,7 @@ class JournalEntryWritePlatformServiceUpdateNarrationTest {
     void updateNarrationUpdatesTransactionCommentOnly() {
         final JournalEntry debit = journalEntry(101L, JournalEntryType.DEBIT, "IT Salaries", "Old month");
         final JournalEntry credit = journalEntry(102L, JournalEntryType.CREDIT, "Ops Salaries", "Old month");
-        when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID))
-                .thenReturn(List.of(debit, credit));
+        when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID)).thenReturn(List.of(debit, credit));
         when(helper.persistJournalEntry(any(JournalEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final CommandProcessingResult result = underTest
@@ -183,12 +188,11 @@ class JournalEntryWritePlatformServiceUpdateNarrationTest {
     void updateLineNarrationsBatchUpdatesMatchingLines() {
         final JournalEntry debit = journalEntry(101L, JournalEntryType.DEBIT, "old1", "January Salaries");
         final JournalEntry credit = journalEntry(102L, JournalEntryType.CREDIT, "old2", "January Salaries");
-        when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID))
-                .thenReturn(List.of(debit, credit));
+        when(glJournalEntryRepository.findUnReversedManualJournalEntriesByTransactionId(TRANSACTION_ID)).thenReturn(List.of(debit, credit));
         when(helper.persistJournalEntry(any(JournalEntry.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        underTest.updateJournalEntryLineNarrations(txCommand(
-                "{\"entries\":[{\"id\":101,\"comments\":\"IT Salaries\"},{\"id\":102,\"comments\":\"Ops Salaries\"}]}"));
+        underTest.updateJournalEntryLineNarrations(
+                txCommand("{\"entries\":[{\"id\":101,\"comments\":\"IT Salaries\"},{\"id\":102,\"comments\":\"Ops Salaries\"}]}"));
 
         assertThat(debit.getDescription()).isEqualTo("IT Salaries");
         assertThat(credit.getDescription()).isEqualTo("Ops Salaries");

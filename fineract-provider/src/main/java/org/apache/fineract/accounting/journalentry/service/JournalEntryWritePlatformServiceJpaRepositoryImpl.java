@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -79,12 +80,15 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchGlAccountReadService;
+import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.investor.domain.ExternalAssetOwner;
 import org.apache.fineract.investor.domain.ExternalAssetOwnerRepository;
@@ -97,6 +101,7 @@ import org.apache.fineract.organisation.monetary.domain.OrganisationCurrencyRepo
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.portfolio.PortfolioProductType;
+import org.apache.fineract.portfolio.department.service.OfficeDepartmentMappingValidator;
 import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeDataDTO;
 import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeLoanTransactionDTO;
 import org.apache.fineract.portfolio.loanaccount.data.ChargeTaxDetailDTO;
@@ -115,7 +120,6 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepositor
 import org.apache.fineract.portfolio.loanproduct.service.LoanEnumerations;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
-import org.apache.fineract.portfolio.department.service.OfficeDepartmentMappingValidator;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.NonTransientDataAccessException;
@@ -150,6 +154,8 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
     private final LoanAmortizationAllocationMappingRepository loanAmortizationAllocationMappingRepository;
     private final LoanTransactionRepository loanTransactionRepository;
     private final OfficeDepartmentMappingValidator officeDepartmentMappingValidator;
+    private final InterBranchGlAccountReadService interBranchGlAccountReadService;
+    private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
 
     @Transactional
     @Override
@@ -163,6 +169,16 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             final Office office = this.officeRepositoryWrapper.findOneWithNotFoundDetection(officeId);
             final Long accountRuleId = command.longValueOfParameterNamed(JournalEntryJsonInputParams.ACCOUNTING_RULE.getValue());
             final String currencyCode = command.stringValueOfParameterNamed(JournalEntryJsonInputParams.CURRENCY_CODE.getValue());
+
+            final Map<Long, Office> entryOffices = resolveEntryOffices(journalEntryCommand, office);
+            final boolean isInterBranch = entryOffices.size() > 1;
+            if (isInterBranch) {
+                if (accountRuleId != null) {
+                    throw new GeneralPlatformDomainRuleException("error.msg.glJournalEntry.interbranch.accounting.rule.not.supported",
+                            "Journal entries spanning multiple offices cannot be posted with an accounting rule.");
+                }
+                validateInterBranchJournalEntryAllowed(entryOffices.values());
+            }
 
             validateBusinessRulesForJournalEntries(journalEntryCommand);
 
@@ -244,6 +260,10 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
                 saveAllDebitOrCreditEntries(journalEntryCommand, office, paymentDetail, currencyCode, transactionDate,
                         journalEntryCommand.getCredits(), transactionId, JournalEntryType.CREDIT, referenceNumber, externalAssetOwner);
 
+                if (isInterBranch) {
+                    saveInterBranchClearingEntries(journalEntryCommand, office, entryOffices, currencyCode, transactionDate, transactionId,
+                            referenceNumber);
+                }
             }
 
             return new CommandProcessingResultBuilder() //
@@ -563,16 +583,22 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
         validateCommentForReversal(reversalComment);
 
-        // Before reversal validate accounting closure is done for that branch
-        // or not.
+        // Before reversal validate accounting closure is done for every branch involved in the transaction
+        // (inter-branch transactions carry entries in more than one office).
         final LocalDate journalEntriesTransactionDate = journalEntries.get(0).getTransactionDate();
-        final GLClosure latestGLClosureByBranch = this.glClosureRepository.getLatestGLClosureByBranch(officeId);
-        if (latestGLClosureByBranch != null) {
-            if (!DateUtils.isBefore(latestGLClosureByBranch.getClosingDate(), journalEntriesTransactionDate)) {
-                final String accountName = null;
-                final String accountGLCode = null;
-                throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.ACCOUNTING_CLOSED,
-                        latestGLClosureByBranch.getClosingDate(), accountName, accountGLCode);
+        final Set<Long> entryOfficeIds = new LinkedHashSet<>();
+        for (final JournalEntry journalEntry : journalEntries) {
+            entryOfficeIds.add(journalEntry.getOffice().getId());
+        }
+        for (final Long entryOfficeId : entryOfficeIds) {
+            final GLClosure latestGLClosureByBranch = this.glClosureRepository.getLatestGLClosureByBranch(entryOfficeId);
+            if (latestGLClosureByBranch != null) {
+                if (!DateUtils.isBefore(latestGLClosureByBranch.getClosingDate(), journalEntriesTransactionDate)) {
+                    final String accountName = null;
+                    final String accountGLCode = null;
+                    throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.ACCOUNTING_CLOSED,
+                            latestGLClosureByBranch.getClosingDate(), accountName, accountGLCode);
+                }
             }
         }
 
@@ -807,12 +833,14 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         if (DateUtils.isDateInTheFuture(transactionDate)) {
             throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.FUTURE_DATE, transactionDate, null, null);
         }
-        // shouldn't be before an accounting closure
-        final GLClosure latestGLClosure = this.glClosureRepository.getLatestGLClosureByBranch(command.getOfficeId());
-        if (latestGLClosure != null) {
-            if (!DateUtils.isBefore(latestGLClosure.getClosingDate(), transactionDate)) {
-                throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.ACCOUNTING_CLOSED, latestGLClosure.getClosingDate(),
-                        null, null);
+        // shouldn't be before an accounting closure of any office receiving entries
+        for (final Long entryOfficeId : collectEffectiveEntryOfficeIds(command)) {
+            final GLClosure latestGLClosure = this.glClosureRepository.getLatestGLClosureByBranch(entryOfficeId);
+            if (latestGLClosure != null) {
+                if (!DateUtils.isBefore(latestGLClosure.getClosingDate(), transactionDate)) {
+                    throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.ACCOUNTING_CLOSED, latestGLClosure.getClosingDate(),
+                            null, null);
+                }
             }
         }
 
@@ -826,6 +854,131 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         }
 
         checkDebitAndCreditAmounts(credits, debits);
+    }
+
+    /**
+     * Distinct offices that will receive journal entry lines: each line's explicit officeId, falling back to the header
+     * officeId for lines without one.
+     */
+    private Set<Long> collectEffectiveEntryOfficeIds(final JournalEntryCommand command) {
+        final Set<Long> officeIds = new LinkedHashSet<>();
+        addEffectiveLineOfficeIds(command.getDebits(), command.getOfficeId(), officeIds);
+        addEffectiveLineOfficeIds(command.getCredits(), command.getOfficeId(), officeIds);
+        if (officeIds.isEmpty() && command.getOfficeId() != null) {
+            officeIds.add(command.getOfficeId());
+        }
+        return officeIds;
+    }
+
+    private void addEffectiveLineOfficeIds(final SingleDebitOrCreditEntryCommand[] lines, final Long defaultOfficeId,
+            final Set<Long> officeIds) {
+        if (lines == null) {
+            return;
+        }
+        for (final SingleDebitOrCreditEntryCommand line : lines) {
+            final Long effectiveOfficeId = line.getOfficeId() != null ? line.getOfficeId() : defaultOfficeId;
+            if (effectiveOfficeId != null) {
+                officeIds.add(effectiveOfficeId);
+            }
+        }
+    }
+
+    private Map<Long, Office> resolveEntryOffices(final JournalEntryCommand command, final Office defaultOffice) {
+        final Map<Long, Office> offices = new LinkedHashMap<>();
+        for (final Long entryOfficeId : collectEffectiveEntryOfficeIds(command)) {
+            if (entryOfficeId.equals(defaultOffice.getId())) {
+                offices.put(entryOfficeId, defaultOffice);
+            } else {
+                offices.put(entryOfficeId, this.officeRepositoryWrapper.findOneWithNotFoundDetection(entryOfficeId));
+            }
+        }
+        return offices;
+    }
+
+    /**
+     * Inter-branch manual journal entries are allowed without extra checks when every target office falls inside the
+     * posting user's office hierarchy. Otherwise cross-branch servicing must be enabled and the user needs the
+     * TRANSACT_CROSSOFFICE permission.
+     */
+    private void validateInterBranchJournalEntryAllowed(final Collection<Office> offices) {
+        final AppUser user = this.context.authenticatedUser();
+        final String userHierarchy = user.getOffice().getHierarchy();
+        boolean allWithinUserHierarchy = true;
+        for (final Office entryOffice : offices) {
+            if (!entryOffice.getHierarchy().startsWith(userHierarchy)) {
+                allWithinUserHierarchy = false;
+                break;
+            }
+        }
+        if (allWithinUserHierarchy) {
+            return;
+        }
+        if (!this.crossBranchTransactionAccessService.isCrossBranchTransactionEnabledForCurrentUser()) {
+            throw new NoAuthorizationException(
+                    "Inter-branch journal entries targeting offices outside the user's hierarchy require cross-branch servicing and the TRANSACT_CROSSOFFICE permission.");
+        }
+    }
+
+    /**
+     * Balances each office of a multi-office (inter-branch) manual journal entry by posting bridging legs to the
+     * configured inter-branch clearing account, all under the same transactionId. With exactly two unbalanced offices
+     * the imbalance is bridged automatically; anything else must be balanced per office by the caller.
+     */
+    private void saveInterBranchClearingEntries(final JournalEntryCommand command, final Office defaultOffice,
+            final Map<Long, Office> entryOffices, final String currencyCode, final LocalDate transactionDate, final String transactionId,
+            final String referenceNumber) {
+
+        final Map<Long, BigDecimal> netDebitPerOffice = new LinkedHashMap<>();
+        accumulateNetDebits(command.getDebits(), command.getOfficeId(), netDebitPerOffice, false);
+        accumulateNetDebits(command.getCredits(), command.getOfficeId(), netDebitPerOffice, true);
+
+        final Map<Long, BigDecimal> unbalanced = new LinkedHashMap<>();
+        for (final Map.Entry<Long, BigDecimal> entry : netDebitPerOffice.entrySet()) {
+            if (entry.getValue().compareTo(BigDecimal.ZERO) != 0) {
+                unbalanced.put(entry.getKey(), entry.getValue());
+            }
+        }
+        if (unbalanced.isEmpty()) {
+            return;
+        }
+        if (unbalanced.size() != 2) {
+            throw new GeneralPlatformDomainRuleException("error.msg.glJournalEntry.interbranch.offices.not.balanced",
+                    "Inter-branch journal entries must balance per office, or span exactly two unbalanced offices for automatic clearing.");
+        }
+
+        final List<Long> unbalancedOfficeIds = new ArrayList<>(unbalanced.keySet());
+        final Long firstOfficeId = unbalancedOfficeIds.get(0);
+        final Long secondOfficeId = unbalancedOfficeIds.get(1);
+        // total transaction is balanced, so the two office imbalances are equal and opposite
+        final GLAccount clearingAccount = this.interBranchGlAccountReadService.resolveClearingAccount(firstOfficeId, secondOfficeId,
+                currencyCode);
+        validateGLAccountForTransaction(clearingAccount);
+
+        for (final Long unbalancedOfficeId : unbalancedOfficeIds) {
+            final BigDecimal netDebit = unbalanced.get(unbalancedOfficeId);
+            final JournalEntryType clearingType = netDebit.compareTo(BigDecimal.ZERO) > 0 ? JournalEntryType.CREDIT
+                    : JournalEntryType.DEBIT;
+            final BigDecimal clearingAmount = netDebit.abs();
+            final Office entryOffice = entryOffices.get(unbalancedOfficeId);
+
+            final JournalEntry clearingEntry = JournalEntry.createNew(entryOffice, null, clearingAccount, currencyCode, transactionId, true,
+                    transactionDate, clearingType, clearingAmount, "Inter-branch clearing", null, null, referenceNumber, null, null, null,
+                    null, null);
+            clearingEntry.updateTransactionComment(command.getComments());
+            helper.persistJournalEntry(clearingEntry);
+        }
+    }
+
+    private void accumulateNetDebits(final SingleDebitOrCreditEntryCommand[] lines, final Long defaultOfficeId,
+            final Map<Long, BigDecimal> netDebitPerOffice, final boolean isCredit) {
+        if (lines == null) {
+            return;
+        }
+        for (final SingleDebitOrCreditEntryCommand line : lines) {
+            final Long effectiveOfficeId = line.getOfficeId() != null ? line.getOfficeId() : defaultOfficeId;
+            final BigDecimal signedAmount = isCredit ? line.getAmount().negate() : line.getAmount();
+            netDebitPerOffice.merge(effectiveOfficeId, signedAmount, BigDecimal::add);
+        }
     }
 
     private void saveAllDebitOrCreditEntries(final JournalEntryCommand command, final Office office, final PaymentDetail paymentDetail,
@@ -843,6 +996,15 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
             validateGLAccountForTransaction(glAccount);
 
+            // Inter-branch support: a line may target a different office than the header office
+            final Office entryOffice;
+            if (singleDebitOrCreditEntryCommand.getOfficeId() == null
+                    || singleDebitOrCreditEntryCommand.getOfficeId().equals(office.getId())) {
+                entryOffice = office;
+            } else {
+                entryOffice = this.officeRepositoryWrapper.findOneWithNotFoundDetection(singleDebitOrCreditEntryCommand.getOfficeId());
+            }
+
             if (this.configurationReadPlatformService
                     .retrieveGlobalConfiguration(GlobalConfigurationConstants.ENABLE_REQUIRE_DEPARTMENT_ON_MANUAL_JOURNAL_PL_LINES)
                     .isEnabled()) {
@@ -857,7 +1019,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
 
             if (singleDebitOrCreditEntryCommand.getDepartmentId() != null) {
                 this.officeDepartmentMappingValidator.validateDepartmentAvailableForOffice(
-                        singleDebitOrCreditEntryCommand.getDepartmentId(), office.getId(), transactionDate);
+                        singleDebitOrCreditEntryCommand.getDepartmentId(), entryOffice.getId(), transactionDate);
             }
 
             // Top-level comments = shared transaction memo; per-line comments = line description only
@@ -865,7 +1027,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             final String lineComments = StringUtils.isBlank(singleDebitOrCreditEntryCommand.getComments()) ? null
                     : singleDebitOrCreditEntryCommand.getComments();
 
-            final JournalEntry glJournalEntry = JournalEntry.createNew(office, paymentDetail, glAccount, currencyCode, transactionId,
+            final JournalEntry glJournalEntry = JournalEntry.createNew(entryOffice, paymentDetail, glAccount, currencyCode, transactionId,
                     manualEntry, transactionDate, type, singleDebitOrCreditEntryCommand.getAmount(), lineComments, null, null,
                     referenceNumber, null, null, null, null, singleDebitOrCreditEntryCommand.getDepartmentId());
             glJournalEntry.updateTransactionComment(transactionComment);
@@ -917,6 +1079,11 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             final String currencyCode = command.stringValueOfParameterNamed(JournalEntryJsonInputParams.CURRENCY_CODE.getValue());
 
             validateBusinessRulesForJournalEntries(journalEntryCommand);
+
+            if (collectEffectiveEntryOfficeIds(journalEntryCommand).size() > 1) {
+                throw new GeneralPlatformDomainRuleException("error.msg.glJournalEntry.openingbalance.single.office.only",
+                        "Opening balance journal entries must target a single office.");
+            }
 
             /**
              * revert old journal entries

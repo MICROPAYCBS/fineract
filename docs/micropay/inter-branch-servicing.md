@@ -339,6 +339,38 @@ The clearing account (`MP-20010` or pair-specific GL) nets inter-branch position
 
 ---
 
+## Manual inter-branch journal entries (single transaction)
+
+`POST /v1/journalentries` supports posting one balanced document that spans **two branches under a single `transactionId`** — no more posting two separate journal entries (one per branch) that must be matched manually.
+
+### Request shape
+
+Each debit/credit line accepts an optional `officeId`. Lines without one default to the header `officeId`:
+
+```json
+{
+  "officeId": 1,
+  "transactionDate": "26 July 2026",
+  "currencyCode": "UGX",
+  "comments": "Cash moved from HQ vault to Branch A vault",
+  "debits":  [ { "glAccountId": 55, "amount": 500000, "officeId": 2 } ],
+  "credits": [ { "glAccountId": 54, "amount": 500000 } ],
+  "locale": "en",
+  "dateFormat": "dd MMMM yyyy"
+}
+```
+
+### Behaviour
+
+1. **One transactionId** is generated for all legs across all offices. `GET /v1/journalentries?transactionId=...` returns the complete document (both branches), so the poster immediately sees everything they posted — journal entry reads are not office-restricted.
+2. **Automatic clearing bridge**: after per-office netting, if exactly two offices are unbalanced (they are equal-and-opposite because the overall document must balance), the system adds bridging legs on the inter-branch clearing account (resolved via `m_inter_branch_gl_rule`, fallback `MP-20010`) — Cr clearing at the net-debit office, Dr clearing at the net-credit office. Already balanced-per-office documents get no extra legs. Three or more unbalanced offices are rejected (`error.msg.glJournalEntry.interbranch.offices.not.balanced`).
+3. **Authorization**: if every target office is inside the poster's office hierarchy (e.g. head-office accountant), no extra permission is needed. Otherwise `enable-cross-branch-servicing` + `TRANSACT_CROSSOFFICE` are required.
+4. **GL closures** are validated for **every** office receiving legs (create and reversal).
+5. **Reversal** (`POST /v1/journalentries/{transactionId}?command=reverse`) reverses all legs in all offices atomically — the clearing bridge cannot be left half-reversed.
+6. **Restrictions**: accounting-rule based entries and opening balances remain single-office.
+
+---
+
 ## API reference
 
 ### Inter-branch GL rules
