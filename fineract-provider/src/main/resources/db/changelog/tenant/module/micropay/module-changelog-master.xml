@@ -114,4 +114,5 @@
   <include relativeToChangelogFile="true" file="parts/3090_remove_trailing_space_permission_duplicates.xml"/>
   <include relativeToChangelogFile="true" file="parts/3091_add_update_journalentry_permission.xml"/>
   <include relativeToChangelogFile="true" file="parts/3092_add_journal_entry_transaction_comment.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3093_increase_address_postal_code_length.xml"/>
 </databaseChangeLog>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Increase m_address.postal_code from VARCHAR(10) to VARCHAR(20).
+  The previous limit caused client creation to fail when postal codes exceeded 10 characters.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3093-increase-address-postal-code-length" author="micropay">
+        <modifyDataType tableName="m_address" columnName="postal_code" newDataType="VARCHAR(20)"/>
+    </changeSet>
+
+</databaseChangeLog>

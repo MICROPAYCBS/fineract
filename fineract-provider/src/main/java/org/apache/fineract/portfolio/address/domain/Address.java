@@ -76,7 +76,7 @@ public class Address extends AbstractPersistableCustom<Long> {
     @JoinColumn(name = "country_id")
     private CodeValue country;
 
-    @Column(name = "postal_code")
+    @Column(name = "postal_code", length = 20)
     private String postalCode;
 
     @Column(name = "latitude")

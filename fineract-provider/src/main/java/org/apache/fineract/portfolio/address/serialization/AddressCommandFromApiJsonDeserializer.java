@@ -41,6 +41,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class AddressCommandFromApiJsonDeserializer {
 
+    private static final int ADDRESS_TEXT_FIELD_MAX_LENGTH = 100;
+    private static final int POSTAL_CODE_MAX_LENGTH = 20;
+
     private final FromJsonHelper fromApiJsonHelper;
     private final FieldConfigurationReadPlatformService readservice;
 
@@ -95,8 +98,29 @@ public class AddressCommandFromApiJsonDeserializer {
             }
         });
 
+        validateFieldLengths(element, baseDataValidator);
+
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
 
+    }
+
+    private void validateFieldLengths(final JsonElement element, final DataValidatorBuilder baseDataValidator) {
+        validateStringFieldLength(element, baseDataValidator, "street", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "addressLine1", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "addressLine2", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "addressLine3", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "townVillage", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "city", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "countyDistrict", ADDRESS_TEXT_FIELD_MAX_LENGTH);
+        validateStringFieldLength(element, baseDataValidator, "postalCode", POSTAL_CODE_MAX_LENGTH);
+    }
+
+    private void validateStringFieldLength(final JsonElement element, final DataValidatorBuilder baseDataValidator,
+            final String fieldName, final int maxLength) {
+        if (this.fromApiJsonHelper.parameterExists(fieldName, element)) {
+            final String value = this.fromApiJsonHelper.extractStringNamed(fieldName, element);
+            baseDataValidator.reset().parameter(fieldName).value(value).ignoreIfNull().notExceedingLengthOf(maxLength);
+        }
     }
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
