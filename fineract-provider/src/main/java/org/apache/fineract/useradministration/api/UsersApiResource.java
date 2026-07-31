@@ -46,6 +46,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
@@ -76,7 +77,7 @@ public class UsersApiResource {
      * The set of parameters that are supported in response for {@link AppUserData}.
      */
     private static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList("id", "officeId", "officeName", "username",
-            "firstname", "lastname", "email", "allowedOffices", "availableRoles", "selectedRoles", "staff"));
+            "firstname", "lastname", "email", "allowedOffices", "availableRoles", "selectedRoles", "staff", "totpEnabled"));
 
     private static final String RESOURCE_NAME_FOR_PERMISSIONS = "USER";
 
@@ -186,6 +187,26 @@ public class UsersApiResource {
 
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 
+        return this.toApiJsonSerializer.serialize(result);
+    }
+
+    @POST
+    @Path("{userId}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Reset authenticator (TOTP) for a User", operationId = "resetUserTotp", tags = {
+            "Users" }, description = "Clears enrolled authenticator secret so the user must re-enroll on next login when TOTP is the global 2FA method.\n\n"
+                    + "Example Request: /api/v1/users/{userId}?command=resetTotp")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UsersApiResourceSwagger.PutUsersUserIdResponse.class))) })
+    public String actionsOnUsers(@PathParam("userId") @Parameter(description = "userId") final Long userId,
+            @QueryParam("command") @Parameter(description = "command") final String commandParam) {
+
+        CommandProcessingResult result = null;
+        if (StringUtils.isNotBlank(commandParam) && commandParam.trim().equalsIgnoreCase("resetTotp")) {
+            final CommandWrapper commandRequest = new CommandWrapperBuilder().resetUserTotp(userId).build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        }
         return this.toApiJsonSerializer.serialize(result);
     }
 

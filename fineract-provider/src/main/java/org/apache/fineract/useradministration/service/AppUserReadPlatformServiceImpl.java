@@ -129,6 +129,7 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
         AppUserData retUser = AppUserData.instance(user.getId(), user.getUsername(), user.getEmail(), user.getOffice().getId(),
                 user.getOffice().getName(), user.getFirstname(), user.getLastname(), availableRoles, selectedUserRoles, linkedStaff,
                 user.getPasswordNeverExpires());
+        retUser.setTotpEnabled(user.isTotpEnabled());
 
         return retUser;
     }
@@ -155,6 +156,7 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
             final String officeName = rs.getString("officeName");
             final Long staffId = JdbcSupport.getLong(rs, "staffId");
             final Boolean passwordNeverExpire = rs.getBoolean("passwordNeverExpires");
+            final Boolean totpEnabled = rs.getBoolean("totpEnabled");
             final Collection<RoleData> selectedRoles = this.roleReadPlatformService.retrieveAppUserRoles(id);
 
             final StaffData linkedStaff;
@@ -163,13 +165,15 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
             } else {
                 linkedStaff = null;
             }
-            return AppUserData.instance(id, username, email, officeId, officeName, firstname, lastname, null, selectedRoles, linkedStaff,
-                    passwordNeverExpire);
+            final AppUserData user = AppUserData.instance(id, username, email, officeId, officeName, firstname, lastname, null,
+                    selectedRoles, linkedStaff, passwordNeverExpire);
+            user.setTotpEnabled(totpEnabled);
+            return user;
         }
 
         public String schema() {
             return " u.id as id, u.username as username, u.firstname as firstname, u.lastname as lastname, u.email as email, u.password_never_expires as passwordNeverExpires, "
-                    + " u.office_id as officeId, o.name as officeName, u.staff_id as staffId from m_appuser u "
+                    + " u.totp_enabled as totpEnabled, u.office_id as officeId, o.name as officeName, u.staff_id as staffId from m_appuser u "
                     + " join m_office o on o.id = u.office_id where o.hierarchy like ? and u.is_deleted=false order by u.username";
         }
 

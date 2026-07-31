@@ -35,6 +35,10 @@ public interface TwoFactorConfigurationService {
 
     boolean isEmailEnabled();
 
+    boolean isTotpDeliveryEnabled();
+
+    String getDeliveryMethod();
+
     String getEmailSubject();
 
     String getEmailBody();

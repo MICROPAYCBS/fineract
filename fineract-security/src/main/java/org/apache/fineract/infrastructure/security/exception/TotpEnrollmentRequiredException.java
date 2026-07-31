@@ -16,22 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.security.constants;
+package org.apache.fineract.infrastructure.security.exception;
 
-public final class TwoFactorConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-    private TwoFactorConstants() {
+public class TotpEnrollmentRequiredException extends AbstractPlatformDomainRuleException {
 
+    public TotpEnrollmentRequiredException() {
+        super("error.msg.twofactor.totp.enrollment.required",
+                "Authenticator (TOTP) enrollment is required before two-factor authentication can complete");
     }
-
-    public static final String ACCESSTOKEN_RESOURCE_NAME = "TWOFACTOR_ACCESSTOKEN";
-
-    public static final String SMS_DELIVERY_METHOD_NAME = "sms";
-    public static final String EMAIL_DELIVERY_METHOD_NAME = "email";
-    public static final String TOTP_DELIVERY_METHOD_NAME = "totp";
-
-    public static final String BYPASS_TWO_FACTOR_PERMISSION = "BYPASS_TWOFACTOR";
-
-    public static final String TOTP_ISSUER = "Fineract";
-
 }

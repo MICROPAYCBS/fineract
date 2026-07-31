@@ -30,6 +30,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_SAVE = "SAVE";
     public static final String ACTION_PERMISSIONS = "PERMISSIONS";
     public static final String ACTION_CHANGEPWD = "CHANGEPWD";
+    public static final String ACTION_RESETTOTP = "RESETTOTP";
     public static final String ACTION_RECOVERGUARANTEES = "RECOVERGUARANTEES";
     public static final String ACTION_APPROVE = "APPROVE";
     public static final String ACTION_REJECT = "REJECT";

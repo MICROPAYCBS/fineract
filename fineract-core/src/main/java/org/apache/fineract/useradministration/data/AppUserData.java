@@ -42,6 +42,10 @@ public final class AppUserData {
     private final String email;
     private final Boolean passwordNeverExpires;
 
+    @Getter
+    @Setter
+    private Boolean totpEnabled;
+
     // import fields
     private List<Long> roles;
     private Boolean sendPasswordToEmail;

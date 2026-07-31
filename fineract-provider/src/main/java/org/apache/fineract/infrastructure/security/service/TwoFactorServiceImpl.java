@@ -34,10 +34,13 @@ import org.apache.fineract.infrastructure.security.domain.TFAccessTokenRepositor
 import org.apache.fineract.infrastructure.security.exception.AccessTokenInvalidIException;
 import org.apache.fineract.infrastructure.security.exception.OTPDeliveryMethodInvalidException;
 import org.apache.fineract.infrastructure.security.exception.OTPTokenInvalidException;
+import org.apache.fineract.infrastructure.security.exception.TotpEnrollmentRequiredException;
 import org.apache.fineract.infrastructure.sms.domain.SmsMessage;
 import org.apache.fineract.infrastructure.sms.domain.SmsMessageRepository;
 import org.apache.fineract.infrastructure.sms.scheduler.SmsMessageScheduledJobService;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.apache.fineract.useradministration.domain.AppUserRepository;
+import org.apache.fineract.useradministration.exception.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.CacheEvict;
@@ -59,12 +62,14 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     private final SmsMessageRepository smsMessageRepository;
 
     private final TwoFactorConfigurationService configurationService;
+    private final TotpService totpService;
+    private final AppUserRepository appUserRepository;
 
     @Autowired
     public TwoFactorServiceImpl(AccessTokenGenerationService accessTokenGenerationService, PlatformEmailService emailService,
             SmsMessageScheduledJobService smsMessageScheduledJobService, OTPRequestRepository otpRequestRepository,
             TFAccessTokenRepository tfAccessTokenRepository, SmsMessageRepository smsMessageRepository,
-            TwoFactorConfigurationService configurationService) {
+            TwoFactorConfigurationService configurationService, TotpService totpService, AppUserRepository appUserRepository) {
         this.accessTokenGenerationService = accessTokenGenerationService;
         this.emailService = emailService;
         this.smsMessageScheduledJobService = smsMessageScheduledJobService;
@@ -72,19 +77,31 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         this.tfAccessTokenRepository = tfAccessTokenRepository;
         this.smsMessageRepository = smsMessageRepository;
         this.configurationService = configurationService;
+        this.totpService = totpService;
+        this.appUserRepository = appUserRepository;
     }
 
     @Override
     public List<OTPDeliveryMethod> getDeliveryMethodsForUser(final AppUser user) {
         List<OTPDeliveryMethod> deliveryMethods = new ArrayList<>();
+        final String method = configurationService.getDeliveryMethod();
 
-        OTPDeliveryMethod smsMethod = getSMSDeliveryMethodForUser(user);
-        if (smsMethod != null) {
-            deliveryMethods.add(smsMethod);
-        }
-        OTPDeliveryMethod emailDelivery = getEmailDeliveryMethodForUser(user);
-        if (emailDelivery != null) {
-            deliveryMethods.add(emailDelivery);
+        if (TwoFactorConstants.SMS_DELIVERY_METHOD_NAME.equals(method)) {
+            OTPDeliveryMethod smsMethod = getSMSDeliveryMethodForUser(user);
+            if (smsMethod != null) {
+                deliveryMethods.add(smsMethod);
+            }
+        } else if (TwoFactorConstants.EMAIL_DELIVERY_METHOD_NAME.equals(method)) {
+            OTPDeliveryMethod emailDelivery = getEmailDeliveryMethodForUser(user);
+            if (emailDelivery != null) {
+                deliveryMethods.add(emailDelivery);
+            }
+        } else if (TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equals(method)) {
+            final AppUser managedUser = appUserRepository.findById(user.getId()).orElse(user);
+            if (managedUser.isTotpEnabled()) {
+                deliveryMethods
+                        .add(new OTPDeliveryMethod().setName(TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME).setTarget("Authenticator app"));
+            }
         }
 
         return deliveryMethods;
@@ -92,6 +109,23 @@ public class TwoFactorServiceImpl implements TwoFactorService {
 
     @Override
     public OTPRequest createNewOTPToken(final AppUser user, final String deliveryMethodName, final boolean extendedAccessToken) {
+        final String configuredMethod = configurationService.getDeliveryMethod();
+        if (!configuredMethod.equalsIgnoreCase(deliveryMethodName)) {
+            throw new OTPDeliveryMethodInvalidException();
+        }
+
+        if (TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equalsIgnoreCase(deliveryMethodName)) {
+            final AppUser managedUser = appUserRepository.findById(user.getId()).orElseThrow(() -> new UserNotFoundException(user.getId()));
+            if (!managedUser.isTotpEnabled()) {
+                throw new TotpEnrollmentRequiredException();
+            }
+            final OTPDeliveryMethod totpDelivery = new OTPDeliveryMethod().setName(TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME)
+                    .setTarget("Authenticator app");
+            final OTPRequest request = OTPRequest.create("", 30, extendedAccessToken, totpDelivery);
+            otpRequestRepository.addOTPRequest(user, request);
+            return request;
+        }
+
         if (TwoFactorConstants.SMS_DELIVERY_METHOD_NAME.equalsIgnoreCase(deliveryMethodName)) {
             OTPDeliveryMethod smsDelivery = getSMSDeliveryMethodForUser(user);
             if (smsDelivery == null) {
@@ -128,16 +162,33 @@ public class TwoFactorServiceImpl implements TwoFactorService {
             + ".getTenant().getTenantIdentifier().concat(#user.username).concat(#result.token + 'tok')")
     public TFAccessToken createAccessTokenFromOTP(final AppUser user, final String otpToken) {
 
+        if (configurationService.isTotpDeliveryEnabled()) {
+            final AppUser managedUser = appUserRepository.findById(user.getId()).orElseThrow(() -> new UserNotFoundException(user.getId()));
+            if (!managedUser.isTotpEnabled()) {
+                throw new TotpEnrollmentRequiredException();
+            }
+            if (!totpService.verifyForUser(managedUser, otpToken)) {
+                throw new OTPTokenInvalidException();
+            }
+            OTPRequest pending = otpRequestRepository.getOTPRequestForUser(user);
+            final boolean extended = pending != null && pending.getMetadata().isExtendedAccessToken();
+            otpRequestRepository.deleteOTPRequestForUser(user);
+            return createAccessToken(user, extended);
+        }
+
         OTPRequest otpRequest = otpRequestRepository.getOTPRequestForUser(user);
         if (otpRequest == null || !otpRequest.isValid() || !otpRequest.getToken().equalsIgnoreCase(otpToken)) {
             throw new OTPTokenInvalidException();
         }
 
         otpRequestRepository.deleteOTPRequestForUser(user);
+        return createAccessToken(user, otpRequest.getMetadata().isExtendedAccessToken());
+    }
 
+    private TFAccessToken createAccessToken(final AppUser user, final boolean extendedAccessToken) {
         String token = accessTokenGenerationService.generateRandomToken();
         int liveTime;
-        if (otpRequest.getMetadata().isExtendedAccessToken()) {
+        if (extendedAccessToken) {
             liveTime = configurationService.getAccessTokenExtendedLiveTime();
         } else {
             liveTime = configurationService.getAccessTokenLiveTime();

@@ -40,23 +40,29 @@ public final class TwoFactorConfigurationConstants {
     public static final String SMS_PROVIDER_ID = "otp-delivery-sms-provider";
     public static final String SMS_MESSAGE_TEXT = "otp-delivery-sms-text";
 
+    public static final String DELIVERY_METHOD = "otp-delivery-method";
+
     public static final String OTP_TOKEN_LIVE_TIME = "otp-token-live-time";
     public static final String OTP_TOKEN_LENGTH = "otp-token-length";
 
     public static final String ACCESS_TOKEN_LIVE_TIME = "access-token-live-time";
     public static final String ACCESS_TOKEN_LIVE_TIME_EXTENDED = "access-token-live-time-extended";
 
-    public static final Set<String> REQUEST_DATA_PARAMETERS = Collections.unmodifiableSet(
-            new HashSet<>(Arrays.asList(ENABLE_EMAIL_DELIVERY, EMAIL_SUBJECT, EMAIL_BODY, ENABLE_SMS_DELIVERY, SMS_PROVIDER_ID,
-                    SMS_MESSAGE_TEXT, OTP_TOKEN_LIVE_TIME, OTP_TOKEN_LENGTH, ACCESS_TOKEN_LIVE_TIME, ACCESS_TOKEN_LIVE_TIME_EXTENDED)));
+    public static final Set<String> REQUEST_DATA_PARAMETERS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(ENABLE_EMAIL_DELIVERY,
+            EMAIL_SUBJECT, EMAIL_BODY, ENABLE_SMS_DELIVERY, SMS_PROVIDER_ID, SMS_MESSAGE_TEXT, DELIVERY_METHOD, OTP_TOKEN_LIVE_TIME,
+            OTP_TOKEN_LENGTH, ACCESS_TOKEN_LIVE_TIME, ACCESS_TOKEN_LIVE_TIME_EXTENDED)));
 
     public static final List<String> STRING_PARAMETERS = Collections
-            .unmodifiableList(Arrays.asList(EMAIL_SUBJECT, EMAIL_BODY, SMS_MESSAGE_TEXT));
+            .unmodifiableList(Arrays.asList(EMAIL_SUBJECT, EMAIL_BODY, SMS_MESSAGE_TEXT, DELIVERY_METHOD));
 
     public static final List<String> BOOLEAN_PARAMETERS = Collections
             .unmodifiableList(Arrays.asList(ENABLE_EMAIL_DELIVERY, ENABLE_SMS_DELIVERY));
 
     public static final List<String> NUMBER_PARAMETERS = Collections.unmodifiableList(
             Arrays.asList(SMS_PROVIDER_ID, OTP_TOKEN_LIVE_TIME, OTP_TOKEN_LENGTH, ACCESS_TOKEN_LIVE_TIME, ACCESS_TOKEN_LIVE_TIME_EXTENDED));
+
+    public static final Set<String> ALLOWED_DELIVERY_METHODS = Collections.unmodifiableSet(
+            new HashSet<>(Arrays.asList(TwoFactorConstants.EMAIL_DELIVERY_METHOD_NAME, TwoFactorConstants.SMS_DELIVERY_METHOD_NAME,
+                    TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME)));
 
 }

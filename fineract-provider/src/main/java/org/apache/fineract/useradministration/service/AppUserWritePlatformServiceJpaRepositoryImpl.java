@@ -300,6 +300,24 @@ public class AppUserWritePlatformServiceJpaRepositoryImpl implements AppUserWrit
                 .build();
     }
 
+    @Override
+    @Transactional
+    @Caching(evict = { @CacheEvict(value = "users", allEntries = true), @CacheEvict(value = "usersByUsername", allEntries = true) })
+    public CommandProcessingResult resetUserTotp(final Long userId) {
+        final AppUser user = this.appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+        if (user.isDeleted()) {
+            throw new UserNotFoundException(userId);
+        }
+
+        user.resetTotp();
+        this.appUserRepository.save(user);
+
+        return new CommandProcessingResultBuilder() //
+                .withEntityId(userId) //
+                .withOfficeId(user.getOffice().getId()) //
+                .build();
+    }
+
     /*
      * Return an exception to throw, no matter what the data integrity issue is.
      */

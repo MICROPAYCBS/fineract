@@ -28,6 +28,7 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -41,8 +42,10 @@ import org.apache.fineract.infrastructure.security.data.AccessTokenData;
 import org.apache.fineract.infrastructure.security.data.OTPDeliveryMethod;
 import org.apache.fineract.infrastructure.security.data.OTPMetadata;
 import org.apache.fineract.infrastructure.security.data.OTPRequest;
+import org.apache.fineract.infrastructure.security.data.TotpEnrollmentData;
 import org.apache.fineract.infrastructure.security.domain.TFAccessToken;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.infrastructure.security.service.TotpService;
 import org.apache.fineract.infrastructure.security.service.TwoFactorService;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -58,11 +61,13 @@ public class TwoFactorApiResource {
     private final ToApiJsonSerializer<OTPMetadata> otpRequestSerializer;
     private final ToApiJsonSerializer<OTPDeliveryMethod> otpDeliveryMethodSerializer;
     private final ToApiJsonSerializer<AccessTokenData> accessTokenSerializer;
+    private final ToApiJsonSerializer<TotpEnrollmentData> totpEnrollmentSerializer;
     private final DefaultToApiJsonSerializer<Map<String, Object>> toApiJsonSerializer;
 
     private final PlatformSecurityContext context;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
     private final TwoFactorService twoFactorService;
+    private final TotpService totpService;
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
@@ -103,5 +108,25 @@ public class TwoFactorApiResource {
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 
         return this.toApiJsonSerializer.serialize(result);
+    }
+
+    @Path("totp/enroll")
+    @POST
+    @Produces({ MediaType.APPLICATION_JSON })
+    public String enrollTotp() {
+        final AppUser user = context.authenticatedUser();
+        final TotpEnrollmentData enrollment = totpService.enroll(user);
+        return totpEnrollmentSerializer.serialize(enrollment);
+    }
+
+    @Path("totp/confirm")
+    @POST
+    @Produces({ MediaType.APPLICATION_JSON })
+    public String confirmTotp(@QueryParam("token") final String token) {
+        final AppUser user = context.authenticatedUser();
+        totpService.confirm(user, token);
+        final Map<String, Object> result = new HashMap<>();
+        result.put("totpEnabled", true);
+        return toApiJsonSerializer.serialize(result);
     }
 }

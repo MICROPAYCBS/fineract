@@ -47,6 +47,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CAPITALIZEDINCOME;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CAPITALIZEDINCOMEADJUSTMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHANGEPWD;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_RESETTOTP;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHARGEBACK;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHARGEOFF;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHARGEREFUND;
@@ -824,6 +825,15 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_USER;
         this.entityId = userId;
         this.href = "/users/" + userId;
+        return this;
+    }
+
+    public CommandWrapperBuilder resetUserTotp(final Long userId) {
+        this.actionName = ACTION_RESETTOTP;
+        this.entityName = ENTITY_USER;
+        this.entityId = userId;
+        this.href = "/users/" + userId + "?command=resetTotp";
+        this.json = "{}";
         return this;
     }
 

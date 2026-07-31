@@ -70,7 +70,11 @@ public class TwoFactorConfigurationValidator {
         for (String parameterName : TwoFactorConfigurationConstants.STRING_PARAMETERS) {
             if (this.fromJsonHelper.parameterExists(parameterName, element)) {
                 atLeastOneParameterPassedForUpdate = true;
-                validateStringParameter(parameterName, element, baseDataValidator);
+                if (TwoFactorConfigurationConstants.DELIVERY_METHOD.equals(parameterName)) {
+                    validateDeliveryMethodParameter(element, baseDataValidator);
+                } else {
+                    validateStringParameter(parameterName, element, baseDataValidator);
+                }
             }
         }
 
@@ -103,6 +107,12 @@ public class TwoFactorConfigurationValidator {
     private void validateStringParameter(final String name, final JsonElement element, final DataValidatorBuilder baseDataValidator) {
         final String value = this.fromJsonHelper.extractStringNamed(name, element);
         baseDataValidator.reset().parameter(name).value(value).notBlank().notExceedingLengthOf(1000);
+    }
+
+    private void validateDeliveryMethodParameter(final JsonElement element, final DataValidatorBuilder baseDataValidator) {
+        final String value = this.fromJsonHelper.extractStringNamed(TwoFactorConfigurationConstants.DELIVERY_METHOD, element);
+        baseDataValidator.reset().parameter(TwoFactorConfigurationConstants.DELIVERY_METHOD).value(value).notBlank()
+                .isOneOfTheseStringValues(TwoFactorConfigurationConstants.ALLOWED_DELIVERY_METHODS.toArray());
     }
 
     private void validateNumberParameter(final String name, final JsonElement element, final DataValidatorBuilder baseDataValidator) {
