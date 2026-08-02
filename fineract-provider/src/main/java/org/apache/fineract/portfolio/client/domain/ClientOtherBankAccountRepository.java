@@ -26,5 +26,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ClientOtherBankAccountRepository
         extends JpaRepository<ClientOtherBankAccount, Long>, JpaSpecificationExecutor<ClientOtherBankAccount> {
 
+    boolean existsByClient_Id(Long clientId);
+
     List<ClientOtherBankAccount> findByClient_IdOrderByDisplayOrderAsc(Long clientId);
 }

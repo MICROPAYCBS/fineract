@@ -26,5 +26,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ClientIncomeSourceRepository
         extends JpaRepository<ClientIncomeSource, Long>, JpaSpecificationExecutor<ClientIncomeSource> {
 
+    boolean existsByClient_Id(Long clientId);
+
     List<ClientIncomeSource> findByClient_IdAndIsPrimarySource(Long clientId, String isPrimarySource);
 }

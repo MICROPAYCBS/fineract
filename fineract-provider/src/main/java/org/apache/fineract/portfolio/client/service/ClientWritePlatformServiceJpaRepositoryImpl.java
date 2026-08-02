@@ -67,14 +67,14 @@ import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.data.ClientDataValidator;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
-import org.apache.fineract.portfolio.client.domain.ClientFamilyMembersRepository;
 import org.apache.fineract.portfolio.client.domain.ClientNonPerson;
 import org.apache.fineract.portfolio.client.domain.ClientNonPersonRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientStatus;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.apache.fineract.portfolio.client.exception.ClientActiveForUpdateException;
-import org.apache.fineract.portfolio.client.exception.ClientCannotBeDeletedHasFamilyMembersException;
+import org.apache.fineract.portfolio.client.exception.ClientCannotBeDeletedHasAssociatedDataException;
+import org.apache.fineract.portfolio.client.exception.ClientCannotBeDeletedHasAssociatedDataException.AssociatedDataType;
 import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
 import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepository;
 import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
@@ -113,7 +113,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final PlatformSecurityContext context;
     private final ClientRepositoryWrapper clientRepository;
     private final ClientNonPersonRepositoryWrapper clientNonPersonRepository;
-    private final ClientFamilyMembersRepository clientFamilyMembersRepository;
+    private final ClientDeleteAssociatedDataValidator clientDeleteAssociatedDataValidator;
     private final OfficeRepositoryWrapper officeRepositoryWrapper;
     private final NoteRepository noteRepository;
     private final GroupRepository groupRepository;
@@ -154,9 +154,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (!client.isDraftOrPending()) {
                 throw new ClientMustBePendingToBeDeletedException(clientId);
             }
-            if (this.clientFamilyMembersRepository.existsByClient_Id(clientId)) {
-                throw new ClientCannotBeDeletedHasFamilyMembersException(clientId);
-            }
+            this.clientDeleteAssociatedDataValidator.validateNoAssociatedData(clientId);
             final List<Note> relatedNotes = this.noteRepository.findByClient(client);
             this.noteRepository.deleteAllInBatch(relatedNotes);
 
@@ -174,17 +172,18 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     .withEntityId(clientId) //
                     .build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
-            handleDeleteDataIntegrityIssues(clientId, ExceptionUtils.getRootCause(dve), dve);
+            throw deleteDataIntegrityException(clientId, ExceptionUtils.getRootCause(dve), dve);
         }
     }
 
-    private void handleDeleteDataIntegrityIssues(final Long clientId, final Throwable realCause, final Exception dve) {
+    private RuntimeException deleteDataIntegrityException(final Long clientId, final Throwable realCause, final Exception dve) {
         final String message = realCause != null ? realCause.getMessage() : null;
-        if (message != null && message.contains("FK_m_family_members_client_id_m_client")) {
-            throw new ClientCannotBeDeletedHasFamilyMembersException(clientId);
+        final AssociatedDataType associatedDataType = AssociatedDataType.fromForeignKeyConstraintName(message);
+        if (associatedDataType != null) {
+            return new ClientCannotBeDeletedHasAssociatedDataException(clientId, associatedDataType);
         }
         log.error("Error occured.", realCause);
-        throw ErrorHandler.getMappable(dve, "error.msg.client.unknown.data.integrity.issue",
+        return ErrorHandler.getMappable(dve, "error.msg.client.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource.");
     }
 

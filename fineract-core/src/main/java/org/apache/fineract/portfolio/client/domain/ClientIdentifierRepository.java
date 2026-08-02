@@ -24,4 +24,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ClientIdentifierRepository extends JpaRepository<ClientIdentifier, Long>, JpaSpecificationExecutor<ClientIdentifier> {
 
     long countByClient_IdAndStatus(Long clientId, Integer status);
+
+    boolean existsByClient_Id(Long clientId);
 }

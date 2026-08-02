@@ -23,6 +23,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ClientContactRepository extends JpaRepository<ClientContact, Long> {
 
+    boolean existsByClient_Id(Long clientId);
+
     List<ClientContact> findByClient_Id(Long clientId);
 
     long countByClient_IdAndContactTypeId(Long clientId, Long contactTypeId);
