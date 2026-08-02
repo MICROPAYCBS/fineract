@@ -16,22 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.security.constants;
+package org.apache.fineract.portfolio.client.exception;
 
-public final class TwoFactorConstants {
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
-    private TwoFactorConstants() {
+/**
+ * Thrown when attempting to delete a client that still has family members.
+ */
+public class ClientCannotBeDeletedHasFamilyMembersException extends AbstractPlatformDomainRuleException {
 
+    public ClientCannotBeDeletedHasFamilyMembersException(final Long clientId) {
+        super("error.msg.client.cannot.be.deleted.has.family.members",
+                "Client with identifier " + clientId + " cannot be deleted because it has one or more family members. "
+                        + "Remove all family members before deleting the client.",
+                clientId);
     }
-
-    public static final String ACCESSTOKEN_RESOURCE_NAME = "TWOFACTOR_ACCESSTOKEN";
-
-    public static final String SMS_DELIVERY_METHOD_NAME = "sms";
-    public static final String EMAIL_DELIVERY_METHOD_NAME = "email";
-    public static final String TOTP_DELIVERY_METHOD_NAME = "totp";
-
-    public static final String BYPASS_TWO_FACTOR_PERMISSION = "BYPASS_TWOFACTOR";
-
-    public static final String TOTP_ISSUER = "MicroPay";
-
 }

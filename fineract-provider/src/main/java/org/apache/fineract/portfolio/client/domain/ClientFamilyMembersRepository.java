@@ -25,4 +25,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface ClientFamilyMembersRepository
         extends JpaRepository<ClientFamilyMembers, Long>, JpaSpecificationExecutor<ClientFamilyMembers> {
 
+    boolean existsByClient_Id(Long clientId);
+
 }
