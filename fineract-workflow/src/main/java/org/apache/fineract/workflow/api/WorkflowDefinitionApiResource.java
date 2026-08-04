@@ -106,7 +106,7 @@ public class WorkflowDefinitionApiResource {
     @Path("{definitionId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Activate or deactivate a workflow definition", description = "command=activate validates the workflow structure and makes the definition selectable at runtime; command=deactivate stops it from governing new instances")
+    @Operation(summary = "Activate or deactivate a workflow definition", description = "command=activate validates the workflow structure and makes the definition the sole ACTIVE workflow for its task (fails if another ACTIVE definition already exists for that task); command=deactivate stops it from governing new instances")
     public CommandProcessingResult stateTransition(
             @PathParam("definitionId") @Parameter(description = "definitionId") final Long definitionId,
             @QueryParam("command") @Parameter(description = "command") final String commandParam) {

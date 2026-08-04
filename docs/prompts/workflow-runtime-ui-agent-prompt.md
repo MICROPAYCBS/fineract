@@ -51,7 +51,7 @@ All must be true for workflows to run at runtime:
 | Per-task maker-checker enabled (e.g. `APPROVE_LOAN`) | `/system/configure-mc-tasks` → `selected: true` |
 | **ACTIVE** workflow definition for that `taskPermissionCode` | `/system/approval-workflows` |
 
-**First tasks with runtime support:** `APPROVE_LOAN`, `DISBURSE_LOAN`. Selection is **priority-based** for the task permission code (no amount extraction). Other tasks fall back to classic MC until an ACTIVE workflow is defined for them.
+**First tasks with runtime support:** `APPROVE_LOAN`, `DISBURSE_LOAN`. Selection uses the **single ACTIVE** workflow definition for that `taskPermissionCode` (at most one ACTIVE per task is enforced). Other tasks fall back to classic MC until an ACTIVE workflow is defined for them.
 
 ---
 
@@ -196,8 +196,8 @@ For each inbox row:
 - Show `commandAsJson` formatted (existing pattern if any).
 - Show **task** label and entity context (client name, loan account no).
 - **Workflow context (best-effort without instance API):**
-  - Fetch **ACTIVE** workflow definitions for `taskPermissionCode` via `GET /workflow-definitions?taskPermissionCode=APPROVE_LOAN&status=ACTIVE`.
-  - Pick the highest-`priority` ACTIVE definition and show its read-only **stage timeline** (reuse stage timeline component from `/system/approval-workflows/[id]` if possible).
+  - Fetch the **ACTIVE** workflow definition for `taskPermissionCode` via `GET /workflow-definitions?taskPermissionCode=APPROVE_LOAN&status=ACTIVE` (at most one; use the sole result).
+  - Show its read-only **stage timeline** (reuse stage timeline component from `/system/approval-workflows/[id]` if possible).
   - Label current position as **“In approval workflow”** without claiming a specific stage until instance API exists.
 - Approve / Reject buttons with confirmation dialog summarizing action.
 

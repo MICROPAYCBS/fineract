@@ -10,7 +10,7 @@ Align the **Approval Workflow Configuration** UI with the current Fineract backe
 
 ## Background (what the module does)
 
-Administrators define multi-stage approval chains as data. A **workflow definition** is anchored to a **maker-checker task** — a Fineract permission code such as `CREATE_LOAN` or `WRITEOFF_LOAN` — not a coarse product module like `LOAN`. It contains **stages** (enabled actions, optional restricting **role**, expiry/escalation settings) connected by **transitions**. When multiple ACTIVE definitions exist for the same task, the highest **priority** wins (structure validation rejects two ACTIVE definitions at the same priority for the same task).
+Administrators define multi-stage approval chains as data. A **workflow definition** is anchored to a **maker-checker task** — a Fineract permission code such as `CREATE_LOAN` or `WRITEOFF_LOAN` — not a coarse product module like `LOAN`. It contains **stages** (enabled actions, optional restricting **role**, expiry/escalation settings) connected by **transitions**. **At most one ACTIVE definition may exist per task.** Multiple DRAFT / INACTIVE definitions for the same task are allowed (versions and drafts). Activating a second definition while another is ACTIVE fails with `active.definition.already.exists.for.task` — deactivate the current ACTIVE first.
 
 **Who may act at a stage:** holders of `{taskPermissionCode}_CHECKER` (e.g. `APPROVE_LOAN` → `APPROVE_LOAN_CHECKER`). Optionally set **`roleId`** on a stage so only users who also hold that Fineract role may approve/reject there (e.g. Branch Manager role at stage 1, Head Office role at stage 2). Omit `roleId` to allow any checker for that task. Roles are still how admins **grant** the checker permission in user administration; the stage `roleId` further narrows who may act at that step.
 
@@ -44,7 +44,7 @@ Base path: `/fineract-provider/api/v1`. Standard Fineract auth plus `Fineract-Pl
 | `/workflow-definitions/{id}` | GET | Full detail incl. stages, actions, transitions | `READ_WORKFLOW_DEFINITION` |
 | `/workflow-definitions` | POST | Create (always `DRAFT`) | `CREATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | PUT | Update definition (structure fully replaced). Allowed for `DRAFT`, `ACTIVE`, and `INACTIVE`; blocked if any `IN_PROGRESS` instances exist for this definition | `UPDATE_WORKFLOW_DEFINITION` |
-| `/workflow-definitions/{id}?command=activate` | POST | Validate structure + activate | `ACTIVATE_WORKFLOW_DEFINITION` |
+| `/workflow-definitions/{id}?command=activate` | POST | Validate structure + activate. Fails if another ACTIVE definition already exists for the same `taskPermissionCode` | `ACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}?command=deactivate` | POST | Deactivate | `DEACTIVATE_WORKFLOW_DEFINITION` |
 | `/workflow-definitions/{id}` | DELETE | Delete a `DRAFT` definition | `DELETE_WORKFLOW_DEFINITION` |
 | `/permissions?makerCheckerable=true` | GET | Task dropdown source | `READ_PERMISSION` (via existing PERMISSION resource) |
@@ -147,7 +147,7 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 | `error.msg.workflow.configuration.multiple.entry.stages` | Multiple entry stages |
 | `error.msg.workflow.configuration.unreachable.stage` | Stage not reachable from entry |
 | `error.msg.workflow.configuration.circular.transitions` | Cycle detected |
-| `error.msg.workflow.configuration.duplicate.priority.for.task` | Two ACTIVE workflows at same priority for same task |
+| `error.msg.workflow.configuration.active.definition.already.exists.for.task` | Another ACTIVE workflow already exists for this task — deactivate it first, then activate |
 | `error.msg.workflow.definition.invalid.state` | Wrong status for delete/activate/deactivate |
 | `error.msg.workflow.definition.cannot.be.updated.with.in.progress.instances` | PUT while definition still has `IN_PROGRESS` instances — wait for them to finish (or reject via maker-checker), or deactivate (stops new selections), finish in-flight, then edit |
 | `error.msg.workflow.definition.not.found` | Unknown id |
@@ -193,10 +193,10 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 
 ## Screens
 
-1. **List** — DataTable: name, **task** (`taskPermissionCode`), status Badge (`DRAFT` secondary, `ACTIVE` success, `INACTIVE` warning), priority, stage count. Filters: **task** (from permissions list) and status. When `enable-approval-workflows` is disabled, show persistent Alert with inline Switch (existing `ApprovalWorkflowsDisabledAlert`).
-2. **Detail** — Read-only header (name, task, status, priority). Lifecycle actions: DRAFT → Edit, Delete, Activate; ACTIVE → Edit, Deactivate; INACTIVE → Edit (and Activate when appropriate). Vertical timeline of stages (enabled actions, optional role name, expiry, escalation). Helper text: “Actors need `{task}_CHECKER`” plus role when set. Linear transitions (no amount bands). Confirm destructive actions via AlertDialog. On edit failure with `cannot.be.updated.with.in.progress.instances`, show the backend message and hint to finish or reject open approvals first.
-3. **Create/Edit form** — Same form for create and for edit of `DRAFT` / `ACTIVE` / `INACTIVE`. Sections: (a) basics — **task** searchable Select from permissions API, name, description, priority (higher wins at runtime when multiple ACTIVE defs exist for the task); (b) stages — `useFieldArray` editor with optional **role** Select from `GET /roles` (`roleId`; clearable); **without** approval-limit fields; (c) transitions — from/to constrained to stage codes, `sequenceNo` only. Zod mirrors backend: task/name required, optional positive `roleId`, `THRESHOLD` rules, escalation rules, ≥1 action including `APPROVE` per stage. Show info alert that eligibility = `{taskPermissionCode}_CHECKER`, optionally narrowed by stage role. On ACTIVE/INACTIVE edit, note that save is blocked while approvals are mid-flight. **Remove** any selection-criteria (currency/min/max) UI.
-4. **Activation errors** — Show backend message; for `task.not.maker.checker.enabled`, add hint linking to `/system/configure-mc-tasks`.
+1. **List** — DataTable: name, **task** (`taskPermissionCode`), status Badge (`DRAFT` secondary, `ACTIVE` success, `INACTIVE` warning), priority, stage count. Filters: **task** (from permissions list) and status. When `enable-approval-workflows` is disabled, show persistent Alert with inline Switch (existing `ApprovalWorkflowsDisabledAlert`). If the filtered task already has an ACTIVE row, surface a subtle hint that only one ACTIVE is allowed per task.
+2. **Detail** — Read-only header (name, task, status, priority). Lifecycle actions: DRAFT → Edit, Delete, Activate; ACTIVE → Edit, Deactivate; INACTIVE → Edit (and Activate when appropriate). Before Activate, if another definition for the same task is ACTIVE, **disable Activate** (or show a confirm that explains they must deactivate the other first) and link to that ACTIVE definition. Vertical timeline of stages (enabled actions, optional role name, expiry, escalation). Helper text: “Actors need `{task}_CHECKER`” plus role when set. Linear transitions (no amount bands). Confirm destructive actions via AlertDialog. On edit failure with `cannot.be.updated.with.in.progress.instances`, show the backend message and hint to finish or reject open approvals first.
+3. **Create/Edit form** — Same form for create and for edit of `DRAFT` / `ACTIVE` / `INACTIVE`. Sections: (a) basics — **task** searchable Select from permissions API, name, description, priority (display/ordering only; **not** used to pick among multiple ACTIVE defs — only one ACTIVE per task is allowed); (b) stages — `useFieldArray` editor with optional **role** Select from `GET /roles` (`roleId`; clearable); **without** approval-limit fields; (c) transitions — from/to constrained to stage codes, `sequenceNo` only. Zod mirrors backend: task/name required, optional positive `roleId`, `THRESHOLD` rules, escalation rules, ≥1 action including `APPROVE` per stage. Show info alert that eligibility = `{taskPermissionCode}_CHECKER`, optionally narrowed by stage role. On ACTIVE/INACTIVE edit, note that save is blocked while approvals are mid-flight. When changing `taskPermissionCode` on an ACTIVE definition, warn if the target task already has a different ACTIVE workflow. **Remove** any selection-criteria (currency/min/max) UI.
+4. **Activation errors** — Show backend message; for `task.not.maker.checker.enabled`, add hint linking to `/system/configure-mc-tasks`; for `active.definition.already.exists.for.task`, name the existing ACTIVE workflow and offer a link/button to deactivate it (or navigate to its detail).
 
 ## Constraints
 
@@ -219,7 +219,7 @@ Surface `errors[].developerMessage` verbatim in a Dialog or destructive toast on
 - Unit tests: rename schema field to `taskPermissionCode`; drop amount/currency/limit Zod rules; keep threshold/escalation/transition rules.
 - Manual E2E against running backend (`fineract.module.workflow.enabled=true`, tenant `enable-approval-workflows` on, credentials `mifos` / `password`, tenant `default`):
   1. Enable maker-checker for `CREATE_LOAN` on `/system/configure-mc-tasks`.
-  2. Create a 3-stage workflow and a lower-priority fallback for the same task (distinct priorities).
-  3. Activate both; verify list shows `taskPermissionCode` not module name; verify activating a second def at the same priority fails with `duplicate.priority.for.task`.
+  2. Create a 3-stage workflow for the task and activate it; verify list shows `taskPermissionCode` not module name.
+  3. Create a second draft for the same task; attempt Activate → expect `active.definition.already.exists.for.task`; deactivate the first, then activate the second successfully.
   4. Activate a cyclic draft → error dialog with backend message.
   5. Toggle disabled-engine alert via global configuration.

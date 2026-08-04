@@ -22,8 +22,8 @@ import java.util.Optional;
 import org.apache.fineract.workflow.domain.WorkflowDefinition;
 
 /**
- * Selects the workflow which governs a held maker-checker command. Selection considers only ACTIVE definitions for the
- * task (permission code, e.g. CREATE_LOAN) and picks the highest-priority one.
+ * Selects the workflow which governs a held maker-checker command. At most one ACTIVE definition exists per task
+ * (permission code, e.g. CREATE_LOAN); selection returns that definition when present.
  */
 public interface WorkflowSelectionService {
 

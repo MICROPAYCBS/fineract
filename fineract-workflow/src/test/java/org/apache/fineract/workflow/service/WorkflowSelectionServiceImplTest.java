@@ -52,7 +52,7 @@ class WorkflowSelectionServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        // Repository returns ACTIVE definitions ordered by priority DESC.
+        // Repository returns ACTIVE definitions ordered by priority DESC (at most one ACTIVE per task is enforced).
         highPriorityWorkflow = definition("CREATE_LOAN", "Primary Loan Approval", 20);
         lowPriorityWorkflow = definition("CREATE_LOAN", "Fallback Loan Approval", 10);
         lenient().when(tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);

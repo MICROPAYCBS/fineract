@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -110,11 +111,15 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
         when(dataValidator.validateAndParse(anyString())).thenReturn(request);
         when(permissionRepository.findOneByCode(request.getTaskPermissionCode())).thenReturn(Optional.of(permission));
 
+        when(repository.findByTaskPermissionCodeAndStatus(request.getTaskPermissionCode(), WorkflowDefinitionStatus.ACTIVE))
+                .thenReturn(List.of(definition));
+
         writeService.update(7L, command);
 
         verify(assembler).assembleUpdate(definition, request);
         verify(repository).saveAndFlush(definition);
         verify(structureValidator).validateForActivation(definition);
+        verify(structureValidator).validateSingleActivePerTask(definition, List.of(definition));
         assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.ACTIVE);
     }
 
@@ -181,7 +186,7 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
     }
 
     @Test
-    void activationValidatesStructureAndAmbiguity() {
+    void activationValidatesStructureAndSingleActivePerTask() {
         final WorkflowDefinition definition = linearThreeStageDefinition();
         definition.setId(7L);
         when(repository.findById(7L)).thenReturn(Optional.of(definition));
@@ -192,8 +197,31 @@ class WorkflowDefinitionWritePlatformServiceImplTest {
         writeService.activate(7L);
 
         verify(structureValidator).validateForActivation(definition);
-        verify(structureValidator).validateNoAmbiguousSelection(definition, List.of());
+        verify(structureValidator).validateSingleActivePerTask(definition, List.of());
         assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.ACTIVE);
+    }
+
+    @Test
+    void activationIsRejectedWhenAnotherActiveDefinitionExistsForTask() {
+        final WorkflowDefinition definition = linearThreeStageDefinition();
+        definition.setId(7L);
+        final WorkflowDefinition existingActive = linearThreeStageDefinition();
+        existingActive.setId(8L);
+        existingActive.setStatus(WorkflowDefinitionStatus.ACTIVE);
+        when(repository.findById(7L)).thenReturn(Optional.of(definition));
+        when(permissionRepository.findOneByCode(definition.getTaskPermissionCode())).thenReturn(Optional.of(permission));
+        when(permission.hasMakerCheckerEnabled()).thenReturn(true);
+        when(repository.findByTaskPermissionCodeAndStatus(definition.getTaskPermissionCode(), WorkflowDefinitionStatus.ACTIVE))
+                .thenReturn(List.of(existingActive));
+        doThrow(new WorkflowConfigurationException("active.definition.already.exists.for.task",
+                "Task already has an active workflow", definition.getTaskPermissionCode())).when(structureValidator)
+                .validateSingleActivePerTask(definition, List.of(existingActive));
+
+        assertThatThrownBy(() -> writeService.activate(7L)) //
+                .isInstanceOf(WorkflowConfigurationException.class) //
+                .hasMessageContaining("already has an active workflow");
+        assertThat(definition.getStatus()).isEqualTo(WorkflowDefinitionStatus.DRAFT);
+        verify(repository, never()).saveAndFlush(any());
     }
 
     @Test

@@ -45,6 +45,9 @@ import org.springframework.stereotype.Component;
  * <li>escalation targets reference existing stages (and not the stage itself) when escalation is enabled</li>
  * <li>rejection thresholds are consistent with the rejection policy</li>
  * </ul>
+ *
+ * Separately, {@link #validateSingleActivePerTask} enforces that at most one ACTIVE definition may govern a given
+ * maker-checker task.
  */
 @Component
 public class WorkflowDefinitionStructureValidator {
@@ -193,21 +196,18 @@ public class WorkflowDefinitionStructureValidator {
     }
 
     /**
-     * Guards against two active workflows for the same maker-checker task at the same priority, which would make
-     * runtime selection ambiguous.
+     * At most one ACTIVE workflow may govern a maker-checker task. Deactivate the existing ACTIVE definition before
+     * activating another for the same {@code taskPermissionCode}.
      */
-    public void validateNoAmbiguousSelection(final WorkflowDefinition candidate, final List<WorkflowDefinition> activeDefinitions) {
+    public void validateSingleActivePerTask(final WorkflowDefinition candidate, final List<WorkflowDefinition> activeDefinitions) {
         for (final WorkflowDefinition existing : activeDefinitions) {
             if (existing.getId().equals(candidate.getId())) {
                 continue;
             }
-            if (!existing.getPriority().equals(candidate.getPriority())) {
-                continue;
-            }
-            throw new WorkflowConfigurationException("duplicate.priority.for.task",
-                    "Workflow " + candidate.getName() + " shares priority " + candidate.getPriority() + " with active workflow "
-                            + existing.getName() + " for task " + candidate.getTaskPermissionCode(),
-                    candidate.getName(), existing.getName(), candidate.getTaskPermissionCode(), candidate.getPriority());
+            throw new WorkflowConfigurationException("active.definition.already.exists.for.task",
+                    "Task " + candidate.getTaskPermissionCode() + " already has an active workflow " + existing.getName()
+                            + "; deactivate it before activating " + candidate.getName(),
+                    candidate.getTaskPermissionCode(), existing.getName(), candidate.getName());
         }
     }
 }

@@ -83,11 +83,13 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
         final WorkflowDefinitionRequest request = this.dataValidator.validateAndParse(command.json());
         validateTaskExists(request.getTaskPermissionCode());
         this.assembler.assembleUpdate(definition, request);
-        this.workflowDefinitionRepository.saveAndFlush(definition);
 
         if (definition.isActive()) {
             this.structureValidator.validateForActivation(definition);
+            validateSingleActivePerTask(definition);
         }
+
+        this.workflowDefinitionRepository.saveAndFlush(definition);
 
         return new CommandProcessingResultBuilder() //
                 .withCommandId(command.commandId()) //
@@ -132,9 +134,7 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
 
         this.structureValidator.validateForActivation(definition);
         validateTaskIsMakerCheckerEnabled(definition.getTaskPermissionCode());
-        final List<WorkflowDefinition> activeDefinitions = this.workflowDefinitionRepository
-                .findByTaskPermissionCodeAndStatus(definition.getTaskPermissionCode(), WorkflowDefinitionStatus.ACTIVE);
-        this.structureValidator.validateNoAmbiguousSelection(definition, activeDefinitions);
+        validateSingleActivePerTask(definition);
 
         definition.setStatus(WorkflowDefinitionStatus.ACTIVE);
         this.workflowDefinitionRepository.saveAndFlush(definition);
@@ -180,5 +180,11 @@ public class WorkflowDefinitionWritePlatformServiceImpl implements WorkflowDefin
             throw new WorkflowConfigurationException("task.not.maker.checker.enabled", "Maker-checker is not enabled for task "
                     + taskPermissionCode + "; enable it before activating a workflow for this task", taskPermissionCode);
         }
+    }
+
+    private void validateSingleActivePerTask(final WorkflowDefinition definition) {
+        final List<WorkflowDefinition> activeDefinitions = this.workflowDefinitionRepository
+                .findByTaskPermissionCodeAndStatus(definition.getTaskPermissionCode(), WorkflowDefinitionStatus.ACTIVE);
+        this.structureValidator.validateSingleActivePerTask(definition, activeDefinitions);
     }
 }

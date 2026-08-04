@@ -39,8 +39,8 @@ import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDa
 
 /**
  * Master template for a configurable approval workflow. A definition is anchored to a maker-checker task - a Fineract
- * permission code such as CREATE_LOAN. When multiple ACTIVE definitions exist for the same task, the highest priority
- * wins.
+ * permission code such as CREATE_LOAN. At most one ACTIVE definition may exist per task; drafts and inactive versions
+ * are allowed alongside it.
  */
 @Getter
 @Setter

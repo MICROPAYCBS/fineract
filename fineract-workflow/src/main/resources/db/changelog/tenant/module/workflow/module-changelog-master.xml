@@ -30,4 +30,5 @@
   <include relativeToChangelogFile="true" file="parts/0006_drop_stage_participants.xml"/>
   <include relativeToChangelogFile="true" file="parts/0007_drop_workflow_amounts.xml"/>
   <include relativeToChangelogFile="true" file="parts/0008_stage_role.xml"/>
+  <include relativeToChangelogFile="true" file="parts/0009_one_active_per_task.xml"/>
 </databaseChangeLog>

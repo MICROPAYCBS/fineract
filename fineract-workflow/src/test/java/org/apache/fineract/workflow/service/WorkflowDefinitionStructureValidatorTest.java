@@ -198,25 +198,15 @@ class WorkflowDefinitionStructureValidatorTest {
     }
 
     @Test
-    void samePriorityForSameTaskIsRejected() {
-        final WorkflowDefinition candidate = definition("CREATE_LOAN", "Primary", 10);
-        candidate.setId(1L);
-        final WorkflowDefinition existing = definition("CREATE_LOAN", "Secondary", 10);
-        existing.setId(2L);
-
-        assertThatThrownBy(() -> validator.validateNoAmbiguousSelection(candidate, List.of(existing))) //
-                .isInstanceOf(WorkflowConfigurationException.class) //
-                .hasMessageContaining("shares priority");
-    }
-
-    @Test
-    void differentPrioritiesForSameTaskAreAllowed() {
+    void secondActiveDefinitionForSameTaskIsRejected() {
         final WorkflowDefinition candidate = definition("CREATE_LOAN", "Primary", 20);
         candidate.setId(1L);
         final WorkflowDefinition existing = definition("CREATE_LOAN", "Fallback", 10);
         existing.setId(2L);
 
-        assertThatCode(() -> validator.validateNoAmbiguousSelection(candidate, List.of(existing))).doesNotThrowAnyException();
+        assertThatThrownBy(() -> validator.validateSingleActivePerTask(candidate, List.of(existing))) //
+                .isInstanceOf(WorkflowConfigurationException.class) //
+                .hasMessageContaining("already has an active workflow");
     }
 
     @Test
@@ -224,6 +214,14 @@ class WorkflowDefinitionStructureValidatorTest {
         final WorkflowDefinition candidate = definition("CREATE_LOAN", "Primary", 10);
         candidate.setId(1L);
 
-        assertThatCode(() -> validator.validateNoAmbiguousSelection(candidate, List.of(candidate))).doesNotThrowAnyException();
+        assertThatCode(() -> validator.validateSingleActivePerTask(candidate, List.of(candidate))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void noOtherActiveDefinitionsIsAllowed() {
+        final WorkflowDefinition candidate = definition("CREATE_LOAN", "Primary", 10);
+        candidate.setId(1L);
+
+        assertThatCode(() -> validator.validateSingleActivePerTask(candidate, List.of())).doesNotThrowAnyException();
     }
 }
