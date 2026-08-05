@@ -110,7 +110,8 @@ public class SavingsProductDataValidator {
             minOverdraftForInterestCalculationParamName, SavingsApiConstants.minRequiredBalanceParamName,
             SavingsApiConstants.enforceMinRequiredBalanceParamName, SavingsApiConstants.maxAllowedLienLimitParamName,
             SavingsApiConstants.lienAllowedParamName, minBalanceForInterestCalculationParamName, withHoldTaxParamName,
-            taxGroupIdParamName));
+            taxGroupIdParamName, SavingsApiConstants.startDateParamName, SavingsApiConstants.closeDateParamName,
+            SavingsApiConstants.dateFormatParamName));
 
     public void validateForCreate(final String json) {
 

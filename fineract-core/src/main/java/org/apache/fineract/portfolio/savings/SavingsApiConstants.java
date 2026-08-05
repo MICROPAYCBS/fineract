@@ -196,6 +196,9 @@ public class SavingsApiConstants {
     public static final String daysToDormancyParamName = "daysToDormancy";
     public static final String daysToEscheatParamName = "daysToEscheat";
 
+    public static final String startDateParamName = "startDate";
+    public static final String closeDateParamName = "closeDate";
+
     public static final String datatables = "datatables";
 
     public static final String gsimApplicationId = "applicationId";

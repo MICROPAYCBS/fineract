@@ -260,5 +260,7 @@
     <include file="parts/0239_add_retained_earning_job.xml" relativeToChangelogFile="true"/>
     <include file="parts/0240_add_retained_earning_global_configuration.xml" relativeToChangelogFile="true"/>
     <include file="parts/0241_add_totp_twofactor.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0242_add_validity_dates_to_savings_product.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
+
 

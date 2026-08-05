@@ -37,6 +37,7 @@ import static org.apache.fineract.portfolio.savings.DepositsApiConstants.preClos
 import static org.apache.fineract.portfolio.savings.DepositsApiConstants.preClosurePenalInterestOnTypeIdParamName;
 import static org.apache.fineract.portfolio.savings.DepositsApiConstants.preClosurePenalInterestParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.closeDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.currencyCodeParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.descriptionParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.digitsAfterDecimalParamName;
@@ -52,6 +53,7 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.minBalan
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nameParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalAnnualInterestRateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.shortNameParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.startDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withHoldTaxParamName;
 
@@ -180,6 +182,9 @@ public class DepositProductAssembler {
                 lockinPeriodFrequency, lockinPeriodFrequencyType, accountingRuleType, charges, productTermAndPreClosure, charts,
                 minBalanceForInterestCalculation, withHoldTax, taxGroup);
 
+        fixedDepositProduct.setStartDate(command.localDateValueOfParameterNamed(startDateParamName));
+        fixedDepositProduct.setCloseDate(command.localDateValueOfParameterNamed(closeDateParamName));
+
         // update product reference
         productTermAndPreClosure.updateProductReference(fixedDepositProduct);
 
@@ -272,6 +277,9 @@ public class DepositProductAssembler {
                 interestRate, interestCompoundingPeriodType, interestPostingPeriodType, interestCalculationType,
                 interestCalculationDaysInYearType, lockinPeriodFrequency, lockinPeriodFrequencyType, accountingRuleType, charges,
                 productTermAndPreClosure, productRecurringDetail, charts, minBalanceForInterestCalculation, taxGroup, withHoldTax);
+
+        recurringDepositProduct.setStartDate(command.localDateValueOfParameterNamed(startDateParamName));
+        recurringDepositProduct.setCloseDate(command.localDateValueOfParameterNamed(closeDateParamName));
 
         // update product reference
         productTermAndPreClosure.updateProductReference(recurringDepositProduct);

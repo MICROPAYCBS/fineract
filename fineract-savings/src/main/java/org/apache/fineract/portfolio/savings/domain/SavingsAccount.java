@@ -2249,6 +2249,19 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
                     .failWithCodeNoParameterAddedToErrorCode("cannot.be.a.future.date");
         }
 
+        if (this.product != null) {
+            final LocalDate productStartDate = this.product.getStartDate();
+            final LocalDate productCloseDate = this.product.getCloseDate();
+            if (DateUtils.isBefore(submittedOn, productStartDate)) {
+                baseDataValidator.reset().parameter(SavingsApiConstants.submittedOnDateParamName).value(submittedOn)
+                        .failWithCodeNoParameterAddedToErrorCode("cannot.be.before.savings.product.start.date");
+            }
+            if (productCloseDate != null && DateUtils.isAfter(submittedOn, productCloseDate)) {
+                baseDataValidator.reset().parameter(SavingsApiConstants.submittedOnDateParamName).value(submittedOn)
+                        .failWithCodeNoParameterAddedToErrorCode("cannot.be.after.savings.product.close.date");
+            }
+        }
+
         if (this.client != null && this.client.isActivatedAfter(submittedOn)) {
             baseDataValidator.reset().parameter(SavingsApiConstants.submittedOnDateParamName).value(this.client.getActivationDate())
                     .failWithCodeNoParameterAddedToErrorCode("cannot.be.before.client.activation.date");

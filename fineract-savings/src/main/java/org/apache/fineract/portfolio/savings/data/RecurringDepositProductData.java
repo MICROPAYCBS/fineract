@@ -251,21 +251,23 @@ public final class RecurringDepositProductData extends DepositProductData {
         final Collection<EnumOptionData> periodFrequencyTypeOptions = null;
         final Collection<TaxGroupData> taxGroupOptions = null;
 
-        return new RecurringDepositProductData(depositProductData.id, depositProductData.name, depositProductData.shortName,
-                depositProductData.description, depositProductData.currency, depositProductData.nominalAnnualInterestRate,
-                depositProductData.interestCompoundingPeriodType, depositProductData.interestPostingPeriodType,
-                depositProductData.interestCalculationType, depositProductData.interestCalculationDaysInYearType,
-                depositProductData.lockinPeriodFrequency, depositProductData.lockinPeriodFrequencyType,
-                depositProductData.minBalanceForInterestCalculation, depositProductData.accountingRule, accountingMappings,
-                paymentChannelToFundSourceMappings, currencyOptions, interestCompoundingPeriodTypeOptions, interestPostingPeriodTypeOptions,
-                interestCalculationTypeOptions, interestCalculationDaysInYearTypeOptions, lockinPeriodFrequencyTypeOptions,
-                withdrawalFeeTypeOptions, paymentTypeOptions, accountingRuleOptions, accountingMappingOptions, charges, chargeOptions,
-                penaltyOptions, feeToIncomeAccountMappings, penaltyToIncomeAccountMappings, interestRateCharts, chartTemplate,
-                preClosurePenalApplicable, preClosurePenalInterest, preClosurePenalInterestOnType, preClosurePenalInterestOnTypeOptions,
-                minDepositTerm, maxDepositTerm, minDepositTermType, maxDepositTermType, inMultiplesOfDepositTerm,
-                inMultiplesOfDepositTermType, isMandatoryDeposit, allowWithdrawal, adjustAdvanceTowardsFuturePayments,
-                periodFrequencyTypeOptions, minDepositAmount, depositAmount, maxDepositAmount, depositProductData.withHoldTax,
-                depositProductData.taxGroup, taxGroupOptions);
+        final RecurringDepositProductData productData = new RecurringDepositProductData(depositProductData.id, depositProductData.name,
+                depositProductData.shortName, depositProductData.description, depositProductData.currency,
+                depositProductData.nominalAnnualInterestRate, depositProductData.interestCompoundingPeriodType,
+                depositProductData.interestPostingPeriodType, depositProductData.interestCalculationType,
+                depositProductData.interestCalculationDaysInYearType, depositProductData.lockinPeriodFrequency,
+                depositProductData.lockinPeriodFrequencyType, depositProductData.minBalanceForInterestCalculation,
+                depositProductData.accountingRule, accountingMappings, paymentChannelToFundSourceMappings, currencyOptions,
+                interestCompoundingPeriodTypeOptions, interestPostingPeriodTypeOptions, interestCalculationTypeOptions,
+                interestCalculationDaysInYearTypeOptions, lockinPeriodFrequencyTypeOptions, withdrawalFeeTypeOptions, paymentTypeOptions,
+                accountingRuleOptions, accountingMappingOptions, charges, chargeOptions, penaltyOptions, feeToIncomeAccountMappings,
+                penaltyToIncomeAccountMappings, interestRateCharts, chartTemplate, preClosurePenalApplicable, preClosurePenalInterest,
+                preClosurePenalInterestOnType, preClosurePenalInterestOnTypeOptions, minDepositTerm, maxDepositTerm, minDepositTermType,
+                maxDepositTermType, inMultiplesOfDepositTerm, inMultiplesOfDepositTermType, isMandatoryDeposit, allowWithdrawal,
+                adjustAdvanceTowardsFuturePayments, periodFrequencyTypeOptions, minDepositAmount, depositAmount, maxDepositAmount,
+                depositProductData.withHoldTax, depositProductData.taxGroup, taxGroupOptions);
+        copyValidityDates(depositProductData, productData);
+        return productData;
     }
 
     public static RecurringDepositProductData lookup(final Long id, final String name) {

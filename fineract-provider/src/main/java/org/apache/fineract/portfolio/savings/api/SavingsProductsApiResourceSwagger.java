@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.savings.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -82,6 +83,12 @@ final class SavingsProductsApiResourceSwagger {
         public Boolean withHoldTax;
         @Schema(example = "false")
         public Boolean isDormancyTrackingActive;
+        @Schema(example = "dd MMMM yyyy")
+        public String dateFormat;
+        @Schema(example = "01 January 2024")
+        public String startDate;
+        @Schema(example = "31 December 2030")
+        public String closeDate;
     }
 
     @Schema(description = "PostSavingsProductsResponse")
@@ -229,6 +236,12 @@ final class SavingsProductsApiResourceSwagger {
         @Schema(example = "false")
         public Boolean withdrawalFeeForTransfers;
         public GetSavingsProductsAccountingRule accountingRule;
+        @Schema(example = "01 January 2024")
+        public LocalDate startDate;
+        @Schema(example = "31 December 2030")
+        public LocalDate closeDate;
+        @Schema(example = "savingsProduct.active")
+        public String status;
     }
 
     @Schema(description = "GetSavingsProductsProductIdResponse")

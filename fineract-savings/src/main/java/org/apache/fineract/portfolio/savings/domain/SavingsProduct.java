@@ -22,7 +22,9 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountingRuleParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.allowOverdraftParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.closeDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.currencyCodeParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.dateFormatParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToDormancyParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToEscheatParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToInactiveParamName;
@@ -49,6 +51,7 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalA
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalAnnualInterestRateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.overdraftLimitParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.shortNameParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.startDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withHoldTaxParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withdrawalFeeForTransfersParamName;
@@ -208,6 +211,12 @@ public class SavingsProduct extends AbstractPersistableCustom<Long> {
 
     @Column(name = "days_to_escheat")
     private Long daysToEscheat;
+
+    @Column(name = "start_date")
+    private LocalDate startDate;
+
+    @Column(name = "close_date")
+    private LocalDate closeDate;
 
     public static SavingsProduct createNew(final String name, final String shortName, final String description,
             final MonetaryCurrency currency, final BigDecimal interestRate,
@@ -616,6 +625,23 @@ public class SavingsProduct extends AbstractPersistableCustom<Long> {
             this.daysToEscheat = null;
         }
 
+        final String dateFormat = command.dateFormat();
+        if (command.isChangeInLocalDateParameterNamed(startDateParamName, this.startDate)) {
+            final String valueAsInput = command.stringValueOfParameterNamed(startDateParamName);
+            actualChanges.put(startDateParamName, valueAsInput);
+            actualChanges.put(localeParamName, localeAsInput);
+            actualChanges.put(dateFormatParamName, dateFormat);
+            this.startDate = command.localDateValueOfParameterNamed(startDateParamName);
+        }
+
+        if (command.isChangeInLocalDateParameterNamed(closeDateParamName, this.closeDate)) {
+            final String valueAsInput = command.stringValueOfParameterNamed(closeDateParamName);
+            actualChanges.put(closeDateParamName, valueAsInput);
+            actualChanges.put(localeParamName, localeAsInput);
+            actualChanges.put(dateFormatParamName, dateFormat);
+            this.closeDate = command.localDateValueOfParameterNamed(closeDateParamName);
+        }
+
         validateLockinDetails();
         esnureOverdraftLimitsSetForOverdraftAccounts();
 
@@ -777,6 +803,22 @@ public class SavingsProduct extends AbstractPersistableCustom<Long> {
 
     public Long getDaysToEscheat() {
         return this.daysToEscheat;
+    }
+
+    public LocalDate getStartDate() {
+        return this.startDate;
+    }
+
+    public void setStartDate(final LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public LocalDate getCloseDate() {
+        return this.closeDate;
+    }
+
+    public void setCloseDate(final LocalDate closeDate) {
+        this.closeDate = closeDate;
     }
 
 }

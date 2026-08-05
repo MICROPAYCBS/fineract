@@ -272,8 +272,8 @@ public class SavingsConfiguration {
     @Bean
     @ConditionalOnMissingBean(DepositProductReadPlatformService.class)
     public DepositProductReadPlatformService depositProductReadPlatformService(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
-            InterestRateChartReadService interestRateChartReadPlatformService) {
-        return new DepositProductReadPlatformServiceImpl(context, jdbcTemplate, interestRateChartReadPlatformService);
+            InterestRateChartReadService interestRateChartReadPlatformService, DatabaseSpecificSQLGenerator sqlGenerator) {
+        return new DepositProductReadPlatformServiceImpl(context, jdbcTemplate, interestRateChartReadPlatformService, sqlGenerator);
     }
 
     @Bean
@@ -421,8 +421,8 @@ public class SavingsConfiguration {
     @Bean
     @ConditionalOnMissingBean(SavingsProductReadPlatformService.class)
     public SavingsProductReadPlatformService savingsProductReadPlatformService(PlatformSecurityContext context, JdbcTemplate jdbcTemplate,
-            FineractEntityAccessUtil fineractEntityAccessUtil) {
-        return new SavingsProductReadPlatformServiceImpl(context, jdbcTemplate, fineractEntityAccessUtil);
+            FineractEntityAccessUtil fineractEntityAccessUtil, DatabaseSpecificSQLGenerator sqlGenerator) {
+        return new SavingsProductReadPlatformServiceImpl(context, jdbcTemplate, fineractEntityAccessUtil, sqlGenerator);
     }
 
     @Bean

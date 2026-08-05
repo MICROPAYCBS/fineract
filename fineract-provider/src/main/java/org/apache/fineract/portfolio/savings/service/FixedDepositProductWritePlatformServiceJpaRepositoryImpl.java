@@ -24,6 +24,7 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesP
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 
 import jakarta.persistence.PersistenceException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.interestratechart.service.InterestRateChartAssembler;
@@ -49,6 +51,7 @@ import org.apache.fineract.portfolio.savings.domain.DepositProductAssembler;
 import org.apache.fineract.portfolio.savings.domain.FixedDepositProduct;
 import org.apache.fineract.portfolio.savings.domain.FixedDepositProductRepository;
 import org.apache.fineract.portfolio.savings.exception.FixedDepositProductNotFoundException;
+import org.apache.fineract.portfolio.savings.exception.SavingsProductDateException;
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,6 +73,7 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
 
         try {
             this.fromApiJsonDataValidator.validateForFixedDepositCreate(command.json());
+            validateInputDates(command);
 
             final FixedDepositProduct product = this.depositProductAssembler.assembleFixedDepositProduct(command);
 
@@ -98,6 +102,7 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
         try {
             this.context.authenticatedUser();
             this.fromApiJsonDataValidator.validateForFixedDepositUpdate(command.json());
+            validateInputDates(command);
 
             final FixedDepositProduct product = this.fixedDepositProductRepository.findById(productId)
                     .orElseThrow(() -> new FixedDepositProductNotFoundException(productId));
@@ -191,5 +196,14 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
         }
         log.error("Error occured.", dae);
         throw ErrorHandler.getMappable(dae, msgCode, msg, param, msgArgs);
+    }
+
+    private void validateInputDates(final JsonCommand command) {
+        final LocalDate startDate = command.localDateValueOfParameterNamed(SavingsApiConstants.startDateParamName);
+        final LocalDate closeDate = command.localDateValueOfParameterNamed(SavingsApiConstants.closeDateParamName);
+
+        if (closeDate != null && DateUtils.isBefore(closeDate, startDate)) {
+            throw new SavingsProductDateException(startDate.toString(), closeDate.toString());
+        }
     }
 }

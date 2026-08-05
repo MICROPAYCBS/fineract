@@ -24,6 +24,7 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesP
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 
 import jakarta.persistence.PersistenceException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -49,6 +51,7 @@ import org.apache.fineract.portfolio.savings.data.SavingsProductDataValidator;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
+import org.apache.fineract.portfolio.savings.exception.SavingsProductDateException;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.springframework.dao.DataAccessException;
@@ -100,6 +103,7 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
 
         try {
             this.fromApiJsonDataValidator.validateForCreate(command.json());
+            validateInputDates(command);
 
             final SavingsProduct product = this.savingsProductAssembler.assemble(command);
 
@@ -137,6 +141,7 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
                     .orElseThrow(() -> new SavingsProductNotFoundException(productId));
 
             this.fromApiJsonDataValidator.validateForUpdate(command.json(), product);
+            validateInputDates(command);
 
             final Map<String, Object> changes = product.update(command);
 
@@ -199,6 +204,15 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
         return new CommandProcessingResultBuilder() //
                 .withEntityId(product.getId()) //
                 .build();
+    }
+
+    private void validateInputDates(final JsonCommand command) {
+        final LocalDate startDate = command.localDateValueOfParameterNamed(SavingsApiConstants.startDateParamName);
+        final LocalDate closeDate = command.localDateValueOfParameterNamed(SavingsApiConstants.closeDateParamName);
+
+        if (closeDate != null && DateUtils.isBefore(closeDate, startDate)) {
+            throw new SavingsProductDateException(startDate.toString(), closeDate.toString());
+        }
     }
 
 }

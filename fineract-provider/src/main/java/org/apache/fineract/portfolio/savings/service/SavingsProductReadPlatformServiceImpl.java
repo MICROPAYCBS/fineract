@@ -21,11 +21,14 @@ package org.apache.fineract.portfolio.savings.service;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.common.AccountingEnumerations;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityType;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -46,6 +49,7 @@ public class SavingsProductReadPlatformServiceImpl implements SavingsProductRead
     private final SavingProductMapper savingsProductRowMapper = new SavingProductMapper();
     private final SavingProductLookupMapper savingsProductLookupsRowMapper = new SavingProductLookupMapper();
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
 
     @Override
     public Collection<SavingsProductData> retrieveAll() {
@@ -68,7 +72,9 @@ public class SavingsProductReadPlatformServiceImpl implements SavingsProductRead
     @Override
     public Collection<SavingsProductData> retrieveAllForLookup() {
 
-        String sql = "select " + this.savingsProductLookupsRowMapper.schema() + " where sp.deposit_type_enum = ? ";
+        String sql = "select " + this.savingsProductLookupsRowMapper.schema()
+                + " where sp.deposit_type_enum = ? and (sp.close_date is null or sp.close_date >= " + sqlGenerator.currentBusinessDate()
+                + ")";
 
         // Check if branch specific products are enabled. If yes, fetch only
         // products mapped to current user's office
@@ -129,7 +135,8 @@ public class SavingsProductReadPlatformServiceImpl implements SavingsProductRead
             sqlBuilder.append("sp.is_dormancy_tracking_active as isDormancyTrackingActive,");
             sqlBuilder.append("sp.days_to_inactive as daysToInactive,");
             sqlBuilder.append("sp.days_to_dormancy as daysToDormancy,");
-            sqlBuilder.append("sp.days_to_escheat as daysToEscheat ");
+            sqlBuilder.append("sp.days_to_escheat as daysToEscheat, ");
+            sqlBuilder.append("sp.start_date as startDate, sp.close_date as closeDate ");
             sqlBuilder.append("from m_savings_product sp ");
             sqlBuilder.append("join m_currency curr on curr.code = sp.currency_code ");
             sqlBuilder.append("left join m_tax_group tg on tg.id = sp.tax_group_id  ");
@@ -213,12 +220,26 @@ public class SavingsProductReadPlatformServiceImpl implements SavingsProductRead
             final Long daysToDormancy = JdbcSupport.getLong(rs, "daysToDormancy");
             final Long daysToEscheat = JdbcSupport.getLong(rs, "daysToEscheat");
 
-            return SavingsProductData.instance(id, name, shortName, description, currency, nominalAnnualInterestRate,
-                    compoundingInterestPeriodType, interestPostingPeriodType, interestCalculationType, interestCalculationDaysInYearType,
-                    minRequiredOpeningBalance, lockinPeriodFrequency, lockinPeriodFrequencyType, withdrawalFeeForTransfers,
-                    accountingRuleType, allowOverdraft, overdraftLimit, minRequiredBalance, enforceMinRequiredBalance, maxAllowedLienLimit,
-                    lienAllowed, minBalanceForInterestCalculation, nominalAnnualInterestRateOverdraft, minOverdraftForInterestCalculation,
-                    withHoldTax, taxGroupData, isDormancyTrackingActive, daysToInactive, daysToDormancy, daysToEscheat);
+            final LocalDate startDate = JdbcSupport.getLocalDate(rs, "startDate");
+            final LocalDate closeDate = JdbcSupport.getLocalDate(rs, "closeDate");
+            String status;
+            if (closeDate != null && DateUtils.isBeforeBusinessDate(closeDate)) {
+                status = "savingsProduct.inActive";
+            } else {
+                status = "savingsProduct.active";
+            }
+
+            final SavingsProductData productData = SavingsProductData.instance(id, name, shortName, description, currency,
+                    nominalAnnualInterestRate, compoundingInterestPeriodType, interestPostingPeriodType, interestCalculationType,
+                    interestCalculationDaysInYearType, minRequiredOpeningBalance, lockinPeriodFrequency, lockinPeriodFrequencyType,
+                    withdrawalFeeForTransfers, accountingRuleType, allowOverdraft, overdraftLimit, minRequiredBalance,
+                    enforceMinRequiredBalance, maxAllowedLienLimit, lienAllowed, minBalanceForInterestCalculation,
+                    nominalAnnualInterestRateOverdraft, minOverdraftForInterestCalculation, withHoldTax, taxGroupData,
+                    isDormancyTrackingActive, daysToInactive, daysToDormancy, daysToEscheat);
+            productData.setStartDate(startDate);
+            productData.setCloseDate(closeDate);
+            productData.setStatus(status);
+            return productData;
         }
     }
 
@@ -255,18 +276,21 @@ public class SavingsProductReadPlatformServiceImpl implements SavingsProductRead
 
         if (isOverdraftType != null) {
             if (inClauseAdded) {
-                sql += " and sp.allow_overdraft=? and sp.deposit_type_enum = ?";
+                sql += " and sp.allow_overdraft=? and sp.deposit_type_enum = ? and (sp.close_date is null or sp.close_date >= "
+                        + sqlGenerator.currentBusinessDate() + ")";
             } else {
-                sql += " where sp.allow_overdraft=? and sp.deposit_type_enum = ?";
+                sql += " where sp.allow_overdraft=? and sp.deposit_type_enum = ? and (sp.close_date is null or sp.close_date >= "
+                        + sqlGenerator.currentBusinessDate() + ")";
             }
             return this.jdbcTemplate.query(sql, this.savingsProductLookupsRowMapper, // NOSONAR
                     new Object[] { isOverdraftType, DepositAccountType.SAVINGS_DEPOSIT.getValue() });
         }
 
         if (inClauseAdded) {
-            sql += " and sp.deposit_type_enum = ?";
+            sql += " and sp.deposit_type_enum = ? and (sp.close_date is null or sp.close_date >= " + sqlGenerator.currentBusinessDate() + ")";
         } else {
-            sql += " where sp.deposit_type_enum = ?";
+            sql += " where sp.deposit_type_enum = ? and (sp.close_date is null or sp.close_date >= " + sqlGenerator.currentBusinessDate()
+                    + ")";
         }
         return this.jdbcTemplate.query(sql, this.savingsProductLookupsRowMapper, // NOSONAR
                 new Object[] { DepositAccountType.SAVINGS_DEPOSIT.getValue() });
