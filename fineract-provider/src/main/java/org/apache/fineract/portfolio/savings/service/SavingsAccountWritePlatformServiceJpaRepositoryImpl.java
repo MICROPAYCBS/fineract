@@ -726,14 +726,25 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         SavingsAccountTransactionType transactionType = SavingsAccountTransactionType
                 .fromInt(accountTransaction.getTransactionType().getId().intValue());
         if (transactionType.isOverDraftInterestPosting()) {
-            if (MathUtil.isGreaterThanZero(accountTransaction.getRunningBalance())) {
+            if (Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct())) {
+                // Cash-based: DR Savings Reference, CR Income from Interest — same as CashBasedAccountingProcessorForSavings
+                accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForSavingsReference());
+                accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForIncomeFromInterest());
+            } else if (MathUtil.isGreaterThanZero(accountTransaction.getRunningBalance())) {
+                // Accrual: clear Interest Receivable against Savings Control when balance became positive
                 accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForSavingsControl());
                 accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForInterestReceivable());
             } else {
+                // Accrual: clear Interest Receivable against Overdraft Portfolio
                 accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForOverdraftPorfolio());
                 accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForInterestReceivable());
             }
+        } else if (Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct())) {
+            // Cash-based: DR Interest on Savings (expense), CR Savings Control — same as CashBasedAccountingProcessorForSavings
+            accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForInterestOnSavings());
+            accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForSavingsControl());
         } else {
+            // Accrual: DR Interest Payable, CR Savings Control
             accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForInterestPayable());
             accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForSavingsControl());
         }

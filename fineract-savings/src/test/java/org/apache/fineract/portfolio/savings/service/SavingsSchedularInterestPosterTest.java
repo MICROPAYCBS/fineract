@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.savings.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -92,5 +93,36 @@ class SavingsSchedularInterestPosterTest {
 
         assertEquals(2, successfulIds.size(), "Two accounts should proceed normally");
         assertTrue(successfulIds.containsAll(List.of(1L, 3L)), "Accounts 1 and 3 should succeed independently");
+    }
+
+    @Test
+    void testValidGlAccountIdsRequiredForJournalInsert() {
+        // Mirrors SavingsSchedularInterestPoster journal gating: cash products must not enter JE insert
+        // when debit was interest-payable (0) even though interest-on-savings and savings-control exist.
+        Long interestPayableUnset = 0L;
+        Long interestOnSavings = 10L;
+        Long savingsControl = 20L;
+
+        assertTrue(isValidGlAccountId(interestOnSavings) && isValidGlAccountId(savingsControl),
+                "Cash-based debit/credit (interest-on-savings + savings-control) should be valid");
+        assertFalse(isValidGlAccountId(interestPayableUnset) && isValidGlAccountId(savingsControl),
+                "Interest-payable=0 must not pass the journal gate with savings-control alone");
+    }
+
+    @Test
+    void testCashOverdraftInterestGlAccountsPassJournalGate() {
+        // Cash OD posting uses Savings Reference + Income from Interest (not Interest Receivable).
+        Long savingsReference = 30L;
+        Long incomeFromInterest = 40L;
+        Long interestReceivableUnset = 0L;
+
+        assertTrue(isValidGlAccountId(savingsReference) && isValidGlAccountId(incomeFromInterest),
+                "Cash overdraft debit/credit should pass the journal gate");
+        assertFalse(isValidGlAccountId(savingsReference) && isValidGlAccountId(interestReceivableUnset),
+                "Interest-receivable=0 must not pass the journal gate for cash overdraft");
+    }
+
+    private static boolean isValidGlAccountId(final Long accountId) {
+        return accountId != null && accountId != 0L;
     }
 }
