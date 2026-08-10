@@ -38,6 +38,7 @@ import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAcc
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
+import org.apache.fineract.portfolio.charge.data.ChargeTierData;
 import org.apache.fineract.portfolio.charge.domain.ChargeAppliesTo;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.ChargeNotFoundException;
@@ -107,10 +108,19 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
             sql += addInClauseToSQL_toLimitChargesMappedToOffice_ifOfficeSpecificProductsEnabled();
 
             sql = sql + " ;";
-            return this.jdbcTemplate.queryForObject(sql, rm, new Object[] { chargeId }); // NOSONAR
+            final ChargeData charge = this.jdbcTemplate.queryForObject(sql, rm, new Object[] { chargeId }); // NOSONAR
+            return charge.toBuilder().chargeTiers(retrieveChargeTiers(chargeId)).build();
         } catch (final EmptyResultDataAccessException e) {
             throw new ChargeNotFoundException(chargeId, e);
         }
+    }
+
+    private List<ChargeTierData> retrieveChargeTiers(final Long chargeId) {
+        final String sql = "select id, amount_range_from as amountRangeFrom, amount_range_to as amountRangeTo, amount "
+                + "from m_charge_tier where charge_id = ? order by amount_range_from";
+        return this.jdbcTemplate.query(sql, (rs, rowNum) -> ChargeTierData.builder().id(rs.getLong("id"))
+                .amountRangeFrom(rs.getBigDecimal("amountRangeFrom")).amountRangeTo(rs.getBigDecimal("amountRangeTo"))
+                .amount(rs.getBigDecimal("amount")).build(), chargeId);
     }
 
     @Override
@@ -299,6 +309,7 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
                     + "oc.currency_multiplesof as inMultiplesOf, oc.display_symbol as currencyDisplaySymbol, "
                     + "oc.internationalized_name_code as currencyNameCode, c.fee_on_day as feeOnDay, c.fee_on_month as feeOnMonth, "
                     + "c.fee_interval as feeInterval, c.fee_frequency as feeFrequency,c.min_cap as minCap,c.max_cap as maxCap, "
+                    + "c.use_charge_tiers as useChargeTiers, "
                     + "c.income_or_liability_account_id as glAccountId , acc.name as glAccountName, acc.gl_code as glCode, "
                     + "tg.id as taxGroupId, c.is_payment_type as isPaymentType, pt.id as paymentTypeId, pt.value as paymentTypeName, tg.name as taxGroupName "
                     + "from m_charge c " + "join m_organisation_currency oc on c.currency_code = oc.code "
@@ -307,11 +318,13 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
         }
 
         public String loanProductChargeSchema() {
-            return chargeSchema() + " join m_product_loan_charge plc on plc.charge_id = c.id";
+            return chargeSchema().replace("c.amount as amount", "COALESCE(plc.amount, c.amount) as amount")
+                    + " join m_product_loan_charge plc on plc.charge_id = c.id";
         }
 
         public String savingsProductChargeSchema() {
-            return chargeSchema() + " join m_savings_product_charge spc on spc.charge_id = c.id";
+            return chargeSchema().replace("c.amount as amount", "COALESCE(spc.amount, c.amount) as amount")
+                    + " join m_savings_product_charge spc on spc.charge_id = c.id";
         }
 
         public String shareProductChargeSchema() {
@@ -363,6 +376,7 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
             }
             final BigDecimal minCap = rs.getBigDecimal("minCap");
             final BigDecimal maxCap = rs.getBigDecimal("maxCap");
+            final boolean useChargeTiers = rs.getBoolean("useChargeTiers");
 
             // extract GL Account
             final Long glAccountId = JdbcSupport.getLong(rs, "glAccountId");
@@ -399,8 +413,8 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
                     .feeOnMonthDay(feeOnMonthDay).feeInterval(feeInterval).penalty(penalty).active(active).freeWithdrawal(isFreeWithdrawal)
                     .freeWithdrawalChargeFrequency(freeWithdrawalChargeFrequency).restartFrequency(restartFrequency)
                     .restartFrequencyEnum(restartFrequencyEnum).isPaymentType(isPaymentType).paymentTypeOptions(paymentTypeData)
-                    .minCap(minCap).maxCap(maxCap).feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(glAccountData)
-                    .taxGroup(taxGroupData).build();
+                    .minCap(minCap).maxCap(maxCap).useChargeTiers(useChargeTiers).feeFrequency(feeFrequencyType)
+                    .incomeOrLiabilityAccount(glAccountData).taxGroup(taxGroupData).build();
 
         }
     }

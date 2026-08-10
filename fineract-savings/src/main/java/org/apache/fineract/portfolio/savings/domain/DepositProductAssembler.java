@@ -41,7 +41,6 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.closeDat
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.currencyCodeParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.descriptionParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.digitsAfterDecimalParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.idParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.inMultiplesOfParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCalculationDaysInYearTypeParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCalculationTypeParamName;
@@ -70,10 +69,8 @@ import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
-import org.apache.fineract.organisation.monetary.exception.InvalidCurrencyException;
 import org.apache.fineract.portfolio.charge.domain.Charge;
-import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
-import org.apache.fineract.portfolio.charge.exception.ChargeCannotBeAppliedToException;
+import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
 import org.apache.fineract.portfolio.interestratechart.domain.InterestRateChart;
 import org.apache.fineract.portfolio.interestratechart.service.InterestRateChartAssembler;
 import org.apache.fineract.portfolio.savings.PreClosurePenalInterestOnType;
@@ -90,14 +87,14 @@ import org.springframework.stereotype.Service;
 @Service
 public class DepositProductAssembler {
 
-    private final ChargeRepositoryWrapper chargeRepository;
+    private final ProductChargeLinkAssembler productChargeLinkAssembler;
     private final InterestRateChartAssembler chartAssembler;
     private final TaxGroupRepositoryWrapper taxGroupRepository;
 
     @Autowired
-    public DepositProductAssembler(final ChargeRepositoryWrapper chargeRepository, final InterestRateChartAssembler chartAssembler,
-            final TaxGroupRepositoryWrapper taxGroupRepository) {
-        this.chargeRepository = chargeRepository;
+    public DepositProductAssembler(final ProductChargeLinkAssembler productChargeLinkAssembler,
+            final InterestRateChartAssembler chartAssembler, final TaxGroupRepositoryWrapper taxGroupRepository) {
+        this.productChargeLinkAssembler = productChargeLinkAssembler;
         this.chartAssembler = chartAssembler;
         this.taxGroupRepository = taxGroupRepository;
     }
@@ -440,37 +437,8 @@ public class DepositProductAssembler {
     }
 
     public Set<Charge> assembleListOfSavingsProductCharges(final JsonCommand command, final String savingsProductCurrencyCode) {
-
-        final Set<Charge> charges = new HashSet<>();
-
-        if (command.parameterExists(chargesParamName)) {
-            final JsonArray chargesArray = command.arrayOfParameterNamed(chargesParamName);
-            if (chargesArray != null) {
-                for (int i = 0; i < chargesArray.size(); i++) {
-
-                    final JsonObject jsonObject = chargesArray.get(i).getAsJsonObject();
-                    if (jsonObject.has(idParamName)) {
-                        final Long id = jsonObject.get(idParamName).getAsLong();
-
-                        final Charge charge = this.chargeRepository.findOneWithNotFoundDetection(id);
-
-                        if (!charge.isSavingsCharge()) {
-                            final String errorMessage = "Charge with identifier " + charge.getId()
-                                    + " cannot be applied to Savings product.";
-                            throw new ChargeCannotBeAppliedToException("savings.product", errorMessage, charge.getId());
-                        }
-
-                        if (!savingsProductCurrencyCode.equals(charge.getCurrencyCode())) {
-                            final String errorMessage = "Charge and Savings Product must have the same currency.";
-                            throw new InvalidCurrencyException("charge", "attach.to.savings.product", errorMessage);
-                        }
-                        charges.add(charge);
-                    }
-                }
-            }
-        }
-
-        return charges;
+        return new HashSet<>(ProductChargeLinkAssembler
+                .toCharges(this.productChargeLinkAssembler.assembleSavingsProductCharges(command, savingsProductCurrencyCode)));
     }
 
     private Set<InterestRateChart> assembleListOfCharts(JsonCommand command, String currencyCode, DataValidatorBuilder baseDataValidator) {

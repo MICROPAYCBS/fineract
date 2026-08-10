@@ -26,9 +26,9 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroup
 import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -44,7 +44,9 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.data.ProductChargeLink;
+import org.apache.fineract.portfolio.charge.service.ProductChargeAmountService;
+import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsProductDataValidator;
@@ -67,6 +69,8 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
     private final SavingsProductAssembler savingsProductAssembler;
     private final ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService;
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
+    private final ProductChargeLinkAssembler productChargeLinkAssembler;
+    private final ProductChargeAmountService productChargeAmountService;
 
     /*
      * Guaranteed to throw an exception no matter what the data integrity issue is.
@@ -108,6 +112,9 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             final SavingsProduct product = this.savingsProductAssembler.assemble(command);
 
             this.savingProductRepository.saveAndFlush(product);
+            final List<ProductChargeLink> productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command,
+                    product.currency().getCode());
+            this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
 
             // save accounting mappings
             this.accountMappingWritePlatformService.createSavingProductToGLAccountMapping(product.getId(), command,
@@ -145,13 +152,11 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
 
             final Map<String, Object> changes = product.update(command);
 
-            if (changes.containsKey(chargesParamName)) {
-                final Set<Charge> savingsProductCharges = this.savingsProductAssembler.assembleListOfSavingsProductCharges(command,
-                        product.currency().getCode());
-                final boolean updated = product.update(savingsProductCharges);
-                if (!updated) {
-                    changes.remove(chargesParamName);
-                }
+            List<ProductChargeLink> productChargeLinks = null;
+            if (command.parameterExists(chargesParamName)) {
+                productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command, product.currency().getCode());
+                product.update(new HashSet<>(ProductChargeLinkAssembler.toCharges(productChargeLinks)));
+                changes.put(chargesParamName, command.arrayOfParameterNamed(chargesParamName));
             }
 
             if (changes.containsKey(taxGroupIdParamName)) {
@@ -176,6 +181,9 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
 
             if (!changes.isEmpty()) {
                 this.savingProductRepository.saveAndFlush(product);
+            }
+            if (productChargeLinks != null) {
+                this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
             }
 
             return new CommandProcessingResultBuilder() //

@@ -48,6 +48,7 @@
 
         <!--  fineract-charge module: -->
         <class>org.apache.fineract.portfolio.charge.domain.Charge</class>
+        <class>org.apache.fineract.portfolio.charge.domain.ChargeTier</class>
         <class>org.apache.fineract.portfolio.charge.domain.ChargeCalculationTypeConverter</class>
         <class>org.apache.fineract.portfolio.charge.domain.ChargePaymentModeConverter</class>
 

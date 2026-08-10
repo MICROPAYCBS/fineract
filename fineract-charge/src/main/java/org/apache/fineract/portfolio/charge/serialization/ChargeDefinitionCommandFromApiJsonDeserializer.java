@@ -73,6 +73,8 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
     public static final String ENABLE_PAYMENT_TYPE = "enablePaymentType";
     public static final String PAYMENT_TYPE_ID = "paymentTypeId";
     public static final String CHARGE = "charge";
+    public static final String CHARGE_TIERS = ChargeTierCommandParser.CHARGE_TIERS;
+    public static final String USE_CHARGE_TIERS = ChargeTierCommandParser.USE_CHARGE_TIERS;
     /**
      * The parameters supported for this command.
      */
@@ -80,12 +82,16 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             CURRENCY_OPTIONS, CHARGE_APPLIES_TO, CHARGE_TIME_TYPE, CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY,
             ACTIVE, CHARGE_PAYMENT_MODE, FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY,
             ENABLE_FREE_WITHDRAWAL_CHARGE, FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID,
-            ENABLE_PAYMENT_TYPE, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName));
+            ENABLE_PAYMENT_TYPE, USE_CHARGE_TIERS, CHARGE_TIERS, ChargesApiConstants.glAccountIdParamName,
+            ChargesApiConstants.taxGroupIdParamName));
     private final FromJsonHelper fromApiJsonHelper;
+    private final ChargeTierCommandParser chargeTierCommandParser;
 
     @Autowired
-    public ChargeDefinitionCommandFromApiJsonDeserializer(final FromJsonHelper fromApiJsonHelper) {
+    public ChargeDefinitionCommandFromApiJsonDeserializer(final FromJsonHelper fromApiJsonHelper,
+            final ChargeTierCommandParser chargeTierCommandParser) {
         this.fromApiJsonHelper = fromApiJsonHelper;
+        this.chargeTierCommandParser = chargeTierCommandParser;
     }
 
     public void validateForCreate(final String json) {
@@ -279,8 +285,16 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         final String currencyCode = this.fromApiJsonHelper.extractStringNamed(CURRENCY_CODE, element);
         baseDataValidator.reset().parameter(CURRENCY_CODE).value(currencyCode).notBlank().notExceedingLengthOf(3);
 
+        final boolean useChargeTiers = this.chargeTierCommandParser.extractUseChargeTiers(element);
         final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
-        baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        if (useChargeTiers) {
+            baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().zeroOrPositiveAmount();
+        } else {
+            baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+        }
+        final Integer chargeTimeTypeForTiers = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(CHARGE_TIME_TYPE, element);
+        this.chargeTierCommandParser.validateMode(element, chargeAppliesTo, chargeTimeTypeForTiers, useChargeTiers, true,
+                baseDataValidator);
 
         if (this.fromApiJsonHelper.parameterExists(PENALTY, element)) {
             final Boolean penalty = this.fromApiJsonHelper.extractBooleanNamed(PENALTY, element);
@@ -292,11 +306,11 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             baseDataValidator.reset().parameter(ACTIVE).value(active).notNull();
         }
 
-        if (this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
+        if (!useChargeTiers && this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
             final BigDecimal minCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(MIN_CAP, element.getAsJsonObject());
             baseDataValidator.reset().parameter(MIN_CAP).value(minCap).notNull().positiveAmount();
         }
-        if (this.fromApiJsonHelper.parameterExists(MAX_CAP, element)) {
+        if (!useChargeTiers && this.fromApiJsonHelper.parameterExists(MAX_CAP, element)) {
             final BigDecimal maxCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(MAX_CAP, element.getAsJsonObject());
             baseDataValidator.reset().parameter(MAX_CAP).value(maxCap).notNull().positiveAmount();
         }
@@ -334,17 +348,28 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             baseDataValidator.reset().parameter(CURRENCY_CODE).value(currencyCode).notBlank().notExceedingLengthOf(3);
         }
 
+        final boolean useChargeTiersInPayload = this.fromApiJsonHelper.parameterExists(USE_CHARGE_TIERS, element)
+                && this.chargeTierCommandParser.extractUseChargeTiers(element);
+        final boolean useChargeTiersExplicitFalse = this.fromApiJsonHelper.parameterExists(USE_CHARGE_TIERS, element)
+                && !this.chargeTierCommandParser.extractUseChargeTiers(element);
+        final boolean treatAsTiered = useChargeTiersInPayload
+                || (!useChargeTiersExplicitFalse && this.chargeTierCommandParser.hasChargeTiers(element));
+
         if (this.fromApiJsonHelper.parameterExists(AMOUNT, element)) {
             final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(AMOUNT, element.getAsJsonObject());
-            baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+            if (treatAsTiered) {
+                baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().zeroOrPositiveAmount();
+            } else {
+                baseDataValidator.reset().parameter(AMOUNT).value(amount).notNull().positiveAmount();
+            }
         }
 
-        if (this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
+        if (!treatAsTiered && this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
             final BigDecimal minCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(MIN_CAP, element.getAsJsonObject());
             baseDataValidator.reset().parameter(MIN_CAP).value(minCap).notNull().positiveAmount();
         }
 
-        if (this.fromApiJsonHelper.parameterExists(MAX_CAP, element)) {
+        if (!treatAsTiered && this.fromApiJsonHelper.parameterExists(MAX_CAP, element)) {
             final BigDecimal maxCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(MAX_CAP, element.getAsJsonObject());
             baseDataValidator.reset().parameter(MAX_CAP).value(maxCap).notNull().positiveAmount();
         }
@@ -445,11 +470,11 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ACTIVE, element);
             baseDataValidator.reset().parameter(ACTIVE).value(active).notNull();
         }
-        if (this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
+        if (!treatAsTiered && this.fromApiJsonHelper.parameterExists(MIN_CAP, element)) {
             final BigDecimal minCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(MIN_CAP, element.getAsJsonObject());
             baseDataValidator.reset().parameter(MIN_CAP).value(minCap).notNull().positiveAmount();
         }
-        if (this.fromApiJsonHelper.parameterExists(MAX_CAP, element)) {
+        if (!treatAsTiered && this.fromApiJsonHelper.parameterExists(MAX_CAP, element)) {
             final BigDecimal maxCap = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(MAX_CAP, element.getAsJsonObject());
             baseDataValidator.reset().parameter(MAX_CAP).value(maxCap).notNull().positiveAmount();
         }
@@ -467,6 +492,23 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.parameterExists(ChargesApiConstants.taxGroupIdParamName, element)) {
             final Long taxGroupId = this.fromApiJsonHelper.extractLongNamed(ChargesApiConstants.taxGroupIdParamName, element);
             baseDataValidator.reset().parameter(ChargesApiConstants.taxGroupIdParamName).value(taxGroupId).notNull().longGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(USE_CHARGE_TIERS, element) || this.chargeTierCommandParser.hasChargeTiers(element)) {
+            Integer chargeAppliesTo = ChargeAppliesTo.LOAN.getValue();
+            if (this.fromApiJsonHelper.parameterExists(CHARGE_APPLIES_TO, element)) {
+                chargeAppliesTo = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(CHARGE_APPLIES_TO, element);
+            }
+            Integer chargeTimeType = null;
+            if (this.fromApiJsonHelper.parameterExists(CHARGE_TIME_TYPE, element)) {
+                chargeTimeType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(CHARGE_TIME_TYPE, element);
+            }
+            final boolean useChargeTiers = !useChargeTiersExplicitFalse
+                    && (useChargeTiersInPayload || this.chargeTierCommandParser.hasChargeTiers(element));
+            // On update: require non-empty tiers only when chargeTiers is submitted with useChargeTiers=true.
+            // When chargeTimeType is omitted, write service enforces allow-list against the persisted charge.
+            this.chargeTierCommandParser.validateMode(element, chargeAppliesTo, chargeTimeType, useChargeTiers,
+                    useChargeTiers && this.fromApiJsonHelper.parameterExists(CHARGE_TIERS, element), baseDataValidator);
         }
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);

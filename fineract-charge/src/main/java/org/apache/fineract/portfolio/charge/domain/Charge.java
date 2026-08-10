@@ -18,21 +18,27 @@
  */
 package org.apache.fineract.portfolio.charge.domain;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.math.BigDecimal;
 import java.time.MonthDay;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.HashSet;
 import lombok.Getter;
 import lombok.Setter;
 import org.apache.fineract.accounting.glaccount.data.GLAccountData;
@@ -47,6 +53,7 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.charge.api.ChargesApiConstants;
 import org.apache.fineract.portfolio.charge.data.ChargeData;
+import org.apache.fineract.portfolio.charge.data.ChargeTierData;
 import org.apache.fineract.portfolio.charge.exception.ChargeDueAtDisbursementCannotBePenaltyException;
 import org.apache.fineract.portfolio.charge.exception.ChargeMustBePenaltyException;
 import org.apache.fineract.portfolio.charge.exception.ChargeParameterUpdateNotSupportedException;
@@ -122,6 +129,11 @@ public class Charge extends AbstractPersistableCustom<Long> {
     @Column(name = "max_cap", scale = 6, precision = 19)
     private BigDecimal maxCap;
 
+    @Getter
+    @Setter
+    @Column(name = "use_charge_tiers", nullable = false)
+    private boolean useChargeTiers = false;
+
     @Column(name = "fee_frequency", nullable = true)
     private Integer feeFrequency;
 
@@ -159,6 +171,37 @@ public class Charge extends AbstractPersistableCustom<Long> {
     @ManyToOne
     @JoinColumn(name = "tax_group_id")
     private TaxGroup taxGroup;
+
+    @Getter
+    @OneToMany(mappedBy = "charge", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("amountRangeFrom ASC")
+    private Set<ChargeTier> chargeTiers = new HashSet<>();
+
+    public boolean isTiered() {
+        return this.useChargeTiers;
+    }
+
+    public void clearMinMaxCaps() {
+        this.minCap = null;
+        this.maxCap = null;
+    }
+
+    public void replaceChargeTiers(final List<ChargeTier> tiers) {
+        this.chargeTiers.clear();
+        if (tiers != null) {
+            for (final ChargeTier tier : tiers) {
+                tier.setCharge(this);
+                this.chargeTiers.add(tier);
+            }
+        }
+    }
+
+    public List<ChargeTierData> chargeTierData() {
+        if (this.chargeTiers == null || this.chargeTiers.isEmpty()) {
+            return List.of();
+        }
+        return this.chargeTiers.stream().sorted(Comparator.comparing(ChargeTier::getAmountRangeFrom)).map(ChargeTier::toData).toList();
+    }
 
     public static Charge fromJson(final JsonCommand command, final GLAccount account, final TaxGroup taxGroup,
             final PaymentType paymentType) {
@@ -583,8 +626,18 @@ public class Charge extends AbstractPersistableCustom<Long> {
             actualChanges.put(activeParamName, newValue);
             this.active = newValue;
         }
-        // allow min and max cap to be only added to PERCENT_OF_AMOUNT for now
-        if (isPercentageOfApprovedAmount()) {
+        final String useChargeTiersParamName = "useChargeTiers";
+        if (command.isChangeInBooleanParameterNamed(useChargeTiersParamName, this.useChargeTiers)) {
+            final boolean newValue = command.booleanPrimitiveValueOfParameterNamed(useChargeTiersParamName);
+            actualChanges.put(useChargeTiersParamName, newValue);
+            this.useChargeTiers = newValue;
+            if (newValue) {
+                clearMinMaxCaps();
+            }
+        }
+
+        // allow min and max cap only in legacy (non-tiered) percentage mode
+        if (!this.useChargeTiers && isPercentageOfApprovedAmount()) {
             final String minCapParamName = "minCap";
             if (command.isChangeInBigDecimalParameterNamed(minCapParamName, this.minCap)) {
                 final BigDecimal newValue = command.bigDecimalValueOfParameterNamed(minCapParamName);
@@ -669,7 +722,8 @@ public class Charge extends AbstractPersistableCustom<Long> {
                 .freeWithdrawal(this.enableFreeWithdrawal).freeWithdrawalChargeFrequency(this.freeWithdrawalFrequency)
                 .restartFrequency(this.restartFrequency).restartFrequencyEnum(this.restartFrequencyEnum)
                 .isPaymentType(this.enablePaymentType).paymentTypeOptions(paymentTypeData).minCap(this.minCap).maxCap(this.maxCap)
-                .feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData).taxGroup(taxGroupData).build();
+                .useChargeTiers(this.useChargeTiers).feeFrequency(feeFrequencyType).incomeOrLiabilityAccount(accountData)
+                .taxGroup(taxGroupData).chargeTiers(chargeTierData()).build();
 
     }
 

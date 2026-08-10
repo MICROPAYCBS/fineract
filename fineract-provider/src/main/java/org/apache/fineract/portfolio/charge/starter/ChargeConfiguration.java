@@ -26,6 +26,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.organisation.monetary.service.CurrencyReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepository;
 import org.apache.fineract.portfolio.charge.serialization.ChargeDefinitionCommandFromApiJsonDeserializer;
+import org.apache.fineract.portfolio.charge.serialization.ChargeTierCommandParser;
 import org.apache.fineract.portfolio.charge.service.ChargeDropdownReadPlatformService;
 import org.apache.fineract.portfolio.charge.service.ChargeDropdownReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.charge.service.ChargeReadPlatformService;
@@ -67,11 +68,12 @@ public class ChargeConfiguration {
     @Bean
     @ConditionalOnMissingBean(ChargeWritePlatformService.class)
     public ChargeWritePlatformService chargeWritePlatformService(PlatformSecurityContext context,
-            ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer, ChargeRepository chargeRepository,
-            LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate, FineractEntityAccessUtil fineractEntityAccessUtil,
-            GLAccountRepositoryWrapper glAccountRepository, TaxGroupRepositoryWrapper taxGroupRepository,
-            PaymentTypeRepository paymentTypeRepository) {
-        return new ChargeWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, chargeRepository, loanProductRepository,
-                jdbcTemplate, fineractEntityAccessUtil, glAccountRepository, taxGroupRepository, paymentTypeRepository);
+            ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer, ChargeTierCommandParser chargeTierCommandParser,
+            ChargeRepository chargeRepository, LoanProductRepository loanProductRepository, JdbcTemplate jdbcTemplate,
+            FineractEntityAccessUtil fineractEntityAccessUtil, GLAccountRepositoryWrapper glAccountRepository,
+            TaxGroupRepositoryWrapper taxGroupRepository, PaymentTypeRepository paymentTypeRepository) {
+        return new ChargeWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, chargeTierCommandParser, chargeRepository,
+                loanProductRepository, jdbcTemplate, fineractEntityAccessUtil, glAccountRepository, taxGroupRepository,
+                paymentTypeRepository);
     }
 }

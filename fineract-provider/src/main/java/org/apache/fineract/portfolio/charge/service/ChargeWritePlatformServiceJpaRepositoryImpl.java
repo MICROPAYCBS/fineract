@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.charge.service;
 
 import jakarta.persistence.PersistenceException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,11 +37,14 @@ import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAcc
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.charge.api.ChargesApiConstants;
 import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.domain.ChargeAppliesTo;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepository;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.ChargeCannotBeDeletedException;
 import org.apache.fineract.portfolio.charge.exception.ChargeCannotBeUpdatedException;
 import org.apache.fineract.portfolio.charge.exception.ChargeNotFoundException;
 import org.apache.fineract.portfolio.charge.serialization.ChargeDefinitionCommandFromApiJsonDeserializer;
+import org.apache.fineract.portfolio.charge.serialization.ChargeTierCommandParser;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.loanproduct.domain.LoanProductRepository;
 import org.apache.fineract.portfolio.paymentdetail.PaymentDetailConstants;
@@ -61,6 +65,7 @@ public class ChargeWritePlatformServiceJpaRepositoryImpl implements ChargeWriteP
 
     private final PlatformSecurityContext context;
     private final ChargeDefinitionCommandFromApiJsonDeserializer fromApiJsonDeserializer;
+    private final ChargeTierCommandParser chargeTierCommandParser;
     private final ChargeRepository chargeRepository;
     private final LoanProductRepository loanProductRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -101,6 +106,14 @@ public class ChargeWritePlatformServiceJpaRepositoryImpl implements ChargeWriteP
             }
 
             final Charge charge = Charge.fromJson(command, glAccount, taxGroup, paymentType);
+            final boolean useChargeTiers = command.booleanPrimitiveValueOfParameterNamed(ChargeTierCommandParser.USE_CHARGE_TIERS);
+            charge.setUseChargeTiers(useChargeTiers);
+            if (useChargeTiers) {
+                charge.clearMinMaxCaps();
+                charge.replaceChargeTiers(this.chargeTierCommandParser.parseTiers(command, charge));
+            } else {
+                charge.replaceChargeTiers(List.of());
+            }
             this.chargeRepository.saveAndFlush(charge);
 
             // check if the office specific products are enabled. If yes, then
@@ -135,6 +148,38 @@ public class ChargeWritePlatformServiceJpaRepositoryImpl implements ChargeWriteP
                     .orElseThrow(() -> new ChargeNotFoundException(chargeId));
 
             final Map<String, Object> changes = chargeForUpdate.update(command);
+
+            final boolean useChargeTiers = command.parameterExists(ChargeTierCommandParser.USE_CHARGE_TIERS)
+                    ? command.booleanPrimitiveValueOfParameterNamed(ChargeTierCommandParser.USE_CHARGE_TIERS)
+                    : chargeForUpdate.isUseChargeTiers();
+            chargeForUpdate.setUseChargeTiers(useChargeTiers);
+
+            if (useChargeTiers) {
+                if (!chargeForUpdate.isLoanCharge() && !chargeForUpdate.isSavingsCharge()) {
+                    throw new ChargeCannotBeUpdatedException("error.msg.charge.tiers.not.supported",
+                            "Charge tiers are only supported for loan and savings charges");
+                }
+                final ChargeAppliesTo appliesTo = chargeForUpdate.isLoanCharge() ? ChargeAppliesTo.LOAN : ChargeAppliesTo.SAVINGS;
+                if (!ChargeTierCommandParser.supportsChargeTiers(appliesTo, ChargeTimeType.fromInt(chargeForUpdate.getChargeTimeType()))) {
+                    throw new ChargeCannotBeUpdatedException("error.msg.charge.tiers.not.supported.for.charge.time.type",
+                            "Charge tiers are only supported for charge time types that allow percentage calculation");
+                }
+                chargeForUpdate.clearMinMaxCaps();
+                if (command.parameterExists(ChargeTierCommandParser.CHARGE_TIERS)) {
+                    chargeForUpdate.replaceChargeTiers(this.chargeTierCommandParser.parseTiers(command, chargeForUpdate));
+                    changes.put(ChargeTierCommandParser.CHARGE_TIERS, command.arrayOfParameterNamed(ChargeTierCommandParser.CHARGE_TIERS));
+                }
+                if (chargeForUpdate.getChargeTiers() == null || chargeForUpdate.getChargeTiers().isEmpty()) {
+                    throw new ChargeCannotBeUpdatedException("error.msg.charge.tiers.required",
+                            "Charge tiers are required when useChargeTiers is true");
+                }
+                changes.put(ChargeTierCommandParser.USE_CHARGE_TIERS, true);
+            } else if (command.parameterExists(ChargeTierCommandParser.USE_CHARGE_TIERS)
+                    || command.parameterExists(ChargeTierCommandParser.CHARGE_TIERS)) {
+                chargeForUpdate.replaceChargeTiers(List.of());
+                changes.put(ChargeTierCommandParser.USE_CHARGE_TIERS, false);
+                changes.put(ChargeTierCommandParser.CHARGE_TIERS, List.of());
+            }
 
             this.fromApiJsonDeserializer.validateChargeTimeNCalculationType(chargeForUpdate.getChargeTimeType(),
                     chargeForUpdate.getChargeCalculation());

@@ -287,9 +287,12 @@ public class SavingsConfiguration {
     public FixedDepositProductWritePlatformService fixedDepositProductWritePlatformService(PlatformSecurityContext context,
             FixedDepositProductRepository fixedDepositProductRepository, DepositProductDataValidator fromApiJsonDataValidator,
             DepositProductAssembler depositProductAssembler,
-            ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService, InterestRateChartAssembler chartAssembler) {
+            ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService, InterestRateChartAssembler chartAssembler,
+            org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler productChargeLinkAssembler,
+            org.apache.fineract.portfolio.charge.service.ProductChargeAmountService productChargeAmountService) {
         return new FixedDepositProductWritePlatformServiceJpaRepositoryImpl(context, fixedDepositProductRepository,
-                fromApiJsonDataValidator, depositProductAssembler, accountMappingWritePlatformService, chartAssembler);
+                fromApiJsonDataValidator, depositProductAssembler, accountMappingWritePlatformService, chartAssembler,
+                productChargeLinkAssembler, productChargeAmountService);
     }
 
     @Bean
@@ -311,9 +314,12 @@ public class SavingsConfiguration {
     public RecurringDepositProductWritePlatformService recurringDepositProductWritePlatformService(PlatformSecurityContext context,
             RecurringDepositProductRepository recurringDepositProductRepository, DepositProductDataValidator fromApiJsonDataValidator,
             DepositProductAssembler depositProductAssembler,
-            ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService, InterestRateChartAssembler chartAssembler) {
+            ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService, InterestRateChartAssembler chartAssembler,
+            org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler productChargeLinkAssembler,
+            org.apache.fineract.portfolio.charge.service.ProductChargeAmountService productChargeAmountService) {
         return new RecurringDepositProductWritePlatformServiceJpaRepositoryImpl(context, recurringDepositProductRepository,
-                fromApiJsonDataValidator, depositProductAssembler, accountMappingWritePlatformService, chartAssembler);
+                fromApiJsonDataValidator, depositProductAssembler, accountMappingWritePlatformService, chartAssembler,
+                productChargeLinkAssembler, productChargeAmountService);
     }
 
     @Bean
@@ -431,9 +437,12 @@ public class SavingsConfiguration {
             SavingsProductRepository savingProductRepository, SavingsProductDataValidator fromApiJsonDataValidator,
             SavingsProductAssembler savingsProductAssembler,
             ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
-            FineractEntityAccessUtil fineractEntityAccessUtil) {
+            FineractEntityAccessUtil fineractEntityAccessUtil,
+            org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler productChargeLinkAssembler,
+            org.apache.fineract.portfolio.charge.service.ProductChargeAmountService productChargeAmountService) {
         return new SavingsProductWritePlatformServiceJpaRepositoryImpl(context, savingProductRepository, fromApiJsonDataValidator,
-                savingsProductAssembler, accountMappingWritePlatformService, fineractEntityAccessUtil);
+                savingsProductAssembler, accountMappingWritePlatformService, fineractEntityAccessUtil, productChargeLinkAssembler,
+                productChargeAmountService);
     }
 
     @Bean

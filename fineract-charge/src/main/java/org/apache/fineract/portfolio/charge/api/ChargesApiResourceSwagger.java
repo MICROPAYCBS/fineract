@@ -123,6 +123,8 @@ final class ChargesApiResourceSwagger {
         public GetChargesPaymentModeResponse chargePaymentMode;
         public BigDecimal minCap;
         public BigDecimal maxCap;
+        @Schema(example = "false")
+        public Boolean useChargeTiers;
         public GetChargesTaxGroup taxGroup;
     }
 
@@ -157,6 +159,8 @@ final class ChargesApiResourceSwagger {
         public BigDecimal minCap;
         @Schema(example = "45.56")
         public BigDecimal maxCap;
+        @Schema(example = "false")
+        public Boolean useChargeTiers;
         @Schema(example = "1")
         public Long taxGroupId;
         @Schema(example = "1")

@@ -23,6 +23,8 @@ import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.apache.fineract.client.models.ChargeRequest;
 import org.apache.fineract.client.models.GetChargesResponse;
 import org.apache.fineract.client.models.PostChargesResponse;
@@ -246,6 +248,52 @@ public final class ChargesHelper {
         String chargesCreateJson = new Gson().toJson(map);
         LOG.info("{}", chargesCreateJson);
         return chargesCreateJson;
+    }
+
+    /**
+     * Flat disbursement charge with lookup tiers: [0–100000 → 50], [100000–∞ → 100].
+     */
+    @Deprecated(forRemoval = true)
+    public static String getLoanDisbursementTieredFlatJSON() {
+        final HashMap<String, Object> map = populateDefaultsForLoan();
+        map.put("chargeTimeType", CHARGE_DISBURSEMENT_FEE);
+        map.put("chargePaymentMode", CHARGE_PAYMENT_MODE_REGULAR);
+        map.put("amount", "0");
+        map.put("chargeCalculationType", CHARGE_CALCULATION_TYPE_FLAT);
+        map.put("useChargeTiers", true);
+        map.put("chargeTiers", defaultLookupTiers("50", "100"));
+        String chargesCreateJson = new Gson().toJson(map);
+        LOG.info("{}", chargesCreateJson);
+        return chargesCreateJson;
+    }
+
+    /**
+     * Flat savings withdrawal charge with lookup tiers: [0–100000 → 50], [100000–∞ → 100].
+     */
+    @Deprecated(forRemoval = true)
+    public static String getSavingsWithdrawalTieredFlatJSON() {
+        final HashMap<String, Object> map = populateDefaultsForSavings("0", CURRENCY_CODE);
+        map.put("chargeTimeType", CHARGE_WITHDRAWAL_FEE);
+        map.put("useChargeTiers", true);
+        map.put("chargeTiers", defaultLookupTiers("50", "100"));
+        String chargesCreateJson = new Gson().toJson(map);
+        LOG.info("{}", chargesCreateJson);
+        return chargesCreateJson;
+    }
+
+    private static List<Map<String, Object>> defaultLookupTiers(final String firstAmount, final String secondAmount) {
+        final List<Map<String, Object>> tiers = new ArrayList<>();
+        final Map<String, Object> first = new HashMap<>();
+        first.put("amountRangeFrom", 0);
+        first.put("amountRangeTo", 100000);
+        first.put("amount", firstAmount);
+        tiers.add(first);
+        final Map<String, Object> second = new HashMap<>();
+        second.put("amountRangeFrom", 100000);
+        second.put("amountRangeTo", null);
+        second.put("amount", secondAmount);
+        tiers.add(second);
+        return tiers;
     }
 
     // TODO: Rewrite to use fineract-client instead!

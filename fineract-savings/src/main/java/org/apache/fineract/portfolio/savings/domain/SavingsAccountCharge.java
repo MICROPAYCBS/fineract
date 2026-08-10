@@ -51,6 +51,7 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.SavingsAccountChargeWithoutMandatoryFieldException;
+import org.apache.fineract.portfolio.charge.service.ChargeTierCalculator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -251,6 +252,11 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
     }
 
     private void populateDerivedFields(final BigDecimal transactionAmount, final BigDecimal chargeAmount) {
+        BigDecimal effectiveChargeAmount = chargeAmount;
+        if (this.charge != null && this.charge.isTiered() && transactionAmount != null
+                && transactionAmount.compareTo(BigDecimal.ZERO) > 0) {
+            effectiveChargeAmount = ChargeTierCalculator.resolveTierAmountOrPercentage(this.charge, transactionAmount);
+        }
 
         switch (ChargeCalculationType.fromInt(this.chargeCalculation)) {
             case INVALID:
@@ -264,15 +270,15 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
             break;
             case FLAT:
                 this.percentage = null;
-                this.amount = chargeAmount;
+                this.amount = effectiveChargeAmount;
                 this.amountPercentageAppliedTo = null;
                 this.amountPaid = null;
-                this.amountOutstanding = chargeAmount;
+                this.amountOutstanding = effectiveChargeAmount;
                 this.amountWaived = null;
                 this.amountWrittenOff = null;
             break;
             case PERCENT_OF_AMOUNT:
-                this.percentage = chargeAmount;
+                this.percentage = effectiveChargeAmount;
                 this.amountPercentageAppliedTo = transactionAmount;
                 this.amount = percentageOf(this.amountPercentageAppliedTo, this.percentage);
                 this.amountPaid = null;
@@ -773,6 +779,9 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
     }
 
     public BigDecimal calculateWithdralFeeAmount(@NotNull BigDecimal transactionAmount) {
+        if (this.charge != null && this.charge.isTiered()) {
+            return ChargeTierCalculator.resolveChargeAmount(this.charge, transactionAmount);
+        }
         BigDecimal amountPaybale = BigDecimal.ZERO;
         if (ChargeCalculationType.fromInt(this.chargeCalculation).isFlat()) {
             amountPaybale = this.amount;

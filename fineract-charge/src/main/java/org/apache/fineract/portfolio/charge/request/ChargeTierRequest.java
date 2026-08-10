@@ -21,7 +21,6 @@ package org.apache.fineract.portfolio.charge.request;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -29,35 +28,13 @@ import lombok.experimental.Accessors;
 @Data
 @NoArgsConstructor
 @Accessors(chain = true)
-public class ChargeRequest implements Serializable {
+public class ChargeTierRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private Integer chargeAppliesTo;
-    private String name;
-    private String currencyCode;
-    private Integer chargeTimeType;
-    private Integer chargeCalculationType;
-    private Double amount;
-    private Boolean active;
-    private Boolean penalty;
-    private Integer chargePaymentMode;
-    private String monthDayFormat;
-    private String locale;
-    private String feeOnMonthDay;
-    private String feeInterval;
-    private String feeFrequency;
-    private Long paymentTypeId;
-    private Boolean enablePaymentType;
-    private BigDecimal minCap;
-    private BigDecimal maxCap;
-    private Boolean useChargeTiers;
-    /**
-     * Lookup amount bands. Must be present on this DTO — create/update re-serialize
-     * {@code ChargeRequest} into the command JSON; omitting this field drops tiers before validation.
-     */
-    private List<ChargeTierRequest> chargeTiers;
-    private Long taxGroupId;
-
+    private BigDecimal amountRangeFrom;
+    /** Exclusive upper bound; null/omitted = open-ended. */
+    private BigDecimal amountRangeTo;
+    private BigDecimal amount;
 }
