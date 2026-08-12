@@ -58,8 +58,8 @@ Two important nuances:
 
 | Endpoint | Method | Purpose | Fineract permission |
 |---|---|---|---|
-| `/users/{userId}/sessions` | GET | Active (enabled) sessions, newest first | `READ_USERSESSION` |
-| `/users/{userId}/sessions/{sessionId}/revoke` | POST | Revoke one session (empty body) | `REVOKE_USERSESSION` |
+| `/users/{userId}/sessions` | GET | Active (enabled) sessions, newest first | `READ_USERSESSION` — **not required when `userId` is the signed-in user** (self-view is always allowed) |
+| `/users/{userId}/sessions/{sessionId}/revoke` | POST | Revoke one session (empty body) | `REVOKE_USERSESSION` (admin only, including own sessions) |
 
 **GET response (implement types from this contract):**
 
@@ -118,6 +118,14 @@ Add a **Sessions** section (card or tab, following the page's existing layout id
 4. **Revoke:** confirm dialog — "Revoke this session? The device will be signed out on its next action." On success: toast + refresh the list (`router.refresh()` / revalidate, existing pattern).
 5. **Empty state:** "No active sessions."
 6. **Self-revocation:** an admin viewing their own user can revoke their own session and will be signed out on their next request — the global 401 handler covers this; no special casing needed.
+
+## UI design: My Sessions (profile)
+
+Because self-view needs no permission, also surface a read-only **My Sessions** list on the
+signed-in user's own profile/account page, calling `GET /users/{ownUserId}/sessions` with the
+`userId` returned at login. Same table as the admin panel minus the Revoke button (self-revoke
+still requires `REVOKE_USERSESSION`). This lets any staff member spot a login they don't
+recognise and report it. Do not gate this section on `administration.users.sessions`.
 
 ## UI design: login page message
 

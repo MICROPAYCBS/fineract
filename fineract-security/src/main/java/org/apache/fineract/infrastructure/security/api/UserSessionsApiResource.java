@@ -60,9 +60,12 @@ public class UserSessionsApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List active sessions for a user", description = "Returns the user's active two-factor sessions with device metadata (IP address, user agent, validity window). Token values are never returned.")
+    @Operation(summary = "List active sessions for a user", description = "Returns the user's active two-factor sessions with device metadata (IP address, user agent, validity window). Token values are never returned. Users may always view their own sessions; viewing another user's sessions requires the READ_USERSESSION permission.")
     public String retrieveActiveSessions(@PathParam("userId") final Long userId) {
-        context.authenticatedUser().validateHasReadPermission(TwoFactorConstants.USERSESSION_RESOURCE_NAME);
+        final AppUser requester = context.authenticatedUser();
+        if (!requester.getId().equals(userId)) {
+            requester.validateHasReadPermission(TwoFactorConstants.USERSESSION_RESOURCE_NAME);
+        }
 
         final AppUser user = appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
