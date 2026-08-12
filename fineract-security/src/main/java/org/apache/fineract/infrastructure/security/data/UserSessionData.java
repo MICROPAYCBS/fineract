@@ -30,6 +30,9 @@ public class UserSessionData {
 
     private Long id;
 
+    private Long userId;
+    private String username;
+
     private ZonedDateTime validFrom;
     private ZonedDateTime validTo;
 
@@ -37,4 +40,6 @@ public class UserSessionData {
     private String userAgent;
 
     private boolean active;
+
+    private String revocationReason;
 }

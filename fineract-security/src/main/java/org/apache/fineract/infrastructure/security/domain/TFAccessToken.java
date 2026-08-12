@@ -93,8 +93,9 @@ public class TFAccessToken extends AbstractPersistableCustom<Long> {
 
     // Deliberately excludes the token value: session listings must never leak a usable credential
     public UserSessionData toSessionData() {
-        return new UserSessionData().setId(getId()).setValidFrom(getValidFrom().atZone(DateUtils.getDateTimeZoneOfTenant()))
+        return new UserSessionData().setId(getId()).setUserId(this.user.getId()).setUsername(this.user.getUsername())
+                .setValidFrom(getValidFrom().atZone(DateUtils.getDateTimeZoneOfTenant()))
                 .setValidTo(getValidTo().atZone(DateUtils.getDateTimeZoneOfTenant())).setIpAddress(this.ipAddress)
-                .setUserAgent(this.userAgent).setActive(isValid());
+                .setUserAgent(this.userAgent).setActive(isValid()).setRevocationReason(this.revocationReason);
     }
 }

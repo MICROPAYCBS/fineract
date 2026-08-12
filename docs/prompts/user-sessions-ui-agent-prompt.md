@@ -60,6 +60,7 @@ Two important nuances:
 |---|---|---|---|
 | `/users/{userId}/sessions` | GET | Active (enabled) sessions, newest first | `READ_USERSESSION` — **not required when `userId` is the signed-in user** (self-view is always allowed) |
 | `/users/{userId}/sessions/{sessionId}/revoke` | POST | Revoke one session (empty body) | `REVOKE_USERSESSION` (admin only, including own sessions) |
+| `/usersessions/history` | GET | Paginated login history across **all** users, incl. revoked/expired sessions | `READ_USERSESSION` (no self exemption) |
 
 **GET response (implement types from this contract):**
 
@@ -67,11 +68,14 @@ Two important nuances:
 [
   {
     "id": 42,
+    "userId": 7,
+    "username": "jdoe",
     "validFrom": [2026, 8, 12, 9, 30, 0],
     "validTo": [2026, 8, 12, 17, 30, 0],
     "ipAddress": "10.20.4.15",
     "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ...",
-    "active": true
+    "active": true,
+    "revocationReason": null
   }
 ]
 ```
@@ -83,6 +87,41 @@ Two important nuances:
 - 404 with standard Fineract error envelope when the user id does not exist.
 
 **POST revoke:** no request body required. Response is a standard `CommandProcessingResult` (`{ "entityId": 42, ... }`). The action goes through the command framework, so it appears in the audit trail and would honour maker-checker if enabled on the permission.
+
+### Login history (all users)
+
+`GET /usersessions/history` — query params, all optional:
+
+| Param | Meaning |
+|---|---|
+| `userId` | Restrict to one user |
+| `fromDate` / `toDate` | Login date range, ISO `yyyy-MM-dd`, `toDate` inclusive |
+| `offset` / `limit` | Standard Fineract paging; `offset` must be a multiple of `limit`; limit default 50, max 200 |
+
+Response is the standard Fineract page envelope over the same session shape:
+
+```json
+{
+  "totalFilteredRecords": 1234,
+  "pageItems": [
+    {
+      "id": 42,
+      "userId": 7,
+      "username": "jdoe",
+      "validFrom": [2026, 8, 12, 9, 30, 0],
+      "validTo": [2026, 8, 12, 17, 30, 0],
+      "ipAddress": "10.20.4.15",
+      "userAgent": "Mozilla/5.0 ...",
+      "active": false,
+      "revocationReason": "SUPERSEDED_BY_NEW_LOGIN"
+    }
+  ]
+}
+```
+
+- `revocationReason`: `"SUPERSEDED_BY_NEW_LOGIN"` \| `"REVOKED_BY_ADMIN"` \| `null` (null + `active:false` = expired naturally; null + `active:true` = still live).
+- Each row is one successful login. **Failed login attempts are not in this data**, and logins by `BYPASS_TWOFACTOR` users (system accounts, super user) never appear — say so in the screen's help text so auditors are not misled.
+- Invalid `fromDate`/`toDate` returns the standard Fineract validation error envelope (`validation.msg.usersession.history.invalid.date`).
 
 ### Expected backend error codes
 
@@ -118,6 +157,18 @@ Add a **Sessions** section (card or tab, following the page's existing layout id
 4. **Revoke:** confirm dialog — "Revoke this session? The device will be signed out on its next action." On success: toast + refresh the list (`router.refresh()` / revalidate, existing pattern).
 5. **Empty state:** "No active sessions."
 6. **Self-revocation:** an admin viewing their own user can revoke their own session and will be signed out on their next request — the global 401 handler covers this; no special casing needed.
+
+## UI design: Login History (admin)
+
+Add a **Login History** screen under Administration (sibling of Users, or a tab beside it),
+gated on `administration.users.sessions`:
+
+1. **Table** over `GET /usersessions/history`: Username · Signed in (`validFrom`) · IP ·
+   Device (truncated UA) · Status (Active / Expired / badge with revocation reason).
+2. **Filters:** user picker (existing users lookup → `userId`), date range → `fromDate`/`toDate`.
+3. **Pagination:** standard offset/limit table paging against `totalFilteredRecords`.
+4. Username cell links to the user's detail page (where the live Sessions panel and Revoke live —
+   the history screen itself is read-only).
 
 ## UI design: My Sessions (profile)
 

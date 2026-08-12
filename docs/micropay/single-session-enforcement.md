@@ -13,6 +13,7 @@ admins can list and revoke them.
 | IP / user-agent capture on login | `POST /twofactor/validate` |
 | Distinct 401 for kicked sessions | `Fineract-Platform-Reason: session-superseded` header |
 | Sessions list / revoke API | `GET /users/{userId}/sessions`, `POST /users/{userId}/sessions/{sessionId}/revoke` |
+| Login history API (all users, paginated) | `GET /usersessions/history?userId=&fromDate=&toDate=&offset=&limit=` |
 | Permissions | `READ_USERSESSION`, `REVOKE_USERSESSION` (backfilled from `READ_USER` / `UPDATE_USER`); viewing one's own sessions requires no permission |
 | Migrations | tenant parts `0246`, `0247`, `0248` |
 | Frontend adaptation guide | `docs/prompts/user-sessions-ui-agent-prompt.md` |
