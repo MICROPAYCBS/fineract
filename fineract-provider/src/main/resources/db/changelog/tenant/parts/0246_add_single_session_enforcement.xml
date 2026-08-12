@@ -40,7 +40,7 @@
             <column name="string_value"/>
             <column name="enabled" valueBoolean="false"/>
             <column name="is_trap_door" valueBoolean="false"/>
-            <column name="description" value="When enabled, limits each user to the configured number of concurrent two-factor sessions (value = maximum active sessions, default 1). Issuing a new two-factor access token invalidates the oldest active tokens beyond the limit, forcing earlier devices to sign in again. Only applies to users who authenticate with two-factor; users with BYPASS_TWOFACTOR are unaffected."/>
+            <column name="description" value="When enabled, each user is limited to the configured number of concurrent two-factor sessions (value = maximum active sessions). A new login revokes the oldest sessions beyond the limit. Users with BYPASS_TWOFACTOR are unaffected."/>
         </insert>
     </changeSet>
 </databaseChangeLog>
