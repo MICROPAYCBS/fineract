@@ -16,19 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.security.domain;
+package org.apache.fineract.infrastructure.security.exception;
 
-import java.util.List;
-import org.apache.fineract.useradministration.domain.AppUser;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformResourceNotFoundException;
 
-@ConditionalOnProperty("fineract.security.2fa.enabled")
-public interface TFAccessTokenRepository extends JpaRepository<TFAccessToken, Long>, JpaSpecificationExecutor<TFAccessToken> {
+public class UserSessionNotFoundException extends AbstractPlatformResourceNotFoundException {
 
-    TFAccessToken findByUserAndToken(AppUser user, String token);
-
-    List<TFAccessToken> findByUserAndEnabledTrueOrderByIdDesc(AppUser user);
-
+    public UserSessionNotFoundException(final Long userId, final Long sessionId) {
+        super("error.msg.usersession.not.found", "Active session with identifier " + sessionId + " does not exist for user " + userId,
+                sessionId, userId);
+    }
 }

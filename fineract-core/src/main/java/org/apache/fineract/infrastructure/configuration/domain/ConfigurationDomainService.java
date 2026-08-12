@@ -161,6 +161,12 @@ public interface ConfigurationDomainService {
 
     Integer retrieveSessionIdleWarningSeconds();
 
+    /**
+     * Maximum number of concurrent two-factor sessions allowed per user, or {@code null} when single-session
+     * enforcement is disabled (unlimited sessions).
+     */
+    Integer retrieveMaxActiveSessions();
+
     boolean isCOBBulkEventEnabled();
 
     Long retrieveExternalEventBatchSize();

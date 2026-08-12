@@ -87,7 +87,15 @@ public class TwoFactorAuthenticationFilter extends GenericFilterBean {
                     // Token is non-existent or invalid
                     if (accessToken == null || !accessToken.isValid()) {
                         response.addHeader("WWW-Authenticate", "Basic realm=\"Fineract Platform API Two Factor\"");
-                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid two-factor access token provided");
+                        if (accessToken != null
+                                && TwoFactorConstants.REVOCATION_REASON_SUPERSEDED.equals(accessToken.getRevocationReason())) {
+                            response.addHeader(TwoFactorConstants.SESSION_SUPERSEDED_REASON_HEADER,
+                                    TwoFactorConstants.SESSION_SUPERSEDED_REASON_VALUE);
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED,
+                                    "Session terminated by a newer login on another device");
+                        } else {
+                            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid two-factor access token provided");
+                        }
                         return;
                     }
                 } else {

@@ -32,6 +32,7 @@ import lombok.experimental.Accessors;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.data.AccessTokenData;
+import org.apache.fineract.infrastructure.security.data.UserSessionData;
 import org.apache.fineract.useradministration.domain.AppUser;
 
 @Entity
@@ -59,11 +60,25 @@ public class TFAccessToken extends AbstractPersistableCustom<Long> {
     @Column(name = "enabled", nullable = false)
     private boolean enabled;
 
+    @Column(name = "ip_address", length = 45)
+    private String ipAddress;
+
+    @Column(name = "user_agent", length = 500)
+    private String userAgent;
+
+    @Column(name = "revocation_reason", length = 50)
+    private String revocationReason;
+
     public static TFAccessToken create(String token, AppUser user, int tokenLiveTimeInSec) {
         LocalDateTime validFrom = DateUtils.getLocalDateTimeOfTenant();
         LocalDateTime validTo = validFrom.plusSeconds(tokenLiveTimeInSec);
 
         return new TFAccessToken().setToken(token).setUser(user).setValidFrom(validFrom).setValidTo(validTo).setEnabled(true);
+    }
+
+    public void revoke(String reason) {
+        this.enabled = false;
+        this.revocationReason = reason;
     }
 
     public boolean isValid() {
@@ -74,5 +89,12 @@ public class TFAccessToken extends AbstractPersistableCustom<Long> {
     public AccessTokenData toTokenData() {
         return new AccessTokenData().setToken(this.token).setValidFrom(getValidFrom().atZone(DateUtils.getDateTimeZoneOfTenant()))
                 .setValidTo(getValidTo().atZone(DateUtils.getDateTimeZoneOfTenant()));
+    }
+
+    // Deliberately excludes the token value: session listings must never leak a usable credential
+    public UserSessionData toSessionData() {
+        return new UserSessionData().setId(getId()).setValidFrom(getValidFrom().atZone(DateUtils.getDateTimeZoneOfTenant()))
+                .setValidTo(getValidTo().atZone(DateUtils.getDateTimeZoneOfTenant())).setIpAddress(this.ipAddress)
+                .setUserAgent(this.userAgent).setActive(isValid());
     }
 }

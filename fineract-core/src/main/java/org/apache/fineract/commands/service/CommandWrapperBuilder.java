@@ -117,6 +117,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REPAYMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVERSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVERSETRANSACTION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVOKE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVECOLLECTIONSHEET;
@@ -255,6 +256,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_ACCESSTOKEN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USERSESSION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WAIVECHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKFLOW_DEFINITION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOAN;
@@ -4034,6 +4036,16 @@ public class CommandWrapperBuilder {
         this.actionName = ACTION_INVALIDATE;
         this.entityName = ENTITY_TWOFACTOR_ACCESSTOKEN;
         this.href = "/twofactor/invalidate";
+        return this;
+    }
+
+    public CommandWrapperBuilder revokeUserSession(final Long userId, final Long sessionId) {
+        this.actionName = ACTION_REVOKE;
+        this.entityName = ENTITY_USERSESSION;
+        this.entityId = userId;
+        this.subentityId = sessionId;
+        this.href = "/users/" + userId + "/sessions/" + sessionId + "/revoke";
+        this.json = "{}";
         return this;
     }
 

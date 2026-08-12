@@ -134,6 +134,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_BLOCK = "BLOCK";
     public static final String ACTION_UNBLOCK = "UNBLOCK";
     public static final String ACTION_INVALIDATE = "INVALIDATE";
+    public static final String ACTION_REVOKE = "REVOKE";
     public static final String ACTION_CHARGEOFF = "CHARGEOFF";
     public static final String ACTION_UNDOCHARGEOFF = "UNDOCHARGEOFF";
     public static final String ACTION_INTERMEDIARYSALE = "INTERMEDIARYSALE";
@@ -256,6 +257,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_EMAIL_CONFIGURATION = "EMAIL_CONFIGURATION";
     public static final String ENTITY_TWOFACTOR_ACCESSTOKEN = "TWOFACTOR_ACCESSTOKEN";
     public static final String ENTITY_TWOFACTOR_CONFIGURATION = "TWOFACTOR_CONFIGURATION";
+    public static final String ENTITY_USERSESSION = "USERSESSION";
     public static final String ENTITY_RATE = "RATE";
     public static final String ENTITY_DELINQUENCY_RANGE = "DELINQUENCY_RANGE";
     public static final String ENTITY_DELINQUENCY_BUCKET = "DELINQUENCY_BUCKET";

@@ -586,6 +586,19 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
+    public Integer retrieveMaxActiveSessions() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.ENFORCE_SINGLE_SESSION);
+        if (!property.isEnabled()) {
+            return null;
+        }
+        if (property.getValue() == null || property.getValue() < 1) {
+            return 1;
+        }
+        return property.getValue().intValue();
+    }
+
+    @Override
     public boolean isCOBBulkEventEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ENABLE_COB_BULK_EVENT);

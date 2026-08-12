@@ -22,9 +22,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.EmailDetail;
 import org.apache.fineract.infrastructure.core.service.PlatformEmailService;
+import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.security.constants.TwoFactorConstants;
 import org.apache.fineract.infrastructure.security.data.OTPDeliveryMethod;
 import org.apache.fineract.infrastructure.security.data.OTPRequest;
@@ -35,6 +37,7 @@ import org.apache.fineract.infrastructure.security.exception.AccessTokenInvalidI
 import org.apache.fineract.infrastructure.security.exception.OTPDeliveryMethodInvalidException;
 import org.apache.fineract.infrastructure.security.exception.OTPTokenInvalidException;
 import org.apache.fineract.infrastructure.security.exception.TotpEnrollmentRequiredException;
+import org.apache.fineract.infrastructure.security.exception.UserSessionNotFoundException;
 import org.apache.fineract.infrastructure.sms.domain.SmsMessage;
 import org.apache.fineract.infrastructure.sms.domain.SmsMessageRepository;
 import org.apache.fineract.infrastructure.sms.scheduler.SmsMessageScheduledJobService;
@@ -43,6 +46,8 @@ import org.apache.fineract.useradministration.domain.AppUserRepository;
 import org.apache.fineract.useradministration.exception.UserNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -64,12 +69,15 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     private final TwoFactorConfigurationService configurationService;
     private final TotpService totpService;
     private final AppUserRepository appUserRepository;
+    private final ConfigurationDomainService configurationDomainService;
+    private final CacheManager cacheManager;
 
     @Autowired
     public TwoFactorServiceImpl(AccessTokenGenerationService accessTokenGenerationService, PlatformEmailService emailService,
             SmsMessageScheduledJobService smsMessageScheduledJobService, OTPRequestRepository otpRequestRepository,
             TFAccessTokenRepository tfAccessTokenRepository, SmsMessageRepository smsMessageRepository,
-            TwoFactorConfigurationService configurationService, TotpService totpService, AppUserRepository appUserRepository) {
+            TwoFactorConfigurationService configurationService, TotpService totpService, AppUserRepository appUserRepository,
+            ConfigurationDomainService configurationDomainService, CacheManager cacheManager) {
         this.accessTokenGenerationService = accessTokenGenerationService;
         this.emailService = emailService;
         this.smsMessageScheduledJobService = smsMessageScheduledJobService;
@@ -79,6 +87,8 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         this.configurationService = configurationService;
         this.totpService = totpService;
         this.appUserRepository = appUserRepository;
+        this.configurationDomainService = configurationDomainService;
+        this.cacheManager = cacheManager;
     }
 
     @Override
@@ -160,7 +170,8 @@ public class TwoFactorServiceImpl implements TwoFactorService {
     @Override
     @CachePut(value = "userTFAccessToken", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil)"
             + ".getTenant().getTenantIdentifier().concat(#user.username).concat(#result.token + 'tok')")
-    public TFAccessToken createAccessTokenFromOTP(final AppUser user, final String otpToken) {
+    public TFAccessToken createAccessTokenFromOTP(final AppUser user, final String otpToken, final String ipAddress,
+            final String userAgent) {
 
         if (configurationService.isTotpDeliveryEnabled()) {
             final AppUser managedUser = appUserRepository.findById(user.getId()).orElseThrow(() -> new UserNotFoundException(user.getId()));
@@ -173,7 +184,7 @@ public class TwoFactorServiceImpl implements TwoFactorService {
             OTPRequest pending = otpRequestRepository.getOTPRequestForUser(user);
             final boolean extended = pending != null && pending.getMetadata().isExtendedAccessToken();
             otpRequestRepository.deleteOTPRequestForUser(user);
-            return createAccessToken(user, extended);
+            return createAccessToken(user, extended, ipAddress, userAgent);
         }
 
         OTPRequest otpRequest = otpRequestRepository.getOTPRequestForUser(user);
@@ -182,10 +193,11 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         }
 
         otpRequestRepository.deleteOTPRequestForUser(user);
-        return createAccessToken(user, otpRequest.getMetadata().isExtendedAccessToken());
+        return createAccessToken(user, otpRequest.getMetadata().isExtendedAccessToken(), ipAddress, userAgent);
     }
 
-    private TFAccessToken createAccessToken(final AppUser user, final boolean extendedAccessToken) {
+    private TFAccessToken createAccessToken(final AppUser user, final boolean extendedAccessToken, final String ipAddress,
+            final String userAgent) {
         String token = accessTokenGenerationService.generateRandomToken();
         int liveTime;
         if (extendedAccessToken) {
@@ -193,9 +205,66 @@ public class TwoFactorServiceImpl implements TwoFactorService {
         } else {
             liveTime = configurationService.getAccessTokenLiveTime();
         }
-        TFAccessToken accessToken = TFAccessToken.create(token, user, liveTime);
+        TFAccessToken accessToken = TFAccessToken.create(token, user, liveTime).setIpAddress(StringUtils.left(ipAddress, 45))
+                .setUserAgent(StringUtils.left(userAgent, 500));
         tfAccessTokenRepository.save(accessToken);
+        enforceMaxActiveSessions(user, accessToken);
         return accessToken;
+    }
+
+    private void enforceMaxActiveSessions(final AppUser user, final TFAccessToken newToken) {
+        final Integer maxActiveSessions = configurationDomainService.retrieveMaxActiveSessions();
+        if (maxActiveSessions == null) {
+            return;
+        }
+
+        final List<TFAccessToken> activeTokens = tfAccessTokenRepository.findByUserAndEnabledTrueOrderByIdDesc(user).stream()
+                .filter(activeToken -> !activeToken.getId().equals(newToken.getId())).toList();
+
+        // The new token always survives; older tokens beyond the remaining allowance are revoked
+        final int allowedOlderTokens = maxActiveSessions - 1;
+        if (activeTokens.size() <= allowedOlderTokens) {
+            return;
+        }
+
+        final List<TFAccessToken> tokensToRevoke = activeTokens.subList(allowedOlderTokens, activeTokens.size());
+        for (final TFAccessToken tokenToRevoke : tokensToRevoke) {
+            tokenToRevoke.revoke(TwoFactorConstants.REVOCATION_REASON_SUPERSEDED);
+            evictAccessTokenFromCache(user, tokenToRevoke.getToken());
+        }
+        tfAccessTokenRepository.saveAll(tokensToRevoke);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TFAccessToken> fetchActiveSessionsForUser(final AppUser user) {
+        return tfAccessTokenRepository.findByUserAndEnabledTrueOrderByIdDesc(user);
+    }
+
+    @Override
+    @Transactional
+    public TFAccessToken revokeSessionForUser(final Long userId, final Long sessionId) {
+        final AppUser user = appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
+
+        final TFAccessToken accessToken = tfAccessTokenRepository.findById(sessionId)
+                .filter(token -> token.getUser().getId().equals(userId) && token.isEnabled())
+                .orElseThrow(() -> new UserSessionNotFoundException(userId, sessionId));
+
+        accessToken.revoke(TwoFactorConstants.REVOCATION_REASON_ADMIN);
+        tfAccessTokenRepository.save(accessToken);
+        evictAccessTokenFromCache(user, accessToken.getToken());
+
+        return accessToken;
+    }
+
+    // The filter validates tokens through the userTFAccessToken cache; a revoked token must be
+    // evicted or the kicked device keeps its session until the cache entry expires
+    private void evictAccessTokenFromCache(final AppUser user, final String token) {
+        final Cache cache = cacheManager.getCache("userTFAccessToken");
+        if (cache != null) {
+            final String key = ThreadLocalContextUtil.getTenant().getTenantIdentifier().concat(user.getUsername()).concat(token + "tok");
+            cache.evict(key);
+        }
     }
 
     @Override

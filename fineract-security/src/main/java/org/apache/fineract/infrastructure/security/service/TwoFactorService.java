@@ -31,12 +31,16 @@ public interface TwoFactorService {
 
     OTPRequest createNewOTPToken(AppUser user, String deliveryMethodName, boolean extendedAccessToken);
 
-    TFAccessToken createAccessTokenFromOTP(AppUser user, String otpToken);
+    TFAccessToken createAccessTokenFromOTP(AppUser user, String otpToken, String ipAddress, String userAgent);
 
     void validateTwoFactorAccessToken(AppUser user, String token);
 
     TFAccessToken fetchAccessTokenForUser(AppUser user, String token);
 
     TFAccessToken invalidateAccessToken(AppUser user, JsonCommand command);
+
+    List<TFAccessToken> fetchActiveSessionsForUser(AppUser user);
+
+    TFAccessToken revokeSessionForUser(Long userId, Long sessionId);
 
 }

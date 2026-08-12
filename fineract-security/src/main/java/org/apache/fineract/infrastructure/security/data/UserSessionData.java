@@ -16,19 +16,25 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.security.domain;
+package org.apache.fineract.infrastructure.security.data;
 
-import java.util.List;
-import org.apache.fineract.useradministration.domain.AppUser;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import java.time.ZonedDateTime;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.experimental.Accessors;
 
-@ConditionalOnProperty("fineract.security.2fa.enabled")
-public interface TFAccessTokenRepository extends JpaRepository<TFAccessToken, Long>, JpaSpecificationExecutor<TFAccessToken> {
+@Data
+@NoArgsConstructor
+@Accessors(chain = true)
+public class UserSessionData {
 
-    TFAccessToken findByUserAndToken(AppUser user, String token);
+    private Long id;
 
-    List<TFAccessToken> findByUserAndEnabledTrueOrderByIdDesc(AppUser user);
+    private ZonedDateTime validFrom;
+    private ZonedDateTime validTo;
 
+    private String ipAddress;
+    private String userAgent;
+
+    private boolean active;
 }

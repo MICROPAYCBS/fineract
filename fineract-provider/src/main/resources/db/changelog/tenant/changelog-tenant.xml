@@ -264,7 +264,6 @@
     <include file="parts/0243_add_charge_tiers.xml" relativeToChangelogFile="true"/>
     <include file="parts/0244_add_use_charge_tiers.xml" relativeToChangelogFile="true"/>
     <include file="parts/0245_add_product_charge_amount.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0246_add_single_session_enforcement.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0247_add_user_session_permissions.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
-
-
-

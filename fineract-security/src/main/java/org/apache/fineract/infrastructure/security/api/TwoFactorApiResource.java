@@ -19,6 +19,7 @@
 package org.apache.fineract.infrastructure.security.api;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -26,12 +27,14 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
@@ -91,12 +94,22 @@ public class TwoFactorApiResource {
     @Path("validate")
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
-    public String validate(@QueryParam("token") final String token) {
+    public String validate(@QueryParam("token") final String token, @Context final HttpServletRequest request) {
         final AppUser user = context.authenticatedUser();
 
-        TFAccessToken accessToken = twoFactorService.createAccessTokenFromOTP(user, token);
+        TFAccessToken accessToken = twoFactorService.createAccessTokenFromOTP(user, token, resolveClientIpAddress(request),
+                request.getHeader(HttpHeaders.USER_AGENT));
 
         return accessTokenSerializer.serialize(accessToken.toTokenData());
+    }
+
+    private String resolveClientIpAddress(final HttpServletRequest request) {
+        final String forwardedFor = request.getHeader("X-Forwarded-For");
+        if (StringUtils.isNotBlank(forwardedFor)) {
+            // First entry is the original client when behind a proxy/load balancer
+            return forwardedFor.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     @Path("invalidate")
