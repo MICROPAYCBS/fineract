@@ -115,4 +115,5 @@
   <include relativeToChangelogFile="true" file="parts/3091_add_update_journalentry_permission.xml"/>
   <include relativeToChangelogFile="true" file="parts/3092_add_journal_entry_transaction_comment.xml"/>
   <include relativeToChangelogFile="true" file="parts/3093_increase_address_postal_code_length.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3094_grant_bypass_twofactor_to_super_user.xml"/>
 </databaseChangeLog>
