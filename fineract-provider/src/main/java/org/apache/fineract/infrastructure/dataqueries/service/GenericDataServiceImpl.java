@@ -264,7 +264,9 @@ public class GenericDataServiceImpl implements GenericDataService {
                         final LocalDate localDate = (LocalDate) currVal;
                         writer.append(format("[%d,%d,%d]", localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth()));
                     } else if (colDisplayType == ResultsetColumnHeaderData.DisplayType.DATETIME) {
-                        final LocalDateTime localDateTime = (LocalDateTime) currVal;
+                        final LocalDateTime localDateTime = currVal instanceof Timestamp
+                                ? ((Timestamp) currVal).toLocalDateTime()
+                                : (LocalDateTime) currVal;
                         writer.append(format("[%d,%d,%d,%d,%d,%d,%d]", localDateTime.getYear(), localDateTime.getMonthValue(),
                                 localDateTime.getDayOfMonth(), localDateTime.getHour(), localDateTime.getMinute(),
                                 localDateTime.getSecond(), localDateTime.getNano()));
