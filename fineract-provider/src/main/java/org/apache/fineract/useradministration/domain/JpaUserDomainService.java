@@ -18,12 +18,15 @@
  */
 package org.apache.fineract.useradministration.domain;
 
+import lombok.extern.slf4j.Slf4j;
+import org.apache.fineract.infrastructure.core.service.PlatformEmailSendException;
 import org.apache.fineract.infrastructure.core.service.PlatformEmailService;
 import org.apache.fineract.infrastructure.security.service.PlatformPasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 public class JpaUserDomainService implements UserDomainService {
 
@@ -52,9 +55,15 @@ public class JpaUserDomainService implements UserDomainService {
 
         this.userRepository.saveAndFlush(appUser);
 
-        if (sendPasswordToEmail.booleanValue()) {
-            this.emailService.sendToUserAccount(appUser.getOffice().getName(), appUser.getFirstname(), appUser.getEmail(),
-                    appUser.getUsername(), unencodedPassword);
+        if (Boolean.TRUE.equals(sendPasswordToEmail)) {
+            try {
+                this.emailService.sendToUserAccount(appUser.getOffice().getName(), appUser.getFirstname(), appUser.getEmail(),
+                        appUser.getUsername(), unencodedPassword);
+            } catch (final PlatformEmailSendException e) {
+                // Keep the user; SMTP outages must not roll back account creation.
+                log.warn("User {} created but welcome email to {} failed: {}", appUser.getUsername(), appUser.getEmail(), e.getMessage());
+                log.debug("Welcome email failure details", e);
+            }
         }
     }
 
