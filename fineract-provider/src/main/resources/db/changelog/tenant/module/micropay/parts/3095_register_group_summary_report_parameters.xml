@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GroupSummaryCounts / GroupSummaryAmounts use ${groupId} but were never wired to
+  stretchy_parameter DefaultGroup (groupId, format number). On PostgreSQL, an unbound
+  string bind against bigint columns surfaces as BadSqlGrammarException
+  (operator does not exist: bigint = character varying).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3095-register-group-summary-report-parameters">
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT sr.id, sp.id, 'groupId'
+            FROM stretchy_report sr
+            CROSS JOIN stretchy_parameter sp
+            WHERE sr.report_name IN ('GroupSummaryCounts', 'GroupSummaryAmounts')
+              AND sp.parameter_variable = 'groupId'
+              AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter existing
+                WHERE existing.report_id = sr.id
+                  AND existing.parameter_id = sp.id
+              );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

@@ -88,7 +88,7 @@ public class GenericDataServiceImpl implements GenericDataService {
 
             return new GenericResultsetData(columnHeaders, resultsetDataRows);
         } catch (DataAccessException e) {
-            log.error("Reporting error: {}", e.getMessage());
+            logReportingError(e);
             throw ErrorHandler.getMappable(e, "error.msg.report.unknown.data.integrity.issue", e.getClass().getName(), null, e);
         }
     }
@@ -114,8 +114,17 @@ public class GenericDataServiceImpl implements GenericDataService {
 
             return new GenericResultsetData(columnHeaders, resultsetDataRows);
         } catch (DataAccessException e) {
-            log.error("Reporting error: {}", e.getMessage());
+            logReportingError(e);
             throw ErrorHandler.getMappable(e, "error.msg.report.unknown.data.integrity.issue", e.getClass().getName(), null, e);
+        }
+    }
+
+    private void logReportingError(final DataAccessException e) {
+        final Throwable cause = e.getMostSpecificCause();
+        if (cause != null && cause != e) {
+            log.error("Reporting error: {} | cause: {}", e.getMessage(), cause.getMessage());
+        } else {
+            log.error("Reporting error: {}", e.getMessage());
         }
     }
 

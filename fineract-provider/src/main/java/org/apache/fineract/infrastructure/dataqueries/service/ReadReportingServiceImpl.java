@@ -179,8 +179,8 @@ public class ReadReportingServiceImpl implements ReadReportingService {
                 matcher.appendReplacement(preparedSql, "?");
                 paramValues.add(castParamValue(queryParams.get(paramName), paramFormatTypes.get(paramName)));
             } else {
-                matcher.appendReplacement(preparedSql, Matcher.quoteReplacement(matcher.group(0)));
-                log.warn("Report '{}' contains placeholder '{}' with no matching parameter", name, paramName);
+                throw new PlatformDataIntegrityException("error.msg.report.missing.parameter",
+                        "Report '" + name + "' requires parameter '" + paramName + "' which was not provided");
             }
         }
         matcher.appendTail(preparedSql);
