@@ -117,4 +117,5 @@
   <include relativeToChangelogFile="true" file="parts/3093_increase_address_postal_code_length.xml"/>
   <include relativeToChangelogFile="true" file="parts/3094_grant_bypass_twofactor_to_super_user.xml"/>
   <include relativeToChangelogFile="true" file="parts/3095_register_group_summary_report_parameters.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3096_add_job_description.xml"/>
 </databaseChangeLog>

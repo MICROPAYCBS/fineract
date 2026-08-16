@@ -49,7 +49,7 @@ public interface ScheduledJobDetailRepository
 
     ScheduledJobDetail findByJobName(String jobName);
 
-    String GET_DATA = "select new org.apache.fineract.infrastructure.jobs.data.JobDetailData(j.id, j.jobDisplayName, j.shortName, j.nextRunTime, "
+    String GET_DATA = "select new org.apache.fineract.infrastructure.jobs.data.JobDetailData(j.id, j.jobDisplayName, j.shortName, j.description, j.nextRunTime, "
             + "j.errorLog, j.cronExpression, j.activeSchedular, j.currentlyRunning, "
             + "jh.version, jh.startTime, jh.endTime, jh.status, jh.errorMessage, jh.triggerType, jh.errorLog) "
             + "from ScheduledJobDetail j left join ScheduledJobRunHistory jh on jh.scheduledJobDetail = j and j.previousRunStartTime = jh.startTime ";

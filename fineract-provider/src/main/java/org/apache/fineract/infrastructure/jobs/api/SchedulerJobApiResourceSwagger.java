@@ -44,6 +44,8 @@ final class SchedulerJobApiResourceSwagger {
         public Long jobId;
         @Schema(example = "Update loan Summary")
         public String displayName;
+        @Schema(example = "Credits earned interest to active savings balances through yesterday and posts the matching journal entries.")
+        public String description;
         @Schema(example = "LA_USUM")
         public String shortName;
         @Schema(example = "")
@@ -68,6 +70,8 @@ final class SchedulerJobApiResourceSwagger {
 
         @Schema(example = "Update loan Summary")
         public String displayName;
+        @Schema(example = "Credits earned interest to active savings balances through yesterday and posts the matching journal entries.")
+        public String description;
         @Schema(example = "0 0 22 1/1 * ? *")
         public String cronExpression;
         @Schema(example = "false")

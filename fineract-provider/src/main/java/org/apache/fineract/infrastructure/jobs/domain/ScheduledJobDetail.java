@@ -50,6 +50,9 @@ public class ScheduledJobDetail extends AbstractPersistableCustom<Long> {
     @Column(name = "display_name")
     private String jobDisplayName;
 
+    @Column(name = "description", length = 500)
+    private String description;
+
     @Column(name = "node_id")
     private Integer nodeId;
 
@@ -108,6 +111,11 @@ public class ScheduledJobDetail extends AbstractPersistableCustom<Long> {
             final String newValue = command.stringValueOfParameterNamed(SchedulerJobApiConstants.displayNameParamName).trim();
             actualChanges.put(SchedulerJobApiConstants.displayNameParamName, newValue);
             this.jobDisplayName = StringUtils.defaultIfEmpty(newValue, null);
+        }
+        if (command.isChangeInStringParameterNamed(SchedulerJobApiConstants.descriptionParamName, this.description)) {
+            final String newValue = command.stringValueOfParameterNamed(SchedulerJobApiConstants.descriptionParamName).trim();
+            actualChanges.put(SchedulerJobApiConstants.descriptionParamName, newValue);
+            this.description = StringUtils.defaultIfEmpty(newValue, null);
         }
         if (command.isChangeInStringParameterNamed(SchedulerJobApiConstants.cronExpressionParamName, this.cronExpression)) {
             final String newValue = command.stringValueOfParameterNamed(SchedulerJobApiConstants.cronExpressionParamName).trim();

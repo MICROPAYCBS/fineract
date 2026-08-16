@@ -1,0 +1,196 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Add an operator-facing description to scheduler jobs and seed text for existing rows.
+  Later upgrades must not overwrite a tenant-edited description (WHERE description IS NULL).
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3096-add-job-description-column">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="job" columnName="description"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="job">
+            <column name="description" type="VARCHAR(500)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="micropay" id="3096-seed-job-descriptions">
+        <update tableName="job">
+            <column name="description" value="Recalculates days in arrears and overdue amounts on active loans so ageing reports and collections stay current."/>
+            <where>name='Update Loan Arrears Ageing' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Applies due annual fees to savings accounts and posts the related charge transactions and journal entries."/>
+            <where>name='Apply Annual Fee For Savings' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Shifts loan repayment dates that fall on configured holidays so schedules follow the holiday rescheduling rules."/>
+            <where>name='Apply Holidays To Loans' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Credits earned interest to active savings balances through yesterday and posts the matching journal entries (cash: expense to savings control; accrual: interest payable to savings control)."/>
+            <where>name='Post Interest For Savings' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Collects due loan fees from the linked savings account when the product is set to pay charges from savings."/>
+            <where>name='Transfer Fee For Loans From Savings' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Deducts savings charges that have reached their due date from the account balance and posts the related journals."/>
+            <where>name='Pay Due Savings Charges' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Recalculates office and organization running balances on journal entries so trial balance and GL reports stay in sync."/>
+            <where>name='Update Accounting Running Balances' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Runs due standing instructions to transfer funds between accounts on the scheduled date."/>
+            <where>name='Execute Standing Instruction' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Creates missing loan accrual transactions up to the business date so interest, fees, and penalties are recognized in the ledger."/>
+            <where>name='Add Accrual Transactions' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Applies configured overdue penalties to loan installments that have passed their due date."/>
+            <where>name='Apply penalty to overdue loans' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Flags loans that meet NPA criteria and updates non-performing asset classification used in reports and provisioning."/>
+            <where>name='Update Non Performing Assets' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Moves posted deposit interest from fixed or recurring deposit accounts into the linked savings account."/>
+            <where>name='Transfer Interest To Savings' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Updates maturity status and related details on deposit accounts that have reached or passed their maturity date."/>
+            <where>name='Update Deposit Accounts Maturity details' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Posts periodic loan accrual transactions for products that recognize income over time rather than only at period end."/>
+            <where>name='Add Periodic Accrual Transactions' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Recalculates interest on loans that use interest recalculation after payments, disbursements, or schedule changes."/>
+            <where>name='Recalculate Interest For Loans' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Generates upcoming mandatory deposit installments for recurring deposit accounts so collections can continue."/>
+            <where>name='Generate Mandatory Savings Schedule' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Calculates loan loss provisions from the configured criteria and creates the provisioning entries for accounting."/>
+            <where>name='Generate Loan Loss Provisioning' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Posts approved share dividends to shareholder accounts on the dividend posting date."/>
+            <where>name='Post Dividends For Shares' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Moves inactive savings accounts through inactivity, dormancy, and escheat based on the product dormancy settings."/>
+            <where>name='Update Savings Dormant Accounts' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Adds loan accrual transactions for products that post income as account transactions, keeping the ledger aligned with those postings."/>
+            <where>name='Add Accrual Transactions For Loans With Income Posted As Transactions' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Runs scheduled report mailing jobs and sends the generated reports to the configured recipients."/>
+            <where>name='Execute Report Mailing Jobs' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Builds outbound SMS messages from active campaigns so they are ready to send."/>
+            <where>name='Update SMS Outbound with Campaign Message' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Sends queued outbound SMS messages to the configured SMS gateway."/>
+            <where>name='Send Messages to SMS Gateway' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Fetches delivery reports from the SMS gateway and updates the status of previously sent messages."/>
+            <where>name='Get Delivery Reports from SMS Gateway' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Sends queued outbound email messages through the configured email service."/>
+            <where>name='Execute Email' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Builds outbound email messages from active campaigns so they are ready to send."/>
+            <where>name='Update Email Outbound with campaign message' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Generates the next run of ad-hoc client query schedules used for targeted client lists and campaigns."/>
+            <where>name='Generate AdhocClient Schedule' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Refreshes trial balance snapshot data used by the trial balance report."/>
+            <where>name='Update Trial Balance Details' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Retries scheduler jobs that were marked mismatched or failed to initialize on this node."/>
+            <where>name='Execute All Dirty Jobs' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Advances the organization business date by one day. Usually run as the first step of end-of-day processing."/>
+            <where>name='Increase Business Date by 1 day' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Advances the close-of-business date by one day so COB processing can move to the next business day."/>
+            <where>name='Increase COB Date by 1 day' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Runs loan close-of-business steps (accruals, delinquency, and related updates) for loans due on the COB date."/>
+            <where>name='Loan COB' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Assigns delinquency tags to loans from the configured delinquency buckets so collections and reports reflect current risk."/>
+            <where>name='Loan Delinquency Classification' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Publishes queued external business events to the configured outbound event destination."/>
+            <where>name='Send Asynchronous Events' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Deletes external events older than the configured retention period to keep the event store from growing without bound."/>
+            <where>name='Purge External Events' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Deletes processed command audit rows older than the configured retention period."/>
+            <where>name='Purge Processed Commands' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Posts accrual activity transactions on loans so accrued income is visible as account activity, not only in the ledger."/>
+            <where>name='Accrual Activity Posting' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Recognizes savings interest for accrual-periodic products without changing the customer balance (expense/receivable and payable/income)."/>
+            <where>name='Add Accrual Transactions For Savings' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Aggregates journal entries into summary rows used by reporting and downstream accounting jobs."/>
+            <where>name='Journal Entry Aggregation' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Runs close-of-business processing for working capital loans, including interest and related COB steps."/>
+            <where>name='Working Capital Loan COB' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Closes profit and loss balances into retained earnings for the configured period-end date."/>
+            <where>name='Retained Earning Job' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Rebuilds daily GL balance snapshots used by financial reports."/>
+            <where>name='Update GL Balance Snapshots' AND description IS NULL</where>
+        </update>
+        <update tableName="job">
+            <column name="description" value="Backfills historical GL balance snapshots for dates before snapshots were first generated. Run on demand, not on a daily schedule."/>
+            <where>name='GL Balance Snapshot Backfill' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

@@ -38,6 +38,9 @@ public class JobDetailData {
     private String shortName;
 
     @SuppressWarnings("unused")
+    private String description;
+
+    @SuppressWarnings("unused")
     private Date nextRunTime;
 
     @SuppressWarnings("unused")
@@ -54,12 +57,13 @@ public class JobDetailData {
     @SuppressWarnings("unused")
     private JobDetailHistoryData lastRunHistory;
 
-    public JobDetailData(Long jobId, String displayName, String shortName, Date nextRunTime, String initializingError,
+    public JobDetailData(Long jobId, String displayName, String shortName, String description, Date nextRunTime, String initializingError,
             String cronExpression, boolean active, boolean currentlyRunning, Long version, Date jobRunStartTime, Date jobRunEndTime,
             String status, String jobRunErrorMessage, String triggerType, String jobRunErrorLog) {
         this.jobId = jobId;
         this.displayName = displayName;
         this.shortName = shortName;
+        this.description = description;
         this.nextRunTime = nextRunTime;
         this.initializingError = initializingError;
         this.cronExpression = cronExpression;

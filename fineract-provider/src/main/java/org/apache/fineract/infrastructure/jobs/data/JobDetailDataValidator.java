@@ -42,8 +42,8 @@ public class JobDetailDataValidator {
 
     private final FromJsonHelper fromApiJsonHelper;
     private static final Set<String> JOB_UPDATE_REQUEST_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(SchedulerJobApiConstants.displayNameParamName, SchedulerJobApiConstants.jobActiveStatusParamName,
-                    SchedulerJobApiConstants.cronExpressionParamName));
+            Arrays.asList(SchedulerJobApiConstants.displayNameParamName, SchedulerJobApiConstants.descriptionParamName,
+                    SchedulerJobApiConstants.jobActiveStatusParamName, SchedulerJobApiConstants.cronExpressionParamName));
 
     @Autowired
     public JobDetailDataValidator(final FromJsonHelper fromApiJsonHelper) {
@@ -68,6 +68,12 @@ public class JobDetailDataValidator {
             atLeastOneParameterPassedForUpdate = true;
             final String displayName = this.fromApiJsonHelper.extractStringNamed(SchedulerJobApiConstants.displayNameParamName, element);
             baseDataValidator.reset().parameter(SchedulerJobApiConstants.displayNameParamName).value(displayName).notBlank();
+        }
+        if (this.fromApiJsonHelper.parameterExists(SchedulerJobApiConstants.descriptionParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String description = this.fromApiJsonHelper.extractStringNamed(SchedulerJobApiConstants.descriptionParamName, element);
+            baseDataValidator.reset().parameter(SchedulerJobApiConstants.descriptionParamName).value(description).ignoreIfNull()
+                    .notExceedingLengthOf(500);
         }
 
         if (this.fromApiJsonHelper.parameterExists(SchedulerJobApiConstants.cronExpressionParamName, element)) {
