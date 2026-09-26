@@ -88,6 +88,8 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GOODWILLCREDIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_HOLDAMOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INACTIVATE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBSCRIBE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNSUBSCRIBE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERESTPAYMENTWAIVER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERMEDIARYSALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INVALIDATE;
@@ -239,6 +241,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_ROLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNTCHARGE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
@@ -2454,6 +2457,22 @@ public class CommandWrapperBuilder {
         this.href = "/savingsaccounts/" + savingsAccountId + "/charges/" + savingsAccountChargeId;
         return this;
 
+    }
+
+    public CommandWrapperBuilder subscribeSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_SUBSCRIBE;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=subscribe";
+        return this;
+    }
+
+    public CommandWrapperBuilder unsubscribeSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_UNSUBSCRIBE;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=unsubscribe";
+        return this;
     }
 
     public CommandWrapperBuilder deleteSavingsAccountCharge(final Long savingsAccountId, final Long savingsAccountChargeId) {

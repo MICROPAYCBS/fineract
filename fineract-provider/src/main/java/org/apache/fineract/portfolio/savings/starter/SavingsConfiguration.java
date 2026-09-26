@@ -132,10 +132,13 @@ import org.apache.fineract.portfolio.savings.service.SavingsAccountTemplateReadP
 import org.apache.fineract.portfolio.savings.service.SavingsAccountTemplateReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformServiceJpaRepositoryImpl;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountPaymentChannelAllowListService;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsDropdownReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsDropdownReadPlatformServiceImpl;
+import org.apache.fineract.portfolio.savings.service.SavingsProductPaymentChannelAssembler;
+import org.apache.fineract.portfolio.savings.service.SavingsProductPaymentChannelWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformServiceImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsProductWritePlatformService;
@@ -386,7 +389,8 @@ public class SavingsConfiguration {
             StandingInstructionRepository standingInstructionRepository, BusinessEventNotifierService businessEventNotifierService,
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ExternalIdFactory externalIdFactory, ErrorHandler errorHandler, LegalTenderBreakdownValidator legalTenderBreakdownValidator,
-            LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService) {
+            LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService,
+            SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService) {
         return new SavingsAccountWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper,
                 staffRepository, savingsAccountTransactionRepository, savingAccountAssembler, savingsAccountTransactionDataValidator,
                 savingsAccountChargeDataValidator, paymentDetailWritePlatformService, journalEntryWritePlatformService,
@@ -394,7 +398,8 @@ public class SavingsConfiguration {
                 chargeRepository, savingsAccountChargeRepository, holidayRepository, workingDaysRepository, configurationDomainService,
                 depositAccountOnHoldTransactionRepository, entityDatatableChecksWritePlatformService, appuserRepository,
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
-                externalIdFactory, errorHandler, legalTenderBreakdownValidator, legalTenderBreakdownWritePlatformService);
+                externalIdFactory, errorHandler, legalTenderBreakdownValidator, legalTenderBreakdownWritePlatformService,
+                paymentChannelAllowListService);
     }
 
     @Bean
@@ -439,10 +444,12 @@ public class SavingsConfiguration {
             ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService,
             FineractEntityAccessUtil fineractEntityAccessUtil,
             org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler productChargeLinkAssembler,
-            org.apache.fineract.portfolio.charge.service.ProductChargeAmountService productChargeAmountService) {
+            org.apache.fineract.portfolio.charge.service.ProductChargeAmountService productChargeAmountService,
+            SavingsProductPaymentChannelAssembler savingsProductPaymentChannelAssembler,
+            SavingsProductPaymentChannelWritePlatformService savingsProductPaymentChannelWritePlatformService) {
         return new SavingsProductWritePlatformServiceJpaRepositoryImpl(context, savingProductRepository, fromApiJsonDataValidator,
                 savingsProductAssembler, accountMappingWritePlatformService, fineractEntityAccessUtil, productChargeLinkAssembler,
-                productChargeAmountService);
+                productChargeAmountService, savingsProductPaymentChannelAssembler, savingsProductPaymentChannelWritePlatformService);
     }
 
     @Bean

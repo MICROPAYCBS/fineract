@@ -125,6 +125,9 @@ public final class SavingsProductData implements Serializable {
     @Getter
     @Setter
     private String status;
+    @Getter
+    @Setter
+    private Collection<SavingsProductPaymentChannelData> paymentChannels;
 
     public static SavingsProductData template(final CurrencyData currency, final EnumOptionData interestCompoundingPeriodType,
             final EnumOptionData interestPostingPeriodType, final EnumOptionData interestCalculationType,

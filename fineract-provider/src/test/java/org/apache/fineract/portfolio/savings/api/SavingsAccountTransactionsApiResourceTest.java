@@ -42,7 +42,9 @@ import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReadService;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionData;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountPaymentChannelAllowListService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.search.SavingsAccountTransactionSearchService;
 import org.apache.fineract.portfolio.search.data.AdvancedQueryRequest;
@@ -73,6 +75,8 @@ class SavingsAccountTransactionsApiResourceTest {
     private PaymentTypeReadService paymentTypeReadPlatformService;
     @Mock
     private SavingsAccountTransactionSearchService transactionsSearchService;
+    @Mock
+    private SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService;
 
     @InjectMocks
     private SavingsAccountTransactionsApiResource underTest;
@@ -93,6 +97,10 @@ class SavingsAccountTransactionsApiResourceTest {
         when(savingsAccountReadPlatformService.retrieveDepositTransactionTemplate(resolvedSavingsId, DepositAccountType.SAVINGS_DEPOSIT))
                 .thenReturn(templateData);
         when(paymentTypeReadPlatformService.retrieveAllPaymentTypes()).thenReturn(List.of(org.mockito.Mockito.mock(PaymentTypeData.class)));
+        final SavingsAccountData accountData = org.mockito.Mockito.mock(SavingsAccountData.class);
+        when(accountData.getSavingsProductId()).thenReturn(99L);
+        when(savingsAccountReadPlatformService.retrieveOne(resolvedSavingsId)).thenReturn(accountData);
+        when(paymentChannelAllowListService.filterPaymentTypeOptions(eq(resolvedSavingsId), eq(99L), any())).thenAnswer(inv -> inv.getArgument(2));
         when(apiRequestParameterHelper.process(any())).thenReturn(settings);
         when(toApiJsonSerializer.serialize(eq(settings), any(SavingsAccountTransactionData.class),
                 eq(SavingsApiSetConstants.SAVINGS_TRANSACTION_RESPONSE_DATA_PARAMETERS))).thenReturn("serialized");

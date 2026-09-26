@@ -695,8 +695,12 @@ public class Charge extends AbstractPersistableCustom<Long> {
     public ChargeData toData() {
         final EnumOptionData chargeTimeType = ChargeEnumerations.chargeTimeType(this.chargeTimeType);
         final EnumOptionData chargeAppliesTo = ChargeEnumerations.chargeAppliesTo(this.chargeAppliesTo);
-        final EnumOptionData chargeCalculationType = ChargeEnumerations.chargeCalculationType(this.chargeCalculation);
-        final EnumOptionData chargePaymentMode = ChargeEnumerations.chargePaymentMode(this.chargePaymentMode);
+        final EnumOptionData chargeCalculationType = this.chargeCalculation != null
+                ? ChargeEnumerations.chargeCalculationType(this.chargeCalculation)
+                : null;
+        final EnumOptionData chargePaymentMode = this.chargePaymentMode != null
+                ? ChargeEnumerations.chargePaymentMode(this.chargePaymentMode)
+                : null;
         EnumOptionData feeFrequencyType = null;
         if (this.feeFrequency != null) {
             feeFrequencyType = ChargeEnumerations.feeFrequencyType(this.feeFrequency);

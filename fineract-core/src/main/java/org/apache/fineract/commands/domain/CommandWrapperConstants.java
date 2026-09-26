@@ -97,6 +97,8 @@ public final class CommandWrapperConstants {
     public static final String ACTION_POSTINTEREST = "POSTINTEREST";
     public static final String ACTION_APPLYANNUALFEE = "APPLYANNUALFEE";
     public static final String ACTION_INACTIVATE = "INACTIVATE";
+    public static final String ACTION_SUBSCRIBE = "SUBSCRIBE";
+    public static final String ACTION_UNSUBSCRIBE = "UNSUBSCRIBE";
     public static final String ACTION_SAVECOLLECTIONSHEET = "SAVECOLLECTIONSHEET";
     public static final String ACTION_ASSOCIATECLIENTS = "ASSOCIATECLIENTS";
     public static final String ACTION_DISASSOCIATECLIENTS = "DISASSOCIATECLIENTS";
@@ -219,6 +221,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_ACCOUNTTRANSFER = "ACCOUNTTRANSFER";
     public static final String ENTITY_STANDINGINSTRUCTION = "STANDINGINSTRUCTION";
     public static final String ENTITY_SAVINGSACCOUNTCHARGE = "SAVINGSACCOUNTCHARGE";
+    public static final String ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL = "SAVINGSACCOUNTPAYMENTCHANNEL";
     public static final String ENTITY_FIXEDDEPOSITPRODUCT = "FIXEDDEPOSITPRODUCT";
     public static final String ENTITY_RECURRINGDEPOSITPRODUCT = "RECURRINGDEPOSITPRODUCT";
     public static final String ENTITY_CALENDAR = "CALENDAR";

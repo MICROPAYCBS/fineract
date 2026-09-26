@@ -176,6 +176,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final ErrorHandler errorHandler;
     private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
     private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
+    private final SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService;
 
     @Transactional
     @Override
@@ -312,6 +313,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         final Map<String, Object> changes = new LinkedHashMap<>();
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
+        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
         boolean isAccountTransfer = false;
         boolean isRegularTransaction = true;
         final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
@@ -386,6 +388,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         checkClientOrGroupActive(account);
 
         this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(transactionDate, account);
+        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
 
         final boolean isAccountTransfer = false;
         final boolean isRegularTransaction = true;

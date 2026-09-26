@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.savings.service;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountingRuleParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.paymentChannelsParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 
 import jakarta.persistence.PersistenceException;
@@ -50,6 +51,7 @@ import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsProductDataValidator;
+import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
@@ -71,6 +73,8 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
     private final ProductChargeLinkAssembler productChargeLinkAssembler;
     private final ProductChargeAmountService productChargeAmountService;
+    private final SavingsProductPaymentChannelAssembler savingsProductPaymentChannelAssembler;
+    private final SavingsProductPaymentChannelWritePlatformService savingsProductPaymentChannelWritePlatformService;
 
     /*
      * Guaranteed to throw an exception no matter what the data integrity issue is.
@@ -115,6 +119,12 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             final List<ProductChargeLink> productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command,
                     product.currency().getCode());
             this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
+
+            if (command.parameterExists(paymentChannelsParamName)) {
+                final List<SavingsProductPaymentChannelLink> channelLinks = this.savingsProductPaymentChannelAssembler.assemble(command,
+                        product.currency().getCode());
+                this.savingsProductPaymentChannelWritePlatformService.syncProductChannels(product, channelLinks);
+            }
 
             // save accounting mappings
             this.accountMappingWritePlatformService.createSavingProductToGLAccountMapping(product.getId(), command,
@@ -184,6 +194,13 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
             }
             if (productChargeLinks != null) {
                 this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
+            }
+
+            if (command.parameterExists(paymentChannelsParamName)) {
+                final List<SavingsProductPaymentChannelLink> channelLinks = this.savingsProductPaymentChannelAssembler.assemble(command,
+                        product.currency().getCode());
+                this.savingsProductPaymentChannelWritePlatformService.syncProductChannels(product, channelLinks);
+                changes.put(paymentChannelsParamName, command.arrayOfParameterNamed(paymentChannelsParamName));
             }
 
             return new CommandProcessingResultBuilder() //
