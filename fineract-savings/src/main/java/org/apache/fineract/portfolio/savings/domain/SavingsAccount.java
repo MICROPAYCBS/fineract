@@ -99,6 +99,7 @@ import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
@@ -1330,10 +1331,14 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
     }
 
     public BigDecimal calculateWithdrawalFee(final BigDecimal transactionAmount) {
+        return calculateWithdrawalFee(transactionAmount, null);
+    }
+
+    public BigDecimal calculateWithdrawalFee(final BigDecimal transactionAmount, final PaymentType paymentType) {
         BigDecimal result = BigDecimal.ZERO;
         if (isWithdrawalFeeApplicableForTransfer()) {
             for (SavingsAccountCharge charge : this.charges()) {
-                if (charge.isWithdrawalFee() && charge.isActive()) {
+                if (charge.isWithdrawalFee() && charge.isActive() && charge.appliesToPaymentChannel(paymentType)) {
                     result = result.add(charge.calculateWithdralFeeAmount(transactionAmount), MoneyHelper.getMathContext());
                 }
             }
@@ -1345,6 +1350,9 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
             final boolean backdatedTxnsAllowedTill, final String refNo) {
         for (SavingsAccountCharge charge : this.charges()) {
             if (charge.isWithdrawalFee() && charge.isActive()) {
+                if (!charge.appliesToPaymentChannel(paymentDetail == null ? null : paymentDetail.getPaymentType())) {
+                    continue;
+                }
 
                 if (charge.getFreeWithdrawalCount() == null) {
                     charge.setFreeWithdrawalCount(0);
@@ -3152,7 +3160,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
             }
         }
 
-        if (savingsAccountCharge.isNotActive()) {
+        if (savingsAccountCharge.isNotActive() && !savingsAccountCharge.hasOutstanding()) {
             baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("charge.is.not.active");
             if (!dataValidationErrors.isEmpty()) {
                 throw new PlatformApiDataValidationException(dataValidationErrors);

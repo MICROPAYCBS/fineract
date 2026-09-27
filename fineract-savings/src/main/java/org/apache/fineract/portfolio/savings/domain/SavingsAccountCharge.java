@@ -50,6 +50,7 @@ import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.charge.exception.SavingsAccountChargeWithoutMandatoryFieldException;
 import org.apache.fineract.portfolio.charge.service.ChargeTierCalculator;
 import org.slf4j.Logger;
@@ -133,6 +134,12 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
 
     @Column(name = "inactivated_on_date")
     private LocalDate inactivationDate;
+
+    @Column(name = "recurrence_ended", nullable = false)
+    private boolean recurrenceEnded = false;
+
+    @Column(name = "channel_payment_type_id")
+    private Long channelPaymentTypeId;
 
     public static SavingsAccountCharge createNewFromJson(final SavingsAccount savingsAccount, final Charge chargeDefinition,
             final JsonCommand command) {
@@ -335,6 +342,12 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         Money amountPaid = getAmountPaid(currency);
         amountPaid = amountPaid.minus(transactionAmount);
         this.amountPaid = amountPaid.getAmount();
+
+        if (this.recurrenceEnded) {
+            restoreOutstandingForEndedRecurrence(currency, transactionAmount);
+            return;
+        }
+
         this.amountOutstanding = calculateAmountOutstanding(currency);
 
         if (this.isWithdrawalFee()) {
@@ -354,8 +367,12 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         this.amountOutstanding = BigDecimal.ZERO;
         this.waived = true;
 
-        resetPropertiesForRecurringFees();
-        updateNextDueDateForRecurringFees();
+        if (this.recurrenceEnded) {
+            settleEndedRecurrence();
+        } else {
+            resetPropertiesForRecurringFees();
+            updateNextDueDateForRecurringFees();
+        }
 
         return amountOutstanding;
     }
@@ -364,6 +381,13 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         Money amountWaived = getAmountWaived(currency);
         amountWaived = amountWaived.minus(transactionAmount);
         this.amountWaived = amountWaived.getAmount();
+
+        if (this.recurrenceEnded) {
+            restoreOutstandingForEndedRecurrence(currency, transactionAmount);
+            this.waived = MathUtil.isGreaterThanZero(this.amountWaived);
+            return;
+        }
+
         this.amountOutstanding = calculateAmountOutstanding(currency);
         this.waived = false;
         this.status = true;
@@ -382,9 +406,13 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         this.paid = determineIfFullyPaid();
 
         if (BigDecimal.ZERO.compareTo(this.amountOutstanding) == 0) {
-            // full outstanding is paid, update to next due date
-            updateNextDueDateForRecurringFees();
-            resetPropertiesForRecurringFees();
+            if (this.recurrenceEnded) {
+                settleEndedRecurrence();
+            } else {
+                // full outstanding is paid, update to next due date
+                updateNextDueDateForRecurringFees();
+                resetPropertiesForRecurringFees();
+            }
         }
 
         return Money.of(currency, this.amountOutstanding);
@@ -761,21 +789,23 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         }
         SavingsAccountCharge that = (SavingsAccountCharge) o;
         return (penaltyCharge == that.penaltyCharge) && (paid == that.paid) && (waived == that.waived) && (status == that.status)
-                && Objects.equals(savingsAccount, that.savingsAccount) && Objects.equals(charge, that.charge)
+                && (recurrenceEnded == that.recurrenceEnded) && Objects.equals(savingsAccount, that.savingsAccount)
+                && Objects.equals(charge, that.charge)
                 && Objects.equals(chargeTime, that.chargeTime) && DateUtils.isEqual(dueDate, that.dueDate)
                 && Objects.equals(feeOnMonth, that.feeOnMonth) && Objects.equals(feeOnDay, that.feeOnDay)
                 && Objects.equals(feeInterval, that.feeInterval) && Objects.equals(chargeCalculation, that.chargeCalculation)
                 && Objects.equals(percentage, that.percentage) && Objects.equals(amountPercentageAppliedTo, that.amountPercentageAppliedTo)
                 && Objects.equals(amount, that.amount) && Objects.equals(amountPaid, that.amountPaid)
                 && Objects.equals(amountWaived, that.amountWaived) && Objects.equals(amountWrittenOff, that.amountWrittenOff)
-                && Objects.equals(amountOutstanding, that.amountOutstanding) && DateUtils.isEqual(inactivationDate, that.inactivationDate);
+                && Objects.equals(amountOutstanding, that.amountOutstanding) && DateUtils.isEqual(inactivationDate, that.inactivationDate)
+                && Objects.equals(channelPaymentTypeId, that.channelPaymentTypeId);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(savingsAccount, charge, chargeTime, dueDate, feeOnMonth, feeOnDay, feeInterval, chargeCalculation, percentage,
                 amountPercentageAppliedTo, amount, amountPaid, amountWaived, amountWrittenOff, amountOutstanding, penaltyCharge, paid,
-                waived, status, inactivationDate);
+                waived, status, inactivationDate, recurrenceEnded, channelPaymentTypeId);
     }
 
     public BigDecimal calculateWithdralFeeAmount(@NotNull BigDecimal transactionAmount) {
@@ -906,6 +936,73 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         this.status = false;
         this.amountOutstanding = BigDecimal.ZERO;
         this.paid = true;
+    }
+
+    /**
+     * Stop future cycles of a recurring fee. The current outstanding, paid flag, and active status are left unchanged
+     * so a period that has already fallen due can still be collected.
+     */
+    public void endRecurrence() {
+        this.recurrenceEnded = true;
+    }
+
+    public boolean isRecurrenceEnded() {
+        return this.recurrenceEnded;
+    }
+
+    /**
+     * Mark an event fee inactive so it is not applied again, while leaving an amount already outstanding payable.
+     */
+    public void inactivateKeepingOutstanding(final LocalDate inactivationOnDate) {
+        this.inactivationDate = inactivationOnDate;
+        this.status = false;
+        this.paid = false;
+    }
+
+    public boolean hasOutstanding() {
+        return MathUtil.isGreaterThanZero(this.amountOutstanding);
+    }
+
+    /**
+     * Remember the payment channel that subscribed this charge. Withdrawal and overdraft fees then apply only when a
+     * transaction uses that channel. Scheduled fees ignore the binding.
+     */
+    public void bindToPaymentChannel(final Long paymentTypeId) {
+        this.channelPaymentTypeId = paymentTypeId;
+    }
+
+    /**
+     * A charge with no channel applies as usual. A channel-bound withdrawal or overdraft fee applies only for that
+     * payment type. Scheduled fees are never channel-gated.
+     */
+    public boolean appliesToPaymentChannel(final PaymentType paymentType) {
+        if (this.channelPaymentTypeId == null || !isTransactionChannelCharge()) {
+            return true;
+        }
+        return paymentType != null && this.channelPaymentTypeId.equals(paymentType.getId());
+    }
+
+    private boolean isTransactionChannelCharge() {
+        return isWithdrawalFee() || isOverdraftFee();
+    }
+
+    private void settleEndedRecurrence() {
+        this.inactivationDate = DateUtils.getBusinessLocalDate();
+        this.status = false;
+        this.amountOutstanding = BigDecimal.ZERO;
+        this.paid = true;
+    }
+
+    private void restoreOutstandingForEndedRecurrence(final MonetaryCurrency currency, final Money transactionAmount) {
+        Money restored = getAmountOutstanding(currency).plus(transactionAmount);
+        final Money periodAmount = getAmount(currency);
+        if (restored.isGreaterThan(periodAmount)) {
+            restored = periodAmount;
+        }
+        this.amountOutstanding = restored.getAmount();
+        this.paid = BigDecimal.ZERO.compareTo(this.amountOutstanding) == 0;
+        this.status = true;
+        this.inactivationDate = null;
     }
 
     public boolean isActive() {

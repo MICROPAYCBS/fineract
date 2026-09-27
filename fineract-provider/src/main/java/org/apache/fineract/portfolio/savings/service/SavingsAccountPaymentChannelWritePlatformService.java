@@ -127,6 +127,9 @@ public class SavingsAccountPaymentChannelWritePlatformService {
             final SavingsAccountCharge savingsAccountCharge = SavingsAccountCharge.createNewWithoutSavingsAccount(chargeDefinition, amount,
                     chargeTime, chargeCalculation, null, true, chargeDefinition.getFeeOnMonthDay(), chargeDefinition.feeInterval());
             savingsAccountCharge.update(account);
+            if (chargeTime != null && (chargeTime.isWithdrawalFee() || chargeTime.isOverdraftFee())) {
+                savingsAccountCharge.bindToPaymentChannel(productChannel.getPaymentType().getId());
+            }
             account.addCharge(fmt, savingsAccountCharge, chargeDefinition);
             this.savingsAccountChargeRepository.save(savingsAccountCharge);
             subscription.addLinkedCharge(savingsAccountCharge);
@@ -157,16 +160,17 @@ public class SavingsAccountPaymentChannelWritePlatformService {
                 continue;
             }
             if (charge.isRecurringFee()) {
-                // Follow recurring-fee inactivation rules (due / overpaid checks skipped for channel ownership —
-                // inactivate when not due)
                 final LocalDate nextDueDate = charge.getNextDueDateFrom(today);
                 if (charge.isChargeIsDue(nextDueDate)) {
-                    throw validationException("savingsAccountChargeId", charge.getId(),
-                            "inactivation.of.charge.not.allowed.when.charge.is.due");
+                    // Period already due stays collectible. Paying or waiving it will not open another cycle.
+                    charge.endRecurrence();
+                } else {
+                    // Next cycle has not fallen due. Drop it. Payments already posted are left in place.
+                    account.inactivateCharge(charge, today);
                 }
-                account.inactivateCharge(charge, today);
+            } else if (charge.hasOutstanding()) {
+                charge.inactivateKeepingOutstanding(today);
             } else {
-                // Non-recurring channel fees: mark inactive; paid history remains
                 charge.inactiavateCharge(today);
             }
             this.savingsAccountChargeRepository.save(charge);

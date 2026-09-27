@@ -348,7 +348,7 @@ public class InteropServiceImpl implements InteropService {
 
         final BigDecimal fee;
         if (transactionType.isDebit()) {
-            fee = savingsAccount.calculateWithdrawalFee(request.getAmount().getAmount());
+            fee = savingsAccount.calculateWithdrawalFee(request.getAmount().getAmount(), findPaymentType());
             if (MathUtil.isLessThan(savingsAccount.getWithdrawableBalance(), request.getAmount().getAmount().add(fee))) {
                 throw new InsufficientAccountBalanceException(savingsAccount.getExternalId().getValue(),
                         savingsAccount.getWithdrawableBalance(), fee, request.getAmount().getAmount());

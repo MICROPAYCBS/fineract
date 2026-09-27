@@ -1,0 +1,59 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_savings_account_charge" columnName="channel_payment_type_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_savings_account_charge">
+            <column name="channel_payment_type_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="fineract" id="2">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="m_savings_account_charge" columnName="channel_payment_type_id"/>
+            <tableExists tableName="m_savings_account_payment_channel_charge"/>
+        </preConditions>
+        <sql dbms="postgresql">
+            UPDATE m_savings_account_charge sac
+            SET channel_payment_type_id = ch.payment_type_id
+            FROM m_savings_account_payment_channel_charge link
+            JOIN m_savings_account_payment_channel ch ON ch.id = link.account_payment_channel_id
+            WHERE sac.id = link.savings_account_charge_id
+              AND sac.charge_time_enum IN (5, 10)
+              AND sac.channel_payment_type_id IS NULL
+        </sql>
+        <sql dbms="mysql,mariadb">
+            UPDATE m_savings_account_charge sac
+            INNER JOIN m_savings_account_payment_channel_charge link ON link.savings_account_charge_id = sac.id
+            INNER JOIN m_savings_account_payment_channel ch ON ch.id = link.account_payment_channel_id
+            SET sac.channel_payment_type_id = ch.payment_type_id
+            WHERE sac.charge_time_enum IN (5, 10)
+              AND sac.channel_payment_type_id IS NULL
+        </sql>
+    </changeSet>
+</databaseChangeLog>

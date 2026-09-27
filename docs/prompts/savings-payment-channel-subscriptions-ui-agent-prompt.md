@@ -134,7 +134,7 @@ Preferred default for “premium subscription fee”: **Monthly (7)** or **Annua
 - `POST .../paymentchannels?command=subscribe` `{ "paymentTypeId": 3 }`
 - `POST .../paymentchannels?command=unsubscribe` `{ "paymentTypeId": 3 }`
 
-Subscribe attaches mapped charges; unsubscribe inactivates linked recurring charges (non-recurring are marked inactive; paid history kept).
+Subscribe attaches mapped charges. A withdrawal or overdraft fee mapped to a channel is charged only when the transaction uses that channel. Unsubscribe always succeeds: future fees stop, a recurring amount already due stays on the account until it is paid, and fees already collected are not reversed. The charge row stays on the account.
 
 ### Deposit / withdrawal templates
 

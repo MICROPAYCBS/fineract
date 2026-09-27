@@ -268,4 +268,6 @@
     <include file="parts/0247_add_user_session_permissions.xml" relativeToChangelogFile="true"/>
     <include file="parts/0248_bound_twofactor_token_lifetime.xml" relativeToChangelogFile="true"/>
     <include file="parts/0249_add_savings_payment_channels.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0250_end_savings_charge_recurrence.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0251_channel_payment_type_on_savings_charge.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

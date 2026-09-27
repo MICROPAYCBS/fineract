@@ -572,6 +572,9 @@ public final class SavingsProductData implements Serializable {
         target.setStartDate(source.getStartDate());
         target.setCloseDate(source.getCloseDate());
         target.setStatus(source.getStatus());
+        // withCharges, withAccountingDetails, and withTemplate build a new object.
+        // The catalog is set after withCharges, so later copies must keep it.
+        target.setPaymentChannels(source.getPaymentChannels());
     }
 
 }
