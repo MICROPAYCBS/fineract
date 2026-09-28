@@ -137,6 +137,7 @@ import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWr
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsDropdownReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsDropdownReadPlatformServiceImpl;
+import org.apache.fineract.portfolio.savings.service.SavingsPaymentChannelFeeHoldService;
 import org.apache.fineract.portfolio.savings.service.SavingsProductPaymentChannelAssembler;
 import org.apache.fineract.portfolio.savings.service.SavingsProductPaymentChannelWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
@@ -390,7 +391,8 @@ public class SavingsConfiguration {
             GSIMRepositoy gsimRepository, SavingsAccountInterestPostingService savingsAccountInterestPostingService,
             ExternalIdFactory externalIdFactory, ErrorHandler errorHandler, LegalTenderBreakdownValidator legalTenderBreakdownValidator,
             LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService,
-            SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService) {
+            SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService,
+            SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService) {
         return new SavingsAccountWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper,
                 staffRepository, savingsAccountTransactionRepository, savingAccountAssembler, savingsAccountTransactionDataValidator,
                 savingsAccountChargeDataValidator, paymentDetailWritePlatformService, journalEntryWritePlatformService,
@@ -399,7 +401,7 @@ public class SavingsConfiguration {
                 depositAccountOnHoldTransactionRepository, entityDatatableChecksWritePlatformService, appuserRepository,
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
                 externalIdFactory, errorHandler, legalTenderBreakdownValidator, legalTenderBreakdownWritePlatformService,
-                paymentChannelAllowListService);
+                paymentChannelAllowListService, paymentChannelFeeHoldService);
     }
 
     @Bean

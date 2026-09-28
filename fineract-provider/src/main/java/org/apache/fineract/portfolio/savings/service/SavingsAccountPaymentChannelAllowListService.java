@@ -33,6 +33,8 @@ import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannel;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlock;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlockRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsPaymentChannelStatus;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannel;
@@ -41,8 +43,9 @@ import org.springframework.stereotype.Service;
 
 /**
  * When a savings product has a non-empty active payment-channel catalog, deposits/withdrawals may only use
- * non-premium catalogued channels or premium channels with an ACTIVE account subscription. Empty catalog = all payment
- * types allowed (legacy behaviour).
+ * non-premium catalogued channels or premium channels with an ACTIVE account subscription. A channel that is inactive
+ * on the product, or blocked on the account, is refused. An inactive payment type is refused even when the catalog is
+ * empty. Empty catalog otherwise means all payment types are allowed (legacy behaviour).
  */
 @Service
 @RequiredArgsConstructor
@@ -50,6 +53,7 @@ public class SavingsAccountPaymentChannelAllowListService {
 
     private final SavingsProductPaymentChannelRepository productChannelRepository;
     private final SavingsAccountPaymentChannelRepository accountChannelRepository;
+    private final SavingsAccountPaymentChannelBlockRepository accountChannelBlockRepository;
 
     public boolean hasCatalog(final Long productId) {
         return productId != null && this.productChannelRepository.countByProductIdAndActiveTrue(productId) > 0;
@@ -60,8 +64,15 @@ public class SavingsAccountPaymentChannelAllowListService {
         if (catalog.isEmpty()) {
             return null; // null = unrestricted
         }
+        final Set<Long> blockedChannelIds = openBlockedChannelIds(savingsAccountId);
         final Set<Long> allowed = new HashSet<>();
         for (final SavingsProductPaymentChannel channel : catalog) {
+            if (channel.getId() != null && blockedChannelIds.contains(channel.getId())) {
+                continue;
+            }
+            if (channel.getPaymentType() != null && Boolean.FALSE.equals(channel.getPaymentType().getIsActive())) {
+                continue;
+            }
             final Long paymentTypeId = channel.getPaymentType().getId();
             if (!channel.isPremium()) {
                 allowed.add(paymentTypeId);
@@ -82,6 +93,9 @@ public class SavingsAccountPaymentChannelAllowListService {
             return;
         }
         final Long paymentTypeId = paymentDetail.getPaymentType().getId();
+        if (Boolean.FALSE.equals(paymentDetail.getPaymentType().getIsActive())) {
+            throw inactivePaymentType(paymentTypeId);
+        }
         final Set<Long> allowed = allowedPaymentTypeIds(account.getId(), account.productId());
         if (allowed == null) {
             return;
@@ -97,10 +111,36 @@ public class SavingsAccountPaymentChannelAllowListService {
 
     public Collection<PaymentTypeData> filterPaymentTypeOptions(final Long savingsAccountId, final Long productId,
             final Collection<PaymentTypeData> allPaymentTypes) {
-        final Set<Long> allowed = allowedPaymentTypeIds(savingsAccountId, productId);
-        if (allowed == null || allPaymentTypes == null) {
-            return allPaymentTypes;
+        if (allPaymentTypes == null) {
+            return null;
         }
-        return allPaymentTypes.stream().filter(pt -> allowed.contains(pt.getId())).collect(Collectors.toList());
+        final Collection<PaymentTypeData> activeTypes = allPaymentTypes.stream().filter(pt -> !Boolean.FALSE.equals(pt.getIsActive()))
+                .collect(Collectors.toList());
+        final Set<Long> allowed = allowedPaymentTypeIds(savingsAccountId, productId);
+        if (allowed == null) {
+            return activeTypes;
+        }
+        return activeTypes.stream().filter(pt -> allowed.contains(pt.getId())).collect(Collectors.toList());
+    }
+
+    private static PlatformApiDataValidationException inactivePaymentType(final Long paymentTypeId) {
+        final List<ApiParameterError> errors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(errors).resource("savingsaccount.transaction");
+        baseDataValidator.reset().parameter("paymentTypeId").value(paymentTypeId).failWithCode("payment.type.inactive");
+        return new PlatformApiDataValidationException(errors);
+    }
+
+    private Set<Long> openBlockedChannelIds(final Long savingsAccountId) {
+        if (savingsAccountId == null) {
+            return Set.of();
+        }
+        final Set<Long> blocked = new HashSet<>();
+        for (final SavingsAccountPaymentChannelBlock block : this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndUnblockedOnDateIsNull(savingsAccountId)) {
+            if (block.getProductPaymentChannel() != null && block.getProductPaymentChannel().getId() != null) {
+                blocked.add(block.getProductPaymentChannel().getId());
+            }
+        }
+        return blocked;
     }
 }

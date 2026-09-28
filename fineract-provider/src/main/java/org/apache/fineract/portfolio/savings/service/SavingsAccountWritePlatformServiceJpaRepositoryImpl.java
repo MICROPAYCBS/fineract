@@ -177,6 +177,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
     private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
     private final SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService;
+    private final SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService;
 
     @Transactional
     @Override
@@ -1514,7 +1515,14 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MM yyyy").withZone(DateUtils.getDateTimeZoneOfTenant());
 
+        if (this.paymentChannelFeeHoldService.isCollectionPaused(savingsAccountCharge)) {
+            return;
+        }
+
         while (savingsAccountCharge.isNotFullyPaid() && DateUtils.isBefore(savingsAccountCharge.getDueDate(), transactionDate)) {
+            if (this.paymentChannelFeeHoldService.advancePastClosedHolds(savingsAccountCharge)) {
+                continue;
+            }
             payCharge(savingsAccountCharge, transactionDate, savingsAccountCharge.amoutOutstanding(), fmt, false);
         }
     }

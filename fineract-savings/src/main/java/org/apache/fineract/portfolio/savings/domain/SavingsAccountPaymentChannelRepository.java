@@ -22,6 +22,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface SavingsAccountPaymentChannelRepository
         extends JpaRepository<SavingsAccountPaymentChannel, Long>, JpaSpecificationExecutor<SavingsAccountPaymentChannel> {
@@ -35,4 +37,12 @@ public interface SavingsAccountPaymentChannelRepository
 
     Optional<SavingsAccountPaymentChannel> findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(Long savingsAccountId,
             Long paymentTypeId, Integer status);
+
+    @Query("select s from SavingsAccountPaymentChannel s where s.productPaymentChannel.id = :channelId and s.status = :status")
+    List<SavingsAccountPaymentChannel> findByProductPaymentChannelIdAndStatus(@Param("channelId") Long channelId,
+            @Param("status") Integer status);
+
+    @Query("select s from SavingsAccountPaymentChannel s where s.paymentType.id = :paymentTypeId and s.status = :status")
+    List<SavingsAccountPaymentChannel> findByPaymentTypeIdAndStatus(@Param("paymentTypeId") Long paymentTypeId,
+            @Param("status") Integer status);
 }

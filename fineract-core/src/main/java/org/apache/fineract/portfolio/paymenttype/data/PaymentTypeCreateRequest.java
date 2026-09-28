@@ -53,4 +53,5 @@ public class PaymentTypeCreateRequest implements Serializable {
     @Builder.Default
     @NotNull(message = "{org.apache.fineract.portfolio.is-system-defined.not-null}")
     private Boolean isSystemDefined = false;
+    private Boolean isActive;
 }

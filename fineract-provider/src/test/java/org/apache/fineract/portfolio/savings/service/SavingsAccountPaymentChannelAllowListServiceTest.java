@@ -36,6 +36,8 @@ import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannel;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlock;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlockRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsPaymentChannelStatus;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannel;
@@ -47,13 +49,17 @@ class SavingsAccountPaymentChannelAllowListServiceTest {
 
     private SavingsProductPaymentChannelRepository productChannelRepository;
     private SavingsAccountPaymentChannelRepository accountChannelRepository;
+    private SavingsAccountPaymentChannelBlockRepository accountChannelBlockRepository;
     private SavingsAccountPaymentChannelAllowListService service;
 
     @BeforeEach
     void setUp() {
         productChannelRepository = mock(SavingsProductPaymentChannelRepository.class);
         accountChannelRepository = mock(SavingsAccountPaymentChannelRepository.class);
-        service = new SavingsAccountPaymentChannelAllowListService(productChannelRepository, accountChannelRepository);
+        accountChannelBlockRepository = mock(SavingsAccountPaymentChannelBlockRepository.class);
+        when(accountChannelBlockRepository.findBySavingsAccount_IdAndUnblockedOnDateIsNull(any())).thenReturn(List.of());
+        service = new SavingsAccountPaymentChannelAllowListService(productChannelRepository, accountChannelRepository,
+                accountChannelBlockRepository);
     }
 
     @Test
@@ -100,6 +106,43 @@ class SavingsAccountPaymentChannelAllowListServiceTest {
         when(detail.getPaymentType()).thenReturn(premium);
 
         assertThrows(PlatformApiDataValidationException.class, () -> service.validatePaymentTypeAllowed(account, detail));
+    }
+
+    @Test
+    void inactivePaymentTypeIsRefusedWhenCatalogEmpty() {
+        when(productChannelRepository.findByProductIdAndActiveTrue(1L)).thenReturn(List.of());
+        final PaymentType inactive = paymentType(2L);
+        inactive.setIsActive(false);
+
+        final SavingsAccount account = mock(SavingsAccount.class);
+        when(account.getId()).thenReturn(10L);
+        when(account.productId()).thenReturn(1L);
+        final PaymentDetail detail = mock(PaymentDetail.class);
+        when(detail.getPaymentType()).thenReturn(inactive);
+
+        assertThrows(PlatformApiDataValidationException.class, () -> service.validatePaymentTypeAllowed(account, detail));
+    }
+
+    @Test
+    void inactivePaymentTypeDroppedWhenCatalogEmpty() {
+        when(productChannelRepository.findByProductIdAndActiveTrue(1L)).thenReturn(List.of());
+        final List<PaymentTypeData> all = List.of(PaymentTypeData.builder().id(1L).name("Cash").isActive(true).build(),
+                PaymentTypeData.builder().id(2L).name("Internet Banking").isActive(false).build());
+        final var filtered = service.filterPaymentTypeOptions(10L, 1L, all);
+        assertEquals(1, filtered.size());
+        assertTrue(filtered.stream().anyMatch(p -> p.getId().equals(1L)));
+    }
+
+    @Test
+    void blockedChannelIsRefusedEvenWhenOtherwiseAllowed() {
+        final PaymentType free = paymentType(1L);
+        final SavingsProductPaymentChannel freeChannel = channel(free, false);
+        freeChannel.setId(50L);
+        when(productChannelRepository.findByProductIdAndActiveTrue(1L)).thenReturn(List.of(freeChannel));
+        final SavingsAccountPaymentChannelBlock block = SavingsAccountPaymentChannelBlock.block(null, freeChannel, null);
+        when(accountChannelBlockRepository.findBySavingsAccount_IdAndUnblockedOnDateIsNull(10L)).thenReturn(List.of(block));
+
+        assertEquals(Set.of(), service.allowedPaymentTypeIds(10L, 1L));
     }
 
     @Test

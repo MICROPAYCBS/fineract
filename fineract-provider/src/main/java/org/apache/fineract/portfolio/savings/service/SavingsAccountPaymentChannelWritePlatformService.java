@@ -23,7 +23,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -45,6 +47,8 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannel;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlock;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlockRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsPaymentChannelStatus;
@@ -64,6 +68,8 @@ public class SavingsAccountPaymentChannelWritePlatformService {
     private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository;
     private final SavingsProductPaymentChannelRepository productChannelRepository;
     private final SavingsAccountPaymentChannelRepository accountChannelRepository;
+    private final SavingsAccountPaymentChannelBlockRepository accountChannelBlockRepository;
+    private final SavingsPaymentChannelFeeHoldService feeHoldService;
     private final SavingsProductPaymentChannelReadPlatformService productChannelReadPlatformService;
 
     @Transactional(readOnly = true)
@@ -72,15 +78,20 @@ public class SavingsAccountPaymentChannelWritePlatformService {
         final SavingsAccount account = this.savingAccountRepositoryWrapper.findOneWithNotFoundDetection(savingsAccountId);
         final Long productId = account.productId();
         final List<SavingsProductPaymentChannel> productChannels = this.productChannelRepository.findByProductId(productId);
+        final Map<Long, SavingsAccountPaymentChannelBlock> openBlocks = new HashMap<>();
+        for (final SavingsAccountPaymentChannelBlock block : this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndUnblockedOnDateIsNull(savingsAccountId)) {
+            if (block.getProductPaymentChannel() != null && block.getProductPaymentChannel().getId() != null) {
+                openBlocks.put(block.getProductPaymentChannel().getId(), block);
+            }
+        }
         final List<SavingsAccountPaymentChannelData> result = new ArrayList<>();
         for (final SavingsProductPaymentChannel productChannel : productChannels) {
-            if (!productChannel.isActive()) {
-                continue;
-            }
             final Optional<SavingsAccountPaymentChannel> activeSub = this.accountChannelRepository
                     .findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId,
                             productChannel.getPaymentType().getId(), SavingsPaymentChannelStatus.ACTIVE.getValue());
-            result.add(toAccountData(productChannel, activeSub.orElse(null)));
+            final SavingsAccountPaymentChannelBlock block = productChannel.getId() == null ? null : openBlocks.get(productChannel.getId());
+            result.add(toAccountData(productChannel, activeSub.orElse(null), block));
         }
         return result;
     }
@@ -184,11 +195,59 @@ public class SavingsAccountPaymentChannelWritePlatformService {
                 .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
     }
 
+    @Transactional
+    public CommandProcessingResult block(final Long savingsAccountId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final Long paymentTypeId = requirePaymentTypeId(command);
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsAccountId, false);
+        final SavingsProductPaymentChannel productChannel = requireProductChannel(account, paymentTypeId);
+
+        if (this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndProductPaymentChannel_IdAndUnblockedOnDateIsNull(savingsAccountId, productChannel.getId())
+                .isPresent()) {
+            throw validationException("paymentTypeId", paymentTypeId, "already.blocked");
+        }
+
+        final SavingsAccountPaymentChannelBlock block = SavingsAccountPaymentChannelBlock.block(account, productChannel,
+                DateUtils.getBusinessLocalDate());
+        this.accountChannelBlockRepository.save(block);
+
+        return new CommandProcessingResultBuilder().withEntityId(block.getId()).withSavingsId(savingsAccountId)
+                .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
+    }
+
+    @Transactional
+    public CommandProcessingResult unblock(final Long savingsAccountId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final Long paymentTypeId = requirePaymentTypeId(command);
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsAccountId, false);
+        final SavingsProductPaymentChannel productChannel = requireProductChannel(account, paymentTypeId);
+
+        final SavingsAccountPaymentChannelBlock block = this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndProductPaymentChannel_IdAndUnblockedOnDateIsNull(savingsAccountId, productChannel.getId())
+                .orElseThrow(() -> validationException("paymentTypeId", paymentTypeId, "not.blocked"));
+
+        block.setUnblockedOnDate(DateUtils.getBusinessLocalDate());
+        this.accountChannelBlockRepository.saveAndFlush(block);
+
+        this.accountChannelRepository
+                .findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId, paymentTypeId,
+                        SavingsPaymentChannelStatus.ACTIVE.getValue())
+                .ifPresent(this.feeHoldService::skipMissedCycles);
+
+        return new CommandProcessingResultBuilder().withEntityId(block.getId()).withSavingsId(savingsAccountId)
+                .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
+    }
+
     private SavingsAccountPaymentChannelData toAccountData(final SavingsProductPaymentChannel productChannel,
-            final SavingsAccountPaymentChannel subscription) {
+            final SavingsAccountPaymentChannel subscription, final SavingsAccountPaymentChannelBlock block) {
         final SavingsProductPaymentChannelData productData = this.productChannelReadPlatformService.toData(productChannel);
         final boolean subscribed = subscription != null && subscription.isActive();
-        final boolean allowedForDeposit = !productChannel.isPremium() || subscribed;
+        final boolean blocked = block != null && block.isOpen();
+        final boolean paymentTypeActive = productChannel.getPaymentType() == null
+                || !Boolean.FALSE.equals(productChannel.getPaymentType().getIsActive());
+        final boolean allowedForDeposit = paymentTypeActive && productChannel.isActive() && !blocked
+                && (!productChannel.isPremium() || subscribed);
         EnumOptionData status = null;
         LocalDate subscribedOn = null;
         LocalDate unsubscribedOn = null;
@@ -203,8 +262,13 @@ public class SavingsAccountPaymentChannelWritePlatformService {
         return SavingsAccountPaymentChannelData.builder().id(subscriptionId).paymentTypeId(productData.getPaymentTypeId())
                 .paymentType(productData.getPaymentType()).isPremium(productData.isPremium()).isActive(productData.isActive())
                 .name(productData.getName()).description(productData.getDescription()).subscriptionStatus(status)
-                .subscribedOnDate(subscribedOn).unsubscribedOnDate(unsubscribedOn).allowedForDeposit(allowedForDeposit)
-                .charges(productData.getCharges()).build();
+                .subscribedOnDate(subscribedOn).unsubscribedOnDate(unsubscribedOn).allowedForDeposit(allowedForDeposit).blocked(blocked)
+                .blockedOnDate(blocked ? block.getBlockedOnDate() : null).charges(productData.getCharges()).build();
+    }
+
+    private SavingsProductPaymentChannel requireProductChannel(final SavingsAccount account, final Long paymentTypeId) {
+        return this.productChannelRepository.findByProductIdAndPaymentTypeId(account.productId(), paymentTypeId)
+                .orElseThrow(() -> validationException("paymentTypeId", paymentTypeId, "not.in.product.channel.catalog"));
     }
 
     private Long requirePaymentTypeId(final JsonCommand command) {

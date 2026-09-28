@@ -16,30 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.paymenttype.data;
+package org.apache.fineract.portfolio.savings.domain;
 
-import java.io.Serial;
-import java.io.Serializable;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-@Builder
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class PaymentTypeData implements Serializable {
+public interface SavingsAccountPaymentChannelChargeRepository extends JpaRepository<SavingsAccountPaymentChannelCharge, Long>,
+        JpaSpecificationExecutor<SavingsAccountPaymentChannelCharge> {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
-
-    private Long id;
-    private String name;
-    private String description;
-    private Boolean isCashPayment;
-    private Long position;
-    private String codeName;
-    private Boolean isSystemDefined;
-    private Boolean isActive;
+    List<SavingsAccountPaymentChannelCharge> findBySavingsAccountCharge_Id(Long savingsAccountChargeId);
 }

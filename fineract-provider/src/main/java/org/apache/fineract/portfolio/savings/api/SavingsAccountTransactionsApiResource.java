@@ -114,7 +114,7 @@ public class SavingsAccountTransactionsApiResource {
         // both deposit/withdrawal templates
         SavingsAccountTransactionData savingsAccount = this.savingsAccountReadPlatformService
                 .retrieveDepositTransactionTemplate(resolvedSavingsId, DepositAccountType.SAVINGS_DEPOSIT);
-        Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         final SavingsAccountData accountData = this.savingsAccountReadPlatformService.retrieveOne(resolvedSavingsId);
         paymentTypeOptions = this.paymentChannelAllowListService.filterPaymentTypeOptions(resolvedSavingsId,
                 accountData.getSavingsProductId(), paymentTypeOptions);
@@ -154,7 +154,7 @@ public class SavingsAccountTransactionsApiResource {
                 resolvedTransactionId, DepositAccountType.SAVINGS_DEPOSIT);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         if (settings.isTemplate()) {
-            Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+            Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
             final SavingsAccountData accountData = this.savingsAccountReadPlatformService.retrieveOne(resolvedSavingsId);
             paymentTypeOptions = this.paymentChannelAllowListService.filterPaymentTypeOptions(resolvedSavingsId,
                     accountData.getSavingsProductId(), paymentTypeOptions);

@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.savings.service;
 
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink;
 import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink.ChannelChargeLink;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
@@ -40,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SavingsProductPaymentChannelWritePlatformService {
 
     private final SavingsProductPaymentChannelRepository channelRepository;
+    private final SavingsPaymentChannelFeeHoldService feeHoldService;
 
     @Transactional
     public void syncProductChannels(final SavingsProduct product, final List<SavingsProductPaymentChannelLink> links) {
@@ -50,11 +53,14 @@ public class SavingsProductPaymentChannelWritePlatformService {
         final Map<Long, SavingsProductPaymentChannel> existingByPaymentType = this.channelRepository.findByProductId(product.getId())
                 .stream().collect(Collectors.toMap(c -> c.getPaymentType().getId(), Function.identity(), (a, b) -> a));
 
+        final LocalDate today = DateUtils.getBusinessLocalDate();
         final Set<Long> keepPaymentTypeIds = new HashSet<>();
         for (final SavingsProductPaymentChannelLink link : links) {
             final Long paymentTypeId = link.paymentType().getId();
             keepPaymentTypeIds.add(paymentTypeId);
             SavingsProductPaymentChannel channel = existingByPaymentType.get(paymentTypeId);
+            final boolean persisted = channel != null && channel.getId() != null;
+            final boolean wasActive = persisted && channel.isActive();
             if (channel == null) {
                 channel = SavingsProductPaymentChannel.create(product, link.paymentType(), link.premium(), link.active(), link.name(),
                         link.description());
@@ -65,16 +71,30 @@ public class SavingsProductPaymentChannelWritePlatformService {
                 channel.setDescription(link.description());
             }
             syncChannelCharges(channel, link.charges());
-            this.channelRepository.save(channel);
+            this.channelRepository.saveAndFlush(channel);
+            recordProductActiveChange(channel, persisted, wasActive, today);
         }
 
         for (final SavingsProductPaymentChannel existing : existingByPaymentType.values()) {
             if (!keepPaymentTypeIds.contains(existing.getPaymentType().getId())) {
-                // Soft-remove so account subscription FKs remain valid
+                // Soft-remove so account subscription FKs remain valid. Turning it off pauses scheduled fees.
+                final boolean wasActive = existing.isActive();
                 existing.setActive(false);
                 syncChannelCharges(existing, List.of());
-                this.channelRepository.save(existing);
+                this.channelRepository.saveAndFlush(existing);
+                if (wasActive) {
+                    this.feeHoldService.openProductHold(existing, today);
+                }
             }
+        }
+    }
+
+    private void recordProductActiveChange(final SavingsProductPaymentChannel channel, final boolean persisted, final boolean wasActive,
+            final LocalDate today) {
+        if (wasActive && !channel.isActive()) {
+            this.feeHoldService.openProductHold(channel, today);
+        } else if (persisted && !wasActive && channel.isActive()) {
+            this.feeHoldService.closeProductHold(channel, today);
         }
     }
 

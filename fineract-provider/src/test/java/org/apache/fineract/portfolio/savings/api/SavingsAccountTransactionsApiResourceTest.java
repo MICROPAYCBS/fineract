@@ -96,7 +96,7 @@ class SavingsAccountTransactionsApiResourceTest {
                 .thenReturn(resolvedSavingsId);
         when(savingsAccountReadPlatformService.retrieveDepositTransactionTemplate(resolvedSavingsId, DepositAccountType.SAVINGS_DEPOSIT))
                 .thenReturn(templateData);
-        when(paymentTypeReadPlatformService.retrieveAllPaymentTypes()).thenReturn(List.of(org.mockito.Mockito.mock(PaymentTypeData.class)));
+        when(paymentTypeReadPlatformService.retrieveActivePaymentTypes()).thenReturn(List.of(org.mockito.Mockito.mock(PaymentTypeData.class)));
         final SavingsAccountData accountData = org.mockito.Mockito.mock(SavingsAccountData.class);
         when(accountData.getSavingsProductId()).thenReturn(99L);
         when(savingsAccountReadPlatformService.retrieveOne(resolvedSavingsId)).thenReturn(accountData);
@@ -109,7 +109,7 @@ class SavingsAccountTransactionsApiResourceTest {
 
         assertThat(result).isEqualTo("serialized");
         verify(savingsAccountReadPlatformService).retrieveDepositTransactionTemplate(resolvedSavingsId, DepositAccountType.SAVINGS_DEPOSIT);
-        verify(paymentTypeReadPlatformService).retrieveAllPaymentTypes();
+        verify(paymentTypeReadPlatformService).retrieveActivePaymentTypes();
     }
 
     @Test

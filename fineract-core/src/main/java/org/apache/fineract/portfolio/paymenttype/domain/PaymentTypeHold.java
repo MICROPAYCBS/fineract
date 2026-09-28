@@ -20,39 +20,38 @@ package org.apache.fineract.portfolio.paymenttype.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
+import java.time.LocalDate;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.Accessors;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 
+/**
+ * Interval during which a payment type was inactive system-wide. {@code endedOnDate} null means it is still inactive.
+ */
+@Entity
+@Table(name = "m_payment_type_hold")
 @Getter
 @Setter
-@Entity
-@Table(name = "m_payment_type")
 @NoArgsConstructor
-@AllArgsConstructor
-public class PaymentType extends AbstractPersistableCustom<Long> {
+@Accessors(chain = true)
+public class PaymentTypeHold extends AbstractPersistableCustom<Long> {
 
-    @Column(name = "value")
-    private String name;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "payment_type_id", nullable = false)
+    private PaymentType paymentType;
 
-    @Column(name = "description")
-    private String description;
+    @Column(name = "started_on_date", nullable = false)
+    private LocalDate startedOnDate;
 
-    @Column(name = "is_cash_payment")
-    private Boolean isCashPayment;
+    @Column(name = "ended_on_date")
+    private LocalDate endedOnDate;
 
-    @Column(name = "order_position")
-    private Long position;
-
-    @Column(name = "code_name")
-    private String codeName;
-
-    @Column(name = "is_system_defined")
-    private Boolean isSystemDefined;
-
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive = Boolean.TRUE;
+    public static PaymentTypeHold open(final PaymentType paymentType, final LocalDate startedOnDate) {
+        return new PaymentTypeHold().setPaymentType(paymentType).setStartedOnDate(startedOnDate);
+    }
 }

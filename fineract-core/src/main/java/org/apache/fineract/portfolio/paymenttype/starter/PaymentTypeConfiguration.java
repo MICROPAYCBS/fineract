@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.paymenttype.starter;
 
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeHoldRepository;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
 import org.apache.fineract.portfolio.paymenttype.mapper.PaymentTypeCreateRequestMapper;
 import org.apache.fineract.portfolio.paymenttype.mapper.PaymentTypeMapper;
@@ -26,6 +27,7 @@ import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReadServiceI
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeWriteService;
 import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeWriteServiceImpl;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -40,7 +42,8 @@ public class PaymentTypeConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(PaymentTypeWriteService.class)
-    PaymentTypeWriteService paymentTypeWriteService(PaymentTypeRepository repository, PaymentTypeCreateRequestMapper createRequestMapper) {
-        return new PaymentTypeWriteServiceImpl(repository, createRequestMapper);
+    PaymentTypeWriteService paymentTypeWriteService(PaymentTypeRepository repository, PaymentTypeCreateRequestMapper createRequestMapper,
+            PaymentTypeHoldRepository holdRepository, ApplicationEventPublisher eventPublisher) {
+        return new PaymentTypeWriteServiceImpl(repository, createRequestMapper, holdRepository, eventPublisher);
     }
 }

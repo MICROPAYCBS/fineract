@@ -2475,6 +2475,22 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder blockSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_BLOCK;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=block";
+        return this;
+    }
+
+    public CommandWrapperBuilder unblockSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_UNBLOCK;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=unblock";
+        return this;
+    }
+
     public CommandWrapperBuilder deleteSavingsAccountCharge(final Long savingsAccountId, final Long savingsAccountChargeId) {
         this.actionName = ACTION_DELETE;
         this.entityName = ENTITY_SAVINGSACCOUNTCHARGE;

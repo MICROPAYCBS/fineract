@@ -93,7 +93,7 @@ public class FixedDepositAccountTransactionsApiResource {
 
         SavingsAccountTransactionData savingsAccount = this.savingsAccountReadPlatformService
                 .retrieveDepositTransactionTemplate(fixedDepositAccountId, DepositAccountType.FIXED_DEPOSIT);
-        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
 
         savingsAccount = SavingsAccountTransactionData.templateOnTop(savingsAccount, paymentTypeOptions);
 
@@ -128,7 +128,7 @@ public class FixedDepositAccountTransactionsApiResource {
                 .retrieveSavingsTransaction(fixedDepositAccountId, transactionId, DepositAccountType.FIXED_DEPOSIT);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         if (settings.isTemplate()) {
-            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
             transactionData = SavingsAccountTransactionData.templateOnTop(transactionData, paymentTypeOptions);
         }
 

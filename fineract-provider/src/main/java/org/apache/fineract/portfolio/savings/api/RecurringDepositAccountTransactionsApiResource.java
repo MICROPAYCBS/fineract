@@ -118,7 +118,7 @@ public class RecurringDepositAccountTransactionsApiResource {
             savingsAccount = SavingsAccountTransactionData.withWithDrawalTransactionDetails(savingsAccount);
         }
 
-        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         savingsAccount = SavingsAccountTransactionData.templateOnTop(savingsAccount, paymentTypeOptions);
 
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
@@ -143,7 +143,7 @@ public class RecurringDepositAccountTransactionsApiResource {
                 .retrieveSavingsTransaction(recurringDepositAccountId, transactionId, DepositAccountType.RECURRING_DEPOSIT);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         if (settings.isTemplate()) {
-            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
             transactionData = SavingsAccountTransactionData.templateOnTop(transactionData, paymentTypeOptions);
         }
 

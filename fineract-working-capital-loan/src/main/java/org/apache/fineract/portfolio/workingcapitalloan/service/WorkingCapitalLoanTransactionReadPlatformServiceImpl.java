@@ -68,7 +68,7 @@ public class WorkingCapitalLoanTransactionReadPlatformServiceImpl implements Wor
                     .expectedDisbursementDate(expectedDisbursementDate).currency(wcLoan.getLoanProduct().getCurrency().toData())
                     .discountAmount(wcLoan.getLoanProductRelatedDetails().getDiscountApproved())
                     .overrideDiscountDisabled(!wcLoan.getLoanProduct().getConfigurableAttributes().isDiscountDefaultOverridable())
-                    .paymentTypeOptions(paymentTypeReadPlatformService.retrieveAllPaymentTypes())
+                    .paymentTypeOptions(paymentTypeReadPlatformService.retrieveActivePaymentTypes())
                     .classificationOptions(codeValueReadPlatformService
                             .retrieveCodeValuesByCode(WorkingCapitalLoanConstants.DISBURSEMENT_CLASSIFICATION_CODE_NAME))
                     .build();
@@ -77,7 +77,7 @@ public class WorkingCapitalLoanTransactionReadPlatformServiceImpl implements Wor
             return WorkingCapitalLoanCommandTemplateData.builder()
                     .expectedAmount(wcLoan.getBalance() != null ? wcLoan.getBalance().getPrincipalOutstanding() : null)
                     .currency(wcLoan.getLoanProduct().getCurrency().toData())
-                    .paymentTypeOptions(paymentTypeReadPlatformService.retrieveAllPaymentTypes())
+                    .paymentTypeOptions(paymentTypeReadPlatformService.retrieveActivePaymentTypes())
                     .classificationOptions(codeValueReadPlatformService
                             .retrieveCodeValuesByCode(WorkingCapitalLoanConstants.REPAYMENT_CLASSIFICATION_CODE_NAME))
                     .build();
@@ -86,7 +86,7 @@ public class WorkingCapitalLoanTransactionReadPlatformServiceImpl implements Wor
             return WorkingCapitalLoanCommandTemplateData.builder()
                     .expectedAmount(overpaymentAmount != null ? overpaymentAmount : BigDecimal.ZERO)
                     .currency(wcLoan.getLoanProduct().getCurrency().toData())
-                    .paymentTypeOptions(paymentTypeReadPlatformService.retrieveAllPaymentTypes())
+                    .paymentTypeOptions(paymentTypeReadPlatformService.retrieveActivePaymentTypes())
                     .classificationOptions(codeValueReadPlatformService
                             .retrieveCodeValuesByCode(WorkingCapitalLoanConstants.CREDIT_BALANCE_REFUND_CLASSIFICATION_CODE_NAME))
                     .build();

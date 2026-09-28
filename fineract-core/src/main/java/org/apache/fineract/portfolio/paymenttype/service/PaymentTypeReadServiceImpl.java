@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.paymenttype.service;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
 import org.apache.fineract.portfolio.paymenttype.exception.PaymentTypeNotFoundException;
 import org.apache.fineract.portfolio.paymenttype.mapper.PaymentTypeMapper;
@@ -38,6 +39,12 @@ public class PaymentTypeReadServiceImpl implements PaymentTypeReadService {
         var paymentType = repository.findAllByOrderByPositionAsc();
 
         return paymentTypeMapper.map(paymentType);
+    }
+
+    @Override
+    public List<PaymentTypeData> retrieveActivePaymentTypes() {
+        final List<PaymentType> paymentTypes = repository.findAllByOrderByPositionAsc();
+        return paymentTypeMapper.map(paymentTypes.stream().filter(type -> !Boolean.FALSE.equals(type.getIsActive())).toList());
     }
 
     @Override

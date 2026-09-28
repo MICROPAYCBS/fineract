@@ -24,16 +24,21 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.Strings;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeCreateRequest;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeCreateResponse;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeDeleteRequest;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeDeleteResponse;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeUpdateRequest;
 import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeUpdateResponse;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeHold;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeHoldRepository;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
 import org.apache.fineract.portfolio.paymenttype.exception.PaymentTypeNotFoundException;
 import org.apache.fineract.portfolio.paymenttype.mapper.PaymentTypeCreateRequestMapper;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 
@@ -42,13 +47,21 @@ public class PaymentTypeWriteServiceImpl implements PaymentTypeWriteService {
 
     private final PaymentTypeRepository repository;
     private final PaymentTypeCreateRequestMapper createRequestMapper;
+    private final PaymentTypeHoldRepository holdRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @CacheEvict(value = "payment_types", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier().concat('payment_types')")
     public PaymentTypeCreateResponse createPaymentType(@Valid PaymentTypeCreateRequest request) {
         final var paymentType = createRequestMapper.map(request);
+        if (paymentType.getIsActive() == null) {
+            paymentType.setIsActive(Boolean.TRUE);
+        }
 
         repository.saveAndFlush(paymentType);
+        if (Boolean.FALSE.equals(paymentType.getIsActive())) {
+            openHold(paymentType);
+        }
 
         return PaymentTypeCreateResponse.builder().resourceId(paymentType.getId()).build();
     }
@@ -79,8 +92,18 @@ public class PaymentTypeWriteServiceImpl implements PaymentTypeWriteService {
             if (!Objects.equals(request.getIsSystemDefined(), paymentType.getIsSystemDefined())) {
                 paymentType.setIsSystemDefined(request.getIsSystemDefined());
             }
+            final boolean wasActive = !Boolean.FALSE.equals(paymentType.getIsActive());
+            if (request.getIsActive() != null) {
+                paymentType.setIsActive(request.getIsActive());
+            }
 
             repository.saveAndFlush(paymentType);
+            final boolean nowActive = !Boolean.FALSE.equals(paymentType.getIsActive());
+            if (wasActive && !nowActive) {
+                openHold(paymentType);
+            } else if (!wasActive && nowActive) {
+                closeHold(paymentType);
+            }
         } catch (final JpaSystemException | DataIntegrityViolationException e) {
             throw new PaymentTypeNotFoundException(request.getId());
         }
@@ -102,6 +125,24 @@ public class PaymentTypeWriteServiceImpl implements PaymentTypeWriteService {
         }
 
         return PaymentTypeDeleteResponse.builder().resourceId(paymentType.getId()).build();
+    }
+
+    private void openHold(final PaymentType paymentType) {
+        if (paymentType.getId() == null) {
+            return;
+        }
+        if (this.holdRepository.findByPaymentType_IdAndEndedOnDateIsNull(paymentType.getId()).isPresent()) {
+            return;
+        }
+        this.holdRepository.save(PaymentTypeHold.open(paymentType, DateUtils.getBusinessLocalDate()));
+    }
+
+    private void closeHold(final PaymentType paymentType) {
+        this.holdRepository.findByPaymentType_IdAndEndedOnDateIsNull(paymentType.getId()).ifPresent(hold -> {
+            hold.setEndedOnDate(DateUtils.getBusinessLocalDate());
+            this.holdRepository.saveAndFlush(hold);
+            this.eventPublisher.publishEvent(new PaymentTypeReactivatedEvent(paymentType.getId()));
+        });
     }
 
     private void handleDataIntegrityIssues(final Throwable realCause, final Exception dve) {

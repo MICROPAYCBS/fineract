@@ -25,6 +25,8 @@ public interface PaymentTypeReadService {
 
     List<PaymentTypeData> retrieveAllPaymentTypes();
 
+    List<PaymentTypeData> retrieveActivePaymentTypes();
+
     List<PaymentTypeData> retrieveAllPaymentTypesWithCode();
 
     PaymentTypeData retrieveOne(Long paymentTypeId);

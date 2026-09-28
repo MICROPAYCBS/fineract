@@ -57,7 +57,8 @@ public class SavingsProductPaymentChannelReadPlatformService {
         final PaymentType paymentType = channel.getPaymentType();
         final PaymentTypeData paymentTypeData = PaymentTypeData.builder().id(paymentType.getId()).name(paymentType.getName())
                 .description(paymentType.getDescription()).isCashPayment(paymentType.getIsCashPayment()).position(paymentType.getPosition())
-                .codeName(paymentType.getCodeName()).isSystemDefined(paymentType.getIsSystemDefined()).build();
+                .codeName(paymentType.getCodeName()).isSystemDefined(paymentType.getIsSystemDefined())
+                .isActive(paymentType.getIsActive()).build();
         final List<SavingsProductPaymentChannelChargeData> charges = new ArrayList<>();
         for (final SavingsProductPaymentChannelCharge channelCharge : channel.getCharges()) {
             final Charge charge = channelCharge.getCharge();

@@ -528,7 +528,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                         ? loanMaximumAmountCalculator.getOverAppliedMax(loan)
                         : loan.getApprovedPrincipal();
                 transactionAmount = transactionAmount.subtract(loan.getDisbursedAmount()).subtract(capitalizedIncomeBalance);
-                paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+                paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
                 classificationOptions = this.codeValueReadPlatformService
                         .retrieveCodeValuesByCode(LoanTransactionApiConstants.CAPITALIZED_INCOME_CLASSIFICATION_CODE);
                 loanTransactionData = LoanTransactionData.loanTransactionDataForCreditTemplate(
@@ -536,7 +536,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                         paymentOptions, retriveLoanCurrencyData(loanId), classificationOptions);
             break;
             case BUY_DOWN_FEE:
-                paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+                paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
                 classificationOptions = this.codeValueReadPlatformService
                         .retrieveCodeValuesByCode(LoanTransactionApiConstants.BUY_DOWN_FEE_CLASSIFICATION_CODE);
                 loanTransactionData = LoanTransactionData.loanTransactionDataForCreditTemplate(
@@ -580,7 +580,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
         final RepaymentTransactionTemplateMapper mapper = new RepaymentTransactionTemplateMapper(sqlGenerator);
         LoanTransactionData loanTransactionData = this.jdbcTemplate.queryForObject("select " + mapper.schema(), mapper, // NOSONAR
                 LoanTransactionType.REPAYMENT.getValue(), LoanTransactionType.DOWN_PAYMENT.getValue(), loanId);
-        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         return LoanTransactionData.templateOnTop(loanTransactionData, paymentOptions);
     }
 
@@ -604,7 +604,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
         final OutstandingAmountsDTO outstandingAmounts = loadTransactionProcessingService.fetchPrepaymentDetail(scheduleGeneratorDTO,
                 onDate, loan);
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(repaymentTransactionType);
-        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         final BigDecimal outstandingLoanBalance = outstandingAmounts.principal().getAmount();
         final BigDecimal unrecognizedIncomePortion = null;
 
@@ -689,7 +689,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.DISBURSEMENT);
         Collection<PaymentTypeData> paymentOptions = null;
         if (paymentDetailsRequired) {
-            paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+            paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         }
         final ApplicationCurrency appCurrency = applicationCurrencyRepository.findOneWithNotFoundDetection(loan.getCurrency());
         final BigDecimal availableDisbursementAmountWithOverApplied = delinquencyReadPlatformService
@@ -1743,7 +1743,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
     public LoanTransactionData retrieveRecoveryPaymentTemplate(Long loanId) {
         final Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId, true);
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.RECOVERY_REPAYMENT);
-        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         BigDecimal outstandingLoanBalance = null;
         final BigDecimal unrecognizedIncomePortion = null;
         return LoanTransactionData.builder().type(transactionType).amount(loan.getTotalWrittenOff())
@@ -2001,7 +2001,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
     public LoanTransactionData retrieveRefundByCashTemplate(Long loanId) {
         this.context.authenticatedUser();
 
-        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         final Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId, true);
         return retrieveRefundTemplate(loanId, LoanTransactionType.REFUND_FOR_ACTIVE_LOAN, paymentOptions, loan.getCurrency(),
                 retrieveTotalPaidInAdvance(loan.getId()).getPaidInAdvance(), loan.getNetDisbursalAmount(), loan.getExternalId());
@@ -2118,7 +2118,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                 transactionDate);
         BigDecimal unrecognizedIncomePortion = null;
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.REPAYMENT);
-        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         final BigDecimal outstandingLoanBalance = loanRepaymentScheduleInstallment.getPrincipalOutstanding(currency).getAmount();
         final Boolean isManuallyReversed = false;
 
@@ -2292,7 +2292,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                 List.of(targetTxn), loan.getLoanTransactions().stream().map(AbstractPersistableCustom::getId).toList(),
                 loan.getActiveLoanTermVariations());
         final BigDecimal interestRefundAmount = totalInterest.minus(newTotalInterest).getAmount();
-        final Collection<PaymentTypeData> paymentTypeOptions = paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        final Collection<PaymentTypeData> paymentTypeOptions = paymentTypeReadPlatformService.retrieveActivePaymentTypes();
         final LoanTransactionEnumData transactionType = LoanEnumerations.transactionType(LoanTransactionType.INTEREST_REFUND);
 
         return LoanTransactionData.builder().transactionType(LoanTransactionType.INTEREST_REFUND.name()).type(transactionType)

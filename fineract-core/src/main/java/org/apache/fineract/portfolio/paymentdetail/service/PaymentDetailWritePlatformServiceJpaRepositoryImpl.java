@@ -18,9 +18,12 @@
  */
 package org.apache.fineract.portfolio.paymentdetail.service;
 
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.portfolio.paymentdetail.PaymentDetailConstants;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetailRepository;
@@ -45,6 +48,11 @@ public class PaymentDetailWritePlatformServiceJpaRepositoryImpl implements Payme
 
         final PaymentType paymentType = this.paymentTypeRepository.findById(paymentTypeId)
                 .orElseThrow(() -> new PaymentTypeNotFoundException(paymentTypeId));
+        if (Boolean.FALSE.equals(paymentType.getIsActive())) {
+            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.paymentdetail.payment.type.inactive",
+                    "Payment type " + paymentTypeId + " is inactive", PaymentDetailConstants.paymentTypeParamName, paymentTypeId);
+            throw new PlatformApiDataValidationException(List.of(error));
+        }
         final PaymentDetail paymentDetail = PaymentDetail.generatePaymentDetail(paymentType, command, changes);
         return paymentDetail;
 

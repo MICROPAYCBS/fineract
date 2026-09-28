@@ -41,5 +41,7 @@ public final class SavingsAccountPaymentChannelData implements Serializable {
     private final LocalDate subscribedOnDate;
     private final LocalDate unsubscribedOnDate;
     private final boolean allowedForDeposit;
+    private final boolean blocked;
+    private final LocalDate blockedOnDate;
     private final Collection<SavingsProductPaymentChannelData.SavingsProductPaymentChannelChargeData> charges;
 }

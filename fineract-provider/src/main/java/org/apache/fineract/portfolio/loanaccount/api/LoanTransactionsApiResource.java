@@ -480,7 +480,7 @@ public class LoanTransactionsApiResource {
                 .setLoanChargePaidByList(loanChargePaidByReadService.fetchLoanChargesPaidByDataTransactionId(transactionData.getId()));
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         if (settings.isTemplate()) {
-            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
             transactionData = LoanTransactionData.templateOnTop(transactionData, paymentTypeOptions);
         }
 

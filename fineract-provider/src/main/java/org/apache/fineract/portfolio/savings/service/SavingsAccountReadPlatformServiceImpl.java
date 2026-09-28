@@ -359,7 +359,7 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
             sqlBuilder.append("tr.is_manual as manualTransaction,tr.office_id as officeId, ");
             sqlBuilder.append("pd.payment_type_id as paymentType,pd.account_number as accountNumber,pd.check_number as checkNumber, ");
             sqlBuilder.append("pd.receipt_number as receiptNumber, pd.bank_number as bankNumber,pd.routing_code as routingCode, ");
-            sqlBuilder.append("pt.value as paymentTypeName, ");
+            sqlBuilder.append("pt.value as paymentTypeName, pt.is_active as paymentTypeActive, ");
             sqlBuilder.append("msacpb.amount as paidByAmount, msacpb.id as chargesPaidById, ");
             sqlBuilder.append(
                     "msac.id as chargeId, msac.amount as chargeAmount, msac.charge_time_enum as chargeTimeType, msac.is_penalty as isPenaltyCharge, ");
@@ -649,8 +649,10 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                         final Long paymentTypeId = JdbcSupport.getLong(rs, "paymentType");
                         if (paymentTypeId != null) {
                             final String typeName = rs.getString("paymentTypeName");
+                            final Boolean paymentTypeActive = rs.getObject("paymentTypeActive") == null ? Boolean.TRUE
+                                    : rs.getBoolean("paymentTypeActive");
                             final PaymentTypeData paymentTypeData = new PaymentTypeData(paymentTypeId, typeName, null, false, null, null,
-                                    false);
+                                    false, paymentTypeActive);
                             paymentDetailData = new PaymentDetailData(id, paymentTypeData, null, null, null, null, null);
                         }
                     }

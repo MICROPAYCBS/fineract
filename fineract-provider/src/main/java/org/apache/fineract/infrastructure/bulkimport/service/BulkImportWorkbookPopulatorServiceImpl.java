@@ -397,7 +397,7 @@ public class BulkImportWorkbookPopulatorServiceImpl implements BulkImportWorkboo
     }
 
     private List<PaymentTypeData> fetchPaymentTypes() {
-        return this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+        return this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
     }
 
     private List<FundData> fetchFunds() {

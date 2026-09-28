@@ -16,30 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.paymenttype.data;
+package org.apache.fineract.portfolio.savings.service;
 
-import java.io.Serial;
-import java.io.Serializable;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
+import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReactivatedEvent;
+import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
 
-@Builder
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class PaymentTypeData implements Serializable {
+/**
+ * Rolls savings channel fees forward when a payment type is turned back on, in the same transaction as the hold close.
+ */
+@Component
+@RequiredArgsConstructor
+public class PaymentTypeReactivatedListener {
 
-    @Serial
-    private static final long serialVersionUID = 1L;
+    private final SavingsPaymentChannelFeeHoldService feeHoldService;
 
-    private Long id;
-    private String name;
-    private String description;
-    private Boolean isCashPayment;
-    private Long position;
-    private String codeName;
-    private Boolean isSystemDefined;
-    private Boolean isActive;
+    @EventListener
+    public void onPaymentTypeReactivated(final PaymentTypeReactivatedEvent event) {
+        this.feeHoldService.skipMissedCyclesForPaymentType(event.paymentTypeId());
+    }
 }

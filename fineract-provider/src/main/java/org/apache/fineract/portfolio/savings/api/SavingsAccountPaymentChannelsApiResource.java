@@ -81,7 +81,7 @@ public class SavingsAccountPaymentChannelsApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Subscribe or unsubscribe a payment channel", description = "command=subscribe|unsubscribe with body { \"paymentTypeId\": n }")
+    @Operation(summary = "Subscribe, unsubscribe, block, or unblock a payment channel", description = "command=subscribe|unsubscribe|block|unblock with body { \"paymentTypeId\": n }")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = String.class)))
     @ApiResponse(responseCode = "200", description = "OK")
     public String handleCommands(@PathParam("savingsAccountId") @Parameter(description = "savingsAccountId") final Long savingsAccountId,
@@ -94,10 +94,14 @@ public class SavingsAccountPaymentChannelsApiResource {
             commandRequest = builder.subscribeSavingsAccountPaymentChannel(savingsAccountId).build();
         } else if (is(commandParam, "unsubscribe")) {
             commandRequest = builder.unsubscribeSavingsAccountPaymentChannel(savingsAccountId).build();
+        } else if (is(commandParam, "block")) {
+            commandRequest = builder.blockSavingsAccountPaymentChannel(savingsAccountId).build();
+        } else if (is(commandParam, "unblock")) {
+            commandRequest = builder.unblockSavingsAccountPaymentChannel(savingsAccountId).build();
         }
 
         if (commandRequest == null) {
-            throw new UnrecognizedQueryParamException("command", commandParam, "subscribe", "unsubscribe");
+            throw new UnrecognizedQueryParamException("command", commandParam, "subscribe", "unsubscribe", "block", "unblock");
         }
 
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);

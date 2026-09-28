@@ -239,7 +239,7 @@ public class DepositAccountReadPlatformServiceImpl implements DepositAccountRead
                     depositAccountType.getValue());
             Collection<EnumOptionData> onAccountClosureOptions = SavingsEnumerations
                     .depositAccountOnClosureType(DepositAccountOnClosureType.values());
-            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveAllPaymentTypes();
+            final Collection<PaymentTypeData> paymentTypeOptions = this.paymentTypeReadPlatformService.retrieveActivePaymentTypes();
             final Collection<SavingsAccountData> savingsAccountDatas = this.savingsAccountReadPlatformService
                     .retrieveActiveForLookup(account.getClientId(), DepositAccountType.SAVINGS_DEPOSIT);
             if (depositAccountType == DepositAccountType.FIXED_DEPOSIT) {
