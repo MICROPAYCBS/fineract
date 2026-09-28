@@ -75,6 +75,8 @@ public class LoanTransactionData implements Serializable {
     private final BigDecimal fixedEmiAmount;
     private final BigDecimal outstandingLoanBalance;
     private final LocalDate submittedOnDate;
+    @Setter
+    private String submittedByUsername;
     private final boolean manuallyReversed;
     private final LocalDate possibleNextRepaymentDate;
     private final BigDecimal availableDisbursementAmountWithOverApplied;
@@ -157,6 +159,7 @@ public class LoanTransactionData implements Serializable {
                 .unrecognizedIncomePortion(loanTransactionData.unrecognizedIncomePortion).paymentTypeOptions(paymentTypeOptions)
                 .externalId(loanTransactionData.externalId).transfer(loanTransactionData.transfer)
                 .fixedEmiAmount(loanTransactionData.fixedEmiAmount).outstandingLoanBalance(loanTransactionData.outstandingLoanBalance)
+                .submittedOnDate(loanTransactionData.submittedOnDate).submittedByUsername(loanTransactionData.submittedByUsername)
                 .manuallyReversed(loanTransactionData.manuallyReversed).loanId(loanTransactionData.loanId)
                 .externalLoanId(loanTransactionData.externalLoanId).build();
     }
@@ -171,7 +174,8 @@ public class LoanTransactionData implements Serializable {
                 .unrecognizedIncomePortion(loanTransactionData.unrecognizedIncomePortion)
                 .paymentTypeOptions(loanTransactionData.paymentTypeOptions).externalId(loanTransactionData.externalId)
                 .transfer(loanTransactionData.transfer).fixedEmiAmount(loanTransactionData.fixedEmiAmount)
-                .outstandingLoanBalance(loanTransactionData.outstandingLoanBalance).manuallyReversed(loanTransactionData.manuallyReversed)
+                .outstandingLoanBalance(loanTransactionData.outstandingLoanBalance).submittedOnDate(loanTransactionData.submittedOnDate)
+                .submittedByUsername(loanTransactionData.submittedByUsername).manuallyReversed(loanTransactionData.manuallyReversed)
                 .loanId(loanTransactionData.loanId).externalLoanId(loanTransactionData.externalLoanId).build();
     }
 

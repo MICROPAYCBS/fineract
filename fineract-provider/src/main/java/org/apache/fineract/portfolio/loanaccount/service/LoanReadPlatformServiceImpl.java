@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.loanaccount.service;
 
 import static java.lang.Boolean.TRUE;
+import static org.apache.fineract.infrastructure.core.domain.AuditableFieldsConstants.CREATED_BY_DB_FIELD;
 import static org.apache.fineract.portfolio.loanproduct.service.LoanEnumerations.interestType;
 
 import jakarta.persistence.criteria.Join;
@@ -31,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -754,7 +756,27 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     return builder.and(predicates.toArray(new Predicate[] {}));
                 }, pageable);
 
-        return transactionPage.map(loanTransactionMapper::mapLoanTransaction);
+        final Map<Long, String> usernamesById = retrieveUsernamesById(transactionPage.getContent());
+        return transactionPage.map(loanTransaction -> {
+            final LoanTransactionData data = loanTransactionMapper.mapLoanTransaction(loanTransaction);
+            loanTransaction.getCreatedBy().map(usernamesById::get).ifPresent(data::setSubmittedByUsername);
+            return data;
+        });
+    }
+
+    private Map<Long, String> retrieveUsernamesById(final List<LoanTransaction> transactions) {
+        final Set<Long> userIds = transactions.stream().map(transaction -> transaction.getCreatedBy().orElse(null)).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+        final String placeholders = String.join(",", Collections.nCopies(userIds.size(), "?"));
+        final String sql = "select id, username from m_appuser where id in (" + placeholders + ")";
+        final Map<Long, String> usernamesById = new HashMap<>();
+        this.jdbcTemplate.query(sql, (ResultSet rs) -> {
+            usernamesById.put(rs.getLong("id"), rs.getString("username"));
+        }, userIds.toArray());
+        return usernamesById;
     }
 
     @Override
@@ -1376,6 +1398,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     + " tr.fee_charges_portion_derived as fees, tr.penalty_charges_portion_derived as penalties,  "
                     + " tr.overpayment_portion_derived as overpayment, tr.outstanding_loan_balance_derived as outstandingLoanBalance, "
                     + " tr.unrecognized_income_portion as unrecognizedIncome, tr.submitted_on_date as submittedOnDate, "
+                    + " au.username as submittedByUsername, "
                     + " tr.manually_adjusted_or_reversed as manuallyReversed, tr.reversal_external_id as reversalExternalId, tr.reversed_on_date as reversedOnDate, "
                     + " pd.payment_type_id as paymentType,pd.account_number as accountNumber,pd.check_number as checkNumber, "
                     + " pd.receipt_number as receiptNumber, pd.bank_number as bankNumber,pd.routing_code as routingCode, l.net_disbursal_amount as netDisbursalAmount,"
@@ -1395,7 +1418,8 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     + " left join m_payment_type pt on pd.payment_type_id = pt.id left join m_office office on office.id=tr.office_id"
                     + " left join m_account_transfer_transaction fromtran on fromtran.from_loan_transaction_id = tr.id "
                     + " left join m_account_transfer_transaction totran on totran.to_loan_transaction_id = tr.id "
-                    + " left join m_code_value clcv on clcv.id = tr.classification_cv_id ";
+                    + " left join m_code_value clcv on clcv.id = tr.classification_cv_id "
+                    + " left join m_appuser au on au.id = tr." + CREATED_BY_DB_FIELD + " ";
         }
 
         @Override
@@ -1442,6 +1466,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
 
             final LocalDate date = JdbcSupport.getLocalDate(rs, "date");
             final LocalDate submittedOnDate = JdbcSupport.getLocalDate(rs, "submittedOnDate");
+            final String submittedByUsername = rs.getString("submittedByUsername");
             final BigDecimal totalAmount = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "total");
             final BigDecimal principalPortion = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "principal");
             final BigDecimal interestPortion = JdbcSupport.getBigDecimalDefaultToZeroIfNull(rs, "interest");
@@ -1485,7 +1510,8 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     .feeChargesPortion(feeChargesPortion).penaltyChargesPortion(penaltyChargesPortion)
                     .overpaymentPortion(overPaymentPortion).unrecognizedIncomePortion(unrecognizedIncomePortion).externalId(externalId)
                     .transfer(transfer).outstandingLoanBalance(outstandingLoanBalance).submittedOnDate(submittedOnDate)
-                    .manuallyReversed(manuallyReversed).reversalExternalId(reversalExternalId).reversedOnDate(reversedOnDate).loanId(loanId)
+                    .submittedByUsername(submittedByUsername).manuallyReversed(manuallyReversed).reversalExternalId(reversalExternalId)
+                    .reversedOnDate(reversedOnDate).loanId(loanId)
                     .externalLoanId(externalLoanId).classification(classificationData).build();
         }
     }

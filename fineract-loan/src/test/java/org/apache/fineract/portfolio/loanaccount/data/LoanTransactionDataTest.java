@@ -87,6 +87,7 @@ public class LoanTransactionDataTest {
         LocalDate possibleNextRepaymentDate = LocalDate.of(2023, 2, 1);
         LocalDate reversedOnDate = LocalDate.of(2023, 1, 15);
         LocalDate submittedOnDate = LocalDate.of(2023, 1, 1);
+        String submittedByUsername = "mifos";
 
         // Collections
         List<LoanTransactionRelationData> transactionRelations = mock(List.class);
@@ -115,6 +116,7 @@ public class LoanTransactionDataTest {
                 .availableDisbursementAmountWithOverApplied(availableDisbursementAmountWithOverApplied)
                 // Dates
                 .possibleNextRepaymentDate(possibleNextRepaymentDate).reversedOnDate(reversedOnDate).submittedOnDate(submittedOnDate)
+                .submittedByUsername(submittedByUsername)
                 // Collections
                 .transactionRelations(transactionRelations).loanChargePaidByList(loanChargePaidByList)
                 .loanRepaymentScheduleInstallments(loanRepaymentScheduleInstallments).writeOffReasonOptions(writeOffReasonOptions)
@@ -165,6 +167,7 @@ public class LoanTransactionDataTest {
         assertEquals(possibleNextRepaymentDate, data.getPossibleNextRepaymentDate());
         assertEquals(reversedOnDate, data.getReversedOnDate());
         assertEquals(submittedOnDate, data.getSubmittedOnDate());
+        assertEquals(submittedByUsername, data.getSubmittedByUsername());
 
         // Collections
         assertEquals(transactionRelations, data.getTransactionRelations());
@@ -383,6 +386,7 @@ public class LoanTransactionDataTest {
         assertNull(data.getPossibleNextRepaymentDate());
         assertNull(data.getReversedOnDate());
         assertNull(data.getSubmittedOnDate());
+        assertNull(data.getSubmittedByUsername());
 
         // Collections
         assertNull(data.getTransactionRelations());
@@ -400,7 +404,7 @@ public class LoanTransactionDataTest {
                 .type(new LoanTransactionEnumData(1L, "code", "REPAYMENT")).date(LocalDate.of(2023, 1, 1)).amount(new BigDecimal("1000.00"))
                 .currency(new CurrencyData("USD", "US Dollar", 2, 0, "$", "USD")).paymentDetailData(mock(PaymentDetailData.class))
                 .externalId(ExternalId.generate()).externalLoanId(ExternalId.generate()).reversalExternalId(ExternalId.generate())
-                .manuallyReversed(false).loanId(1L).build();
+                .submittedByUsername("mifos").manuallyReversed(false).loanId(1L).build();
     }
 
     private void assertBasicFieldsCopied(LoanTransactionData original, LoanTransactionData result) {
@@ -422,6 +426,7 @@ public class LoanTransactionDataTest {
         assertEquals(original.getTransfer(), result.getTransfer());
         assertEquals(original.getFixedEmiAmount(), result.getFixedEmiAmount());
         assertEquals(original.getOutstandingLoanBalance(), result.getOutstandingLoanBalance());
+        assertEquals(original.getSubmittedByUsername(), result.getSubmittedByUsername());
         assertEquals(original.isManuallyReversed(), result.isManuallyReversed());
         assertEquals(original.getLoanId(), result.getLoanId());
         assertEquals(original.getExternalLoanId(), result.getExternalLoanId());

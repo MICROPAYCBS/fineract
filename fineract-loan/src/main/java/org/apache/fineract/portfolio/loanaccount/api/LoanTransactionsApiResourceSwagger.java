@@ -247,6 +247,8 @@ final class LoanTransactionsApiResourceSwagger {
         public LocalDate date;
         @Schema(example = "[2012, 5, 14]")
         public LocalDate submittedOnDate;
+        @Schema(example = "mifos")
+        public String submittedByUsername;
         @Schema(example = "false")
         public Boolean manuallyReversed;
         public GetLoansCurrency currency;

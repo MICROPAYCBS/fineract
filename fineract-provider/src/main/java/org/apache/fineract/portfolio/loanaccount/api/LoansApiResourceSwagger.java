@@ -875,6 +875,8 @@ final class LoansApiResourceSwagger {
             public BigDecimal outstandingLoanBalance;
             @Schema(example = "[2022, 07, 01]")
             public LocalDate submittedOnDate;
+            @Schema(example = "mifos")
+            public String submittedByUsername;
             public boolean manuallyReversed;
             @Schema(example = "[2022, 07, 01]")
             public LocalDate possibleNextRepaymentDate;

@@ -74,5 +74,6 @@ public interface LoanTransactionMapper {
     @Mapping(target = "accountId", ignore = true)
     @Mapping(target = "transactionAmount", ignore = true)
     @Mapping(target = "classification", expression = "java(loanTransaction.getClassification() != null ? loanTransaction.getClassification().toData() : null)")
+    @Mapping(target = "submittedByUsername", ignore = true)
     LoanTransactionData mapLoanTransaction(LoanTransaction loanTransaction);
 }
