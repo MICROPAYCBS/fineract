@@ -61,6 +61,7 @@ public final class SavingsAccountData implements Serializable {
     private final String groupName;
     private final Long clientId;
     private final String clientName;
+    private String officeName;
     private final Long savingsProductId;
     private final String savingsProductName;
     private final Long fieldOfficerId;
