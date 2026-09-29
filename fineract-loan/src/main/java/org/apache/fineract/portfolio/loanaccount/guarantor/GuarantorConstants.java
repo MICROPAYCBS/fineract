@@ -49,6 +49,7 @@ public final class GuarantorConstants {
         MOBILE_NUMBER("mobileNumber"), //
         PHONE_NUMBER("housePhoneNumber"), //
         COMMENT("comment"), //
+        NATIONAL_ID_NUMBER("nationalIdNumber"), //
         DATE_OF_BIRTH("dob"), //
         AMOUNT("amount"), //
         SAVINGS_ID("savingsId"); //

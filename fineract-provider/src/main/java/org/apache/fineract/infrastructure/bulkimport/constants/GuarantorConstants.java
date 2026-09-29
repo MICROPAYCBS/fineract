@@ -40,6 +40,7 @@ public final class GuarantorConstants {
     public static final int ZIP_COL = 13;
     public static final int SAVINGS_ID_COL = 14;
     public static final int AMOUNT = 15;
+    public static final int NATIONAL_ID_NUMBER_COL = 16;
     public static final int STATUS_COL = 18;
     public static final int LOOKUP_CLIENT_NAME_COL = 81;
     public static final int LOOKUP_ACCOUNT_NO_COL = 82;

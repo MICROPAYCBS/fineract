@@ -119,7 +119,7 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
         private GuarantorFundingMapper guarantorFundingMapper = new GuarantorFundingMapper(guarantorTransactionMapper);
 
         private final StringBuilder sqlBuilder = new StringBuilder(
-                " g.id as id, g.loan_id as loanId, g.client_reln_cv_id clientRelationshipTypeId, g.entity_id as entityId, g.type_enum guarantorType ,g.firstname as firstname, g.lastname as lastname, g.dob as dateOfBirth, g.address_line_1 as addressLine1, g.address_line_2 as addressLine2, g.city as city, g.state as state, g.country as country, g.zip as zip, g.house_phone_number as housePhoneNumber, g.mobile_number as mobilePhoneNumber, g.comment as comment, ")
+                " g.id as id, g.loan_id as loanId, g.client_reln_cv_id clientRelationshipTypeId, g.entity_id as entityId, g.type_enum guarantorType ,g.firstname as firstname, g.lastname as lastname, g.dob as dateOfBirth, g.address_line_1 as addressLine1, g.address_line_2 as addressLine2, g.city as city, g.state as state, g.country as country, g.zip as zip, g.house_phone_number as housePhoneNumber, g.mobile_number as mobilePhoneNumber, g.comment as comment, g.national_id_number as nationalIdNumber, ")
                 .append(" g.is_active as guarantorStatus,")//
                 .append(" cv.code_value as typeName, ")//
                 .append("gfd.amount,")//
@@ -165,6 +165,7 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
             final String mobileNumber = rs.getString("mobilePhoneNumber");
             final String housePhoneNumber = rs.getString("housePhoneNumber");
             final String comment = rs.getString("comment");
+            final String nationalIdNumber = rs.getString("nationalIdNumber");
             final boolean status = rs.getBoolean("guarantorStatus");
             final Collection<PortfolioAccountData> accountLinkingOptions = null;
             List<GuarantorFundingData> guarantorFundingDetails = null;
@@ -186,8 +187,8 @@ public class GuarantorReadPlatformServiceImpl implements GuarantorReadPlatformSe
             }
 
             return new GuarantorData(id, loanId, clientRelationshipType, entityId, guarantorType, firstname, lastname, dob, addressLine1,
-                    addressLine2, city, state, zip, country, mobileNumber, housePhoneNumber, comment, null, null, null, status,
-                    guarantorFundingDetails, null, null, accountLinkingOptions);
+                    addressLine2, city, state, zip, country, mobileNumber, housePhoneNumber, comment, nationalIdNumber, null, null, null,
+                    status, guarantorFundingDetails, null, null, accountLinkingOptions);
         }
     }
 

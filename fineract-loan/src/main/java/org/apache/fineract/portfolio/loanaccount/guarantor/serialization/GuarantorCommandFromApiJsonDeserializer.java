@@ -86,6 +86,8 @@ public final class GuarantorCommandFromApiJsonDeserializer extends AbstractFromA
         final String housePhoneNumber = this.fromApiJsonHelper.extractStringNamed(GuarantorJSONinputParams.PHONE_NUMBER.getValue(),
                 element);
         final String comment = this.fromApiJsonHelper.extractStringNamed(GuarantorJSONinputParams.COMMENT.getValue(), element);
+        final String nationalIdNumber = this.fromApiJsonHelper.extractStringNamed(GuarantorJSONinputParams.NATIONAL_ID_NUMBER.getValue(),
+                element);
         final LocalDate dob = this.fromApiJsonHelper.extractLocalDateNamed(GuarantorJSONinputParams.DATE_OF_BIRTH.getValue(), element,
                 dateFormat, locale);
         final Long savingsId = this.fromApiJsonHelper.extractLongNamed(GuarantorJSONinputParams.SAVINGS_ID.getValue(), element);
@@ -93,7 +95,7 @@ public final class GuarantorCommandFromApiJsonDeserializer extends AbstractFromA
                 locale);
 
         return new GuarantorCommand(clientRelationshipTypeId, guarantorTypeId, entityId, firstname, lastname, addressLine1, addressLine2,
-                city, state, zip, country, mobileNumber, housePhoneNumber, comment, dob, savingsId, amount);
+                city, state, zip, country, mobileNumber, housePhoneNumber, comment, nationalIdNumber, dob, savingsId, amount);
     }
 
 }
