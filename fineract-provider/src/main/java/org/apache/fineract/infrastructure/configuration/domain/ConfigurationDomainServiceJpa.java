@@ -752,4 +752,14 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         }
         return null;
     }
+
+    @Override
+    public int retrieveChannelLimitIncreaseCoolingHours() {
+        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
+                GlobalConfigurationConstants.CHANNEL_LIMIT_INCREASE_COOLING_HOURS);
+        if (!property.isEnabled() || property.getValue() == null) {
+            return 0;
+        }
+        return Math.max(0, property.getValue().intValue());
+    }
 }

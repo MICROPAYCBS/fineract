@@ -37,6 +37,17 @@ public final class SavingsProductPaymentChannelData implements Serializable {
     private final boolean isActive;
     private final String name;
     private final String description;
+    private final BigDecimal maxDebitPerTxn;
+    private final BigDecimal maxDebitPerDay;
+    private final BigDecimal maxDebitPerMonth;
+    private final Integer maxDebitCountPerDay;
+    private final Integer maxDebitCountPerMonth;
+    private final BigDecimal maxCreditPerTxn;
+    private final BigDecimal maxCreditPerDay;
+    private final BigDecimal maxCreditPerMonth;
+    private final Integer maxCreditCountPerDay;
+    private final Integer maxCreditCountPerMonth;
+    private final boolean isAccountTransferChannel;
     private final Collection<SavingsProductPaymentChannelChargeData> charges;
 
     @Getter

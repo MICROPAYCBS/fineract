@@ -18,23 +18,16 @@
  */
 package org.apache.fineract.portfolio.savings.domain;
 
-import java.util.List;
-import java.util.Optional;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import java.time.LocalDate;
 
-public interface SavingsProductPaymentChannelRepository
-        extends JpaRepository<SavingsProductPaymentChannel, Long>, JpaSpecificationExecutor<SavingsProductPaymentChannel> {
+public enum SavingsChannelLimitPeriodType {
 
-    List<SavingsProductPaymentChannel> findByProductId(Long productId);
+    DAY, MONTH;
 
-    List<SavingsProductPaymentChannel> findByProductIdAndActiveTrue(Long productId);
-
-    Optional<SavingsProductPaymentChannel> findByProductIdAndPaymentTypeId(Long productId, Long paymentTypeId);
-
-    void deleteByProductId(Long productId);
-
-    long countByProductIdAndActiveTrue(Long productId);
-
-    List<SavingsProductPaymentChannel> findByProductIdAndAccountTransferChannelTrueAndActiveTrue(Long productId);
+    public LocalDate periodStart(final LocalDate transactionDate) {
+        if (this == MONTH) {
+            return transactionDate.withDayOfMonth(1);
+        }
+        return transactionDate;
+    }
 }

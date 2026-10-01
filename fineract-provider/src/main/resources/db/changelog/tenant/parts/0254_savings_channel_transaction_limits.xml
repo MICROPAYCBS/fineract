@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="fineract" id="1">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_savings_product_payment_channel" columnName="max_debit_per_txn"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_savings_product_payment_channel">
+            <column name="max_debit_per_txn" type="DECIMAL(19, 6)"/>
+            <column name="max_debit_per_day" type="DECIMAL(19, 6)"/>
+            <column name="max_debit_per_month" type="DECIMAL(19, 6)"/>
+            <column name="max_debit_count_per_day" type="INT"/>
+            <column name="max_debit_count_per_month" type="INT"/>
+            <column name="max_credit_per_txn" type="DECIMAL(19, 6)"/>
+            <column name="max_credit_per_day" type="DECIMAL(19, 6)"/>
+            <column name="max_credit_per_month" type="DECIMAL(19, 6)"/>
+            <column name="max_credit_count_per_day" type="INT"/>
+            <column name="max_credit_count_per_month" type="INT"/>
+            <column name="is_account_transfer_channel" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="fineract" id="2">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_savings_account_channel_limit"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_savings_account_channel_limit">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="savings_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_payment_channel_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="direction" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_per_txn" type="DECIMAL(19, 6)"/>
+            <column name="max_per_day" type="DECIMAL(19, 6)"/>
+            <column name="max_per_month" type="DECIMAL(19, 6)"/>
+            <column name="max_count_per_day" type="INT"/>
+            <column name="max_count_per_month" type="INT"/>
+            <column name="pending_max_per_txn" type="DECIMAL(19, 6)"/>
+            <column name="pending_max_per_day" type="DECIMAL(19, 6)"/>
+            <column name="pending_max_per_month" type="DECIMAL(19, 6)"/>
+            <column name="pending_max_count_per_day" type="INT"/>
+            <column name="pending_max_count_per_month" type="INT"/>
+            <column name="pending_effective_on" type="TIMESTAMP WITH TIME ZONE"/>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="savings_account_id" baseTableName="m_savings_account_channel_limit"
+                                 constraintName="FK_sacl_account" referencedColumnNames="id"
+                                 referencedTableName="m_savings_account" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseColumnNames="product_payment_channel_id" baseTableName="m_savings_account_channel_limit"
+                                 constraintName="FK_sacl_channel" referencedColumnNames="id"
+                                 referencedTableName="m_savings_product_payment_channel" onDelete="CASCADE"/>
+        <addUniqueConstraint columnNames="savings_account_id, product_payment_channel_id, direction"
+                             constraintName="uk_sacl_acct_chan_dir" tableName="m_savings_account_channel_limit"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="3">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_savings_account_channel_limit_usage"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_savings_account_channel_limit_usage">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="savings_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_payment_channel_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="direction" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="period_type" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="period_start" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount_used" type="DECIMAL(19, 6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="count_used" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="savings_account_id" baseTableName="m_savings_account_channel_limit_usage"
+                                 constraintName="FK_saclu_account" referencedColumnNames="id"
+                                 referencedTableName="m_savings_account" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseColumnNames="product_payment_channel_id" baseTableName="m_savings_account_channel_limit_usage"
+                                 constraintName="FK_saclu_channel" referencedColumnNames="id"
+                                 referencedTableName="m_savings_product_payment_channel" onDelete="CASCADE"/>
+        <addUniqueConstraint columnNames="savings_account_id, product_payment_channel_id, direction, period_type, period_start"
+                             constraintName="uk_saclu_bucket" tableName="m_savings_account_channel_limit_usage"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="4">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_savings_account_channel_limit_consumption"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_savings_account_channel_limit_consumption">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="savings_account_transaction_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="usage_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19, 6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="txn_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="savings_account_transaction_id"
+                                 baseTableName="m_savings_account_channel_limit_consumption"
+                                 constraintName="FK_saclc_txn" referencedColumnNames="id"
+                                 referencedTableName="m_savings_account_transaction" onDelete="CASCADE"/>
+        <addForeignKeyConstraint baseColumnNames="usage_id" baseTableName="m_savings_account_channel_limit_consumption"
+                                 constraintName="FK_saclc_usage" referencedColumnNames="id"
+                                 referencedTableName="m_savings_account_channel_limit_usage" onDelete="CASCADE"/>
+        <createIndex indexName="idx_saclc_txn" tableName="m_savings_account_channel_limit_consumption">
+            <column name="savings_account_transaction_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet author="fineract" id="5">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_selfservice_user_client_mapping"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_selfservice_user_client_mapping">
+            <column autoIncrement="true" name="id" type="BIGINT">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="appuser_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="client_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="appuser_id" baseTableName="m_selfservice_user_client_mapping"
+                                 constraintName="FK_ss_user_client_user" referencedColumnNames="id"
+                                 referencedTableName="m_appuser"/>
+        <addForeignKeyConstraint baseColumnNames="client_id" baseTableName="m_selfservice_user_client_mapping"
+                                 constraintName="FK_ss_user_client_client" referencedColumnNames="id"
+                                 referencedTableName="m_client"/>
+        <addUniqueConstraint columnNames="appuser_id, client_id" constraintName="uk_ss_user_client"
+                             tableName="m_selfservice_user_client_mapping"/>
+    </changeSet>
+
+    <changeSet author="fineract" id="6">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(1) from m_permission where code = 'READCHANNELLIMIT_SAVINGSACCOUNT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="READCHANNELLIMIT_SAVINGSACCOUNT"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="READCHANNELLIMIT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="fineract" id="7">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(1) from m_permission where code = 'UPDATECHANNELLIMIT_SAVINGSACCOUNT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="UPDATECHANNELLIMIT_SAVINGSACCOUNT"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="UPDATECHANNELLIMIT"/>
+            <column name="can_maker_checker" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="fineract" id="8">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(1) from m_permission where code = 'UPDATECHANNELLIMIT_SAVINGSACCOUNT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="UPDATECHANNELLIMIT_SAVINGSACCOUNT_CHECKER"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="UPDATECHANNELLIMIT_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="fineract" id="9">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(1) from m_permission where code = 'BYPASS_SAVINGS_CHANNEL_LIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="portfolio"/>
+            <column name="code" value="BYPASS_SAVINGS_CHANNEL_LIMIT"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="BYPASSCHANNELLIMIT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="fineract" id="10">
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT rp.role_id, p_new.id
+            FROM m_role_permission rp
+            INNER JOIN m_permission p_old ON p_old.id = rp.permission_id AND p_old.code = 'READ_SAVINGSACCOUNT'
+            CROSS JOIN m_permission p_new
+            WHERE p_new.code = 'READCHANNELLIMIT_SAVINGSACCOUNT'
+              AND NOT EXISTS (
+                  SELECT 1 FROM m_role_permission existing
+                  WHERE existing.role_id = rp.role_id AND existing.permission_id = p_new.id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="11">
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT rp.role_id, p_new.id
+            FROM m_role_permission rp
+            INNER JOIN m_permission p_old ON p_old.id = rp.permission_id AND p_old.code = 'UPDATE_SAVINGSACCOUNT'
+            CROSS JOIN m_permission p_new
+            WHERE p_new.code IN ('UPDATECHANNELLIMIT_SAVINGSACCOUNT', 'UPDATECHANNELLIMIT_SAVINGSACCOUNT_CHECKER')
+              AND NOT EXISTS (
+                  SELECT 1 FROM m_role_permission existing
+                  WHERE existing.role_id = rp.role_id AND existing.permission_id = p_new.id
+              );
+        </sql>
+    </changeSet>
+
+    <changeSet author="fineract" id="12">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(1) from c_configuration where name = 'channel-limit-increase-cooling-hours'</sqlCheck>
+        </preConditions>
+        <insert tableName="c_configuration">
+            <column name="name" value="channel-limit-increase-cooling-hours"/>
+            <column name="value" value="24"/>
+            <column name="date_value"/>
+            <column name="string_value"/>
+            <column name="enabled" valueBoolean="true"/>
+            <column name="is_trap_door" valueBoolean="false"/>
+            <column name="description" value="Hours a self-service user must wait before a higher savings channel limit takes effect. A lower limit applies immediately. Set to 0 to apply increases immediately. Staff updates are not delayed."/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

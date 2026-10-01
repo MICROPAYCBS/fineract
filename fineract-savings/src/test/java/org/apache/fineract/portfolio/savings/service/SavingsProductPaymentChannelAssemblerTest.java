@@ -33,6 +33,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
@@ -66,6 +67,7 @@ class SavingsProductPaymentChannelAssemblerTest {
         when(charge.isSavingsCharge()).thenReturn(true);
         when(charge.getCurrencyCode()).thenReturn("USD");
         when(charge.isTiered()).thenReturn(false);
+        when(charge.getChargeTimeType()).thenReturn(ChargeTimeType.WITHDRAWAL_FEE.getValue());
         when(chargeRepository.findOneWithNotFoundDetection(12L)).thenReturn(charge);
 
         final List<SavingsProductPaymentChannelLink> links = assembler.assemble(command("""
@@ -132,6 +134,51 @@ class SavingsProductPaymentChannelAssemblerTest {
     }
 
     @Test
+    void rejectsPerTransactionAboveDailyAndTwoTransferChannels() {
+        final PaymentType mobile = paymentType(1L);
+        final PaymentType ussd = paymentType(2L);
+        when(paymentTypeRepository.findById(1L)).thenReturn(Optional.of(mobile));
+        when(paymentTypeRepository.findById(2L)).thenReturn(Optional.of(ussd));
+
+        final PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
+                () -> assembler.assemble(command("""
+                        {
+                          "paymentChannels": [
+                            { "paymentTypeId": 1, "isPremium": false, "isActive": true, "isAccountTransferChannel": true,
+                              "maxDebitPerTxn": 500, "maxDebitPerDay": 100, "charges": [] },
+                            { "paymentTypeId": 2, "isPremium": false, "isActive": true, "isAccountTransferChannel": true,
+                              "charges": [] }
+                          ],
+                          "locale": "en"
+                        }
+                        """), "USD"));
+        assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
+                && e.getUserMessageGlobalisationCode().contains("must.not.exceed.daily")));
+        assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
+                && e.getUserMessageGlobalisationCode().contains("multiple.account.transfer.channels")));
+    }
+
+    @Test
+    void assemblesChannelCeilings() {
+        final PaymentType mobile = paymentType(1L);
+        when(paymentTypeRepository.findById(1L)).thenReturn(Optional.of(mobile));
+        final List<SavingsProductPaymentChannelLink> links = assembler.assemble(command("""
+                {
+                  "paymentChannels": [
+                    { "paymentTypeId": 1, "isPremium": false, "isActive": true, "isAccountTransferChannel": true,
+                      "maxDebitPerTxn": 100, "maxDebitPerDay": 500, "maxDebitCountPerDay": 3, "charges": [] }
+                  ],
+                  "locale": "en"
+                }
+                """), "USD");
+        assertEquals(1, links.size());
+        assertTrue(links.get(0).limits().accountTransferChannel());
+        assertEquals(0, new BigDecimal("100").compareTo(links.get(0).limits().debit().maxPerTxn()));
+        assertEquals(0, new BigDecimal("500").compareTo(links.get(0).limits().debit().maxPerDay()));
+        assertEquals(3, links.get(0).limits().debit().maxCountPerDay());
+    }
+
+    @Test
     void rejectsDuplicatePaymentTypeId() {
         final PaymentType free = paymentType(1L);
         when(paymentTypeRepository.findById(1L)).thenReturn(Optional.of(free));
@@ -148,6 +195,42 @@ class SavingsProductPaymentChannelAssemblerTest {
                         """), "USD"));
         assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
                 && e.getUserMessageGlobalisationCode().contains("duplicated")));
+    }
+
+    @Test
+    void rejectsDailyAboveMonthly() {
+        when(paymentTypeRepository.findById(1L)).thenReturn(Optional.of(paymentType(1L)));
+
+        final PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
+                () -> assembler.assemble(command("""
+                        {
+                          "paymentChannels": [
+                            { "paymentTypeId": 1, "isPremium": false, "isActive": true,
+                              "maxDebitPerDay": 500, "maxDebitPerMonth": 200, "charges": [] }
+                          ],
+                          "locale": "en"
+                        }
+                        """), "USD"));
+        assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
+                && e.getUserMessageGlobalisationCode().contains("must.not.exceed.monthly")));
+    }
+
+    @Test
+    void rejectsDailyCountAboveMonthlyCount() {
+        when(paymentTypeRepository.findById(1L)).thenReturn(Optional.of(paymentType(1L)));
+
+        final PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
+                () -> assembler.assemble(command("""
+                        {
+                          "paymentChannels": [
+                            { "paymentTypeId": 1, "isPremium": false, "isActive": true,
+                              "maxCreditCountPerDay": 10, "maxCreditCountPerMonth": 4, "charges": [] }
+                          ],
+                          "locale": "en"
+                        }
+                        """), "USD"));
+        assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
+                && e.getUserMessageGlobalisationCode().contains("must.not.exceed.monthly")));
     }
 
     private static PaymentType paymentType(final Long id) {

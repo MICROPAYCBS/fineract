@@ -90,6 +90,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INACTIVATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBSCRIBE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNSUBSCRIBE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATECHANNELLIMIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERESTPAYMENTWAIVER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERMEDIARYSALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INVALIDATE;
@@ -2488,6 +2489,14 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
         this.savingsId = savingsAccountId;
         this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=unblock";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateSavingsAccountChannelLimit(final Long savingsAccountId) {
+        this.actionName = ACTION_UPDATECHANNELLIMIT;
+        this.entityName = ENTITY_SAVINGSACCOUNT;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=updateLimit";
         return this;
     }
 

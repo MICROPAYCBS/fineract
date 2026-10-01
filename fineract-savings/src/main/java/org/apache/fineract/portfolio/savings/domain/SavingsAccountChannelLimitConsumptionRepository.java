@@ -19,22 +19,11 @@
 package org.apache.fineract.portfolio.savings.domain;
 
 import java.util.List;
-import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface SavingsProductPaymentChannelRepository
-        extends JpaRepository<SavingsProductPaymentChannel, Long>, JpaSpecificationExecutor<SavingsProductPaymentChannel> {
+public interface SavingsAccountChannelLimitConsumptionRepository extends JpaRepository<SavingsAccountChannelLimitConsumption, Long>,
+        JpaSpecificationExecutor<SavingsAccountChannelLimitConsumption> {
 
-    List<SavingsProductPaymentChannel> findByProductId(Long productId);
-
-    List<SavingsProductPaymentChannel> findByProductIdAndActiveTrue(Long productId);
-
-    Optional<SavingsProductPaymentChannel> findByProductIdAndPaymentTypeId(Long productId, Long paymentTypeId);
-
-    void deleteByProductId(Long productId);
-
-    long countByProductIdAndActiveTrue(Long productId);
-
-    List<SavingsProductPaymentChannel> findByProductIdAndAccountTransferChannelTrueAndActiveTrue(Long productId);
+    List<SavingsAccountChannelLimitConsumption> findBySavingsAccountTransactionId(Long savingsAccountTransactionId);
 }

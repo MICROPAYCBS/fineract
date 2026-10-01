@@ -259,7 +259,8 @@ public class SavingsAccountPaymentChannelWritePlatformService {
             unsubscribedOn = subscription.getUnsubscribedOnDate();
             subscriptionId = subscription.getId();
         }
-        return SavingsAccountPaymentChannelData.builder().id(subscriptionId).paymentTypeId(productData.getPaymentTypeId())
+        return SavingsAccountPaymentChannelData.builder().id(subscriptionId).productPaymentChannelId(productData.getId())
+                .paymentTypeId(productData.getPaymentTypeId())
                 .paymentType(productData.getPaymentType()).isPremium(productData.isPremium()).isActive(productData.isActive())
                 .name(productData.getName()).description(productData.getDescription()).subscriptionStatus(status)
                 .subscribedOnDate(subscribedOn).unsubscribedOnDate(unsubscribedOn).allowedForDeposit(allowedForDeposit).blocked(blocked)

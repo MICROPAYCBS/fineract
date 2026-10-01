@@ -98,6 +98,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_APPLYANNUALFEE = "APPLYANNUALFEE";
     public static final String ACTION_INACTIVATE = "INACTIVATE";
     public static final String ACTION_SUBSCRIBE = "SUBSCRIBE";
+    public static final String ACTION_UPDATECHANNELLIMIT = "UPDATECHANNELLIMIT";
     public static final String ACTION_UNSUBSCRIBE = "UNSUBSCRIBE";
     public static final String ACTION_SAVECOLLECTIONSHEET = "SAVECOLLECTIONSHEET";
     public static final String ACTION_ASSOCIATECLIENTS = "ASSOCIATECLIENTS";

@@ -70,6 +70,7 @@ public class SavingsProductPaymentChannelWritePlatformService {
                 channel.setName(link.name());
                 channel.setDescription(link.description());
             }
+            channel.applyLimits(link.limits());
             syncChannelCharges(channel, link.charges());
             this.channelRepository.saveAndFlush(channel);
             recordProductActiveChange(channel, persisted, wasActive, today);

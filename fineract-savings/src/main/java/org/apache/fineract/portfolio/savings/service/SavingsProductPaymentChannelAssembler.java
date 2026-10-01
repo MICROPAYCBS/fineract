@@ -40,6 +40,8 @@ import org.apache.fineract.portfolio.charge.exception.ChargeCannotBeAppliedToExc
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
 import org.apache.fineract.portfolio.paymenttype.exception.PaymentTypeNotFoundException;
+import org.apache.fineract.portfolio.savings.data.SavingsChannelLimitValues;
+import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLimits;
 import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink;
 import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink.ChannelChargeLink;
 import org.springframework.stereotype.Component;
@@ -67,6 +69,7 @@ public class SavingsProductPaymentChannelAssembler {
                 .resource("savingsproduct.paymentChannels");
         final Locale locale = command.extractLocale();
         final Set<Long> seenPaymentTypes = new HashSet<>();
+        int activeTransferChannels = 0;
 
         for (int i = 0; i < channelsArray.size(); i++) {
             final JsonObject jsonObject = channelsArray.get(i).getAsJsonObject();
@@ -151,13 +154,58 @@ public class SavingsProductPaymentChannelAssembler {
                 // Premium channels may omit charges (subscribe still required); allow empty
             }
 
-            links.add(new SavingsProductPaymentChannelLink(paymentType, isPremium, isActive, name, description, chargeLinks));
+            final String prefix = "paymentChannels[" + i + "].";
+            final SavingsChannelLimitValues debit = readLimits(jsonObject, locale, baseDataValidator, prefix + "maxDebit", "maxDebit");
+            final SavingsChannelLimitValues credit = readLimits(jsonObject, locale, baseDataValidator, prefix + "maxCredit", "maxCredit");
+            final boolean accountTransferChannel = jsonObject.has("isAccountTransferChannel")
+                    && !jsonObject.get("isAccountTransferChannel").isJsonNull() && jsonObject.get("isAccountTransferChannel").getAsBoolean();
+            if (isActive && accountTransferChannel) {
+                activeTransferChannels++;
+            }
+            links.add(new SavingsProductPaymentChannelLink(paymentType, isPremium, isActive, name, description, chargeLinks,
+                    new SavingsProductPaymentChannelLimits(debit, credit, accountTransferChannel)));
+        }
+
+        if (activeTransferChannels > 1) {
+            baseDataValidator.reset().parameter("paymentChannels").failWithCode("multiple.account.transfer.channels");
         }
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
         return links;
+    }
+
+    private SavingsChannelLimitValues readLimits(final JsonObject jsonObject, final Locale locale, final DataValidatorBuilder validator,
+            final String parameterPrefix, final String jsonPrefix) {
+        final BigDecimal perTxn = optionalAmount(jsonObject, jsonPrefix + "PerTxn", locale, validator, parameterPrefix + "PerTxn");
+        final BigDecimal perDay = optionalAmount(jsonObject, jsonPrefix + "PerDay", locale, validator, parameterPrefix + "PerDay");
+        final BigDecimal perMonth = optionalAmount(jsonObject, jsonPrefix + "PerMonth", locale, validator, parameterPrefix + "PerMonth");
+        final Integer countPerDay = optionalCount(jsonObject, jsonPrefix + "CountPerDay", validator, parameterPrefix + "CountPerDay");
+        final Integer countPerMonth = optionalCount(jsonObject, jsonPrefix + "CountPerMonth", validator, parameterPrefix + "CountPerMonth");
+        final SavingsChannelLimitValues values = new SavingsChannelLimitValues(perTxn, perDay, perMonth, countPerDay, countPerMonth);
+        SavingsChannelLimitRules.validateOrdering(values, validator, parameterPrefix);
+        return values;
+    }
+
+    private BigDecimal optionalAmount(final JsonObject jsonObject, final String name, final Locale locale,
+            final DataValidatorBuilder validator, final String parameter) {
+        if (!jsonObject.has(name) || jsonObject.get(name).isJsonNull()) {
+            return null;
+        }
+        final BigDecimal amount = this.fromApiJsonHelper.extractBigDecimalNamed(name, jsonObject, locale);
+        SavingsChannelLimitRules.validateNonNegative(amount, validator, parameter);
+        return amount;
+    }
+
+    private Integer optionalCount(final JsonObject jsonObject, final String name, final DataValidatorBuilder validator,
+            final String parameter) {
+        if (!jsonObject.has(name) || jsonObject.get(name).isJsonNull()) {
+            return null;
+        }
+        final Integer count = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(name, jsonObject);
+        SavingsChannelLimitRules.validateNonNegative(count, validator, parameter);
+        return count;
     }
 
     /**

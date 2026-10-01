@@ -48,6 +48,9 @@ import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
+import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitCommand;
+import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitHold;
+import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitService;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -66,6 +69,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     private final BusinessEventNotifierService businessEventNotifierService;
     private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
     private final CashierTransactionDataValidator cashierTransactionDataValidator;
+    private final SavingsChannelLimitService savingsChannelLimitService;
 
     @Autowired
     public SavingsAccountDomainServiceJpa(final SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -76,7 +80,8 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
             final BusinessEventNotifierService businessEventNotifierService,
             final CrossBranchTransactionAccessService crossBranchTransactionAccessService,
-            final CashierTransactionDataValidator cashierTransactionDataValidator) {
+            final CashierTransactionDataValidator cashierTransactionDataValidator,
+            final SavingsChannelLimitService savingsChannelLimitService) {
         this.savingsAccountRepository = savingsAccountRepository;
         this.savingsAccountTransactionRepository = savingsAccountTransactionRepository;
         this.applicationCurrencyRepositoryWrapper = applicationCurrencyRepositoryWrapper;
@@ -87,6 +92,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         this.businessEventNotifierService = businessEventNotifierService;
         this.crossBranchTransactionAccessService = crossBranchTransactionAccessService;
         this.cashierTransactionDataValidator = cashierTransactionDataValidator;
+        this.savingsChannelLimitService = savingsChannelLimitService;
     }
 
     @Transactional
@@ -99,6 +105,10 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
                 transactionBooleanValues.isRegularTransaction());
         account.validateForAccountBlock();
         account.validateForDebitBlock();
+        final SavingsChannelLimitHold channelLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,
+                transactionDate, transactionAmount, paymentDetail, SavingsChannelLimitDirection.DEBIT,
+                transactionBooleanValues.isAccountTransfer(), transactionBooleanValues.isRegularTransaction(),
+                transactionBooleanValues.isInterestTransfer()));
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
         final Long relaxingDaysConfigForPivotDate = this.configurationDomainService.retrieveRelaxingDaysConfigForPivotDate();
@@ -147,6 +157,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
                 depositAccountOnHoldTransactions, backdatedTxnsAllowedTill, transactionBooleanValues.isForceWithdrawal());
 
         saveTransactionToGenerateTransactionId(withdrawal);
+        this.savingsChannelLimitService.record(channelLimitHold, withdrawal.getId());
         if (backdatedTxnsAllowedTill) {
             // Update transactions separately
             saveUpdatedTransactionsOfSavingsAccount(account.getSavingsAccountTransactionsWithPivotConfig());
@@ -182,6 +193,9 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, isAccountTransfer, isRegularTransaction);
         account.validateForAccountBlock();
         account.validateForCreditBlock();
+        final SavingsChannelLimitHold channelLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,
+                transactionDate, transactionAmount, paymentDetail, SavingsChannelLimitDirection.CREDIT, isAccountTransfer,
+                isRegularTransaction, false));
 
         // Global configurations
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -222,6 +236,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         }
 
         saveTransactionToGenerateTransactionId(deposit);
+        this.savingsChannelLimitService.record(channelLimitHold, deposit.getId());
 
         if (backdatedTxnsAllowedTill) {
             // Update transactions separately
@@ -319,6 +334,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
 
         Set<SavingsAccountChargePaidBy> chargePaidBySet = null;
         for (SavingsAccountTransaction savingsAccountTransaction : savingsAccountTransactions) {
+            this.savingsChannelLimitService.release(savingsAccountTransaction.getId());
             reversal = SavingsAccountTransaction.reversal(savingsAccountTransaction);
             chargePaidBySet = savingsAccountTransaction.getSavingsAccountChargesPaid();
             reversal.getSavingsAccountChargesPaid().addAll(chargePaidBySet);

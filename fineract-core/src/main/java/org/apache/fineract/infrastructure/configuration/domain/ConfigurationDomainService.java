@@ -210,4 +210,6 @@ public interface ConfigurationDomainService {
     boolean isBlockTransactionsOnClosedOverpaidLoansEnabled();
 
     Integer getGlBalanceSnapshotDailyRetentionDays();
+
+    int retrieveChannelLimitIncreaseCoolingHours();
 }

@@ -107,6 +107,7 @@ import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePla
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
+import org.apache.fineract.portfolio.savings.domain.SavingsChannelLimitDirection;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
@@ -178,6 +179,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
     private final SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService;
     private final SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService;
+    private final SavingsChannelLimitService savingsChannelLimitService;
 
     @Transactional
     @Override
@@ -843,6 +845,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         if (account.isNotActive()) {
             throwValidationForActiveStatus(SavingsApiConstants.undoTransactionAction);
         }
+        this.savingsChannelLimitService.release(transactionId);
         account.undoTransaction(transactionId);
 
         // undoing transaction is withdrawal then undo withdrawal fee
@@ -851,6 +854,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
             final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
                     .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
             if (nextSavingsAccountTransaction != null && nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()) {
+                this.savingsChannelLimitService.release(transactionId + 1);
                 account.undoTransaction(transactionId + 1);
             }
         }
@@ -936,12 +940,18 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
 
         final MathContext mc = new MathContext(10, MoneyHelper.getRoundingMode());
+        this.savingsChannelLimitService.release(transactionId);
+        final SavingsChannelLimitDirection replacementDirection = savingsAccountTransaction.isDeposit() ? SavingsChannelLimitDirection.CREDIT
+                : SavingsChannelLimitDirection.DEBIT;
+        final SavingsChannelLimitHold replacementLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,
+                transactionDate, transactionAmount, paymentDetail, replacementDirection, false, true, false));
         account.undoTransaction(transactionId);
 
         // for undo withdrawal fee
         final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
                 .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
         if (nextSavingsAccountTransaction != null && nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()) {
+            this.savingsChannelLimitService.release(transactionId + 1);
             account.undoTransaction(transactionId + 1);
         }
 
@@ -958,6 +968,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         }
         transaction.updateExternalId(externalId);
         final Long newtransactionId = saveTransactionToGenerateTransactionId(transaction);
+        this.savingsChannelLimitService.record(replacementLimitHold, newtransactionId);
         final LocalDate postInterestOnDate = null;
         boolean postReversals = false;
         if (account.isBeforeLastPostingPeriod(transactionDate, false)

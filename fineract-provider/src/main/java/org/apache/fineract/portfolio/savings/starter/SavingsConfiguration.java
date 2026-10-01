@@ -133,6 +133,7 @@ import org.apache.fineract.portfolio.savings.service.SavingsAccountTemplateReadP
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountPaymentChannelAllowListService;
+import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitService;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformServiceJpaRepositoryImpl;
 import org.apache.fineract.portfolio.savings.service.SavingsDropdownReadPlatformService;
@@ -392,7 +393,7 @@ public class SavingsConfiguration {
             ExternalIdFactory externalIdFactory, ErrorHandler errorHandler, LegalTenderBreakdownValidator legalTenderBreakdownValidator,
             LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService,
             SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService,
-            SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService) {
+            SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService, SavingsChannelLimitService savingsChannelLimitService) {
         return new SavingsAccountWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper,
                 staffRepository, savingsAccountTransactionRepository, savingAccountAssembler, savingsAccountTransactionDataValidator,
                 savingsAccountChargeDataValidator, paymentDetailWritePlatformService, journalEntryWritePlatformService,
@@ -401,7 +402,7 @@ public class SavingsConfiguration {
                 depositAccountOnHoldTransactionRepository, entityDatatableChecksWritePlatformService, appuserRepository,
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
                 externalIdFactory, errorHandler, legalTenderBreakdownValidator, legalTenderBreakdownWritePlatformService,
-                paymentChannelAllowListService, paymentChannelFeeHoldService);
+                paymentChannelAllowListService, paymentChannelFeeHoldService, savingsChannelLimitService);
     }
 
     @Bean

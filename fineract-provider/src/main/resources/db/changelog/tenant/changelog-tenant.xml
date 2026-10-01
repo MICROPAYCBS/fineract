@@ -272,4 +272,5 @@
     <include file="parts/0251_channel_payment_type_on_savings_charge.xml" relativeToChangelogFile="true"/>
     <include file="parts/0252_savings_payment_channel_blocks.xml" relativeToChangelogFile="true"/>
     <include file="parts/0253_payment_type_active.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0254_savings_channel_transaction_limits.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>

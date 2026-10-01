@@ -69,6 +69,11 @@ public class SavingsProductPaymentChannelReadPlatformService {
         }
         return SavingsProductPaymentChannelData.builder().id(channel.getId()).paymentTypeId(paymentType.getId())
                 .paymentType(paymentTypeData).isPremium(channel.isPremium()).isActive(channel.isActive()).name(channel.getName())
-                .description(channel.getDescription()).charges(charges).build();
+                .description(channel.getDescription()).maxDebitPerTxn(channel.getMaxDebitPerTxn()).maxDebitPerDay(channel.getMaxDebitPerDay())
+                .maxDebitPerMonth(channel.getMaxDebitPerMonth()).maxDebitCountPerDay(channel.getMaxDebitCountPerDay())
+                .maxDebitCountPerMonth(channel.getMaxDebitCountPerMonth()).maxCreditPerTxn(channel.getMaxCreditPerTxn())
+                .maxCreditPerDay(channel.getMaxCreditPerDay()).maxCreditPerMonth(channel.getMaxCreditPerMonth())
+                .maxCreditCountPerDay(channel.getMaxCreditCountPerDay()).maxCreditCountPerMonth(channel.getMaxCreditCountPerMonth())
+                .isAccountTransferChannel(channel.isAccountTransferChannel()).charges(charges).build();
     }
 }

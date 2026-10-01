@@ -29,12 +29,16 @@ import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
  * Parsed product payment-channel catalog entry before persistence.
  */
 public record SavingsProductPaymentChannelLink(PaymentType paymentType, boolean premium, boolean active, String name, String description,
-        List<ChannelChargeLink> charges) {
+        List<ChannelChargeLink> charges, SavingsProductPaymentChannelLimits limits) {
 
     public record ChannelChargeLink(Charge charge, BigDecimal amount) {}
 
     public List<ChannelChargeLink> charges() {
         return charges == null ? Collections.emptyList() : charges;
+    }
+
+    public SavingsProductPaymentChannelLimits limits() {
+        return limits == null ? SavingsProductPaymentChannelLimits.none() : limits;
     }
 
     public static List<ChannelChargeLink> mutableCharges() {

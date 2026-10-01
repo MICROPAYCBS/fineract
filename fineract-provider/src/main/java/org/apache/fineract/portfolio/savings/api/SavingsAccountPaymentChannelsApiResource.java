@@ -36,6 +36,7 @@ import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.Collection;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.domain.CommandWrapper;
@@ -46,9 +47,13 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
 import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
+import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountChannelLimitData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountPaymentChannelData;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountPaymentChannelWritePlatformService;
+import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitService;
+import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.stereotype.Component;
 
 @Path("/v1/savingsaccounts/{savingsAccountId}/paymentchannels")
@@ -64,6 +69,7 @@ public class SavingsAccountPaymentChannelsApiResource {
     private final DefaultToApiJsonSerializer<SavingsAccountPaymentChannelData> toApiJsonSerializer;
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
+    private final SavingsChannelLimitService savingsChannelLimitService;
 
     @GET
     @Consumes({ MediaType.APPLICATION_JSON })
@@ -76,6 +82,24 @@ public class SavingsAccountPaymentChannelsApiResource {
         final Collection<SavingsAccountPaymentChannelData> channels = this.writePlatformService.retrieveAccountChannels(savingsAccountId);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.toApiJsonSerializer.serialize(settings, channels);
+    }
+
+    @GET
+    @Path("{productPaymentChannelId}/limits")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Read channel transaction limits", description = "Returns the bank ceiling, the customer limit, any pending increase, and remaining day and month usage. direction is optional (DEBIT or CREDIT).")
+    @ApiResponse(responseCode = "200", description = "OK")
+    public String retrieveLimits(@PathParam("savingsAccountId") @Parameter(description = "savingsAccountId") final Long savingsAccountId,
+            @PathParam("productPaymentChannelId") @Parameter(description = "productPaymentChannelId") final Long productPaymentChannelId,
+            @QueryParam("direction") @Parameter(description = "direction") final String direction) {
+        final AppUser user = this.context.authenticatedUser();
+        if (user.hasNotPermissionForAnyOf("ALL_FUNCTIONS", "ALL_FUNCTIONS_READ", "READCHANNELLIMIT_SAVINGSACCOUNT")) {
+            throw new NoAuthorizationException("User has no authority to read savings account channel limits");
+        }
+        final List<SavingsAccountChannelLimitData> limits = this.savingsChannelLimitService.retrieve(savingsAccountId,
+                productPaymentChannelId, direction);
+        return this.toApiJsonSerializer.serialize(limits);
     }
 
     @POST
@@ -98,10 +122,13 @@ public class SavingsAccountPaymentChannelsApiResource {
             commandRequest = builder.blockSavingsAccountPaymentChannel(savingsAccountId).build();
         } else if (is(commandParam, "unblock")) {
             commandRequest = builder.unblockSavingsAccountPaymentChannel(savingsAccountId).build();
+        } else if (is(commandParam, "updateLimit")) {
+            commandRequest = builder.updateSavingsAccountChannelLimit(savingsAccountId).build();
         }
 
         if (commandRequest == null) {
-            throw new UnrecognizedQueryParamException("command", commandParam, "subscribe", "unsubscribe", "block", "unblock");
+            throw new UnrecognizedQueryParamException("command", commandParam, "subscribe", "unsubscribe", "block", "unblock",
+                    "updateLimit");
         }
 
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);

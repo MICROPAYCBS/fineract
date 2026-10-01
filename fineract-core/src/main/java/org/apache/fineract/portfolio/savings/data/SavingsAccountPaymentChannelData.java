@@ -31,6 +31,7 @@ import org.apache.fineract.portfolio.paymenttype.data.PaymentTypeData;
 public final class SavingsAccountPaymentChannelData implements Serializable {
 
     private final Long id;
+    private final Long productPaymentChannelId;
     private final Long paymentTypeId;
     private final PaymentTypeData paymentType;
     private final boolean isPremium;

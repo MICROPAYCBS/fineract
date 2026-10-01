@@ -110,6 +110,7 @@ public final class GlobalConfigurationConstants {
     public static final String ENABLE_REQUIRE_DEPARTMENT_ON_MANUAL_JOURNAL_PL_LINES = "enable-require-department-on-manual-journal-pl-lines";
     public static final String ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW = "enable-organization-wide-audit-view";
     public static final String GL_BALANCE_SNAPSHOT_DAILY_RETENTION_DAYS = "gl-balance-snapshot-daily-retention-days";
+    public static final String CHANNEL_LIMIT_INCREASE_COOLING_HOURS = "channel-limit-increase-cooling-hours";
 
     private GlobalConfigurationConstants() {}
 }
