@@ -49,6 +49,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_PROPOSEANDACCEPTTRANSFER = "PROPOSEANDACCEPTTRANSFER";
     public static final String ACTION_WITHDRAWTRANSFER = "WITHDRAWTRANSFER";
     public static final String ACTION_ACCEPTTRANSFER = "ACCEPTTRANSFER";
+    public static final String ACTION_ACCRUE = "ACCRUE";
     public static final String ACTION_REJECTTRANSFER = "REJECTTRANSFER";
     public static final String ACTION_UNDOREJECT = "UNDOREJECT";
     public static final String ACTION_UNDOWITHDRAWAL = "UNDOWITHDRAWAL";

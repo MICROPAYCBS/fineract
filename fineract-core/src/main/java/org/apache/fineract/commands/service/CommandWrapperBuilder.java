@@ -19,6 +19,7 @@
 package org.apache.fineract.commands.service;
 
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACCEPTTRANSFER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACCRUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACTIVATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ADJUST;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ADJUSTMENT;
@@ -4375,6 +4376,15 @@ public class CommandWrapperBuilder {
         this.entityId = transactionId;
         this.loanId = loanId;
         this.href = "/loans/" + loanId + "/transactions/" + transactionId;
+        return this;
+    }
+
+    public CommandWrapperBuilder accrueLoan(final Long loanId) {
+        this.actionName = ACTION_ACCRUE;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "?command=accrue";
         return this;
     }
 

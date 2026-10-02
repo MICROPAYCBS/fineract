@@ -609,7 +609,7 @@ public class LoansApiResource {
     @Path("{loanId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Approve Loan Application | Recover Loan Guarantee | Undo Loan Application Approval | Assign a Loan Officer | Unassign a Loan Officer | Reject Loan Application | Applicant Withdraws from Loan Application | Disburse Loan Disburse Loan To Savings Account | Undo Loan Disbursal", description = "Approve Loan Application:\n"
+    @Operation(summary = "Approve Loan Application | Recover Loan Guarantee | Undo Loan Application Approval | Assign a Loan Officer | Unassign a Loan Officer | Reject Loan Application | Applicant Withdraws from Loan Application | Disburse Loan Disburse Loan To Savings Account | Undo Loan Disbursal | Accrue a Loan", description = "Approve Loan Application:\n"
             + "Mandatory Fields: approvedOnDate\n" + "Optional Fields: approvedLoanAmount and expectedDisbursementDate\n"
             + "Approves the loan application\n\n" + "Recover Loan Guarantee:\n" + "Recovers the loan guarantee\n\n"
             + "Undo Loan Application Approval:\n" + "Undoes the Loan Application Approval\n\n" + "Assign a Loan Officer:\n"
@@ -620,7 +620,10 @@ public class LoansApiResource {
             + "Mandatory Fields: actualDisbursementDate\n" + "Optional Fields: transactionAmount and fixedEmiAmount\n"
             + "Disburses the Loan\n\n" + "Disburse Loan To Savings Account:\n" + "Mandatory Fields: actualDisbursementDate\n"
             + "Optional Fields: transactionAmount and fixedEmiAmount\n" + "Disburses the loan to Saving Account\n\n"
-            + "Undo Loan Disbursal:\n" + "Undoes the Loan Disbursal\n" + "Showing request and response for Assign a Loan Officer")
+            + "Undo Loan Disbursal:\n" + "Undoes the Loan Disbursal\n\n" + "Accrue Loan:\n"
+            + "Optional Fields: tillDate, dateFormat and locale\n"
+            + "Posts periodic accrual transactions for this loan through the business date, or through tillDate when supplied. "
+            + "The loan product must use periodic accrual accounting.\n" + "Showing request and response for Assign a Loan Officer")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = LoansApiResourceSwagger.PostLoansLoanIdRequest.class)))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = LoansApiResourceSwagger.PostLoansLoanIdResponse.class))) })
@@ -802,7 +805,7 @@ public class LoansApiResource {
     @Path("external-id/{loanExternalId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Approve Loan Application | Recover Loan Guarantee | Undo Loan Application Approval | Assign a Loan Officer | Unassign a Loan Officer | Reject Loan Application | Applicant Withdraws from Loan Application | Disburse Loan Disburse Loan To Savings Account | Undo Loan Disbursal", operationId = "stateTransitionsByExternalId", description = "Approve Loan Application:\n"
+    @Operation(summary = "Approve Loan Application | Recover Loan Guarantee | Undo Loan Application Approval | Assign a Loan Officer | Unassign a Loan Officer | Reject Loan Application | Applicant Withdraws from Loan Application | Disburse Loan Disburse Loan To Savings Account | Undo Loan Disbursal | Accrue a Loan", operationId = "stateTransitionsByExternalId", description = "Approve Loan Application:\n"
             + "Mandatory Fields: approvedOnDate\n" + "Optional Fields: approvedLoanAmount and expectedDisbursementDate\n"
             + "Approves the loan application\n\n" + "Recover Loan Guarantee:\n" + "Recovers the loan guarantee\n\n"
             + "Undo Loan Application Approval:\n" + "Undoes the Loan Application Approval\n\n" + "Assign a Loan Officer:\n"
@@ -813,7 +816,10 @@ public class LoansApiResource {
             + "Mandatory Fields: actualDisbursementDate\n" + "Optional Fields: transactionAmount and fixedEmiAmount\n"
             + "Disburses the Loan\n\n" + "Disburse Loan To Savings Account:\n" + "Mandatory Fields: actualDisbursementDate\n"
             + "Optional Fields: transactionAmount and fixedEmiAmount\n" + "Disburses the loan to Saving Account\n\n"
-            + "Undo Loan Disbursal:\n" + "Undoes the Loan Disbursal\n" + "Showing request and response for Assign a Loan Officer")
+            + "Undo Loan Disbursal:\n" + "Undoes the Loan Disbursal\n\n" + "Accrue Loan:\n"
+            + "Optional Fields: tillDate, dateFormat and locale\n"
+            + "Posts periodic accrual transactions for this loan through the business date, or through tillDate when supplied. "
+            + "The loan product must use periodic accrual accounting.\n" + "Showing request and response for Assign a Loan Officer")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = LoansApiResourceSwagger.PostLoansLoanIdRequest.class)))
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = LoansApiResourceSwagger.PostLoansLoanIdResponse.class))) })
@@ -1350,6 +1356,8 @@ public class LoansApiResource {
             commandRequest = builder.applyContractTermination(resolvedLoanId).build();
         } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.UNDO_CONTRACT_TERMINATION_COMMAND)) {
             commandRequest = builder.undoContractTermination(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.ACCRUE_COMMAND)) {
+            commandRequest = builder.accrueLoan(resolvedLoanId).build();
         }
 
         if (commandRequest == null) {

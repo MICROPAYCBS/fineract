@@ -184,6 +184,7 @@ public interface LoanApiConstants {
     String MARK_AS_FRAUD_COMMAND = "markAsFraud";
     String CAPITALIZED_INCOME_TRANSACTION_COMMAND = "capitalizedIncome";
     String CAPITALIZED_INCOME_ADJUSTMENT_TRANSACTION_COMMAND = "capitalizedIncomeAdjustment";
+    String ACCRUE_COMMAND = "accrue";
     String CONTRACT_TERMINATION_COMMAND = "contractTermination";
     String UNDO_CONTRACT_TERMINATION_COMMAND = "undoContractTermination";
     String BUY_DOWN_FEE_COMMAND = "buyDownFee";

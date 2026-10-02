@@ -273,4 +273,5 @@
     <include file="parts/0252_savings_payment_channel_blocks.xml" relativeToChangelogFile="true"/>
     <include file="parts/0253_payment_type_active.xml" relativeToChangelogFile="true"/>
     <include file="parts/0254_savings_channel_transaction_limits.xml" relativeToChangelogFile="true"/>
+    <include file="parts/0255_add_loan_accrue_permission.xml" relativeToChangelogFile="true"/>
 </databaseChangeLog>
