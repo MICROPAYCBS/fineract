@@ -266,9 +266,10 @@ public class AccountingProcessorHelper {
                 isAccountTransfer = this.accountTransfersReadPlatformService.isAccountTransfer(Long.parseLong(transactionId),
                         PortfolioAccountType.SAVINGS);
             }
+            final Long glAccountId = (Long) map.get("glAccountId");
             final SavingsTransactionDTO transaction = new SavingsTransactionDTO(transactionOfficeId, paymentTypeId, transactionId,
                     transactionDate, transactionType, amount, reversed, feePayments, penaltyPayments, overdraftAmount, isAccountTransfer,
-                    taxPayments);
+                    taxPayments, glAccountId);
             transaction.setTransactionOfficeId((Long) map.get("transactionOfficeId"));
 
             newSavingsTransactions.add(transaction);
@@ -1389,8 +1390,27 @@ public class AccountingProcessorHelper {
         }
     }
 
-    private GLAccount getGLAccountById(final Long accountId) {
+    public GLAccount getGLAccountById(final Long accountId) {
         return this.glAccountRepository.getReferenceById(accountId);
+    }
+
+    /**
+     * Posts a savings journal where one side is a concrete GL account and the other is a product mapping. When
+     * {@code debitExplicitAccount} is true the explicit account is debited and the mapped account is credited.
+     */
+    public void createSavingsJournalReplacingReference(final Office office, final String currencyCode, final GLAccount explicitAccount,
+            final int contraAccountType, final boolean debitExplicitAccount, final Long savingsProductId, final Long paymentTypeId,
+            final Long savingsId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount,
+            final boolean isReversal) {
+        final boolean debitExplicit = isReversal ? !debitExplicitAccount : debitExplicitAccount;
+        final GLAccount contraAccount = getLinkedGLAccountForSavingsProduct(savingsProductId, contraAccountType, paymentTypeId);
+        if (debitExplicit) {
+            createDebitJournalEntryForSavings(office, currencyCode, explicitAccount, savingsId, transactionId, transactionDate, amount);
+            createCreditJournalEntryForSavings(office, currencyCode, contraAccount, savingsId, transactionId, transactionDate, amount);
+        } else {
+            createDebitJournalEntryForSavings(office, currencyCode, contraAccount, savingsId, transactionId, transactionDate, amount);
+            createCreditJournalEntryForSavings(office, currencyCode, explicitAccount, savingsId, transactionId, transactionDate, amount);
+        }
     }
 
     public Integer getValueForFeeOrPenaltyIncomeAccount(final String chargeRefundChargeType) {

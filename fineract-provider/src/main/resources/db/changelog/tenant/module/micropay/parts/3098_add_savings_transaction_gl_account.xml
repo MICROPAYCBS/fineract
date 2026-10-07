@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: GL To Savings and Savings To GL store the substituted GL account on the savings transaction.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3098-add-savings-transaction-gl-account-id" author="micropay">
+        <addColumn tableName="m_savings_account_transaction">
+            <column name="gl_account_id" type="BIGINT"/>
+        </addColumn>
+        <addForeignKeyConstraint baseColumnNames="gl_account_id" baseTableName="m_savings_account_transaction"
+                                 constraintName="FK_savings_txn_gl_account_id" deferrable="false" initiallyDeferred="false"
+                                 onDelete="RESTRICT" onUpdate="RESTRICT" referencedColumnNames="id"
+                                 referencedTableName="acc_gl_account" validate="true"/>
+    </changeSet>
+
+    <changeSet id="3098-gl-to-savings-permission" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'GLTOSAVINGS_SAVINGSACCOUNT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_savings"/>
+            <column name="code" value="GLTOSAVINGS_SAVINGSACCOUNT"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="GLTOSAVINGS"/>
+            <column name="can_maker_checker" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_savings"/>
+            <column name="code" value="GLTOSAVINGS_SAVINGSACCOUNT_CHECKER"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="GLTOSAVINGS_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3098-savings-to-gl-permission" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SAVINGSTOGL_SAVINGSACCOUNT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_savings"/>
+            <column name="code" value="SAVINGSTOGL_SAVINGSACCOUNT"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="SAVINGSTOGL"/>
+            <column name="can_maker_checker" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_savings"/>
+            <column name="code" value="SAVINGSTOGL_SAVINGSACCOUNT_CHECKER"/>
+            <column name="entity_name" value="SAVINGSACCOUNT"/>
+            <column name="action_name" value="SAVINGSTOGL_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="3098-grant-gl-savings-transaction-permissions" author="micropay">
+        <sql>
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT rp.role_id, new_p.id
+            FROM m_role_permission rp
+            JOIN m_permission old_p ON old_p.id = rp.permission_id AND old_p.code = 'DEPOSIT_SAVINGSACCOUNT'
+            JOIN m_permission new_p ON new_p.code = 'GLTOSAVINGS_SAVINGSACCOUNT'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM m_role_permission existing
+                WHERE existing.role_id = rp.role_id AND existing.permission_id = new_p.id
+            );
+
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT rp.role_id, new_p.id
+            FROM m_role_permission rp
+            JOIN m_permission old_p ON old_p.id = rp.permission_id AND old_p.code = 'DEPOSIT_SAVINGSACCOUNT_CHECKER'
+            JOIN m_permission new_p ON new_p.code = 'GLTOSAVINGS_SAVINGSACCOUNT_CHECKER'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM m_role_permission existing
+                WHERE existing.role_id = rp.role_id AND existing.permission_id = new_p.id
+            );
+
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT rp.role_id, new_p.id
+            FROM m_role_permission rp
+            JOIN m_permission old_p ON old_p.id = rp.permission_id AND old_p.code = 'WITHDRAWAL_SAVINGSACCOUNT'
+            JOIN m_permission new_p ON new_p.code = 'SAVINGSTOGL_SAVINGSACCOUNT'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM m_role_permission existing
+                WHERE existing.role_id = rp.role_id AND existing.permission_id = new_p.id
+            );
+
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT rp.role_id, new_p.id
+            FROM m_role_permission rp
+            JOIN m_permission old_p ON old_p.id = rp.permission_id AND old_p.code = 'WITHDRAWAL_SAVINGSACCOUNT_CHECKER'
+            JOIN m_permission new_p ON new_p.code = 'SAVINGSTOGL_SAVINGSACCOUNT_CHECKER'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM m_role_permission existing
+                WHERE existing.role_id = rp.role_id AND existing.permission_id = new_p.id
+            );
+
+            INSERT INTO m_role_permission (role_id, permission_id)
+            SELECT 1, p.id FROM m_permission p
+            WHERE p.code IN ('GLTOSAVINGS_SAVINGSACCOUNT', 'GLTOSAVINGS_SAVINGSACCOUNT_CHECKER',
+                             'SAVINGSTOGL_SAVINGSACCOUNT', 'SAVINGSTOGL_SAVINGSACCOUNT_CHECKER')
+            AND NOT EXISTS (SELECT 1 FROM m_role_permission rp WHERE rp.role_id = 1 AND rp.permission_id = p.id);
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

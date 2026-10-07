@@ -68,6 +68,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETESCHEDULEEXCEPTIONS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETE_DIVIDEND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEPOSIT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DETACH;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISABLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISASSOCIATECLIENTS;
@@ -157,6 +158,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WAIVE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WAIVEINTERESTPORTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WITHDRAW;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVINGS_TO_GL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WITHDRAWAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WITHDRAWTRANSFER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WRITEOFF;
@@ -2351,6 +2353,24 @@ public class CommandWrapperBuilder {
         this.savingsId = accountId;
         this.entityId = null;
         this.href = "/savingsaccounts/" + accountId + "/transactions";
+        return this;
+    }
+
+    public CommandWrapperBuilder savingsAccountGlToSavings(final Long accountId) {
+        this.actionName = ACTION_GL_TO_SAVINGS;
+        this.entityName = ENTITY_SAVINGSACCOUNT;
+        this.savingsId = accountId;
+        this.entityId = null;
+        this.href = "/savingsaccounts/" + accountId + "/transactions?command=glToSavings";
+        return this;
+    }
+
+    public CommandWrapperBuilder savingsAccountSavingsToGl(final Long accountId) {
+        this.actionName = ACTION_SAVINGS_TO_GL;
+        this.entityName = ENTITY_SAVINGSACCOUNT;
+        this.savingsId = accountId;
+        this.entityId = null;
+        this.href = "/savingsaccounts/" + accountId + "/transactions?command=savingsToGl";
         return this;
     }
 

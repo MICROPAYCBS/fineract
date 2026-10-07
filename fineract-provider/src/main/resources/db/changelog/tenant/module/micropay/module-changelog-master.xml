@@ -119,4 +119,5 @@
   <include relativeToChangelogFile="true" file="parts/3095_register_group_summary_report_parameters.xml"/>
   <include relativeToChangelogFile="true" file="parts/3096_add_job_description.xml"/>
   <include relativeToChangelogFile="true" file="parts/3097_add_guarantor_national_id_number.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3098_add_savings_transaction_gl_account.xml"/>
 </databaseChangeLog>

@@ -214,6 +214,8 @@ final class SavingsAccountTransactionsApiResourceSwagger {
         public String reasonForBlock;
         @Schema(example = "1")
         public Integer paymentTypeId;
+        @Schema(example = "12", description = "GL account debited by glToSavings or credited by savingsToGl. Required for those commands.")
+        public Long glAccountId;
     }
 
     @Schema(description = "PostSavingsAccountTransactionsResponse")

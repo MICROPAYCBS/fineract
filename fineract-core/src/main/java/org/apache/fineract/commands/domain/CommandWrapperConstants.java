@@ -91,6 +91,8 @@ public final class CommandWrapperConstants {
     public static final String ACTION_DEFINEOPENINGBALANCE = "DEFINEOPENINGBALANCE";
     public static final String ACTION_DEPOSIT = "DEPOSIT";
     public static final String ACTION_WITHDRAWAL = "WITHDRAWAL";
+    public static final String ACTION_GL_TO_SAVINGS = "GLTOSAVINGS";
+    public static final String ACTION_SAVINGS_TO_GL = "SAVINGSTOGL";
     public static final String ACTION_UNDOTRANSACTION = "UNDOTRANSACTION";
     public static final String ACTION_REVERSETRANSACTION = "REVERSETRANSACTION";
     public static final String ACTION_ADJUSTTRANSACTION = "ADJUSTTRANSACTION";

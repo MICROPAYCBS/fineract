@@ -125,6 +125,41 @@ public class InterBranchAccountingHelper {
                 transactionId, transactionDate, amount, isReversal);
     }
 
+    /**
+     * Posts a savings entry whose savings-reference side is {@code explicitAccount}. That account is booked at the
+     * servicing office. The product contra account (savings control or overdraft portfolio control) is booked at the
+     * home office. A clearing bridge connects the two offices.
+     */
+    public void createCrossBranchSavingsJournalReplacingReference(final Office servicingOffice, final Office homeOffice,
+            final String currencyCode, final GLAccount explicitAccount, final int contraAccountType, final boolean debitExplicitAccount,
+            final Long savingsProductId, final Long paymentTypeId, final Long savingsId, final String transactionId,
+            final LocalDate transactionDate, final BigDecimal amount, final boolean isReversal) {
+        final boolean debitExplicit = isReversal ? !debitExplicitAccount : debitExplicitAccount;
+        final GLAccount contraAccount = this.accountingProcessorHelper.getLinkedGLAccountForSavingsProduct(savingsProductId,
+                contraAccountType, paymentTypeId);
+        final GLAccount clearingAccount = this.interBranchGlAccountReadService.resolveClearingAccount(servicingOffice.getId(),
+                homeOffice.getId(), currencyCode);
+        if (debitExplicit) {
+            this.accountingProcessorHelper.createDebitJournalEntryForSavings(servicingOffice, currencyCode, explicitAccount, savingsId,
+                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createCreditJournalEntryForSavings(servicingOffice, currencyCode, clearingAccount, savingsId,
+                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createDebitJournalEntryForSavings(homeOffice, currencyCode, clearingAccount, savingsId,
+                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createCreditJournalEntryForSavings(homeOffice, currencyCode, contraAccount, savingsId,
+                    transactionId, transactionDate, amount);
+        } else {
+            this.accountingProcessorHelper.createDebitJournalEntryForSavings(homeOffice, currencyCode, contraAccount, savingsId,
+                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createCreditJournalEntryForSavings(homeOffice, currencyCode, clearingAccount, savingsId,
+                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createDebitJournalEntryForSavings(servicingOffice, currencyCode, clearingAccount, savingsId,
+                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createCreditJournalEntryForSavings(servicingOffice, currencyCode, explicitAccount, savingsId,
+                    transactionId, transactionDate, amount);
+        }
+    }
+
     public void postClientClearingBridge(final Office servicingOffice, final Office homeOffice, final String currencyCode,
             final Long clientId, final Long transactionId, final LocalDate transactionDate, final BigDecimal amount,
             final boolean reversed) {

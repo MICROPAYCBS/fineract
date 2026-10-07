@@ -47,6 +47,7 @@ public class SavingsTransactionDTO {
     private final BigDecimal overdraftAmount;
     private final boolean isAccountTransfer;
     private final List<TaxPaymentDTO> taxPayments;
+    private final Long glAccountId;
 
     @Setter
     @Getter

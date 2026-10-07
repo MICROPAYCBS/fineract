@@ -51,7 +51,9 @@ public enum SavingsAccountTransactionType {
     WITHHOLD_TAX(18, "savingsAccountTransactionType.withholdTax", TransactionEntryType.DEBIT), //
     ESCHEAT(19, "savingsAccountTransactionType.escheat", TransactionEntryType.DEBIT), //
     AMOUNT_HOLD(20, "savingsAccountTransactionType.onHold", TransactionEntryType.DEBIT), //
-    AMOUNT_RELEASE(21, "savingsAccountTransactionType.release", TransactionEntryType.CREDIT); //
+    AMOUNT_RELEASE(21, "savingsAccountTransactionType.release", TransactionEntryType.CREDIT), //
+    GL_TO_SAVINGS(22, "savingsAccountTransactionType.glToSavings", TransactionEntryType.CREDIT), //
+    SAVINGS_TO_GL(23, "savingsAccountTransactionType.savingsToGl", TransactionEntryType.DEBIT); //
 
     private static final Map<Integer, SavingsAccountTransactionType> BY_ID = Arrays.stream(values())
             .collect(Collectors.toMap(SavingsAccountTransactionType::getValue, v -> v));
@@ -94,11 +96,19 @@ public enum SavingsAccountTransactionType {
     }
 
     public boolean isDeposit() {
-        return this == DEPOSIT;
+        return this == DEPOSIT || this == GL_TO_SAVINGS;
     }
 
     public boolean isWithdrawal() {
-        return this == WITHDRAWAL;
+        return this == WITHDRAWAL || this == SAVINGS_TO_GL;
+    }
+
+    public boolean isGlToSavings() {
+        return this == GL_TO_SAVINGS;
+    }
+
+    public boolean isSavingsToGl() {
+        return this == SAVINGS_TO_GL;
     }
 
     public boolean isInterestPosting() {

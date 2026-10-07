@@ -52,7 +52,8 @@ public class SavingsAccountConstant extends SavingsApiConstants {
             dateFormatParamName, externalIdParamName, transactionDateParamName, transactionAmountParamName, paymentTypeIdParamName,
             transactionAccountNumberParamName, checkNumberParamName, routingCodeParamName, receiptNumberParamName, bankNumberParamName,
             retailEntriesParamName, childAccountIdParamName, noteParamName, amountParamName, dateParamName, isManualTransaction,
-            lienTransaction, chargesPaidByData, submittedOnDateParamName, accountIdParamName, accountNoParamName, legalTenderLinesParamName));
+            lienTransaction, chargesPaidByData, submittedOnDateParamName, accountIdParamName, accountNoParamName, legalTenderLinesParamName,
+            glAccountIdParamName));
 
     protected static final Set<String> SAVINGS_ACCOUNT_TRANSACTION_RESPONSE_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList(idParamName, accountNoParamName));

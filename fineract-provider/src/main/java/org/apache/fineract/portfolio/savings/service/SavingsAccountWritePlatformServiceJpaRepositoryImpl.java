@@ -50,6 +50,11 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.fineract.accounting.glaccount.domain.GLAccount;
+import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
+import org.apache.fineract.accounting.glaccount.exception.GLAccountNotFoundException;
+import org.apache.fineract.accounting.journalentry.exception.JournalEntryInvalidException;
+import org.apache.fineract.accounting.journalentry.exception.JournalEntryInvalidException.GlJournalEntryInvalidReason;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -180,6 +185,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService;
     private final SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService;
     private final SavingsChannelLimitService savingsChannelLimitService;
+    private final GLAccountRepository glAccountRepository;
 
     @Transactional
     @Override
@@ -429,6 +435,108 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 .withSavingsId(savingsId) //
                 .with(changes) //
                 .build();
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult glToSavings(final Long savingsId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        this.savingsAccountTransactionDataValidator.validateGlSubstitution(command);
+
+        final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
+        checkClientOrGroupActive(account);
+
+        final Locale locale = command.extractLocale();
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
+        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final ExternalId externalId = this.externalIdFactory.createFromCommand(command, SavingsApiConstants.externalIdParamName);
+        this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(transactionDate, account);
+
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
+        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
+        final GLAccount glAccount = resolveManualGlAccount(command.longValueOfParameterNamed(SavingsApiConstants.glAccountIdParamName),
+                account);
+
+        final SavingsAccountTransaction transaction = this.savingsAccountDomainService.handleGlToSavings(account, fmt, transactionDate,
+                transactionAmount, paymentDetail, glAccount, backdatedTxnsAllowedTill);
+        transaction.updateExternalId(externalId);
+        this.savingsAccountTransactionRepository.save(transaction);
+        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, transaction);
+        if (account.getGsim() != null && transaction.getId() != null) {
+            final GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
+            gsim.setParentDeposit(gsim.getParentDeposit().add(transactionAmount));
+            gsimRepository.save(gsim);
+        }
+        saveNoteIfPresent(account, transaction, command);
+
+        return new CommandProcessingResultBuilder().withEntityId(transaction.getId()).withOfficeId(account.officeId())
+                .withClientId(account.clientId()).withGroupId(account.groupId()).withSavingsId(savingsId).with(changes).build();
+    }
+
+    @Transactional
+    @Override
+    public CommandProcessingResult savingsToGl(final Long savingsId, final JsonCommand command) {
+        this.savingsAccountTransactionDataValidator.validateGlSubstitution(command);
+
+        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
+        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
+        final ExternalId externalId = this.externalIdFactory.createFromCommand(command, SavingsApiConstants.externalIdParamName);
+        final Locale locale = command.extractLocale();
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
+        final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
+        checkClientOrGroupActive(account);
+        this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(transactionDate, account);
+        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
+        final GLAccount glAccount = resolveManualGlAccount(command.longValueOfParameterNamed(SavingsApiConstants.glAccountIdParamName),
+                account);
+
+        final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(false, true, true, false,
+                false);
+        final SavingsAccountTransaction transaction = this.savingsAccountDomainService.handleSavingsToGl(account, fmt, transactionDate,
+                transactionAmount, paymentDetail, transactionBooleanValues, glAccount, backdatedTxnsAllowedTill);
+        transaction.updateExternalId(externalId);
+        this.savingsAccountTransactionRepository.save(transaction);
+        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, transaction);
+        if (account.getGsim() != null && transaction.getId() != null) {
+            final GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
+            gsim.setParentDeposit(gsim.getParentDeposit().subtract(transactionAmount));
+            gsimRepository.save(gsim);
+        }
+        saveNoteIfPresent(account, transaction, command);
+
+        return new CommandProcessingResultBuilder().withEntityId(transaction.getId()).withOfficeId(account.officeId())
+                .withClientId(account.clientId()).withGroupId(account.groupId()).withSavingsId(savingsId).with(changes).build();
+    }
+
+    private void saveNoteIfPresent(final SavingsAccount account, final SavingsAccountTransaction transaction, final JsonCommand command) {
+        final String noteText = command.stringValueOfParameterNamed("note");
+        if (StringUtils.isNotBlank(noteText)) {
+            this.noteRepository.save(Note.savingsTransactionNote(account, transaction, noteText));
+        }
+    }
+
+    private GLAccount resolveManualGlAccount(final Long glAccountId, final SavingsAccount account) {
+        if (!account.savingsProduct().isCashBasedAccountingEnabled() && !account.savingsProduct().isAccrualBasedAccountingEnabled()) {
+            throw new GeneralPlatformDomainRuleException("error.msg.savingsaccount.transaction.accounting.not.enabled",
+                    "GL to savings and savings to GL require cash or accrual accounting on the savings product");
+        }
+        final GLAccount glAccount = this.glAccountRepository.findById(glAccountId)
+                .orElseThrow(() -> new GLAccountNotFoundException(glAccountId));
+        if (glAccount.isDisabled()) {
+            throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.GL_ACCOUNT_DISABLED, null, glAccount.getName(),
+                    glAccount.getGlCode());
+        }
+        if (!glAccount.isManualEntriesAllowed()) {
+            throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.GL_ACCOUNT_MANUAL_ENTRIES_NOT_PERMITTED, null,
+                    glAccount.getName(), glAccount.getGlCode());
+        }
+        return glAccount;
     }
 
     @Transactional
@@ -962,9 +1070,16 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 paymentDetail, null, accountType);
         UUID refNo = UUID.randomUUID();
         if (savingsAccountTransaction.isDeposit()) {
-            transaction = account.deposit(transactionDTO, false, relaxingDaysConfigForPivotDate, refNo.toString());
+            transaction = account.deposit(transactionDTO, savingsAccountTransaction.getTransactionType(), false,
+                    relaxingDaysConfigForPivotDate, refNo.toString());
         } else {
-            transaction = account.withdraw(transactionDTO, true, false, relaxingDaysConfigForPivotDate, refNo.toString());
+            transaction = account.withdraw(transactionDTO, true, false, relaxingDaysConfigForPivotDate, refNo.toString(),
+                    savingsAccountTransaction.getTransactionType());
+        }
+        if (savingsAccountTransaction.isGlToSavings() || savingsAccountTransaction.isSavingsToGl()) {
+            final Long requestedGlAccountId = command.longValueOfParameterNamed(SavingsApiConstants.glAccountIdParamName);
+            final Long glAccountId = requestedGlAccountId != null ? requestedGlAccountId : savingsAccountTransaction.getGlAccountId();
+            transaction.setGlAccount(resolveManualGlAccount(glAccountId, account));
         }
         transaction.updateExternalId(externalId);
         final Long newtransactionId = saveTransactionToGenerateTransactionId(transaction);

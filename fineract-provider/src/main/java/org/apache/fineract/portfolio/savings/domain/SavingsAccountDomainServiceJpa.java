@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -100,6 +101,24 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill) {
+        return handleWithdrawal(account, fmt, transactionDate, transactionAmount, paymentDetail, transactionBooleanValues,
+                backdatedTxnsAllowedTill, SavingsAccountTransactionType.WITHDRAWAL, null);
+    }
+
+    @Transactional
+    @Override
+    public SavingsAccountTransaction handleSavingsToGl(final SavingsAccount account, final DateTimeFormatter fmt,
+            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
+            final SavingsTransactionBooleanValues transactionBooleanValues, final GLAccount glAccount,
+            final boolean backdatedTxnsAllowedTill) {
+        return handleWithdrawal(account, fmt, transactionDate, transactionAmount, paymentDetail, transactionBooleanValues,
+                backdatedTxnsAllowedTill, SavingsAccountTransactionType.SAVINGS_TO_GL, glAccount);
+    }
+
+    private SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
+            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
+            final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill,
+            final SavingsAccountTransactionType transactionType, final GLAccount glAccount) {
         final AppUser currentUser = context.authenticatedUser();
         validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, transactionBooleanValues.isAccountTransfer(),
                 transactionBooleanValues.isRegularTransaction());
@@ -132,7 +151,10 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
                 paymentDetail, null, accountType);
         UUID refNo = UUID.randomUUID();
         final SavingsAccountTransaction withdrawal = account.withdraw(transactionDTO, transactionBooleanValues.isApplyWithdrawFee(),
-                backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString());
+                backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString(), transactionType);
+        if (glAccount != null) {
+            withdrawal.setGlAccount(glAccount);
+        }
         stampTransactionOffice(withdrawal, account.office());
         final MathContext mc = MathContext.DECIMAL64;
 
@@ -182,13 +204,23 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final boolean isAccountTransfer, final boolean isRegularTransaction, final boolean backdatedTxnsAllowedTill) {
         final SavingsAccountTransactionType savingsAccountTransactionType = SavingsAccountTransactionType.DEPOSIT;
         return handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction,
-                savingsAccountTransactionType, backdatedTxnsAllowedTill);
+                savingsAccountTransactionType, null, backdatedTxnsAllowedTill);
+    }
+
+    @Transactional
+    @Override
+    public SavingsAccountTransaction handleGlToSavings(final SavingsAccount account, final DateTimeFormatter fmt,
+            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
+            final GLAccount glAccount, final boolean backdatedTxnsAllowedTill) {
+        return handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail, false, true,
+                SavingsAccountTransactionType.GL_TO_SAVINGS, glAccount, backdatedTxnsAllowedTill);
     }
 
     private SavingsAccountTransaction handleDeposit(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final boolean isAccountTransfer, final boolean isRegularTransaction,
-            final SavingsAccountTransactionType savingsAccountTransactionType, final boolean backdatedTxnsAllowedTill) {
+            final SavingsAccountTransactionType savingsAccountTransactionType, final GLAccount glAccount,
+            final boolean backdatedTxnsAllowedTill) {
         final AppUser currentUser = context.authenticatedUser();
         validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, isAccountTransfer, isRegularTransaction);
         account.validateForAccountBlock();
@@ -221,6 +253,9 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         UUID refNo = UUID.randomUUID();
         final SavingsAccountTransaction deposit = account.deposit(transactionDTO, savingsAccountTransactionType, backdatedTxnsAllowedTill,
                 relaxingDaysConfigForPivotDate, refNo.toString());
+        if (glAccount != null) {
+            deposit.setGlAccount(glAccount);
+        }
         stampTransactionOffice(deposit, account.office());
         final LocalDate postInterestOnDate = null;
         final MathContext mc = MathContext.DECIMAL64;
@@ -267,7 +302,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         final boolean isRegularTransaction = true;
         final SavingsAccountTransactionType savingsAccountTransactionType = SavingsAccountTransactionType.DIVIDEND_PAYOUT;
         return handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction,
-                savingsAccountTransactionType, backdatedTxnsAllowedTill);
+                savingsAccountTransactionType, null, backdatedTxnsAllowedTill);
     }
 
     private void updateExistingTransactionsDetails(SavingsAccount account, Set<Long> existingTransactionIds,

@@ -125,6 +125,7 @@ public class SavingsApiConstants {
     public static final String feeIntervalParamName = "feeInterval";
     public static final String accountingRuleParamName = "accountingRule";
     public static final String paymentTypeIdParamName = "paymentTypeId";
+    public static final String glAccountIdParamName = "glAccountId";
     public static final String transactionAccountNumberParamName = "accountNumber";
     public static final String checkNumberParamName = "checkNumber";
     public static final String routingCodeParamName = "routingCode";

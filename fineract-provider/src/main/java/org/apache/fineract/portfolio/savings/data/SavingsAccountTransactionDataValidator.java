@@ -24,6 +24,7 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.bankNumb
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.checkNumberParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.closedOnDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.externalIdParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.glAccountIdParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.lienAllowedParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.paymentTypeIdParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.receiptNumberParamName;
@@ -104,6 +105,14 @@ public class SavingsAccountTransactionDataValidator {
     }
 
     public void validate(final JsonCommand command) {
+        validate(command, false);
+    }
+
+    public void validateGlSubstitution(final JsonCommand command) {
+        validate(command, true);
+    }
+
+    private void validate(final JsonCommand command, final boolean requireGlAccount) {
         final String json = command.json();
 
         if (StringUtils.isBlank(json)) {
@@ -133,6 +142,11 @@ public class SavingsAccountTransactionDataValidator {
         baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).notNull();
 
         validatePaymentTypeDetails(baseDataValidator, element);
+
+        if (requireGlAccount) {
+            final Long glAccountId = this.fromApiJsonHelper.extractLongNamed(glAccountIdParamName, element);
+            baseDataValidator.reset().parameter(glAccountIdParamName).value(glAccountId).notNull().longGreaterThanZero();
+        }
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }

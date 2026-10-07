@@ -37,6 +37,10 @@ public interface SavingsAccountWritePlatformService {
 
     CommandProcessingResult withdrawal(Long savingsId, JsonCommand command);
 
+    CommandProcessingResult glToSavings(Long savingsId, JsonCommand command);
+
+    CommandProcessingResult savingsToGl(Long savingsId, JsonCommand command);
+
     CommandProcessingResult applyAnnualFee(Long savingsAccountChargeId, Long accountId);
 
     CommandProcessingResult calculateInterest(Long savingsId);

@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.domain.LocalDateInterval;
@@ -146,6 +147,10 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
     @Column(name = "ref_no", nullable = true)
     private String refNo;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "gl_account_id", nullable = true)
+    private GLAccount glAccount;
+
     SavingsAccountTransaction() {}
 
     private SavingsAccountTransaction(final SavingsAccount savingsAccount, final Office office, final PaymentDetail paymentDetail,
@@ -199,11 +204,17 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
 
     public static SavingsAccountTransaction withdrawal(final SavingsAccount savingsAccount, final Office office,
             final PaymentDetail paymentDetail, final LocalDate date, final Money amount, final String refNo) {
+        return withdrawal(savingsAccount, office, paymentDetail, date, amount, SavingsAccountTransactionType.WITHDRAWAL, refNo);
+    }
+
+    public static SavingsAccountTransaction withdrawal(final SavingsAccount savingsAccount, final Office office,
+            final PaymentDetail paymentDetail, final LocalDate date, final Money amount,
+            final SavingsAccountTransactionType savingsAccountTransactionType, final String refNo) {
         final boolean isReversed = false;
         final boolean isManualTransaction = false;
         final Boolean lienTransaction = false;
-        return new SavingsAccountTransaction(savingsAccount, office, paymentDetail, SavingsAccountTransactionType.WITHDRAWAL.getValue(),
-                date, amount, isReversed, isManualTransaction, lienTransaction, refNo);
+        return new SavingsAccountTransaction(savingsAccount, office, paymentDetail, savingsAccountTransactionType.getValue(), date, amount,
+                isReversed, isManualTransaction, lienTransaction, refNo);
     }
 
     public static SavingsAccountTransaction accrual(final SavingsAccount savingsAccount, final Office office, final LocalDate date,
@@ -332,9 +343,13 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
     }
 
     public static SavingsAccountTransaction copyTransaction(SavingsAccountTransaction accountTransaction) {
-        return new SavingsAccountTransaction(accountTransaction.savingsAccount, accountTransaction.office, accountTransaction.paymentDetail,
-                accountTransaction.typeOf, accountTransaction.getTransactionDate(), accountTransaction.amount, accountTransaction.reversed,
-                accountTransaction.isManualTransaction, accountTransaction.lienTransaction, accountTransaction.refNo);
+        final SavingsAccountTransaction copy = new SavingsAccountTransaction(accountTransaction.savingsAccount, accountTransaction.office,
+                accountTransaction.paymentDetail, accountTransaction.typeOf, accountTransaction.getTransactionDate(),
+                accountTransaction.amount, accountTransaction.reversed, accountTransaction.isManualTransaction,
+                accountTransaction.lienTransaction, accountTransaction.refNo);
+        copy.glAccount = accountTransaction.glAccount;
+        copy.transactionOffice = accountTransaction.transactionOffice;
+        return copy;
     }
 
     public static SavingsAccountTransaction holdAmount(final SavingsAccount savingsAccount, final Office office,
@@ -539,6 +554,26 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
         return getTransactionType().isWithdrawal();
     }
 
+    public boolean isGlToSavings() {
+        return getTransactionType().isGlToSavings();
+    }
+
+    public boolean isSavingsToGl() {
+        return getTransactionType().isSavingsToGl();
+    }
+
+    public void setGlAccount(final GLAccount glAccount) {
+        this.glAccount = glAccount;
+    }
+
+    public GLAccount getGlAccount() {
+        return this.glAccount;
+    }
+
+    public Long getGlAccountId() {
+        return this.glAccount == null ? null : this.glAccount.getId();
+    }
+
     public boolean isPostInterestCalculationRequired() {
         return this.isDeposit() || this.isWithdrawal() || this.isChargeTransaction() || this.isDividendPayout() || this.isInterestPosting();
     }
@@ -645,6 +680,9 @@ public final class SavingsAccountTransaction extends AbstractAuditableWithUTCDat
 
         if (this.paymentDetail != null) {
             thisTransactionData.put("paymentTypeId", this.paymentDetail.getPaymentType().getId());
+        }
+        if (this.glAccount != null) {
+            thisTransactionData.put("glAccountId", this.glAccount.getId());
         }
 
         /***

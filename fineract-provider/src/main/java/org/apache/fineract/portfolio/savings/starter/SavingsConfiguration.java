@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.savings.starter;
 
+import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService;
 import org.apache.fineract.commands.service.CommandProcessingService;
@@ -393,7 +394,8 @@ public class SavingsConfiguration {
             ExternalIdFactory externalIdFactory, ErrorHandler errorHandler, LegalTenderBreakdownValidator legalTenderBreakdownValidator,
             LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService,
             SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService,
-            SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService, SavingsChannelLimitService savingsChannelLimitService) {
+            SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService, SavingsChannelLimitService savingsChannelLimitService,
+            GLAccountRepository glAccountRepository) {
         return new SavingsAccountWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer, savingAccountRepositoryWrapper,
                 staffRepository, savingsAccountTransactionRepository, savingAccountAssembler, savingsAccountTransactionDataValidator,
                 savingsAccountChargeDataValidator, paymentDetailWritePlatformService, journalEntryWritePlatformService,
@@ -402,7 +404,7 @@ public class SavingsConfiguration {
                 depositAccountOnHoldTransactionRepository, entityDatatableChecksWritePlatformService, appuserRepository,
                 standingInstructionRepository, businessEventNotifierService, gsimRepository, savingsAccountInterestPostingService,
                 externalIdFactory, errorHandler, legalTenderBreakdownValidator, legalTenderBreakdownWritePlatformService,
-                paymentChannelAllowListService, paymentChannelFeeHoldService, savingsChannelLimitService);
+                paymentChannelAllowListService, paymentChannelFeeHoldService, savingsChannelLimitService, glAccountRepository);
     }
 
     @Bean

@@ -198,6 +198,14 @@ public final class SavingsEnumerations {
                 optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.AMOUNT_RELEASE.getValue().longValue(),
                         SavingsAccountTransactionType.AMOUNT_RELEASE.getCode(), "Release Amount");
             break;
+            case GL_TO_SAVINGS:
+                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.GL_TO_SAVINGS.getValue().longValue(),
+                        SavingsAccountTransactionType.GL_TO_SAVINGS.getCode(), "GL to Savings");
+            break;
+            case SAVINGS_TO_GL:
+                optionData = new SavingsAccountTransactionEnumData(SavingsAccountTransactionType.SAVINGS_TO_GL.getValue().longValue(),
+                        SavingsAccountTransactionType.SAVINGS_TO_GL.getCode(), "Savings to GL");
+            break;
         }
         return optionData;
     }
