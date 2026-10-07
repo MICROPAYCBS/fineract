@@ -184,26 +184,38 @@ public class RecurringDepositProductWritePlatformServiceJpaRepositoryImpl implem
         String msgCode = "error.msg." + SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
         String msg = "Unknown data integrity issue with recurring deposit product.";
         String param = null;
-        Object[] msgArgs;
-        Throwable checkEx = realCause == null ? dae : realCause;
-        if (checkEx.getMessage().contains("sp_unq_name")) {
+        Object[] msgArgs = new Object[] { dae };
+        final String dbMessage = databaseMessage(realCause, dae);
+        if (isDuplicateName(dbMessage)) {
             final String name = command.stringValueOfParameterNamed("name");
             msgCode += ".duplicate.name";
             msg = "Recurring Deposit product with name `" + name + "` already exists";
             param = "name";
-            msgArgs = new Object[] { name, dae };
-        } else if (checkEx.getMessage().contains("sp_unq_short_name")) {
+            msgArgs = new Object[] { name };
+        } else if (isDuplicateShortName(dbMessage)) {
             final String shortName = command.stringValueOfParameterNamed("shortName");
             msgCode += ".duplicate.short.name";
             msg = "Recurring Deposit product with short name `" + shortName + "` already exists";
             param = "shortName";
-            msgArgs = new Object[] { shortName, dae };
+            msgArgs = new Object[] { shortName };
         } else {
             msgCode += ".unknown.data.integrity.issue";
-            msgArgs = new Object[] { dae };
+            log.error("Error occured.", dae);
         }
-        log.error("Error occured.", dae);
         throw ErrorHandler.getMappable(dae, msgCode, msg, param, msgArgs);
+    }
+
+    private static String databaseMessage(final Throwable realCause, final Exception dae) {
+        final Throwable checkEx = realCause == null ? dae : realCause;
+        return checkEx.getMessage() == null ? "" : checkEx.getMessage();
+    }
+
+    private static boolean isDuplicateName(final String dbMessage) {
+        return dbMessage.contains("sp_unq_name") || dbMessage.contains("m_savings_product_name_key");
+    }
+
+    private static boolean isDuplicateShortName(final String dbMessage) {
+        return dbMessage.contains("sp_unq_short_name") || dbMessage.contains("m_savings_product_short_name_key");
     }
 
     private void validateInputDates(final JsonCommand command) {
