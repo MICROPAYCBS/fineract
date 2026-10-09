@@ -31,7 +31,6 @@ import org.apache.fineract.workflow.domain.WorkflowInstanceAction;
 import org.apache.fineract.workflow.domain.WorkflowInstanceActionRepository;
 import org.apache.fineract.workflow.domain.WorkflowInstanceRepository;
 import org.apache.fineract.workflow.domain.WorkflowInstanceStatus;
-import org.apache.fineract.workflow.domain.WorkflowRejectionPolicy;
 import org.apache.fineract.workflow.domain.WorkflowStage;
 import org.apache.fineract.workflow.exception.WorkflowRuntimeException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -47,6 +46,7 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
     private final WorkflowInstanceRepository workflowInstanceRepository;
     private final WorkflowInstanceActionRepository workflowInstanceActionRepository;
     private final WorkflowStageAuthorizationService stageAuthorizationService;
+    private final TerminalStageExecution terminalStageExecution;
 
     @Override
     @Transactional
@@ -71,8 +71,15 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
 
         this.stageAuthorizationService.validateActorMayApproveAtStage(commandSource, instance, checker, currentStage);
 
-        if (this.workflowInstanceActionRepository.existsByWorkflowInstanceIdAndStageCodeAndActionAndCreatedBy(instance.getId(),
-                instance.getCurrentStageCode(), WorkflowApprovalAction.APPROVE, checker.getId())) {
+        final boolean alreadyApproved = this.workflowInstanceActionRepository.existsByWorkflowInstanceIdAndStageCodeAndActionAndCreatedBy(
+                instance.getId(), instance.getCurrentStageCode(), WorkflowApprovalAction.APPROVE, checker.getId());
+        if (alreadyApproved) {
+            // This transaction commits before the held command runs. A previous terminal approval may already be
+            // recorded while the command is still awaiting approval because execution failed.
+            if (isRetryableTerminalExecution(definition, instance, currentStage)) {
+                this.terminalStageExecution.arm(instance.getId());
+                return ApprovalWorkflowDecision.PROCEED_TO_EXECUTE;
+            }
             throw new WorkflowRuntimeException("duplicate.approval", "User has already approved at stage " + instance.getCurrentStageCode(),
                     instance.getCurrentStageCode());
         }
@@ -86,9 +93,10 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
         }
 
         if (definition.isTerminalStage(instance.getCurrentStageCode())) {
-            instance.setStatus(WorkflowInstanceStatus.COMPLETED);
-            this.workflowInstanceRepository.saveAndFlush(instance);
-            return ApprovalWorkflowDecision.STAGE_RECORDED;
+            // Stay IN_PROGRESS until the command succeeds. TerminalStageExecutionAspect marks the instance COMPLETED
+            // only after approveEntry returns; a failed execution stays retryable for this approver.
+            this.terminalStageExecution.arm(instance.getId());
+            return ApprovalWorkflowDecision.PROCEED_TO_EXECUTE;
         }
 
         final String nextStageCode = definition.resolveNextStageCode(instance.getCurrentStageCode())
@@ -130,6 +138,16 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
         }
 
         return ApprovalWorkflowDecision.STAGE_RECORDED;
+    }
+
+    private boolean isRetryableTerminalExecution(final WorkflowDefinition definition, final WorkflowInstance instance,
+            final WorkflowStage currentStage) {
+        if (!definition.isTerminalStage(instance.getCurrentStageCode())) {
+            return false;
+        }
+        final long approvalCount = this.workflowInstanceActionRepository.countDistinctActorsByInstanceAndStageAndAction(instance.getId(),
+                instance.getCurrentStageCode(), WorkflowApprovalAction.APPROVE);
+        return approvalCount >= currentStage.getRequiredApprovals();
     }
 
     private WorkflowInstance findInProgressInstance(final Long commandSourceId) {

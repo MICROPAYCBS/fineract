@@ -19,6 +19,7 @@
 package org.apache.fineract.workflow.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
@@ -38,6 +39,7 @@ import org.apache.fineract.workflow.domain.WorkflowInstance;
 import org.apache.fineract.workflow.domain.WorkflowInstanceActionRepository;
 import org.apache.fineract.workflow.domain.WorkflowInstanceRepository;
 import org.apache.fineract.workflow.domain.WorkflowInstanceStatus;
+import org.apache.fineract.workflow.exception.WorkflowRuntimeException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,6 +64,9 @@ class WorkflowInstanceProcessServiceImplTest {
 
     @Mock
     private WorkflowStageAuthorizationService stageAuthorizationService;
+
+    @Mock
+    private TerminalStageExecution terminalStageExecution;
 
     @InjectMocks
     private WorkflowInstanceProcessServiceImpl service;
@@ -100,6 +105,7 @@ class WorkflowInstanceProcessServiceImplTest {
 
         assertEquals(ApprovalWorkflowDecision.PROCEED_TO_EXECUTE, this.service.processCheckerApprove(commandSource, checker));
         verify(this.workflowInstanceRepository, never()).findByCommandSourceIdWithDefinitionGraph(any());
+        verify(this.terminalStageExecution, never()).arm(any());
     }
 
     @Test
@@ -118,24 +124,62 @@ class WorkflowInstanceProcessServiceImplTest {
         assertEquals(ApprovalWorkflowDecision.STAGE_RECORDED, decision);
         assertEquals("HEAD_OFFICE", instance.getCurrentStageCode());
         verify(this.workflowInstanceRepository).saveAndFlush(instance);
+        verify(this.terminalStageExecution, never()).arm(any());
     }
 
     @Test
-    void terminalStageApprovalCompletesWorkflowAwaitingSystemChecker() {
+    void terminalStageApprovalProceedsToExecute() {
         instance.setCurrentStageCode("HEAD_OFFICE");
         when(this.tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
         when(this.workflowInstanceRepository.findByCommandSourceIdWithDefinitionGraph(42L)).thenReturn(Optional.of(instance));
-        doNothing().when(this.stageAuthorizationService).validateActorMayApproveAtStage(eq(commandSource), eq(instance), eq(checker), any());
+        doNothing().when(this.stageAuthorizationService).validateActorMayApproveAtStage(eq(commandSource), eq(instance), eq(checker),
+                any());
         when(this.workflowInstanceActionRepository.existsByWorkflowInstanceIdAndStageCodeAndActionAndCreatedBy(1L, "HEAD_OFFICE",
                 WorkflowApprovalAction.APPROVE, 99L)).thenReturn(false);
         when(this.workflowInstanceActionRepository.countDistinctActorsByInstanceAndStageAndAction(1L, "HEAD_OFFICE",
                 WorkflowApprovalAction.APPROVE)).thenReturn(1L);
-        when(this.workflowInstanceRepository.saveAndFlush(any(WorkflowInstance.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         final ApprovalWorkflowDecision decision = this.service.processCheckerApprove(commandSource, checker);
 
-        assertEquals(ApprovalWorkflowDecision.STAGE_RECORDED, decision);
-        assertEquals(WorkflowInstanceStatus.COMPLETED, instance.getStatus());
+        assertEquals(ApprovalWorkflowDecision.PROCEED_TO_EXECUTE, decision);
+        assertEquals(WorkflowInstanceStatus.IN_PROGRESS, instance.getStatus());
+        verify(this.workflowInstanceRepository, never()).saveAndFlush(any());
+        verify(this.terminalStageExecution).arm(1L);
+    }
+
+    @Test
+    void failedExecutionLeavesTerminalStageRetryableForSameApprover() {
+        instance.setCurrentStageCode("HEAD_OFFICE");
+        when(this.tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
+        when(this.workflowInstanceRepository.findByCommandSourceIdWithDefinitionGraph(42L)).thenReturn(Optional.of(instance));
+        doNothing().when(this.stageAuthorizationService).validateActorMayApproveAtStage(eq(commandSource), eq(instance), eq(checker),
+                any());
+        when(this.workflowInstanceActionRepository.existsByWorkflowInstanceIdAndStageCodeAndActionAndCreatedBy(1L, "HEAD_OFFICE",
+                WorkflowApprovalAction.APPROVE, 99L)).thenReturn(true);
+        when(this.workflowInstanceActionRepository.countDistinctActorsByInstanceAndStageAndAction(1L, "HEAD_OFFICE",
+                WorkflowApprovalAction.APPROVE)).thenReturn(1L);
+
+        final ApprovalWorkflowDecision decision = this.service.processCheckerApprove(commandSource, checker);
+
+        assertEquals(ApprovalWorkflowDecision.PROCEED_TO_EXECUTE, decision);
+        assertEquals(WorkflowInstanceStatus.IN_PROGRESS, instance.getStatus());
+        verify(this.workflowInstanceActionRepository, never()).saveAndFlush(any());
+        verify(this.terminalStageExecution).arm(1L);
+    }
+
+    @Test
+    void duplicateApprovalOnIntermediateStageIsRejected() {
+        when(this.tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
+        when(this.workflowInstanceRepository.findByCommandSourceIdWithDefinitionGraph(42L)).thenReturn(Optional.of(instance));
+        doNothing().when(this.stageAuthorizationService).validateActorMayApproveAtStage(eq(commandSource), eq(instance), eq(checker), any());
+        when(this.workflowInstanceActionRepository.existsByWorkflowInstanceIdAndStageCodeAndActionAndCreatedBy(1L, "BRANCH_MANAGER",
+                WorkflowApprovalAction.APPROVE, 99L)).thenReturn(true);
+
+        final WorkflowRuntimeException exception = assertThrows(WorkflowRuntimeException.class,
+                () -> this.service.processCheckerApprove(commandSource, checker));
+
+        assertEquals("error.msg.workflow.instance.duplicate.approval", exception.getGlobalisationMessageCode());
+        verify(this.terminalStageExecution, never()).arm(any());
     }
 
     @Test
@@ -151,5 +195,6 @@ class WorkflowInstanceProcessServiceImplTest {
 
         assertEquals(ApprovalWorkflowDecision.WORKFLOW_REJECTED, decision);
         assertEquals(WorkflowInstanceStatus.REJECTED, instance.getStatus());
+        verify(this.terminalStageExecution, never()).arm(any());
     }
 }
