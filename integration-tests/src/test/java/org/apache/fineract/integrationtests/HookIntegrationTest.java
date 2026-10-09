@@ -94,7 +94,7 @@ public class HookIntegrationTest {
     @Test
     public void createUpdateAndDeleteHook() {
         final String payloadURL = "http://echo-webhook.herokuapp.com:80/Z7RXoCBdLSFMDrpn/";
-        final String updateURL = "http://localhost";
+        final String updateURL = "http://localhost/";
 
         Long hookId = this.hookHelper.createHook(payloadURL).longValue();
         Assertions.assertNotNull(hookId);

@@ -158,6 +158,7 @@ public class HookWritePlatformServiceImpl implements HookWritePlatformService {
 
                 hook.setConfig(assembleConfig(request.getConfig(), hook.getTemplate()));
                 hook.getConfig().forEach(hookConfiguration -> hookConfiguration.setHook(hook));
+                validatePayloadUrls(hook.getConfig(), false);
             }
 
             if (!changes.isEmpty()) {
@@ -238,12 +239,7 @@ public class HookWritePlatformServiceImpl implements HookWritePlatformService {
             }
 
             if (conf.getFieldName().equals(payloadURLName)) {
-                try {
-                    var service = processorHelper.createWebHookService(fieldValue);
-                    service.sendEmptyRequest().execute();
-                } catch (IOException re) {
-                    baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("url.invalid");
-                }
+                validatePayloadUrl(fieldValue, dataValidationErrors, true);
             }
         }
 
@@ -272,6 +268,50 @@ public class HookWritePlatformServiceImpl implements HookWritePlatformService {
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
+    }
+
+    private void validatePayloadUrls(final Set<HookConfiguration> config, final boolean probeUrl) {
+        final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+        for (final HookConfiguration conf : config) {
+            if (conf.getFieldName().equals(payloadURLName)) {
+                validatePayloadUrl(conf.getFieldValue(), dataValidationErrors, probeUrl);
+            }
+        }
+        if (!dataValidationErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+    }
+
+    private void validatePayloadUrl(final String fieldValue, final List<ApiParameterError> dataValidationErrors, final boolean probeUrl) {
+        if (StringUtils.isBlank(fieldValue)) {
+            return;
+        }
+        if (!fieldValue.endsWith("/")) {
+            addPayloadUrlMustEndWithSlash(fieldValue, dataValidationErrors);
+            return;
+        }
+        if (!probeUrl) {
+            return;
+        }
+        try {
+            var service = processorHelper.createWebHookService(fieldValue);
+            service.sendEmptyRequest().execute();
+        } catch (final IOException ex) {
+            dataValidationErrors.add(ApiParameterError.parameterErrorWithValue("validation.msg.hook.url.invalid",
+                    "The payload URL is invalid.", payloadURLName, fieldValue));
+        } catch (final IllegalArgumentException ex) {
+            if (ex.getMessage() != null && ex.getMessage().startsWith("baseUrl must end in /")) {
+                addPayloadUrlMustEndWithSlash(fieldValue, dataValidationErrors);
+            } else {
+                dataValidationErrors.add(ApiParameterError.parameterErrorWithValue("validation.msg.hook.url.invalid",
+                        "The payload URL is invalid.", payloadURLName, fieldValue));
+            }
+        }
+    }
+
+    private void addPayloadUrlMustEndWithSlash(final String fieldValue, final List<ApiParameterError> dataValidationErrors) {
+        dataValidationErrors.add(ApiParameterError.parameterErrorWithValue("validation.msg.hook.payload.url.must.end.with.slash",
+                "The payload URL must end with /: " + fieldValue, payloadURLName, fieldValue));
     }
 
     private RuntimeException handleHookDataIntegrityIssues(final String name, final Throwable realCause, final Exception dve) {
