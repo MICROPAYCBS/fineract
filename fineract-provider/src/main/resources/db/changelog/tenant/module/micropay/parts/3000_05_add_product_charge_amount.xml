@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -21,26 +20,18 @@
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   logicalFilePath="db/changelog/tenant/parts/0245_add_product_charge_amount.xml"
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
     <changeSet author="fineract" id="1">
-        <addColumn tableName="twofactor_access_token">
-            <column name="ip_address" type="VARCHAR(45)"/>
-            <column name="user_agent" type="VARCHAR(500)"/>
-            <column name="revocation_reason" type="VARCHAR(50)"/>
+        <addColumn tableName="m_product_loan_charge">
+            <column name="amount" type="DECIMAL(19, 6)"/>
         </addColumn>
     </changeSet>
+
     <changeSet author="fineract" id="2">
-        <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">select count(1) from c_configuration where name = 'enforce-single-session'</sqlCheck>
-        </preConditions>
-        <insert tableName="c_configuration">
-            <column name="name" value="enforce-single-session"/>
-            <column name="value" value="1"/>
-            <column name="date_value"/>
-            <column name="string_value"/>
-            <column name="enabled" valueBoolean="false"/>
-            <column name="is_trap_door" valueBoolean="false"/>
-            <column name="description" value="When enabled, each user is limited to the configured number of concurrent two-factor sessions (value = maximum active sessions). A new login revokes the oldest sessions beyond the limit. Users with BYPASS_TWOFACTOR are unaffected."/>
-        </insert>
+        <addColumn tableName="m_savings_product_charge">
+            <column name="amount" type="DECIMAL(19, 6)"/>
+        </addColumn>
     </changeSet>
 </databaseChangeLog>

@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <!--
 
     Licensed to the Apache Software Foundation (ASF) under one
@@ -21,14 +20,19 @@
 -->
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+                   logicalFilePath="db/changelog/tenant/parts/0250_end_savings_charge_recurrence.xml"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
     <changeSet author="fineract" id="1">
-        <insert tableName="m_permission">
-            <column name="grouping" value="portfolio"/>
-            <column name="code" value="ACCRUE_LOAN"/>
-            <column name="entity_name" value="LOAN"/>
-            <column name="action_name" value="ACCRUE"/>
-            <column name="can_maker_checker" valueBoolean="false"/>
-        </insert>
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_savings_account_charge" columnName="recurrence_ended"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_savings_account_charge">
+            <column name="recurrence_ended" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
     </changeSet>
 </databaseChangeLog>
