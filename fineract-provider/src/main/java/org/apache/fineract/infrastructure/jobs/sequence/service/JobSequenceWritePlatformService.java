@@ -30,4 +30,6 @@ public interface JobSequenceWritePlatformService {
     CommandProcessingResult delete(Long sequenceId);
 
     CommandProcessingResult execute(Long sequenceId);
+
+    CommandProcessingResult cancelRun(Long sequenceId, Long runId);
 }

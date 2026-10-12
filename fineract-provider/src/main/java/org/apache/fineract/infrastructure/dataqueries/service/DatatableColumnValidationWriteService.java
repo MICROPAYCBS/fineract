@@ -25,6 +25,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseType;
 import org.apache.fineract.infrastructure.dataqueries.data.DatatableColumnValidationData;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -34,7 +36,28 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DatatableColumnValidationWriteService {
 
+    private static final String UPSERT_MYSQL = """
+            INSERT INTO x_table_column_validation
+                (registered_table_name, column_name, validation_regex, validation_example, validation_message)
+            VALUES (?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                validation_regex = VALUES(validation_regex),
+                validation_example = VALUES(validation_example),
+                validation_message = VALUES(validation_message)
+            """;
+
+    private static final String UPSERT_POSTGRESQL = """
+            INSERT INTO x_table_column_validation
+                (registered_table_name, column_name, validation_regex, validation_example, validation_message)
+            VALUES (?, ?, ?, ?, ?)
+            ON CONFLICT (registered_table_name, column_name) DO UPDATE SET
+                validation_regex = EXCLUDED.validation_regex,
+                validation_example = EXCLUDED.validation_example,
+                validation_message = EXCLUDED.validation_message
+            """;
+
     private final JdbcTemplate jdbcTemplate;
+    private final DatabaseSpecificSQLGenerator sqlGenerator;
 
     @Transactional
     public void upsertColumnValidation(final String registeredTableName, final String columnName, final String validationRegex,
@@ -50,16 +73,18 @@ public class DatatableColumnValidationWriteService {
             return;
         }
 
-        final String sql = """
-                INSERT INTO x_table_column_validation
-                    (registered_table_name, column_name, validation_regex, validation_example, validation_message)
-                VALUES (?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                    validation_regex = VALUES(validation_regex),
-                    validation_example = VALUES(validation_example),
-                    validation_message = VALUES(validation_message)
-                """;
-        jdbcTemplate.update(sql, registeredTableName, columnName, regex, example, message);
+        jdbcTemplate.update(upsertSql(), registeredTableName, columnName, regex, example, message);
+    }
+
+    private String upsertSql() {
+        final DatabaseType dialect = sqlGenerator.getDialect();
+        if (dialect.isPostgres()) {
+            return UPSERT_POSTGRESQL;
+        }
+        if (dialect.isMySql()) {
+            return UPSERT_MYSQL;
+        }
+        throw new IllegalStateException("Database type is not supported for column validation upsert: " + dialect);
     }
 
     @Transactional
@@ -97,9 +122,9 @@ public class DatatableColumnValidationWriteService {
         try {
             Pattern.compile(validationRegex.trim());
         } catch (final PatternSyntaxException e) {
-            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
-                    "validation.msg.datatable.column.invalid.regex.config", "Validation regex is invalid", columnName, "validationRegex",
-                    validationRegex)));
+            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterErrorWithValue(
+                    "validation.msg.datatable.column.invalid.regex.config", "Validation regex for column `" + columnName + "` is invalid",
+                    "validationRegex", validationRegex, columnName)));
         }
     }
 

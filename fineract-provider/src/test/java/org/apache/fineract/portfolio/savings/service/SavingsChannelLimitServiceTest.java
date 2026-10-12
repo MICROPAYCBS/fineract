@@ -38,6 +38,7 @@ import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -95,6 +96,7 @@ class SavingsChannelLimitServiceTest {
 
     @BeforeEach
     void setUp() {
+        lenient().when(usageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
         service = new SavingsChannelLimitService(context, configurationDomainService, savingsAccountRepository, productChannelRepository,
                 limitRepository, usageRepository, consumptionRepository, selfServiceUserClientMappingRepository);
         account = org.mockito.Mockito.mock(SavingsAccount.class);
@@ -116,7 +118,7 @@ class SavingsChannelLimitServiceTest {
                 .thenReturn(Optional.of(customer));
 
         assertTrue(fails(new BigDecimal("50"), false).contains("exceeds.per.transaction"));
-        assertTrue(authorize(new BigDecimal("40"), false).isEmpty());
+        assertEquals(2, authorize(new BigDecimal("40"), false).usages().size());
     }
 
     @Test
@@ -163,6 +165,9 @@ class SavingsChannelLimitServiceTest {
         day.add(new BigDecimal("10"), 1);
         when(usageRepository.findForUpdate(10L, 7L, SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.DAY, TXN_DATE))
                 .thenReturn(Optional.of(day));
+        when(usageRepository.findForUpdate(10L, 7L, SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.MONTH,
+                LocalDate.of(2026, 1, 1))).thenReturn(Optional.of(SavingsAccountChannelLimitUsage.start(account, channel,
+                        SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.MONTH, LocalDate.of(2026, 1, 1))));
 
         assertTrue(fails(new BigDecimal("1"), false).contains("exceeds.daily.count"));
     }
@@ -175,7 +180,7 @@ class SavingsChannelLimitServiceTest {
         when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
         when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
                 .thenReturn(Optional.empty());
-        assertTrue(authorize(new BigDecimal("1000"), false).isEmpty());
+        assertEquals(2, authorize(new BigDecimal("1000"), false).usages().size());
 
         channel.setMaxDebitPerTxn(BigDecimal.ZERO);
         when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
@@ -190,8 +195,9 @@ class SavingsChannelLimitServiceTest {
         when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
         when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
                 .thenReturn(Optional.empty());
-        assertTrue(authorize(new BigDecimal("100000"), false).isEmpty());
-        verify(usageRepository, never()).saveAndFlush(any());
+        final SavingsChannelLimitHold hold = authorize(new BigDecimal("100000"), false);
+        assertEquals(2, hold.usages().size());
+        verify(usageRepository, times(2)).saveAndFlush(any());
     }
 
     @Test
@@ -223,9 +229,16 @@ class SavingsChannelLimitServiceTest {
     @Test
     void bypassPermissionSkipsTheCheck() {
         stubUser(true);
+        stubAccount();
+        channel.setMaxDebitPerTxn(new BigDecimal("1"));
+        when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
+        when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
+                .thenReturn(Optional.empty());
+
         final SavingsChannelLimitHold hold = authorize(new BigDecimal("10"), false);
-        assertTrue(hold.isEmpty());
-        verify(productChannelRepository, never()).findByProductIdAndPaymentTypeId(any(), any());
+
+        assertEquals(2, hold.usages().size());
+        assertEquals(0, new BigDecimal("10").compareTo(hold.usages().get(0).getAmountUsed()));
     }
 
     @Test
@@ -241,20 +254,24 @@ class SavingsChannelLimitServiceTest {
 
         final SavingsChannelLimitHold hold = authorize(new BigDecimal("40"), false);
         hold.usages().get(0).setId(9L);
+        hold.usages().get(1).setId(10L);
         service.record(hold, 55L);
 
         final ArgumentCaptor<SavingsAccountChannelLimitConsumption> consumption = ArgumentCaptor
                 .forClass(SavingsAccountChannelLimitConsumption.class);
-        verify(consumptionRepository).save(consumption.capture());
-        assertEquals(55L, consumption.getValue().getSavingsAccountTransactionId());
-        assertEquals(0, new BigDecimal("40").compareTo(consumption.getValue().getAmount()));
+        verify(consumptionRepository, times(2)).save(consumption.capture());
+        assertEquals(2, consumption.getAllValues().size());
+        assertEquals(55L, consumption.getAllValues().get(0).getSavingsAccountTransactionId());
+        assertEquals(0, new BigDecimal("40").compareTo(consumption.getAllValues().get(0).getAmount()));
 
-        when(consumptionRepository.findBySavingsAccountTransactionId(55L)).thenReturn(List.of(consumption.getValue()));
+        when(consumptionRepository.findBySavingsAccountTransactionId(55L)).thenReturn(consumption.getAllValues());
         when(usageRepository.findOneForUpdate(9L)).thenReturn(Optional.of(hold.usages().get(0)));
+        when(usageRepository.findOneForUpdate(10L)).thenReturn(Optional.of(hold.usages().get(1)));
         service.release(55L);
         assertEquals(0, BigDecimal.ZERO.compareTo(hold.usages().get(0).getAmountUsed()));
         assertEquals(0, hold.usages().get(0).getCountUsed());
-        verify(consumptionRepository).deleteAll(List.of(consumption.getValue()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(hold.usages().get(1).getAmountUsed()));
+        verify(consumptionRepository).deleteAll(consumption.getAllValues());
     }
 
     @Test
@@ -286,7 +303,7 @@ class SavingsChannelLimitServiceTest {
                 """));
         assertEquals(0, new BigDecimal("500").compareTo(row.getMaxPerDay()));
         assertNull(row.getPendingEffectiveOn());
-        verify(limitRepository, times(2)).save(row);
+        verify(limitRepository, times(2)).saveAndFlush(row);
     }
 
     @Test
@@ -347,9 +364,64 @@ class SavingsChannelLimitServiceTest {
         when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
                 .thenReturn(Optional.of(customer));
 
-        assertTrue(authorize(new BigDecimal("400"), false).isEmpty());
+        assertEquals(2, authorize(new BigDecimal("400"), false).usages().size());
         assertEquals(0, new BigDecimal("500").compareTo(customer.getMaxPerTxn()));
         assertNull(customer.getPendingEffectiveOn());
+    }
+
+    @Test
+    void usageIsCountedWithoutAnyCap() {
+        stubUser(false);
+        stubAccount();
+        when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
+        when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
+                .thenReturn(Optional.empty());
+
+        final SavingsChannelLimitHold hold = authorize(new BigDecimal("80"), false);
+
+        assertEquals(2, hold.usages().size());
+        assertEquals(SavingsChannelLimitPeriodType.DAY, hold.usages().get(0).getPeriodType());
+        assertEquals(SavingsChannelLimitPeriodType.MONTH, hold.usages().get(1).getPeriodType());
+        assertEquals(0, new BigDecimal("80").compareTo(hold.usages().get(0).getAmountUsed()));
+        assertEquals(0, new BigDecimal("80").compareTo(hold.usages().get(1).getAmountUsed()));
+        assertEquals(1, hold.usages().get(0).getCountUsed());
+        assertEquals(1, hold.usages().get(1).getCountUsed());
+    }
+
+    @Test
+    void monthlyCapAddedLaterSeesEarlierUsage() {
+        stubUser(false);
+        stubAccount();
+        when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
+        when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
+                .thenReturn(Optional.empty());
+
+        final SavingsChannelLimitHold first = authorize(new BigDecimal("80"), false);
+        final SavingsAccountChannelLimitUsage month = first.usages().get(1);
+        channel.setMaxDebitPerMonth(new BigDecimal("100"));
+        when(usageRepository.findForUpdate(10L, 7L, SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.DAY, TXN_DATE))
+                .thenReturn(Optional.of(first.usages().get(0)));
+        when(usageRepository.findForUpdate(10L, 7L, SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.MONTH,
+                LocalDate.of(2026, 1, 1))).thenReturn(Optional.of(month));
+
+        assertTrue(fails(new BigDecimal("30"), false).contains("exceeds.monthly"));
+    }
+
+    @Test
+    void updateLimitReturnsFlushedResourceId() {
+        stubLimitUpdate();
+        when(limitRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            final SavingsAccountChannelLimit row = invocation.getArgument(0);
+            row.setId(12L);
+            return row;
+        });
+
+        final CommandProcessingResult result = service.update(10L, command("""
+                { "paymentTypeId": 3, "direction": "DEBIT", "maxPerTxn": 500, "locale": "en" }
+                """));
+
+        assertEquals(12L, result.getResourceId());
+        verify(limitRepository).saveAndFlush(any());
     }
 
     private SavingsChannelLimitHold authorize(final BigDecimal amount, final boolean transfer) {

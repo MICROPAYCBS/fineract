@@ -28,7 +28,6 @@ import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDoma
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
-import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.organisation.teller.domain.Cashier;
 import org.apache.fineract.organisation.teller.domain.Teller;
 import org.apache.fineract.organisation.teller.exception.ActiveCashierRequiredException;
@@ -63,10 +62,8 @@ public class CashierTransactionDataValidator {
         if (!this.configurationDomainService.isPreventCashierOverdrawEnabled()) {
             return;
         }
-        final SearchParameters searchParameters = SearchParameters.builder().build();
-        final CashierTransactionsWithSummaryData cashierTxnWithSummary = this.tellerManagementReadPlatformService
-                .retrieveCashierTransactionsWithSummary(cashierId, false, null, null, currencyCode, searchParameters);
-        if (MathUtil.isGreaterThan(transactionAmount, cashierTxnWithSummary.getNetCash())) {
+        final BigDecimal netCash = this.tellerManagementReadPlatformService.retrieveCashierNetCash(cashierId, currencyCode);
+        if (MathUtil.isGreaterThan(transactionAmount, netCash)) {
             throw new CashierInsufficientAmountException();
         }
     }
@@ -99,6 +96,22 @@ public class CashierTransactionDataValidator {
         }
         findActiveCashierIdOptional(user)
                 .ifPresent(cashierId -> validateSettleCashAndCashOutTransactions(cashierId, currencyCode, transactionAmount));
+    }
+
+    /**
+     * Cash going out of the till for a savings debit: needs an active cashier (if required) and, when prevent-cashier-overdraw is
+     * on, enough net cash in that cashier's till.
+     */
+    public void validateCashOut(final AppUser user, final PaymentDetail paymentDetail, final String currencyCode,
+            final BigDecimal amount) {
+        if (!isCashPayment(paymentDetail)) {
+            return;
+        }
+        validateActiveCashierRequired(user);
+        if (!this.configurationDomainService.isPreventCashierOverdrawEnabled()) {
+            return;
+        }
+        findActiveCashierIdOptional(user).ifPresent(cashierId -> validateSettleCashAndCashOutTransactions(cashierId, currencyCode, amount));
     }
 
     public void validateCashierAllowedDateAndTime(final Cashier cashier, final Teller teller) {

@@ -142,6 +142,10 @@ public class SavingsSchedularInterestPoster {
                                 savingsAccountData.getId(), auditDatetime, auditDatetime, false, BigDecimal.ZERO, BigDecimal.ZERO, null,
                                 savingsAccountTransactionData.getTransactionDate(), null, userId, userId,
                                 DateUtils.getBusinessLocalDate() });
+                    } else if (Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct())
+                            || Boolean.TRUE.equals(savingsAccountData.isAccrualBasedAccountingEnabledOnSavingsProduct())) {
+                        throw new IllegalStateException("No GL accounts selected for interest transaction refNo=" + key
+                                + " on savings account " + savingsAccountData.getId() + "; journal entry would be missing");
                     }
 
                 }

@@ -136,4 +136,10 @@
   <include relativeToChangelogFile="true" file="parts/3096_add_job_description.xml"/>
   <include relativeToChangelogFile="true" file="parts/3097_add_guarantor_national_id_number.xml"/>
   <include relativeToChangelogFile="true" file="parts/3098_add_savings_transaction_gl_account.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3099_fix_email_contact_type_regex.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3100_legal_tender_checker_permissions.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3101_fix_stock_reports_postgresql.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3102_job_sequence_cancel_recovery.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3103_delete_quipo_reports.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3104_remove_unused_global_configuration.xml"/>
 </databaseChangeLog>

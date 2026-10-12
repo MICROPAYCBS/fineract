@@ -201,8 +201,9 @@ public class AuditReadPlatformServiceImpl implements AuditReadPlatformService {
         }
 
         if (parameters.hasLimit()) {
-            sqlBuilder.append(' ').append(parameters.limitSql());
-            this.columnValidator.validateSqlInjection(sqlBuilder.toString(), parameters.limitSql());
+            final String limitSql = sqlGenerator.limit(parameters.getLimit(), parameters.hasOffset() ? parameters.getOffset() : 0);
+            sqlBuilder.append(' ').append(limitSql);
+            this.columnValidator.validateSqlInjection(sqlBuilder.toString(), limitSql);
         }
 
         log.debug("sql: {}", sqlBuilder);

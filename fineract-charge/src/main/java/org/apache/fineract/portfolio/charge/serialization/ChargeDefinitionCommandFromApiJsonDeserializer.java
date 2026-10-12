@@ -324,6 +324,14 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
     }
 
     public void validateForUpdate(final String json) {
+        validateForUpdate(json, null);
+    }
+
+    /**
+     * @param persistedChargeAppliesTo
+     *            the charge's stored chargeAppliesTo, used when the request does not send one
+     */
+    public void validateForUpdate(final String json, final Integer persistedChargeAppliesTo) {
         if (StringUtils.isBlank(json)) {
             throw new InvalidJsonException();
         }
@@ -495,7 +503,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         }
 
         if (this.fromApiJsonHelper.parameterExists(USE_CHARGE_TIERS, element) || this.chargeTierCommandParser.hasChargeTiers(element)) {
-            Integer chargeAppliesTo = ChargeAppliesTo.LOAN.getValue();
+            Integer chargeAppliesTo = persistedChargeAppliesTo != null ? persistedChargeAppliesTo : ChargeAppliesTo.LOAN.getValue();
             if (this.fromApiJsonHelper.parameterExists(CHARGE_APPLIES_TO, element)) {
                 chargeAppliesTo = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(CHARGE_APPLIES_TO, element);
             }

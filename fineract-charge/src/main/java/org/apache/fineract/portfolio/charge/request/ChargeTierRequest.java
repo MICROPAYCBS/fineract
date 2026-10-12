@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.charge.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -33,8 +34,11 @@ public class ChargeTierRequest implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "Inclusive lower bound of the band", example = "0.00")
     private BigDecimal amountRangeFrom;
     /** Exclusive upper bound; null/omitted = open-ended. */
+    @Schema(description = "Exclusive upper bound. Omit on the last open-ended tier.", example = "1000.00")
     private BigDecimal amountRangeTo;
+    @Schema(description = "Charge amount for this band", example = "10.00")
     private BigDecimal amount;
 }

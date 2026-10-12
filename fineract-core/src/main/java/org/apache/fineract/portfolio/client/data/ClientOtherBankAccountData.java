@@ -19,18 +19,31 @@
 
 package org.apache.fineract.portfolio.client.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
+@Schema(description = "Other bank account on a client compliance profile")
 public final class ClientOtherBankAccountData implements Serializable {
 
+    @Schema(description = "Other bank account identifier.", example = "1")
     private final Long id;
+
+    @Schema(description = "Client identifier.", example = "1")
     private final Long clientId;
+
+    @Schema(description = "Bank name. Maximum length 200.", example = "Example Bank")
     private final String bankName;
+
+    @Schema(description = "Branch name. Maximum length 200.", example = "Main Branch")
     private final String branchName;
+
+    @Schema(description = "Account number. Maximum length 50.", example = "0012345678")
     private final String accountNumber;
+
+    @Schema(description = "Display order from 1 to 2.", example = "1")
     private final Integer displayOrder;
 }

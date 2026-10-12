@@ -21,16 +21,24 @@ package org.apache.fineract.infrastructure.jobs.sequence.service;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.businessdate.service.BusinessDateWritePlatformService;
 import org.apache.fineract.infrastructure.core.config.TaskExecutorConstant;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.domain.FineractContext;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformException;
+import org.apache.fineract.infrastructure.core.exception.MultiException;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.jobs.domain.ScheduledJobDetail;
 import org.apache.fineract.infrastructure.jobs.domain.ScheduledJobDetailRepository;
+import org.apache.fineract.infrastructure.jobs.domain.ScheduledJobRunHistory;
+import org.apache.fineract.infrastructure.jobs.domain.ScheduledJobRunHistoryRepository;
 import org.apache.fineract.infrastructure.jobs.service.JobRegisterService;
+import org.apache.fineract.infrastructure.jobs.service.SchedulerServiceConstants;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequence;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceOperation;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceRepository;
@@ -44,6 +52,7 @@ import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceStepTy
 import org.apache.fineract.infrastructure.jobs.sequence.exception.JobSequenceDomainRuleException;
 import org.apache.fineract.infrastructure.jobs.sequence.exception.JobSequenceNotFoundException;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -62,6 +71,7 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
     private final JobSequenceRunRepository jobSequenceRunRepository;
     private final JobSequenceRunStepRepository jobSequenceRunStepRepository;
     private final ScheduledJobDetailRepository scheduledJobDetailRepository;
+    private final ScheduledJobRunHistoryRepository scheduledJobRunHistoryRepository;
     private final JobRegisterService jobRegisterService;
     private final BusinessDateWritePlatformService businessDateWritePlatformService;
     private final ThreadPoolTaskExecutor taskExecutor;
@@ -69,7 +79,8 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
 
     public JobSequenceExecutionServiceImpl(final JobSequenceRepository jobSequenceRepository,
             final JobSequenceRunRepository jobSequenceRunRepository, final JobSequenceRunStepRepository jobSequenceRunStepRepository,
-            final ScheduledJobDetailRepository scheduledJobDetailRepository, final JobRegisterService jobRegisterService,
+            final ScheduledJobDetailRepository scheduledJobDetailRepository,
+            final ScheduledJobRunHistoryRepository scheduledJobRunHistoryRepository, final JobRegisterService jobRegisterService,
             final BusinessDateWritePlatformService businessDateWritePlatformService,
             @Qualifier(TaskExecutorConstant.DEFAULT_TASK_EXECUTOR_BEAN_NAME) final ThreadPoolTaskExecutor taskExecutor,
             final PlatformTransactionManager transactionManager) {
@@ -77,6 +88,7 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
         this.jobSequenceRunRepository = jobSequenceRunRepository;
         this.jobSequenceRunStepRepository = jobSequenceRunStepRepository;
         this.scheduledJobDetailRepository = scheduledJobDetailRepository;
+        this.scheduledJobRunHistoryRepository = scheduledJobRunHistoryRepository;
         this.jobRegisterService = jobRegisterService;
         this.businessDateWritePlatformService = businessDateWritePlatformService;
         this.taskExecutor = taskExecutor;
@@ -111,7 +123,7 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
                 executeRun(runId);
             } catch (final Exception ex) {
                 log.error("Job sequence run {} failed unexpectedly", runId, ex);
-                markRunFailed(runId, ex.getMessage());
+                markRunFailed(runId, describeFailure(ex));
             } finally {
                 ThreadLocalContextUtil.reset();
             }
@@ -136,24 +148,38 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
             return;
         }
 
+        boolean anyFailed = false;
+        String lastFailure = null;
         for (final JobSequenceStep step : enabledSteps) {
+            if (!isStillRunning(runId)) {
+                return; // cancelled elsewhere; that code already closed the run
+            }
             final Long runStepId = beginStep(runId, step);
             try {
                 if (skipInactiveSchedulerJobIfNeeded(step, runStepId)) {
                     continue;
                 }
-                executeStep(step);
+                executeStep(runId, step);
                 completeStep(runStepId);
+            } catch (final RunNoLongerActiveException stopped) {
+                return;
             } catch (final Exception ex) {
+                final String reason = describeFailure(ex);
                 log.error("Job sequence step {} failed for run {}", step.getStepOrder(), runId, ex);
-                failStep(runStepId, ex.getMessage());
-                failRun(runId, ex.getMessage());
+                failStep(runStepId, reason);
+                anyFailed = true;
+                lastFailure = "Step " + step.getStepOrder() + ": " + reason;
                 if (step.isStopOnFailure()) {
+                    failRun(runId, lastFailure);
                     return;
                 }
             }
         }
-        completeRun(runId);
+        if (anyFailed) {
+            failRun(runId, lastFailure);
+        } else {
+            completeRun(runId);
+        }
     }
 
     /**
@@ -185,12 +211,12 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
         return false;
     }
 
-    private void executeStep(final JobSequenceStep step) {
+    private void executeStep(final Long runId, final JobSequenceStep step) {
         if (step.getStepType() == JobSequenceStepType.OPERATION) {
             executeOperation(JobSequenceOperation.fromString(step.getOperationCode()));
             return;
         }
-        executeSchedulerJob(step.getJobShortName());
+        executeSchedulerJob(runId, step.getJobShortName());
     }
 
     private void executeOperation(final JobSequenceOperation operation) {
@@ -200,13 +226,13 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
                 return;
             }
         } catch (final Exception ex) {
-            throw new JobSequenceDomainRuleException("operation.failed", "Sequence operation " + operation + " failed: " + ex.getMessage(),
-                    operation.name());
+            throw new JobSequenceDomainRuleException("operation.failed",
+                    "Sequence operation " + operation + " failed: " + describeFailure(ex), operation.name());
         }
         throw new JobSequenceDomainRuleException("unknown.operation", "Unsupported sequence operation " + operation, operation.name());
     }
 
-    private void executeSchedulerJob(final String shortName) {
+    private void executeSchedulerJob(final Long runId, final String shortName) {
         final Long jobId = this.scheduledJobDetailRepository.findIdByShortName(shortName)
                 .orElseThrow(() -> new JobSequenceDomainRuleException("unknown.job", "Unknown scheduler job short name " + shortName,
                         shortName));
@@ -216,13 +242,30 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
         }
         final Date previousStart = jobDetail.getPreviousRunStartTime();
         this.jobRegisterService.executeJobWithParameters(jobId, null);
-        awaitJobCompletion(jobId, previousStart, shortName);
+        final Date runStart = awaitJobCompletion(runId, jobId, previousStart, shortName);
+        verifyJobSucceeded(jobId, runStart, shortName);
     }
 
-    private void awaitJobCompletion(final Long jobId, final Date previousStart, final String shortName) {
+    private void verifyJobSucceeded(final Long jobId, final Date runStart, final String shortName) {
+        final ScheduledJobRunHistory last = this.scheduledJobRunHistoryRepository.findLatestByJobId(jobId, PageRequest.of(0, 1)).stream()
+                .findFirst().orElse(null);
+        if (last == null || (runStart != null && last.getStartTime() != null && last.getStartTime().before(runStart))) {
+            throw new JobSequenceDomainRuleException("job.result.missing",
+                    "Scheduler job " + shortName + " finished but recorded no result", shortName);
+        }
+        if (!SchedulerServiceConstants.STATUS_SUCCESS.equalsIgnoreCase(last.getStatus())) {
+            final String reason = last.getErrorMessage() == null ? "" : ": " + firstLine(last.getErrorMessage());
+            throw new JobSequenceDomainRuleException("job.failed", "Scheduler job " + shortName + " failed" + reason, shortName);
+        }
+    }
+
+    private Date awaitJobCompletion(final Long runId, final Long jobId, final Date previousStart, final String shortName) {
         final long deadline = System.currentTimeMillis() + JOB_WAIT_TIMEOUT_MS;
         boolean started = false;
         while (System.currentTimeMillis() < deadline) {
+            if (!isStillRunning(runId)) {
+                throw new RunNoLongerActiveException();
+            }
             final ScheduledJobDetail current = this.scheduledJobDetailRepository.findByJobId(jobId);
             if (current == null) {
                 throw new JobSequenceDomainRuleException("job.missing", "Scheduler job " + shortName + " disappeared during execution",
@@ -235,7 +278,7 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
                 started = true;
             }
             if ((started || startChanged) && !current.isCurrentlyRunning() && startChanged) {
-                return;
+                return currentStart;
             }
             try {
                 Thread.sleep(JOB_WAIT_POLL_MS);
@@ -245,6 +288,39 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
             }
         }
         throw new JobSequenceDomainRuleException("job.timeout", "Timed out waiting for scheduler job " + shortName, shortName);
+    }
+
+    private boolean isStillRunning(final Long runId) {
+        return this.jobSequenceRunRepository.findById(runId).map(r -> r.getStatus() == JobSequenceRunStatus.RUNNING).orElse(false);
+    }
+
+    /** Thrown internally when the run was cancelled while a step was in progress. */
+    private static final class RunNoLongerActiveException extends RuntimeException {
+
+        RunNoLongerActiveException() {
+            super(null, null, false, false);
+        }
+    }
+
+    /** One-line, user-facing reason. Never includes stack traces; the full exception is in the server log. */
+    static String describeFailure(final Throwable ex) {
+        if (ex instanceof MultiException multi) {
+            return multi.getCauses().stream().map(JobSequenceExecutionServiceImpl::describeFailure).distinct()
+                    .collect(Collectors.joining("; "));
+        }
+        if (ex instanceof PlatformApiDataValidationException validation && !validation.getErrors().isEmpty()) {
+            return validation.getErrors().stream().map(ApiParameterError::getDefaultUserMessage).distinct().collect(Collectors.joining("; "));
+        }
+        if (ex instanceof AbstractPlatformException platform && platform.getDefaultUserMessage() != null) {
+            return firstLine(platform.getDefaultUserMessage());
+        }
+        final String message = ex.getMessage();
+        return message == null || message.isBlank() ? ex.getClass().getSimpleName() : firstLine(message);
+    }
+
+    private static String firstLine(final String text) {
+        final int newline = text.indexOf('\n');
+        return newline < 0 ? text.trim() : text.substring(0, newline).trim();
     }
 
     private Long beginStep(final Long runId, final JobSequenceStep step) {
@@ -281,6 +357,9 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
             final JobSequenceRunStep runStep = this.jobSequenceRunStepRepository.findById(runStepId)
                     .orElseThrow(() -> new JobSequenceDomainRuleException("run.step.not.found",
                             "Job sequence run step " + runStepId + " not found", runStepId));
+            if (runStep.getStatus() != JobSequenceRunStatus.RUNNING) {
+                return;
+            }
             runStep.setStatus(JobSequenceRunStatus.COMPLETED);
             runStep.setFinishedAt(DateUtils.getAuditOffsetDateTime());
             this.jobSequenceRunStepRepository.saveAndFlush(runStep);
@@ -310,6 +389,9 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
             final JobSequenceRunStep runStep = this.jobSequenceRunStepRepository.findById(runStepId)
                     .orElseThrow(() -> new JobSequenceDomainRuleException("run.step.not.found",
                             "Job sequence run step " + runStepId + " not found", runStepId));
+            if (runStep.getStatus() != JobSequenceRunStatus.RUNNING) {
+                return;
+            }
             runStep.setStatus(JobSequenceRunStatus.FAILED);
             runStep.setFinishedAt(DateUtils.getAuditOffsetDateTime());
             runStep.setErrorMessage(trimMessage(message));
@@ -331,6 +413,9 @@ public class JobSequenceExecutionServiceImpl implements JobSequenceExecutionServ
     private void failRun(final Long runId, final String message) {
         this.transactionTemplate.executeWithoutResult(status -> {
             final JobSequenceRun run = loadRun(runId);
+            if (run.getStatus() != JobSequenceRunStatus.RUNNING) {
+                return;
+            }
             run.setStatus(JobSequenceRunStatus.FAILED);
             run.setFinishedAt(DateUtils.getAuditOffsetDateTime());
             run.setErrorMessage(trimMessage(message));

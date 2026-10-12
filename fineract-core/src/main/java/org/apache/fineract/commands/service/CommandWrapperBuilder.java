@@ -250,6 +250,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DEPARTMENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LEGAL_TENDER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOBSEQUENCE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SHAREPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMS;
@@ -577,6 +578,32 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder createLegalTender(final String currencyCode) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_LEGAL_TENDER;
+        this.transactionId = currencyCode;
+        this.href = "/currencies/" + currencyCode + "/legal-tenders";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateLegalTender(final String currencyCode, final Long legalTenderId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_LEGAL_TENDER;
+        this.transactionId = currencyCode;
+        this.entityId = legalTenderId;
+        this.href = "/currencies/" + currencyCode + "/legal-tenders/" + legalTenderId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteLegalTender(final String currencyCode, final Long legalTenderId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_LEGAL_TENDER;
+        this.transactionId = currencyCode;
+        this.entityId = legalTenderId;
+        this.href = "/currencies/" + currencyCode + "/legal-tenders/" + legalTenderId;
+        return this;
+    }
+
     public CommandWrapperBuilder createJobSequence() {
         this.actionName = ACTION_CREATE;
         this.entityName = ENTITY_JOBSEQUENCE;
@@ -605,6 +632,15 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_JOBSEQUENCE;
         this.href = "/jobsequences/" + sequenceId + "?command=execute";
         this.entityId = sequenceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder cancelJobSequenceRun(final long sequenceId, final long runId) {
+        this.actionName = ACTION_CANCEL;
+        this.entityName = ENTITY_JOBSEQUENCE;
+        this.href = "/jobsequences/" + sequenceId + "/runs/" + runId + "?command=cancel";
+        this.entityId = sequenceId;
+        this.subentityId = runId;
         return this;
     }
 

@@ -19,6 +19,12 @@
 package org.apache.fineract.portfolio.subindustry.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -46,9 +52,12 @@ import org.springframework.stereotype.Component;
 
 @Path("/v1/subindustries")
 @Component
-@Tag(name = "SubIndustry", description = "Micropay sub-industry master data")
+@Tag(name = "SubIndustry", description = "Sub-industries used to classify clients. A sub-industry belongs to an industry.")
 @RequiredArgsConstructor
 public class SubIndustryApiResource {
+
+    private static final String WRITE_OK = "Command accepted. When maker-checker holds the command, the body is "
+            + "{ commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.";
 
     private final SubIndustryReadPlatformService readPlatformService;
     private final IndustryReadPlatformService industryReadPlatformService;
@@ -57,7 +66,9 @@ public class SubIndustryApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List sub-industries", operationId = "retrieveAllSubIndustries")
+    @Operation(summary = "List sub-industries", operationId = "retrieveAllSubIndustries", description = "Returns every sub-industry, active and inactive.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = SubIndustryData.class))))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_SUBINDUSTRY permission.")
     public List<SubIndustryData> retrieveAll() {
         return this.readPlatformService.retrieveAll();
     }
@@ -65,7 +76,8 @@ public class SubIndustryApiResource {
     @GET
     @Path("/template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve sub-industry template", operationId = "retrieveSubIndustryTemplate")
+    @Operation(summary = "Retrieve sub-industry template", operationId = "retrieveSubIndustryTemplate", description = "Returns the allowed status values and the active industries a sub-industry can belong to.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = SubIndustryApiResourceSwagger.GetSubIndustryTemplateResponse.class)))
     public Map<String, Object> retrieveTemplate() {
         final Map<String, Object> response = new HashMap<>();
         response.put("statusOptions", List.of("ACTIVE", "INACTIVE"));
@@ -76,15 +88,25 @@ public class SubIndustryApiResource {
     @GET
     @Path("/{subIndustryId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve sub-industry", operationId = "retrieveSubIndustry")
-    public SubIndustryData retrieveOne(@PathParam("subIndustryId") final Long subIndustryId) {
+    @Operation(summary = "Retrieve sub-industry", operationId = "retrieveSubIndustry", description = "Returns one sub-industry.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = SubIndustryData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_SUBINDUSTRY permission.")
+    @ApiResponse(responseCode = "404", description = "No sub-industry with this id (error.msg.subindustry.not.found).")
+    public SubIndustryData retrieveOne(
+            @PathParam("subIndustryId") @Parameter(description = "Sub-industry id", example = "1") final Long subIndustryId) {
         return this.readPlatformService.retrieveOne(subIndustryId);
     }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create sub-industry", operationId = "createSubIndustry")
+    @Operation(summary = "Create sub-industry", operationId = "createSubIndustry", description = "Creates a sub-industry. subIndustryCode and subIndustryName are required. "
+            + "subIndustryCode must be unique. status is ACTIVE or INACTIVE. The command can be held by maker-checker.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = SubIndustryRequest.class)))
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation: subIndustryCode or subIndustryName blank or too long, industryId not positive, status not ACTIVE/INACTIVE.")
+    @ApiResponse(responseCode = "403", description = "The user lacks CREATE_SUBINDUSTRY permission, or subIndustryCode already exists (error.msg.subindustry.duplicate.code).")
+    @ApiResponse(responseCode = "404", description = "industryId names an industry that does not exist (error.msg.industry.not.found).")
     public CommandProcessingResult create(final SubIndustryRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createSubIndustry()
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -95,8 +117,15 @@ public class SubIndustryApiResource {
     @Path("/{subIndustryId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update sub-industry", operationId = "updateSubIndustry")
-    public CommandProcessingResult update(@PathParam("subIndustryId") final Long subIndustryId, final SubIndustryRequest request) {
+    @Operation(summary = "Update sub-industry", operationId = "updateSubIndustry", description = "Updates the fields sent. A changed subIndustryCode must stay unique. The command can be held by maker-checker.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = SubIndustryRequest.class)))
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The user lacks UPDATE_SUBINDUSTRY permission, or subIndustryCode already exists (error.msg.subindustry.duplicate.code).")
+    @ApiResponse(responseCode = "404", description = "The sub-industry does not exist (error.msg.subindustry.not.found), or industryId names an industry that does not exist (error.msg.industry.not.found).")
+    public CommandProcessingResult update(
+            @PathParam("subIndustryId") @Parameter(description = "Sub-industry id", example = "1") final Long subIndustryId,
+            final SubIndustryRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateSubIndustry(subIndustryId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -105,8 +134,12 @@ public class SubIndustryApiResource {
     @DELETE
     @Path("/{subIndustryId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete sub-industry", operationId = "deleteSubIndustry")
-    public CommandProcessingResult delete(@PathParam("subIndustryId") final Long subIndustryId) {
+    @Operation(summary = "Delete sub-industry", operationId = "deleteSubIndustry", description = "Deletes a sub-industry that is not in use. The command can be held by maker-checker.")
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks DELETE_SUBINDUSTRY permission, or the sub-industry is in use (error.msg.subindustry.in.use).")
+    @ApiResponse(responseCode = "404", description = "No sub-industry with this id (error.msg.subindustry.not.found).")
+    public CommandProcessingResult delete(
+            @PathParam("subIndustryId") @Parameter(description = "Sub-industry id", example = "1") final Long subIndustryId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteSubIndustry(subIndustryId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

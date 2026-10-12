@@ -18,10 +18,12 @@
  */
 package org.apache.fineract.infrastructure.jobs.sequence.service;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -30,8 +32,11 @@ import org.apache.fineract.infrastructure.jobs.sequence.data.JobSequenceRequest;
 import org.apache.fineract.infrastructure.jobs.sequence.data.JobSequenceStepRequest;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequence;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceRepository;
+import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceRun;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceRunRepository;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceRunStatus;
+import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceRunStep;
+import org.apache.fineract.infrastructure.jobs.sequence.exception.JobSequenceRunNotFoundException;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceStep;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceStepRepository;
 import org.apache.fineract.infrastructure.jobs.sequence.domain.JobSequenceStepType;
@@ -111,6 +116,32 @@ public class JobSequenceWritePlatformServiceImpl implements JobSequenceWritePlat
     public CommandProcessingResult execute(final Long sequenceId) {
         final AppUser user = this.context.authenticatedUser();
         final Long runId = this.executionService.startExecution(sequenceId, user.getId());
+        return new CommandProcessingResultBuilder().withEntityId(sequenceId).withSubEntityId(runId).build();
+    }
+
+    @Override
+    @Transactional
+    public CommandProcessingResult cancelRun(final Long sequenceId, final Long runId) {
+        final AppUser user = this.context.authenticatedUser();
+        final JobSequenceRun run = this.jobSequenceRunRepository.findByIdWithSteps(runId)
+                .filter(r -> r.getSequence().getId().equals(sequenceId))
+                .orElseThrow(() -> new JobSequenceRunNotFoundException(runId));
+        if (run.getStatus() != JobSequenceRunStatus.RUNNING) {
+            throw new JobSequenceDomainRuleException("run.not.running", "Job sequence run " + runId + " is not running", runId);
+        }
+        final OffsetDateTime now = DateUtils.getAuditOffsetDateTime();
+        final String message = "Cancelled by " + user.getUsername();
+        run.setStatus(JobSequenceRunStatus.CANCELLED);
+        run.setFinishedAt(now);
+        run.setErrorMessage(message);
+        for (final JobSequenceRunStep step : run.getSteps()) {
+            if (step.getStatus() == JobSequenceRunStatus.RUNNING) {
+                step.setStatus(JobSequenceRunStatus.CANCELLED);
+                step.setFinishedAt(now);
+                step.setErrorMessage(message);
+            }
+        }
+        this.jobSequenceRunRepository.saveAndFlush(run);
         return new CommandProcessingResultBuilder().withEntityId(sequenceId).withSubEntityId(runId).build();
     }
 

@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -61,8 +62,8 @@ public class ProductChargeLinkAssembler {
             return links;
         }
 
-        String productCurrencyCode = command.stringValueOfParameterNamed("currencyCode");
-        if (productCurrencyCode == null) {
+        String productCurrencyCode = command.stringValueOfParameterNamedAllowingNull("currencyCode");
+        if (StringUtils.isBlank(productCurrencyCode)) {
             productCurrencyCode = currencyCode;
         }
 

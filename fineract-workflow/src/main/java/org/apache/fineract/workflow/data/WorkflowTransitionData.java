@@ -18,15 +18,21 @@
  */
 package org.apache.fineract.workflow.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
+@Schema(description = "Directed transition from one stage to another")
 public class WorkflowTransitionData {
 
+    @Schema(description = "Transition id", example = "20")
     private final Long id;
+    @Schema(description = "Stage code the transition leaves", example = "REVIEW")
     private final String fromStageCode;
+    @Schema(description = "Stage code the transition enters", example = "APPROVAL")
     private final String toStageCode;
+    @Schema(description = "Order of this transition among those leaving the same stage", example = "1")
     private final Integer sequenceNo;
 }

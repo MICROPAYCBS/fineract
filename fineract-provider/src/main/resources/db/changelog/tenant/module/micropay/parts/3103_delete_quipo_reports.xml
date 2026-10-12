@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: delete the six Quipo reports that read m_loan_paid_in_advance (dropped by fineract 0014).
+  Skipped on a tenant where a campaign or mailing job still points at one of them.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="micropay" id="3103-delete-quipo-reports">
+        <preConditions onFail="MARK_RAN" onFailMessage="A campaign or report mailing job uses a Quipo report; not deleted">
+            <sqlCheck expectedResult="0">
+                SELECT (SELECT COUNT(*) FROM sms_campaign x JOIN stretchy_report r ON r.id = x.report_id
+                        WHERE r.report_name IN ('BranchManagerStats', 'CoordinatorStats', 'FieldAgentStats',
+                                                'ProgramDetails', 'ProgramDirectorStats', 'ProgramStats'))
+                     + (SELECT COUNT(*) FROM scheduled_email_campaign x JOIN stretchy_report r ON r.id = x.stretchy_report_id
+                        WHERE r.report_name IN ('BranchManagerStats', 'CoordinatorStats', 'FieldAgentStats',
+                                                'ProgramDetails', 'ProgramDirectorStats', 'ProgramStats'))
+                     + (SELECT COUNT(*) FROM m_report_mailing_job x JOIN stretchy_report r ON r.id = x.stretchy_report_id
+                        WHERE r.report_name IN ('BranchManagerStats', 'CoordinatorStats', 'FieldAgentStats',
+                                                'ProgramDetails', 'ProgramDirectorStats', 'ProgramStats'))
+            </sqlCheck>
+        </preConditions>
+        <sql>
+            DELETE FROM m_role_permission
+            WHERE permission_id IN (SELECT id FROM m_permission
+                                    WHERE code IN ('READ_BranchManagerStats', 'READ_CoordinatorStats', 'READ_FieldAgentStats',
+                                                   'READ_ProgramDetails', 'READ_ProgramDirectorStats', 'READ_ProgramStats'));
+
+            DELETE FROM m_permission
+            WHERE code IN ('READ_BranchManagerStats', 'READ_CoordinatorStats', 'READ_FieldAgentStats',
+                           'READ_ProgramDetails', 'READ_ProgramDirectorStats', 'READ_ProgramStats');
+
+            DELETE FROM stretchy_report_parameter
+            WHERE report_id IN (SELECT id FROM stretchy_report
+                                WHERE report_name IN ('BranchManagerStats', 'CoordinatorStats', 'FieldAgentStats',
+                                                      'ProgramDetails', 'ProgramDirectorStats', 'ProgramStats'));
+
+            DELETE FROM stretchy_report
+            WHERE report_name IN ('BranchManagerStats', 'CoordinatorStats', 'FieldAgentStats',
+                                  'ProgramDetails', 'ProgramDirectorStats', 'ProgramStats')
+              AND report_category = 'Quipo';
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

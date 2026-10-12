@@ -227,6 +227,11 @@ public final class Report extends AbstractPersistableCustom<Long> {
                 baseDataValidator.reset().parameter("reportSubType").value(this.reportSubType)
                         .cantBeBlankWhenParameterProvidedIs("reportType", this.reportType)
                         .isOneOfTheseValues(new Object[] { "Bar", "Pie" });
+            } else if (this.reportType.equals("SMS")) {
+                // SMS reports pick campaign recipients: Triggered = sent on an event, NonTriggered = sent on a schedule
+                baseDataValidator.reset().parameter("reportSubType").value(this.reportSubType)
+                        .cantBeBlankWhenParameterProvidedIs("reportType", this.reportType)
+                        .isOneOfTheseValues(new Object[] { "Triggered", "NonTriggered" });
             } else {
                 baseDataValidator.reset().parameter("reportSubType").value(this.reportSubType)
                         .mustBeBlankWhenParameterProvidedIs("reportType", this.reportType);
@@ -236,7 +241,7 @@ public final class Report extends AbstractPersistableCustom<Long> {
         baseDataValidator.reset().parameter("reportCategory").value(this.reportCategory).notExceedingLengthOf(45);
 
         if (StringUtils.isNotBlank(this.reportType)) {
-            if (this.reportType.equals("Table") || this.reportType.equals("Chart")) {
+            if (this.reportType.equals("Table") || this.reportType.equals("Chart") || this.reportType.equals("SMS")) {
                 baseDataValidator.reset().parameter("reportSql").value(this.reportSql).cantBeBlankWhenParameterProvidedIs("reportType",
                         this.reportType);
             } else {

@@ -20,6 +20,9 @@ package org.apache.fineract.commands.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.BeanParam;
 import jakarta.ws.rs.GET;
@@ -30,13 +33,21 @@ import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.data.AuditData;
 import org.apache.fineract.commands.data.AuditSearchData;
+import org.apache.fineract.commands.domain.CommandProcessingResultType;
 import org.apache.fineract.commands.data.request.AuditRequest;
 import org.apache.fineract.commands.service.AuditReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.data.PaginationParameters;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSerializationSettings;
 import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
@@ -66,12 +77,16 @@ public class AuditsApiResource {
             + "\n" + "Example Requests:\n" + "\n" + "audits\n" + "\n" + "audits?fields=madeOnDate,maker,processingResult\n" + "\n"
             + "audits?makerDateTimeFrom=2013-03-25 08:00:00&makerDateTimeTo=2013-04-04 18:00:00\n" + "\n" + "audits?officeId=1\n" + "\n"
             + "audits?officeId=1&includeJson=true")
+    @ApiResponse(responseCode = "200", description = "A list, or a page when paged=true.", content = @Content(schema = @Schema(oneOf = {
+            AuditData[].class, AuditsApiResourceSwagger.GetAuditsPagedResponse.class })))
+    @ApiResponse(responseCode = "400", description = "status or processingResult is not a known processing result, or a date filter is not a valid date.")
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_AUDIT permission.")
     public String retrieveAuditEntries(@Context final UriInfo uriInfo, @BeanParam AuditRequest auditRequest,
-            @QueryParam("offset") @Parameter(description = "offset") final Integer offset,
-            @QueryParam("limit") @Parameter(description = "limit") final Integer limit,
-            @QueryParam("orderBy") @Parameter(description = "orderBy") final String orderBy,
-            @QueryParam("sortOrder") @Parameter(description = "sortOrder") final String sortOrder,
-            @QueryParam("paged") @Parameter(description = "paged") final Boolean paged) {
+            @QueryParam("offset") @Parameter(description = "Page offset. Used when paged=true.", example = "0") final Integer offset,
+            @QueryParam("limit") @Parameter(description = "Page size. Used when paged=true.", example = "50") final Integer limit,
+            @QueryParam("orderBy") @Parameter(description = "Column to sort by.", example = "id") final String orderBy,
+            @QueryParam("sortOrder") @Parameter(description = "ASC or DESC.", example = "DESC") final String sortOrder,
+            @QueryParam("paged") @Parameter(description = "When true, the body is a page with totalFilteredRecords and pageItems.", example = "true") final Boolean paged) {
 
         context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         final PaginationParameters parameters = PaginationParameters.builder().paged(Boolean.TRUE.equals(paged)).limit(limit).offset(offset)
@@ -89,7 +104,10 @@ public class AuditsApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve an Audit Entry", description = "Example Requests:\n" + "\n" + "audits/20\n"
             + "audits/20?fields=madeOnDate,maker,processingResult")
-    public AuditData retrieveAuditEntry(@PathParam("auditId") @Parameter final Long auditId) {
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = AuditData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_AUDIT permission.")
+    @ApiResponse(responseCode = "404", description = "No audit entry with this id.")
+    public AuditData retrieveAuditEntry(@PathParam("auditId") @Parameter(description = "Audit entry id", example = "20") final Long auditId) {
         context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return auditReadPlatformService.retrieveAuditEntry(auditId);
 
@@ -100,6 +118,8 @@ public class AuditsApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Audit Search Template", description = "This is a convenience resource. It can be useful when building an Audit Search UI. \"appUsers\" are data scoped to the office/branch the requestor is associated with.\n"
             + "\n" + "Example Requests:\n" + "\n" + "audits/searchtemplate\n" + "audits/searchtemplate?fields=actionNames")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = AuditSearchData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_AUDIT permission.")
     public AuditSearchData retrieveAuditSearchTemplate() {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return this.auditReadPlatformService.retrieveSearchTemplate("audit");
@@ -147,7 +167,9 @@ public class AuditsApiResource {
                         SQLBuilder.WhereLogicalOperator.OR);
             });
         }
-        extraCriteria.addNonNullCriteria("aud.status = ", auditRequest.getStatus());
+        extraCriteria.addNonNullCriteria("aud.status = ", resolveProcessingResult("status", auditRequest.getStatus()));
+        extraCriteria.addNonNullCriteria("aud.status = ",
+                resolveProcessingResult("processingResult", auditRequest.getProcessingResult()));
         extraCriteria.addNonNullCriteria("aud.office_id = ", auditRequest.getOfficeId());
         extraCriteria.addNonNullCriteria("aud.group_id = ", auditRequest.getGroupId());
         extraCriteria.addNonNullCriteria("aud.client_id = ", auditRequest.getClientId());
@@ -155,5 +177,33 @@ public class AuditsApiResource {
         extraCriteria.addNonNullCriteria("aud.savings_account_id = ", auditRequest.getSavingsAccountId());
 
         return extraCriteria;
+    }
+
+    /**
+     * Accepts the numeric status (0-5), the enum name (PROCESSED, AWAITING_APPROVAL) or the display text shown in
+     * processingResult ("Processed", "Awaiting Approval"). Returns null when the parameter is not sent.
+     */
+    static Integer resolveProcessingResult(final String parameterName, final String rawValue) {
+        if (StringUtils.isBlank(rawValue)) {
+            return null;
+        }
+        final String value = rawValue.trim();
+        if (StringUtils.isNumeric(value) && value.length() <= 3) {
+            final int id = Integer.parseInt(value);
+            if (CommandProcessingResultType.fromInt(id).getValue() == id) {
+                return id;
+            }
+        } else {
+            final String name = value.toUpperCase(Locale.ROOT).replace(' ', '_');
+            for (final CommandProcessingResultType type : CommandProcessingResultType.values()) {
+                if (type.name().equals(name)) {
+                    return type.getValue();
+                }
+            }
+        }
+        final List<ApiParameterError> errors = new ArrayList<>();
+        new DataValidatorBuilder(errors).resource("audit").parameter(parameterName).value(rawValue)
+                .failWithCode("is.not.one.of.expected.enumerations");
+        throw new PlatformApiDataValidationException(errors);
     }
 }

@@ -283,4 +283,21 @@ class ClientDataValidatorTest {
 
         assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.clientIdentifiers.equals(e.getParameterName())));
     }
+
+    @Test
+    void validateForUpdate_withOnlyMicropayFields_doesNotThrow() {
+        assertDoesNotThrow(() -> validator.validateForUpdate("{\"titleId\": 3}"));
+        assertDoesNotThrow(() -> validator.validateForUpdate("{\"subIndustryId\": 7}"));
+        assertDoesNotThrow(() -> validator.validateForUpdate("{\"customerClassId\": null}"));
+        assertDoesNotThrow(() -> validator.validateForUpdate("{\"emailAddress\": \"a@b.co\"}"));
+        assertDoesNotThrow(() -> validator.validateForUpdate("{\"isStaff\": false}"));
+    }
+
+    @Test
+    void validateForUpdate_withNonPositiveMaritalStatusId_throws() {
+        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
+                () -> validator.validateForUpdate("{\"maritalStatusId\": 0}"));
+
+        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.maritalStatusIdParamName.equals(e.getParameterName())));
+    }
 }

@@ -136,6 +136,7 @@ import org.apache.fineract.portfolio.savings.exception.PostInterestAsOnDateExcep
 import org.apache.fineract.portfolio.savings.exception.PostInterestClosingDateException;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountClosingNotAllowedException;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountTransactionNotFoundException;
+import org.apache.fineract.portfolio.savings.exception.SavingsInterestPostingGlMappingMissingException;
 import org.apache.fineract.portfolio.savings.exception.SavingsOfficerAssignmentException;
 import org.apache.fineract.portfolio.savings.exception.SavingsOfficerUnassignmentException;
 import org.apache.fineract.portfolio.savings.exception.TransactionUpdateNotAllowedException;
@@ -821,13 +822,12 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                     isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill,
                     savingsAccountData);
 
-            if (!backdatedTxnsAllowedTill) {
-                List<SavingsAccountTransactionData> transactions = savingsAccountData.getSavingsAccountTransactionData();
-                for (SavingsAccountTransactionData accountTransaction : transactions) {
-                    if (accountTransaction.getId() == null) {
+            for (SavingsAccountTransactionData accountTransaction : savingsAccountData.getSavingsAccountTransactionData()) {
+                if (accountTransaction.getId() == null) {
+                    if (!backdatedTxnsAllowedTill) {
                         savingsAccountData.setNewSavingsAccountTransactionData(accountTransaction);
-                        selectAccountId(accountTransaction, savingsAccountData);
                     }
+                    selectAccountId(accountTransaction, savingsAccountData);
                 }
             }
             savingsAccountData.setExistingTransactionIds(existingTransactionIds);
@@ -837,30 +837,65 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     }
 
     public void selectAccountId(SavingsAccountTransactionData accountTransaction, SavingsAccountData savingsAccountData) {
-        SavingsAccountTransactionType transactionType = SavingsAccountTransactionType
+        final SavingsAccountTransactionType transactionType = SavingsAccountTransactionType
                 .fromInt(accountTransaction.getTransactionType().getId().intValue());
+        final boolean cash = Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct());
+        final boolean accrual = Boolean.TRUE.equals(savingsAccountData.isAccrualBasedAccountingEnabledOnSavingsProduct());
+        final Long debit;
+        final String debitName;
+        final Long credit;
+        final String creditName;
         if (transactionType.isOverDraftInterestPosting()) {
-            if (Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct())) {
-                // Cash-based: DR Savings Reference, CR Income from Interest — same as CashBasedAccountingProcessorForSavings
-                accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForSavingsReference());
-                accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForIncomeFromInterest());
+            if (cash) {
+                // Cash-based: DR Savings Reference, CR Income from Interest
+                debit = savingsAccountData.getGlAccountIdForSavingsReference();
+                debitName = "Savings Reference (1)";
+                credit = savingsAccountData.getGlAccountIdForIncomeFromInterest();
+                creditName = "Income from Interest (12)";
             } else if (MathUtil.isGreaterThanZero(accountTransaction.getRunningBalance())) {
                 // Accrual: clear Interest Receivable against Savings Control when balance became positive
-                accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForSavingsControl());
-                accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForInterestReceivable());
+                debit = savingsAccountData.getGlAccountIdForSavingsControl();
+                debitName = "Savings Control (2)";
+                credit = savingsAccountData.getGlAccountIdForInterestReceivable();
+                creditName = "Interest Receivable (18)";
             } else {
                 // Accrual: clear Interest Receivable against Overdraft Portfolio
-                accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForOverdraftPorfolio());
-                accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForInterestReceivable());
+                debit = savingsAccountData.getGlAccountIdForOverdraftPorfolio();
+                debitName = "Overdraft Portfolio (11)";
+                credit = savingsAccountData.getGlAccountIdForInterestReceivable();
+                creditName = "Interest Receivable (18)";
             }
-        } else if (Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct())) {
-            // Cash-based: DR Interest on Savings (expense), CR Savings Control — same as CashBasedAccountingProcessorForSavings
-            accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForInterestOnSavings());
-            accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForSavingsControl());
+        } else if (cash) {
+            // Cash-based: DR Interest on Savings, CR Savings Control
+            debit = savingsAccountData.getGlAccountIdForInterestOnSavings();
+            debitName = "Interest on Savings (3)";
+            credit = savingsAccountData.getGlAccountIdForSavingsControl();
+            creditName = "Savings Control (2)";
         } else {
-            // Accrual: DR Interest Payable, CR Savings Control
-            accountTransaction.setAccountDebit(savingsAccountData.getGlAccountIdForInterestPayable());
-            accountTransaction.setAccountCredit(savingsAccountData.getGlAccountIdForSavingsControl());
+            // Accrual, or accounting none: DR Interest Payable, CR Savings Control
+            debit = savingsAccountData.getGlAccountIdForInterestPayable();
+            debitName = "Interest Payable (17)";
+            credit = savingsAccountData.getGlAccountIdForSavingsControl();
+            creditName = "Savings Control (2)";
+        }
+        accountTransaction.setAccountDebit(debit);
+        accountTransaction.setAccountCredit(credit);
+
+        if (!cash && !accrual) {
+            return;
+        }
+        final String rule = cash ? "cash-based" : "accrual";
+        if (debit == null || debit == 0L) {
+            log.error("Savings interest posting: account {} product {} has no GL mapping for {} (debit)", savingsAccountData.getId(),
+                    savingsAccountData.getSavingsProductId(), debitName);
+            throw new SavingsInterestPostingGlMappingMissingException(savingsAccountData.getId(), savingsAccountData.getSavingsProductId(),
+                    rule, transactionType.name(), "debit", debitName);
+        }
+        if (credit == null || credit == 0L) {
+            log.error("Savings interest posting: account {} product {} has no GL mapping for {} (credit)", savingsAccountData.getId(),
+                    savingsAccountData.getSavingsProductId(), creditName);
+            throw new SavingsInterestPostingGlMappingMissingException(savingsAccountData.getId(), savingsAccountData.getSavingsProductId(),
+                    rule, transactionType.name(), "credit", creditName);
         }
     }
 

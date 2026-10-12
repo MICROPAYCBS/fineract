@@ -210,7 +210,7 @@ public class SavingsAccountPaymentChannelWritePlatformService {
 
         final SavingsAccountPaymentChannelBlock block = SavingsAccountPaymentChannelBlock.block(account, productChannel,
                 DateUtils.getBusinessLocalDate());
-        this.accountChannelBlockRepository.save(block);
+        this.accountChannelBlockRepository.saveAndFlush(block);
 
         return new CommandProcessingResultBuilder().withEntityId(block.getId()).withSavingsId(savingsAccountId)
                 .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();

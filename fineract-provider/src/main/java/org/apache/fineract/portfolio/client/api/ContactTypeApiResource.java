@@ -19,6 +19,12 @@
 package org.apache.fineract.portfolio.client.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -55,7 +61,9 @@ public class ContactTypeApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List contact types", operationId = "retrieveAllContactTypes")
+    @Operation(summary = "List contact types", description = "Returns every contact type, ordered by display order and name.", operationId = "retrieveAllContactTypes")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = ContactTypeData.class))))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for CONTACTTYPE.")
     public List<ContactTypeData> retrieveAll() {
         return this.readPlatformService.retrieveAll();
     }
@@ -63,7 +71,8 @@ public class ContactTypeApiResource {
     @GET
     @Path("/template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve contact type template", operationId = "retrieveContactTypeTemplate")
+    @Operation(summary = "Retrieve contact type template", description = "Returns the ACTIVE and INACTIVE status values used when creating a contact type.", operationId = "retrieveContactTypeTemplate")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ContactTypeApiResourceSwagger.GetContactTypeTemplateResponse.class)))
     public Map<String, Object> retrieveTemplate() {
         final Map<String, Object> response = new HashMap<>();
         response.put("statusOptions", List.of("ACTIVE", "INACTIVE"));
@@ -73,15 +82,25 @@ public class ContactTypeApiResource {
     @GET
     @Path("/{contactTypeId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve contact type", operationId = "retrieveContactType")
-    public ContactTypeData retrieveOne(@PathParam("contactTypeId") final Long contactTypeId) {
+    @Operation(summary = "Retrieve contact type", description = "Returns one contact type.", operationId = "retrieveContactType")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ContactTypeData.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for CONTACTTYPE.")
+    @ApiResponse(responseCode = "404", description = "The contact type was not found.")
+    public ContactTypeData retrieveOne(
+            @PathParam("contactTypeId") @Parameter(description = "Contact type identifier", required = true, example = "1") final Long contactTypeId) {
         return this.readPlatformService.retrieveOne(contactTypeId);
     }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create contact type", operationId = "createContactType")
+    @Operation(summary = "Create contact type", description = "Creates a contact type. The type code must be unique and validationRegex, "
+            + "when supplied, must compile. The command is submitted through maker-checker.", operationId = "createContactType")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ContactTypeRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, a field fails validation, or validationRegex does not compile.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to create the contact type, or the type code already exists.")
     public CommandProcessingResult create(final ContactTypeRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createContactType()
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -92,8 +111,17 @@ public class ContactTypeApiResource {
     @Path("/{contactTypeId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update contact type", operationId = "updateContactType")
-    public CommandProcessingResult update(@PathParam("contactTypeId") final Long contactTypeId, final ContactTypeRequest request) {
+    @Operation(summary = "Update contact type", description = "Updates a contact type. A changed type code must stay unique and "
+            + "validationRegex, when supplied, must compile. The command is submitted through maker-checker.", operationId = "updateContactType")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ContactTypeRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, a field fails validation, or validationRegex does not compile.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to update the contact type, or the type code already exists.")
+    @ApiResponse(responseCode = "404", description = "The contact type was not found.")
+    public CommandProcessingResult update(
+            @PathParam("contactTypeId") @Parameter(description = "Contact type identifier", required = true, example = "1") final Long contactTypeId,
+            final ContactTypeRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateContactType(contactTypeId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -102,8 +130,14 @@ public class ContactTypeApiResource {
     @DELETE
     @Path("/{contactTypeId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete contact type", operationId = "deleteContactType")
-    public CommandProcessingResult delete(@PathParam("contactTypeId") final Long contactTypeId) {
+    @Operation(summary = "Delete contact type", description = "Deletes a contact type that is not referenced by other records. "
+            + "The command is submitted through maker-checker.", operationId = "deleteContactType")
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to delete the contact type, or the contact type is referenced by other records.")
+    @ApiResponse(responseCode = "404", description = "The contact type was not found.")
+    public CommandProcessingResult delete(
+            @PathParam("contactTypeId") @Parameter(description = "Contact type identifier", required = true, example = "1") final Long contactTypeId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteContactType(contactTypeId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

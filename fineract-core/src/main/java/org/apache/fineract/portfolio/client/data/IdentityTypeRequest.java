@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.client.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
@@ -29,16 +30,30 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Identity document validation rule create or update request")
 public class IdentityTypeRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "Customer Identifier code value identifier. Required on create and when supplied on update. Must be greater than zero and belong to the Customer Identifier code list.", example = "1")
     private Long codeValueId;
+
+    @Schema(description = "Example document number. Optional. Maximum length 255.", example = "CM12345678AB1C", maxLength = 255)
     private String example;
+
+    @Schema(description = "Human-readable format description. Optional. Maximum length 500.", example = "14-character national ID", maxLength = 500)
     private String formatDescription;
+
+    @Schema(description = "Message shown when a document number fails validation. Optional. Maximum length 500.", example = "Enter a valid national ID", maxLength = 500)
     private String validationMessage;
+
+    @Schema(description = "Regular expression the document number must match. Optional. Maximum length 500. Must be a compilable Java regular expression.", example = "^[A-Z0-9]{14}$", maxLength = 500)
     private String validationRegex;
+
+    @Schema(description = "Display order. Optional. Zero or greater.", example = "1")
     private Integer displayOrder;
+
+    @Schema(description = "Status. Optional. Allowed values: ACTIVE, INACTIVE.", example = "ACTIVE")
     private String status;
 }

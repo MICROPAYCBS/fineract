@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.client.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
@@ -29,12 +30,18 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Client contact create or update request")
 public class ClientContactRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "Contact type identifier. Required on create. On update, required only when supplied, and must be greater than zero.", example = "1")
     private Long contactTypeId;
+
+    @Schema(description = "Contact value. Required on create. On update, required only when supplied. Maximum length 255. Must match the contact type validation regex when one is configured.", example = "256700000000", maxLength = 255)
     private String contactValue;
+
+    @Schema(description = "Whether this is the primary contact for its contact type. Optional.", example = "true")
     private Boolean primary;
 }

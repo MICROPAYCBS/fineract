@@ -22,6 +22,7 @@ import com.google.gson.JsonElement;
 import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -41,10 +42,13 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -99,6 +103,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrap
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
+import org.apache.fineract.portfolio.subindustry.domain.SubIndustryRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
@@ -144,6 +149,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final ClientTitleWritePlatformService clientTitleWritePlatformService;
     private final ClientContactValidationService clientContactValidationService;
     private final ClientContactWritePlatformService clientContactWritePlatformService;
+    private final SubIndustryRepository subIndustryRepository;
 
     @Transactional
     @Override
@@ -341,6 +347,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 newClient.setAlternativeEmailAddress(alternativeEmailAddress.trim());
             }
             if (subIndustryId != null) {
+                validateSubIndustryExists(subIndustryId);
                 newClient.setSubIndustryId(subIndustryId);
             }
             if (customerClassId != null) {
@@ -378,8 +385,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (newClient.isActive()) {
                 validateParentGroupRulesBeforeClientActivation(newClient);
                 runEntityDatatableCheck(newClient.getId(), newClient.getLegalForm());
+                // Creating an active client also stands for the Micropay submit step:
+                // require SUBMIT_CLIENT and honour maker-checker on it, as for command=submit.
+                final CommandWrapper submitWrapper = new CommandWrapperBuilder().submitClient(null).build();
+                rollbackTransaction = this.commandProcessingService.validateRollbackCommand(submitWrapper, currentUser);
                 final CommandWrapper commandWrapper = new CommandWrapperBuilder().activateClient(null).build();
-                rollbackTransaction = this.commandProcessingService.validateRollbackCommand(commandWrapper, currentUser);
+                rollbackTransaction |= this.commandProcessingService.validateRollbackCommand(commandWrapper, currentUser);
             }
             this.clientRepository.saveAndFlush(newClient);
 
@@ -419,6 +430,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
 
             if (newClient.isActive()) {
+                this.clientContactValidationService.validateMandatoryContactsForClient(newClient.getId());
                 this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonClient(newClient.getId(),
                         newClient.getLegalForm());
             }
@@ -573,6 +585,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.isChangeInLongParameterNamed(ClientApiConstants.subIndustryIdParamName, clientForUpdate.getSubIndustryId())) {
                 final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
+                if (newValue != null) {
+                    validateSubIndustryExists(newValue);
+                }
                 changes.put(ClientApiConstants.subIndustryIdParamName, newValue);
                 clientForUpdate.setSubIndustryId(newValue);
             }
@@ -1290,6 +1305,15 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private CustomerClass findCustomerClassWithNotFoundDetection(final Long customerClassId) {
         return this.customerClassRepository.findById(customerClassId)
                 .orElseThrow(() -> new CustomerClassNotFoundException(customerClassId));
+    }
+
+    private void validateSubIndustryExists(final Long subIndustryId) {
+        if (!this.subIndustryRepository.existsById(subIndustryId)) {
+            final List<ApiParameterError> errors = new ArrayList<>();
+            new DataValidatorBuilder(errors).resource("client").parameter(ClientApiConstants.subIndustryIdParamName).value(subIndustryId)
+                    .failWithCode("not.found");
+            throw new PlatformApiDataValidationException(errors);
+        }
     }
 
     private void validateCustomerClassAssignment(final Long customerClassId, final Client client) {

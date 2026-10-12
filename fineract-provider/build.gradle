@@ -283,7 +283,7 @@ tasks.register('createNewTenant') {
         def tenantDisplayName = project.hasProperty('tenantName')
                 ? tenantName.toString()
                 : (identifier.substring(0, 1).toUpperCase() + identifier.substring(1) + ' Tenant').toString()
-        def timezoneId = project.hasProperty('tenantTimezone') ? tenantTimezone.toString() : 'Asia/Kolkata'
+        def timezoneId = project.hasProperty('tenantTimezone') ? tenantTimezone.toString() : 'Africa/Kampala'
         def masterPassword = project.hasProperty('masterPassword') ? masterPassword.toString() : 'fineract'
         def asJdbcString = { v -> v == null ? null : v.toString() }
 

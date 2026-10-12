@@ -23,6 +23,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.PUT;
@@ -57,9 +61,15 @@ public class DatatableColumnValidationsApiResource {
     @Path("{datatableName}/columnvalidations")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Sync datatable column validation metadata")
+    @Operation(summary = "Sync datatable column validation metadata", description = "Replaces the regex, example and message for the listed columns. "
+            + "A column with all three empty loses its rule. deleteColumnNames removes rules. The datatable name is not checked. "
+            + "The body is an empty command result. This write does not go through the command framework.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DatatableColumnValidationsApiResourceSwagger.PutColumnValidationsRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A regex is invalid (validation.msg.datatable.column.invalid.regex.config).")
+    @ApiResponse(responseCode = "403", description = "The user lacks both UPDATE_DATATABLE and CREATE_DATATABLE.")
     public CommandProcessingResult syncColumnValidations(
-            @PathParam("datatableName") @Parameter(description = "datatableName") final String datatableName,
+            @PathParam("datatableName") @Parameter(description = "Registered datatable name. Not checked by this endpoint.", example = "extra_client_details") final String datatableName,
             final String apiRequestBodyAsJson) {
         validateHasCreateOrUpdatePermission();
 

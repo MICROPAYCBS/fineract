@@ -20,6 +20,11 @@ package org.apache.fineract.portfolio.client.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -63,9 +68,12 @@ public class ClientContactsApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List all contacts for a client", operationId = "retrieveAllClientContacts")
+    @Operation(summary = "List all contacts for a client", description = "Returns the contacts recorded for the client, "
+            + "limited to clients in the authenticated user's office hierarchy.", operationId = "retrieveAllClientContacts")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = ClientContactData.class))))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for CLIENT.")
     public List<ClientContactData> retrieveAllClientContacts(
-            @PathParam("clientId") @Parameter(description = "clientId") final Long clientId) {
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_READ_PERMISSIONS);
         return this.clientContactReadPlatformService.retrieveClientContacts(clientId);
     }
@@ -73,8 +81,12 @@ public class ClientContactsApiResource {
     @GET
     @Path("template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve client contact template", operationId = "retrieveClientContactTemplate")
-    public Map<String, Object> retrieveTemplate(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId) {
+    @Operation(summary = "Retrieve client contact template", description = "Returns the active contact types that can be assigned "
+            + "when creating a client contact.", operationId = "retrieveClientContactTemplate")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientContactsApiResourceSwagger.GetClientContactsTemplateResponse.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for CLIENT.")
+    public Map<String, Object> retrieveTemplate(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_READ_PERMISSIONS);
         final List<ContactTypeData> contactTypeOptions = this.contactTypeReadPlatformService.retrieveActiveForClientDropdown();
         final Map<String, Object> response = new HashMap<>();
@@ -85,8 +97,16 @@ public class ClientContactsApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create a contact for a client", operationId = "createClientContact")
-    public CommandProcessingResult createClientContact(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
+    @Operation(summary = "Create a contact for a client", description = "Creates a client contact. The contact value must match "
+            + "the contact type validation regex when one is configured. The command is submitted through maker-checker.", operationId = "createClientContact")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientContactRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, a field fails validation, or the contact value does not match the contact type regex.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to create the client contact.")
+    @ApiResponse(responseCode = "404", description = "The client or contact type was not found.")
+    public CommandProcessingResult createClientContact(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId,
             final ClientContactRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createClientContact(clientId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -96,9 +116,14 @@ public class ClientContactsApiResource {
     @GET
     @Path("{contactId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve a client contact", operationId = "retrieveOneClientContact")
-    public ClientContactData retrieveClientContact(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
-            @PathParam("contactId") @Parameter(description = "contactId") final Long clientContactId) {
+    @Operation(summary = "Retrieve a client contact", description = "Returns one contact for the client. The contact must belong "
+            + "to a client in the authenticated user's office hierarchy.", operationId = "retrieveOneClientContact")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientContactData.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for CLIENT.")
+    @ApiResponse(responseCode = "404", description = "The client contact was not found for this client.")
+    public ClientContactData retrieveClientContact(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId,
+            @PathParam("contactId") @Parameter(description = "Client contact identifier", required = true, example = "1") final Long clientContactId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_READ_PERMISSIONS);
         return this.clientContactReadPlatformService.retrieveClientContact(clientId, clientContactId);
     }
@@ -107,9 +132,18 @@ public class ClientContactsApiResource {
     @Path("{contactId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update a client contact", operationId = "updateClientContact")
-    public CommandProcessingResult updateClientContact(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
-            @PathParam("contactId") @Parameter(description = "contactId") final Long clientContactId, final ClientContactRequest request) {
+    @Operation(summary = "Update a client contact", description = "Updates a client contact. Supplied fields are validated, and the "
+            + "contact value must match the contact type validation regex. The command is submitted through maker-checker.", operationId = "updateClientContact")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientContactRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, a field fails validation, or the contact value does not match the contact type regex.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to update the client contact.")
+    @ApiResponse(responseCode = "404", description = "The client, client contact, or contact type was not found.")
+    public CommandProcessingResult updateClientContact(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId,
+            @PathParam("contactId") @Parameter(description = "Client contact identifier", required = true, example = "1") final Long clientContactId,
+            final ClientContactRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateClientContact(clientId, clientContactId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -118,9 +152,14 @@ public class ClientContactsApiResource {
     @DELETE
     @Path("{contactId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete a client contact", operationId = "deleteClientContact")
-    public CommandProcessingResult deleteClientContact(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
-            @PathParam("contactId") @Parameter(description = "contactId") final Long clientContactId) {
+    @Operation(summary = "Delete a client contact", description = "Deletes a client contact. The command is submitted through maker-checker.", operationId = "deleteClientContact")
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to delete the client contact.")
+    @ApiResponse(responseCode = "404", description = "The client or client contact was not found.")
+    public CommandProcessingResult deleteClientContact(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId,
+            @PathParam("contactId") @Parameter(description = "Client contact identifier", required = true, example = "1") final Long clientContactId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteClientContact(clientId, clientContactId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

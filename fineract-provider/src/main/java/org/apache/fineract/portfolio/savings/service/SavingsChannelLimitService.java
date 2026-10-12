@@ -82,9 +82,7 @@ public class SavingsChannelLimitService {
             return SavingsChannelLimitHold.none();
         }
         final AppUser user = this.context.authenticatedUser();
-        if (user != null && user.hasSpecificPermissionTo(BYPASS_PERMISSION)) {
-            return SavingsChannelLimitHold.none();
-        }
+        final boolean bypass = user != null && user.hasSpecificPermissionTo(BYPASS_PERMISSION);
         final SavingsProductPaymentChannel channel = resolveChannel(command);
         if (channel == null) {
             return SavingsChannelLimitHold.none();
@@ -98,42 +96,35 @@ public class SavingsChannelLimitService {
         final SavingsChannelLimitValues customerValues = customerLimit.map(SavingsAccountChannelLimit::liveValues)
                 .orElse(SavingsChannelLimitValues.none());
         final SavingsChannelLimitValues effective = SavingsChannelLimitRules.effective(customerValues, channel.limitsFor(command.direction()));
-        if (effective.isUnlimited()) {
-            return SavingsChannelLimitHold.none();
-        }
+        final boolean check = !bypass && !effective.isUnlimited();
 
         final BigDecimal amount = command.amount();
-        if (effective.maxPerTxn() != null && amount.compareTo(effective.maxPerTxn()) > 0) {
+        if (check && effective.maxPerTxn() != null && amount.compareTo(effective.maxPerTxn()) > 0) {
             throw limitExceeded("transactionAmount", amount, "exceeds.per.transaction");
         }
 
-        final List<SavingsAccountChannelLimitUsage> touched = new ArrayList<>();
-        if (effective.maxPerDay() != null || effective.maxCountPerDay() != null) {
-            final SavingsAccountChannelLimitUsage day = lockUsage(command.account(), channel, command.direction(),
-                    SavingsChannelLimitPeriodType.DAY, SavingsChannelLimitPeriodType.DAY.periodStart(command.transactionDate()));
+        // Always count both buckets, so a cap added later sees the real usage so far.
+        final SavingsAccountChannelLimitUsage day = lockUsage(command.account(), channel, command.direction(),
+                SavingsChannelLimitPeriodType.DAY, SavingsChannelLimitPeriodType.DAY.periodStart(command.transactionDate()));
+        final SavingsAccountChannelLimitUsage month = lockUsage(command.account(), channel, command.direction(),
+                SavingsChannelLimitPeriodType.MONTH, SavingsChannelLimitPeriodType.MONTH.periodStart(command.transactionDate()));
+        if (check) {
             if (effective.maxPerDay() != null && day.getAmountUsed().add(amount).compareTo(effective.maxPerDay()) > 0) {
                 throw limitExceeded("transactionAmount", amount, "exceeds.daily");
             }
             if (effective.maxCountPerDay() != null && day.getCountUsed() + 1 > effective.maxCountPerDay()) {
                 throw limitExceeded("transactionCount", day.getCountUsed() + 1, "exceeds.daily.count");
             }
-            touched.add(day);
-        }
-        if (effective.maxPerMonth() != null || effective.maxCountPerMonth() != null) {
-            final SavingsAccountChannelLimitUsage month = lockUsage(command.account(), channel, command.direction(),
-                    SavingsChannelLimitPeriodType.MONTH, SavingsChannelLimitPeriodType.MONTH.periodStart(command.transactionDate()));
             if (effective.maxPerMonth() != null && month.getAmountUsed().add(amount).compareTo(effective.maxPerMonth()) > 0) {
                 throw limitExceeded("transactionAmount", amount, "exceeds.monthly");
             }
             if (effective.maxCountPerMonth() != null && month.getCountUsed() + 1 > effective.maxCountPerMonth()) {
                 throw limitExceeded("transactionCount", month.getCountUsed() + 1, "exceeds.monthly.count");
             }
-            touched.add(month);
         }
-        for (final SavingsAccountChannelLimitUsage usage : touched) {
-            usage.add(amount, 1);
-        }
-        return new SavingsChannelLimitHold(amount, touched);
+        day.add(amount, 1);
+        month.add(amount, 1);
+        return new SavingsChannelLimitHold(amount, List.of(day, month));
     }
 
     @Transactional
@@ -245,7 +236,7 @@ public class SavingsChannelLimitService {
         } else {
             row.replaceImmediately(proposed, userId, now);
         }
-        this.limitRepository.save(row);
+        this.limitRepository.saveAndFlush(row);
         return new CommandProcessingResultBuilder().withEntityId(row.getId()).withSavingsId(savingsAccountId).withClientId(account.clientId())
                 .withOfficeId(account.officeId()).withGroupId(account.groupId()).build();
     }

@@ -20,6 +20,9 @@ package org.apache.fineract.infrastructure.security.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -56,6 +59,9 @@ public class UserSessionHistoryApiResource {
     @Path("history")
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Login history across all users", description = "Paginated history of two-factor sessions (successful logins) across all users, newest first, including sessions that have since been revoked or expired. Supports filtering by user and by login date. Token values are never returned. Note: logins by users with BYPASS_TWOFACTOR never create a session and do not appear here.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UserSessionHistoryApiResourceSwagger.GetUserSessionHistoryResponse.class)))
+    @ApiResponse(responseCode = "400", description = "fromDate or toDate is not an ISO date (yyyy-MM-dd)")
+    @ApiResponse(responseCode = "403", description = "The user does not have permission to read user sessions")
     public String retrieveSessionHistory(
             @QueryParam("userId") @Parameter(description = "Restrict to one user") final Long userId,
             @QueryParam("fromDate") @Parameter(description = "Earliest login date, ISO format (yyyy-MM-dd)") final String fromDate,
@@ -77,7 +83,7 @@ public class UserSessionHistoryApiResource {
         try {
             return LocalDate.parse(value);
         } catch (DateTimeParseException e) {
-            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.usersession.history.invalid.date",
+            final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.usersession.history.invalid.date",
                     "The parameter `" + parameterName + "` must be a date in ISO format (yyyy-MM-dd)", parameterName, value);
             throw new PlatformApiDataValidationException(List.of(error));
         }

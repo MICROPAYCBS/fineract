@@ -50,7 +50,7 @@ final class GLAccountsApiResourceSwagger {
         @Schema(example = "1")
         public Long parentId;
 
-        @Schema(example = "100001")
+        @Schema(description = "Account code. When structured GL codes are enforced, this is a numeric code of the configured length whose first digit matches the account type (1 asset, 2 liability, 3 equity, 4 income, 5 expense) and whose leading digits match the parent header.", example = "100001")
         public String glCode;
 
         @Schema(example = "false")
@@ -113,7 +113,7 @@ final class GLAccountsApiResourceSwagger {
         @Schema(example = "Cash at Bangalore")
         public String name;
 
-        @Schema(example = "100001")
+        @Schema(description = "Account code. When structured GL codes are enforced, this is a numeric code of the configured length whose first digit matches the account type (1 asset, 2 liability, 3 equity, 4 income, 5 expense) and whose leading digits match the parent header.", example = "100001")
         public String glCode;
 
         @Schema(example = "true")
@@ -157,7 +157,7 @@ final class GLAccountsApiResourceSwagger {
         @Schema(example = "Cash at Bangalore")
         public String name;
 
-        @Schema(example = "100001")
+        @Schema(description = "Account code. When structured GL codes are enforced, this is a numeric code of the configured length whose first digit matches the account type (1 asset, 2 liability, 3 equity, 4 income, 5 expense) and whose leading digits match the parent header.", example = "100001")
         public String glCode;
 
         @Schema(example = "true")

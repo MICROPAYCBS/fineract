@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.client.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
@@ -29,15 +30,27 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Client title")
 public class ClientTitleData implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "Client title identifier.", example = "1")
     private Long id;
+
+    @Schema(description = "Title code. Maximum length 20.", example = "MR")
     private String titleCode;
+
+    @Schema(description = "Title name. Maximum length 100.", example = "Mr")
     private String titleName;
+
+    @Schema(description = "Gender the title applies to. Allowed values: 1 (Male), 2 (Female). Null when the title is not gender-specific.", example = "1")
     private Integer genderId;
+
+    @Schema(description = "Display order. Zero or greater.", example = "1")
     private Integer displayOrder;
+
+    @Schema(description = "Status. Allowed values: ACTIVE, INACTIVE.", example = "ACTIVE")
     private String status;
 }

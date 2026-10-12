@@ -42,7 +42,7 @@ public final class DepositsApiConstants {
     public static final String SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME = "savingsaccountcharge";
 
     // deposit product actions
-    public static final String summitalAction = ".summital";
+    public static final String submittalAction = ".submittal";
     public static final String approvalAction = ".approval";
     public static final String undoApprovalAction = ".undoApproval";
     public static final String rejectAction = ".reject";

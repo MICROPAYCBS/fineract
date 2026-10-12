@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.sector.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
@@ -34,13 +35,22 @@ public class SectorData implements Serializable {
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "Sector id", example = "1")
     private Long id;
+    @Schema(description = "Unique sector code", example = "AGR")
     private String sectorCode;
+    @Schema(description = "Sector name", example = "Agriculture")
     private String sectorName;
+    @Schema(description = "Description")
     private String description;
+    @Schema(description = "Id of the parent sector", example = "1")
     private Long parentId;
+    @Schema(description = "Name of the parent sector")
     private String parentSectorName;
+    @Schema(description = "Free-text risk level", example = "MEDIUM")
     private String riskLevel;
+    @Schema(description = "Regulator's code for the sector", example = "A01")
     private String regulatoryCode;
+    @Schema(description = "ACTIVE or INACTIVE", example = "ACTIVE")
     private String status;
 }

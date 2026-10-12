@@ -84,8 +84,11 @@ public class ReportsTest extends IntegrationTest {
 
     @Test
     void listReports() {
-        // count is 85 because @BeforeAll creates StringParamIntegrationTest fixture report
-        assertThat(ok(fineractClient().reports.retrieveAllReports())).hasSize(85);
+        // 79 = stock reports after the six broken Quipo reports are removed, plus the StringParamIntegrationTest fixture
+        var reports = ok(fineractClient().reports.retrieveAllReports());
+        assertThat(reports).hasSize(79);
+        assertThat(reports).extracting("reportName").doesNotContain("BranchManagerStats", "CoordinatorStats", "FieldAgentStats",
+                "ProgramDetails", "ProgramDirectorStats", "ProgramStats");
     }
 
     @Test

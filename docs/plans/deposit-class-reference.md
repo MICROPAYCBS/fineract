@@ -1,5 +1,11 @@
 # Deposit Class Reference — architecture & implementation plan
 
+> **Status: not implemented. This is a plan, not a description of the system.**
+> Nothing in the code implements deposit classes: there are no `gb_deposit_*` tables, no `/v1/depositclasses` endpoint,
+> no `*_DEPOSITCLASS` permissions and no `depositClassId` on savings products. Do not build against anything below.
+> The "current state" sections date from 2026-08-01 and are partly out of date: product payment channels and
+> product start and close dates have since been built. The open decisions at the end were never signed off.
+
 Micropay extends Apache Fineract deposit products (Savings, Fixed Deposit, Recurring Deposit) with a **Deposit Class Reference** layer: reusable product templates that define charges, rules, interest, eligibility, and MFI-specific operational constraints. Products (`m_savings_product`) **materialize** from a deposit class at creation time and retain a foreign key for traceability.
 
 This document covers:
@@ -554,8 +560,8 @@ Nested resources (charges, rules, interest, limits, channel rules) can be embedd
 | Document | Relevance |
 |----------|-----------|
 | [`inter-branch-servicing.md`](../micropay/inter-branch-servicing.md) | Cross-branch deposits — channel rules must align with `transaction_office_id` |
-| [`job-sequences.md`](job-sequences.md) | EOD: dormancy job, savings interest posting, RD schedule generation |
-| [`eod-business-date-runbook.md`](eod-business-date-runbook.md) | Operational scheduling |
+| [`job-sequences.md`](../architecture/job-sequences.md) | EOD: dormancy job, savings interest posting, RD schedule generation |
+| [`eod-business-date-runbook.md`](../architecture/eod-business-date-runbook.md) | Operational scheduling |
 | [`structured-account-number-ui-agent-prompt.md`](../prompts/structured-account-number-ui-agent-prompt.md) | Account numbering on product open |
 
 ---
@@ -575,3 +581,4 @@ Nested resources (charges, rules, interest, limits, channel rules) can be embedd
 | Date | Author | Notes |
 |------|--------|-------|
 | 2026-08-01 | Micropay architecture | Initial consolidated deposit class reference plan |
+| 2026-10-11 | Micropay | Moved from docs/architecture to docs/plans; marked not implemented |

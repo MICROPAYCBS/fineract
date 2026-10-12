@@ -79,6 +79,9 @@ public class GlAccountLedgerApiResource {
             and period journal entries with running balances. Opening is hybrid as of startDate - 1.
             """)
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = GlAccountLedgerApiResourceSwagger.GetGlAccountLedgerResponse.class)))
+    @ApiResponse(responseCode = "400", description = "A date is not yyyy-MM-dd, startDate, endDate, officeId or currencyCode is missing, or endDate is before startDate. An unknown departmentId is not an error.")
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_GLACCOUNT permission.")
+    @ApiResponse(responseCode = "404", description = "The GL account or office was not found.")
     public String retrieveLedger(@Context final UriInfo uriInfo,
             @PathParam("glAccountId") @Parameter(description = "glAccountId") final Long glAccountId,
             @QueryParam("startDate") @Parameter(description = "Period start yyyy-MM-dd (inclusive)", required = true, example = "2026-07-01") final String startDate,

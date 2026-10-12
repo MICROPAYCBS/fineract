@@ -76,6 +76,8 @@ public class SavingsAccountPaymentChannelsApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "List payment channels for a savings account", description = "Returns the product channel catalog with subscription status and whether each channel is allowed for deposit.")
     @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_SAVINGSACCOUNTPAYMENTCHANNEL permission.")
+    @ApiResponse(responseCode = "404", description = "The savings account was not found.")
     public String retrieveAll(@PathParam("savingsAccountId") @Parameter(description = "savingsAccountId") final Long savingsAccountId,
             @Context final UriInfo uriInfo) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME);
@@ -90,6 +92,9 @@ public class SavingsAccountPaymentChannelsApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Read channel transaction limits", description = "Returns the bank ceiling, the customer limit, any pending increase, and remaining day and month usage. direction is optional (DEBIT or CREDIT).")
     @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "direction is not DEBIT or CREDIT, productPaymentChannelId is not in the product catalog, or the account is not mapped to a client.")
+    @ApiResponse(responseCode = "403", description = "The user lacks READCHANNELLIMIT_SAVINGSACCOUNT permission.")
+    @ApiResponse(responseCode = "404", description = "The savings account was not found.")
     public String retrieveLimits(@PathParam("savingsAccountId") @Parameter(description = "savingsAccountId") final Long savingsAccountId,
             @PathParam("productPaymentChannelId") @Parameter(description = "productPaymentChannelId") final Long productPaymentChannelId,
             @QueryParam("direction") @Parameter(description = "direction") final String direction) {
@@ -105,11 +110,14 @@ public class SavingsAccountPaymentChannelsApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Subscribe, unsubscribe, block, or unblock a payment channel", description = "command=subscribe|unsubscribe|block|unblock with body { \"paymentTypeId\": n }")
+    @Operation(summary = "Subscribe, unsubscribe, block, unblock, or update a channel limit", description = "command=subscribe|unsubscribe|block|unblock|updateLimit. subscribe, unsubscribe, block and unblock take { \"paymentTypeId\": n }. updateLimit also takes direction and the limit fields.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = String.class)))
     @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Unknown command, or paymentTypeId is missing, not in the catalog, inactive, not premium, already subscribed, not subscribed, already blocked, or not blocked (validation.msg.savingsaccount.paymentchannel.paymentTypeId.<code>).")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission for the command.")
+    @ApiResponse(responseCode = "404", description = "The savings account was not found.")
     public String handleCommands(@PathParam("savingsAccountId") @Parameter(description = "savingsAccountId") final Long savingsAccountId,
-            @QueryParam("command") @Parameter(description = "command") final String commandParam,
+            @QueryParam("command") @Parameter(description = "subscribe, unsubscribe, block, unblock, or updateLimit") final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
 
         final CommandWrapperBuilder builder = new CommandWrapperBuilder().withJson(apiRequestBodyAsJson);

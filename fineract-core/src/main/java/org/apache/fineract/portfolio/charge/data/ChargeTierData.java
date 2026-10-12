@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.charge.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import lombok.Builder;
@@ -27,8 +28,12 @@ import lombok.Getter;
 @Builder
 public final class ChargeTierData implements Serializable {
 
+    @Schema(example = "1")
     private final Long id;
+    @Schema(description = "Inclusive lower bound of the band", example = "0.00")
     private final BigDecimal amountRangeFrom;
+    @Schema(description = "Exclusive upper bound. Null on the last open-ended tier.", example = "1000.00")
     private final BigDecimal amountRangeTo;
+    @Schema(description = "Charge amount for this band", example = "10.00")
     private final BigDecimal amount;
 }

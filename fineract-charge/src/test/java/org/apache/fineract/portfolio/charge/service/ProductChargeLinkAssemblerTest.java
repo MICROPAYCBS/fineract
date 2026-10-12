@@ -113,6 +113,28 @@ class ProductChargeLinkAssemblerTest {
                 """), "USD"));
     }
 
+    @Test
+    void fallsBackToProductCurrencyWhenRequestHasNoCurrencyCode() {
+        final Charge charge = mockLoanCharge(14L, "USD", false);
+        when(chargeRepository.findOneWithNotFoundDetection(14L)).thenReturn(charge);
+
+        final List<ProductChargeLink> links = assembler.assembleLoanProductCharges(command("""
+                { "locale": "en", "charges": [ { "id": 14 } ] }
+                """), "USD");
+
+        assertEquals(1, links.size());
+    }
+
+    @Test
+    void rejectsChargeWhenFallbackCurrencyDiffers() {
+        final Charge charge = mockLoanCharge(14L, "USD", false);
+        when(chargeRepository.findOneWithNotFoundDetection(14L)).thenReturn(charge);
+
+        assertThrows(PlatformApiDataValidationException.class, () -> assembler.assembleLoanProductCharges(command("""
+                { "locale": "en", "charges": [ { "id": 14 } ] }
+                """), "UGX"));
+    }
+
     private Charge mockLoanCharge(final Long id, final String currency, final boolean tiered) {
         final Charge charge = mock(Charge.class);
         when(charge.getId()).thenReturn(id);

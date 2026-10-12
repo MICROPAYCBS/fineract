@@ -25,6 +25,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
@@ -79,7 +80,11 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         this.documentType = documentType;
         this.documentKey = StringUtils.defaultIfEmpty(documentKey, null);
         this.description = StringUtils.defaultIfEmpty(description, null);
-        ClientIdentifierStatus statusEnum = ClientIdentifierStatus.valueOf(statusName.toUpperCase());
+        // Standalone create turns a missing status into "" via stringValueOfParameterNamed; nested create passes null.
+        if (StringUtils.isBlank(statusName)) {
+            throw new IllegalStateException("Client identifier status must be validated before the entity is built");
+        }
+        ClientIdentifierStatus statusEnum = ClientIdentifierStatus.valueOf(statusName.trim().toUpperCase(Locale.ROOT));
         this.active = null;
         if (statusEnum.isActive()) {
             this.active = statusEnum.getValue();
@@ -116,10 +121,14 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         }
 
         final String statusParamName = "status";
-        if (command.isChangeInStringParameterNamed(statusParamName, ClientIdentifierStatus.fromInt(this.status).getCode())) {
-            final String newValue = command.stringValueOfParameterNamed(statusParamName);
-            actualChanges.put(statusParamName, ClientIdentifierStatus.valueOf(newValue));
-            this.status = ClientIdentifierStatus.valueOf(newValue).getValue();
+        final String newValue = command.stringValueOfParameterNamedAllowingNull(statusParamName);
+        if (StringUtils.isNotBlank(newValue)) {
+            final ClientIdentifierStatus newStatus = ClientIdentifierStatus.valueOf(newValue.trim().toUpperCase(Locale.ROOT));
+            if (!newStatus.getValue().equals(this.status)) {
+                actualChanges.put(statusParamName, newStatus);
+                this.status = newStatus.getValue();
+                this.active = newStatus.isActive() ? newStatus.getValue() : null;
+            }
         }
 
         return actualChanges;

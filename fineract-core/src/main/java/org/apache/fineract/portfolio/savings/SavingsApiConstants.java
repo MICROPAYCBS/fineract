@@ -28,7 +28,7 @@ public class SavingsApiConstants {
 
     // actions
     public static final String postInterestValidationOnClosure = "postInterestValidationOnClosure";
-    public static final String summitalAction = ".summital";
+    public static final String submittalAction = ".submittal";
     public static final String approvalAction = ".approval";
     public static final String undoApprovalAction = ".undoApproval";
     public static final String rejectAction = ".reject";

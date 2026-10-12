@@ -58,6 +58,7 @@ import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
+import org.apache.fineract.portfolio.subindustry.domain.SubIndustryRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -103,7 +104,7 @@ class ClientWritePlatformServiceJpaRepositoryImplDeleteClientTest {
                 mock(EntityDatatableChecksWritePlatformService.class), mock(ExternalIdFactory.class),
                 mock(CustomerClassRepository.class), mock(CustomerClassClientValidationService.class),
                 mock(ClientTitleWritePlatformService.class), mock(ClientContactValidationService.class),
-                mock(ClientContactWritePlatformService.class));
+                mock(ClientContactWritePlatformService.class), mock(SubIndustryRepository.class));
 
         when(clientRepository.findOneWithNotFoundDetection(CLIENT_ID)).thenReturn(client);
         when(client.isDraftOrPending()).thenReturn(true);

@@ -39,9 +39,13 @@ import static org.springframework.http.HttpHeaders.CONTENT_LENGTH;
 import static org.springframework.http.MediaType.APPLICATION_OCTET_STREAM_VALUE;
 import static org.springframework.http.MediaType.TEXT_PLAIN_VALUE;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.GET;
@@ -81,12 +85,16 @@ import org.glassfish.jersey.media.multipart.FormDataContentDisposition;
 import org.glassfish.jersey.media.multipart.FormDataParam;
 import org.springframework.stereotype.Component;
 
-// NOTE: left for backward compatibility only, could be unified with documents
+// NOTE: left for backward compatibility only, could be unified with documents.
+// Marked deprecated upstream, but this is the supported way to store client and staff photos.
 @Deprecated
 @Slf4j
 @RequiredArgsConstructor
 @Component
 @Path("/v1/{entityType}/{entityId}/images")
+@Tag(name = "Client and Staff Images", description = "One photo per client or staff member. "
+        + "entityType is clients or staff. Upload as a multipart file or as a base64 data URL. "
+        + "Marked deprecated upstream, but this is the supported way to store client and staff photos.")
 public class ImagesApiResource {
 
     private final ImageReadPlatformService imageReadPlatformService;
@@ -101,9 +109,20 @@ public class ImagesApiResource {
     @GET
     // FINERACT-1265: Do NOT specify @Produces(TEXT_PLAIN) here - it may actually not (if it calls the next methods it's
     // octet-stream)
-    public Response retrieveImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) final String entityName,
-            @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, @QueryParam(IMAGE_API_PARAM_MAX_WIDTH) final Integer maxWidth,
-            @QueryParam(IMAGE_API_PARAM_MAX_HEIGHT) final Integer maxHeight, @QueryParam(IMAGE_API_PARAM_OUTPUT) String output,
+    @Operation(summary = "Retrieve an image", operationId = "retrieveImage", description = "By default returns the image as a text/plain data URL "
+            + "(data:image/jpeg;base64,...). With output=octet or inline_octet, or Accept: application/octet-stream, returns the raw bytes "
+            + "as an attachment or inline. maxWidth and maxHeight resize only when both are given. 404 with an empty body when the entity has no image.")
+    @ApiResponse(responseCode = "200", description = "OK", content = {
+            @Content(mediaType = MediaType.TEXT_PLAIN, schema = @Schema(type = "string", description = "Base64 data URL")),
+            @Content(mediaType = MediaType.APPLICATION_OCTET_STREAM, schema = @Schema(type = "string", format = "binary")) })
+    @ApiResponse(responseCode = "403", description = "The user lacks permission to read the client or staff image.")
+    @ApiResponse(responseCode = "404", description = "The entity has no image, or the entity does not exist. An entity with no image returns an empty body.")
+    public Response retrieveImage(
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) @Parameter(description = "Client or staff id", example = "1") final Long entityId,
+            @QueryParam(IMAGE_API_PARAM_MAX_WIDTH) @Parameter(description = "Resize width in pixels. Applied only when maxHeight is also set.") final Integer maxWidth,
+            @QueryParam(IMAGE_API_PARAM_MAX_HEIGHT) @Parameter(description = "Resize height in pixels. Applied only when maxWidth is also set.") final Integer maxHeight,
+            @QueryParam(IMAGE_API_PARAM_OUTPUT) @Parameter(description = "octet (attachment) or inline_octet. Anything else is ignored and a data URL is returned.") String output,
             @HeaderParam(ACCEPT) String acceptHeader) {
 
         // TODO: pass resize information here and do all the processing in the service
@@ -160,8 +179,16 @@ public class ImagesApiResource {
     @POST
     @Consumes({ MediaType.MULTIPART_FORM_DATA })
     @Produces({ MediaType.APPLICATION_JSON })
-    @ApiResponse(responseCode = "200", description = "Not Shown (multi-part form data)")
-    public ImageCreateResponse createImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) final String entityType,
+    @Operation(summary = "Upload an image", operationId = "createImage_1", description = "Stores a photo for a client or staff member. Replaces an existing image. "
+            + "Send multipart form field file, or a base64 data URL as text/plain.")
+    @RequestBody(required = true, content = {
+            @Content(mediaType = MediaType.MULTIPART_FORM_DATA, schema = @Schema(implementation = ImagesApiResourceSwagger.ImageUploadForm.class)),
+            @Content(mediaType = MediaType.TEXT_PLAIN, schema = @Schema(type = "string", description = "Base64 data URL, for example data:image/png;base64,iVBORw0...")) })
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ImageCreateResponse.class)))
+    @ApiResponse(responseCode = "400", description = "The file is missing or fails the upload checks.")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission to create the image.")
+    @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
+    public ImageCreateResponse createImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, @HeaderParam(CONTENT_LENGTH) final Long fileSize,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final InputStream is,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final FormDataContentDisposition fileDetails,
@@ -182,7 +209,14 @@ public class ImagesApiResource {
 
     @POST
     @Consumes({ MediaType.TEXT_PLAIN, MediaType.TEXT_HTML, MediaType.APPLICATION_JSON })
-    public ImageCreateResponse createImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) final String entityType,
+    @Operation(summary = "Upload an image as a data URL", operationId = "createImage", description = "Body is a base64 data URL sent as text/plain, text/html or JSON. Replaces an existing image.")
+    @RequestBody(required = true, content = {
+            @Content(mediaType = MediaType.TEXT_PLAIN, schema = @Schema(type = "string", description = "Base64 data URL, for example data:image/png;base64,iVBORw0...")) })
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ImageCreateResponse.class)))
+    @ApiResponse(responseCode = "400", description = "The body is missing or is not a data URL.")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission to create the image.")
+    @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
+    public ImageCreateResponse createImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, final InputStream body) {
 
         requireNonNull(body, "Missing input stream");
@@ -200,9 +234,15 @@ public class ImagesApiResource {
 
     @PUT
     @Consumes(MediaType.MULTIPART_FORM_DATA)
-    @RequestBody(description = "Update image", content = {
-            @Content(mediaType = MediaType.MULTIPART_FORM_DATA, schema = @io.swagger.v3.oas.annotations.media.Schema(type = "object")) })
-    public ImageCreateResponse updateImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) final String entityName,
+    @Operation(summary = "Replace an image", operationId = "updateImage_1", description = "Same as upload. Replaces the stored photo.")
+    @RequestBody(required = true, content = {
+            @Content(mediaType = MediaType.MULTIPART_FORM_DATA, schema = @Schema(implementation = ImagesApiResourceSwagger.ImageUploadForm.class)),
+            @Content(mediaType = MediaType.TEXT_PLAIN, schema = @Schema(type = "string", description = "Base64 data URL, for example data:image/png;base64,iVBORw0...")) })
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ImageCreateResponse.class)))
+    @ApiResponse(responseCode = "400", description = "The file is missing or fails the upload checks.")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission to update the image.")
+    @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
+    public ImageCreateResponse updateImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, @HeaderParam(CONTENT_LENGTH) final Long fileSize,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final InputStream inputStream,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final FormDataContentDisposition fileDetails,
@@ -212,13 +252,22 @@ public class ImagesApiResource {
 
     @PUT
     @Consumes({ MediaType.TEXT_PLAIN, MediaType.TEXT_HTML, MediaType.APPLICATION_JSON })
-    public ImageCreateResponse updateImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) final String entityName,
+    @Operation(summary = "Replace an image from a data URL", operationId = "updateImage", description = "Same as the data-URL upload. Replaces the stored photo.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ImageCreateResponse.class)))
+    @ApiResponse(responseCode = "400", description = "The body is missing or is not a data URL.")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission to update the image.")
+    @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
+    public ImageCreateResponse updateImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, final InputStream body) {
         return createImage(entityName, entityId, body);
     }
 
     @DELETE
-    public ImageDeleteResponse deleteImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) final String entityType,
+    @Operation(summary = "Delete an image", operationId = "deleteImage", description = "Deletes the photo stored for the client or staff member.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ImageDeleteResponse.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks permission to delete the image.")
+    @ApiResponse(responseCode = "404", description = "No image, or no client or staff member with this id.")
+    public ImageDeleteResponse deleteImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId) {
 
         final var command = new ImageDeleteCommand();

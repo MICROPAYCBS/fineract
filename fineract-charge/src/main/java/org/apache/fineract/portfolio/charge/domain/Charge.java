@@ -87,6 +87,7 @@ public class Charge extends AbstractPersistableCustom<Long> {
     @Column(name = "currency_code", length = 3)
     private String currencyCode;
 
+    @Getter
     @Column(name = "charge_applies_to_enum", nullable = false)
     private Integer chargeAppliesTo;
 

@@ -20,7 +20,6 @@ package org.apache.fineract.portfolio.savings.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
 
@@ -83,12 +82,64 @@ final class SavingsProductsApiResourceSwagger {
         public Boolean withHoldTax;
         @Schema(example = "false")
         public Boolean isDormancyTrackingActive;
-        @Schema(example = "dd MMMM yyyy")
+        @Schema(description = "Format applied to startDate and closeDate", example = "dd MMMM yyyy")
         public String dateFormat;
-        @Schema(example = "01 January 2024")
+        @Schema(description = "Product validity start. Date string interpreted with dateFormat and locale.", example = "01 January 2024")
         public String startDate;
-        @Schema(example = "31 December 2030")
+        @Schema(description = "Product validity end. Date string interpreted with dateFormat and locale.", example = "31 December 2030")
         public String closeDate;
+        @Schema(description = "Payment channels offered on this product. paymentTypeId is required on each item.")
+        public List<PostSavingsProductPaymentChannel> paymentChannels;
+
+        static final class PostSavingsProductPaymentChannelCharge {
+
+            private PostSavingsProductPaymentChannelCharge() {}
+
+            @Schema(description = "Savings charge id", example = "12")
+            public Long id;
+            @Schema(description = "Override amount. Omit for the charge definition amount. Not allowed when the charge uses tiers.", example = "50.00")
+            public BigDecimal amount;
+        }
+
+        static final class PostSavingsProductPaymentChannel {
+
+            private PostSavingsProductPaymentChannel() {}
+
+            @Schema(description = "Payment type id. Required. Must be unique on the product.", example = "1")
+            public Long paymentTypeId;
+            @Schema(description = "Premium channel. Subscribing is required before the account can use it.", example = "false")
+            public Boolean isPremium;
+            @Schema(description = "When omitted, the channel is active", example = "true")
+            public Boolean isActive;
+            @Schema(description = "Channel display name", example = "Mobile money")
+            public String name;
+            @Schema(description = "Channel description", example = "Wallet withdrawals")
+            public String description;
+            @Schema(description = "Charges taken when the account subscribes to this channel")
+            public List<PostSavingsProductPaymentChannelCharge> charges;
+            @Schema(description = "Maximum debit amount of one transaction", example = "1000.00")
+            public BigDecimal maxDebitPerTxn;
+            @Schema(description = "Maximum debit amount per day", example = "5000.00")
+            public BigDecimal maxDebitPerDay;
+            @Schema(description = "Maximum debit amount per month", example = "20000.00")
+            public BigDecimal maxDebitPerMonth;
+            @Schema(description = "Maximum number of debit transactions per day", example = "10")
+            public Integer maxDebitCountPerDay;
+            @Schema(description = "Maximum number of debit transactions per month", example = "100")
+            public Integer maxDebitCountPerMonth;
+            @Schema(description = "Maximum credit amount of one transaction", example = "1000.00")
+            public BigDecimal maxCreditPerTxn;
+            @Schema(description = "Maximum credit amount per day", example = "5000.00")
+            public BigDecimal maxCreditPerDay;
+            @Schema(description = "Maximum credit amount per month", example = "20000.00")
+            public BigDecimal maxCreditPerMonth;
+            @Schema(description = "Maximum number of credit transactions per day", example = "10")
+            public Integer maxCreditCountPerDay;
+            @Schema(description = "Maximum number of credit transactions per month", example = "100")
+            public Integer maxCreditCountPerMonth;
+            @Schema(description = "Marks the account-transfer channel. At most one active channel may set this.", example = "false")
+            public Boolean isAccountTransferChannel;
+        }
     }
 
     @Schema(description = "PostSavingsProductsResponse")
@@ -111,6 +162,14 @@ final class SavingsProductsApiResourceSwagger {
         public String locale;
         @Schema(example = "5.73")
         public Double interestRate;
+        @Schema(description = "Format applied to startDate and closeDate", example = "dd MMMM yyyy")
+        public String dateFormat;
+        @Schema(description = "Product validity start. Date string interpreted with dateFormat and locale.", example = "01 January 2024")
+        public String startDate;
+        @Schema(description = "Product validity end. Date string interpreted with dateFormat and locale.", example = "31 December 2030")
+        public String closeDate;
+        @Schema(description = "Replaces the product payment channels when sent")
+        public List<PostSavingsProductsRequest.PostSavingsProductPaymentChannel> paymentChannels;
     }
 
     @Schema(description = "PutSavingsProductsProductIdResponse")
@@ -236,12 +295,67 @@ final class SavingsProductsApiResourceSwagger {
         @Schema(example = "false")
         public Boolean withdrawalFeeForTransfers;
         public GetSavingsProductsAccountingRule accountingRule;
-        @Schema(example = "01 January 2024")
-        public LocalDate startDate;
-        @Schema(example = "31 December 2030")
-        public LocalDate closeDate;
-        @Schema(example = "savingsProduct.active")
+        @Schema(description = "Product validity start as [year, month, day]", example = "[2024, 1, 1]", type = "array")
+        public List<Integer> startDate;
+        @Schema(description = "Product validity end as [year, month, day]", example = "[2030, 12, 31]", type = "array")
+        public List<Integer> closeDate;
+        @Schema(description = "Derived product status", example = "savingsProduct.active")
         public String status;
+        @Schema(description = "Payment channels configured on the product")
+        public List<GetSavingsProductPaymentChannel> paymentChannels;
+
+        static final class GetSavingsProductPaymentChannelCharge {
+
+            private GetSavingsProductPaymentChannelCharge() {}
+
+            @Schema(example = "1")
+            public Long id;
+            @Schema(example = "12")
+            public Long chargeId;
+            @Schema(example = "50.00")
+            public BigDecimal amount;
+        }
+
+        static final class GetSavingsProductPaymentChannel {
+
+            private GetSavingsProductPaymentChannel() {}
+
+            @Schema(example = "3")
+            public Long id;
+            @Schema(example = "1")
+            public Long paymentTypeId;
+            @Schema(example = "false")
+            public Boolean isPremium;
+            @Schema(example = "true")
+            public Boolean isActive;
+            @Schema(example = "Mobile money")
+            public String name;
+            @Schema(example = "Wallet withdrawals")
+            public String description;
+            @Schema(example = "1000.00")
+            public BigDecimal maxDebitPerTxn;
+            @Schema(example = "5000.00")
+            public BigDecimal maxDebitPerDay;
+            @Schema(example = "20000.00")
+            public BigDecimal maxDebitPerMonth;
+            @Schema(example = "10")
+            public Integer maxDebitCountPerDay;
+            @Schema(example = "100")
+            public Integer maxDebitCountPerMonth;
+            @Schema(example = "1000.00")
+            public BigDecimal maxCreditPerTxn;
+            @Schema(example = "5000.00")
+            public BigDecimal maxCreditPerDay;
+            @Schema(example = "20000.00")
+            public BigDecimal maxCreditPerMonth;
+            @Schema(example = "10")
+            public Integer maxCreditCountPerDay;
+            @Schema(example = "100")
+            public Integer maxCreditCountPerMonth;
+            @Schema(example = "false")
+            public Boolean isAccountTransferChannel;
+            public List<GetSavingsProductPaymentChannelCharge> charges;
+        }
     }
 
     @Schema(description = "GetSavingsProductsProductIdResponse")
@@ -390,6 +504,14 @@ final class SavingsProductsApiResourceSwagger {
         public Set<GetSavingsProductsPenaltyToIncomeAccountMappings> penaltyToIncomeAccountMappings;
         @Schema(example = "[]")
         public List<Long> charges;
+        @Schema(description = "Product validity start as [year, month, day]", example = "[2024, 1, 1]", type = "array")
+        public List<Integer> startDate;
+        @Schema(description = "Product validity end as [year, month, day]", example = "[2030, 12, 31]", type = "array")
+        public List<Integer> closeDate;
+        @Schema(description = "Derived product status", example = "savingsProduct.active")
+        public String status;
+        @Schema(description = "Payment channels configured on the product")
+        public List<GetSavingsProductsResponse.GetSavingsProductPaymentChannel> paymentChannels;
     }
 
     @Schema(description = "GetSavingsProductsTemplateResponse")

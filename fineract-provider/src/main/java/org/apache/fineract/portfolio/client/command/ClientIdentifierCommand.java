@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.client.command;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
@@ -28,6 +29,8 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
  * Immutable command for creating or updating details of a client identifier.
  */
 public class ClientIdentifierCommand {
+
+    private static final List<String> ALLOWED_STATUSES = List.of("Active", "Inactive");
 
     private final Long documentTypeId;
     private final String documentKey;
@@ -65,6 +68,11 @@ public class ClientIdentifierCommand {
 
         baseDataValidator.reset().parameter("documentTypeId").value(this.documentTypeId).notNull().integerGreaterThanZero();
         baseDataValidator.reset().parameter("documentKey").value(this.documentKey).notBlank();
+        // Missing status arrives as null from the deserializer, and as "" once JsonCommand builds the entity.
+        baseDataValidator.reset().parameter("status").value(this.status).notBlank();
+        if (StringUtils.isNotBlank(this.status)) {
+            baseDataValidator.reset().parameter("status").value(this.status).isOneOfTheseStringValues(ALLOWED_STATUSES);
+        }
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",
@@ -78,13 +86,14 @@ public class ClientIdentifierCommand {
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("clientIdentifier");
 
         baseDataValidator.reset().parameter("documentKey").value(this.documentKey).ignoreIfNull().notBlank();
+        baseDataValidator.reset().parameter("status").value(this.status).ignoreIfNull().isOneOfTheseStringValues(ALLOWED_STATUSES);
 
         // FIXME - KW - add in validation
         // if (command.isDocumentTypeChanged()) {
         // baseDataValidator.reset().parameter("documentTypeId").value(command.getDocumentTypeId()).notNull().integerGreaterThanZero();
         // }
 
-        baseDataValidator.reset().anyOfNotNull(this.documentTypeId, this.documentKey);
+        baseDataValidator.reset().anyOfNotNull(this.documentTypeId, this.documentKey, this.status);
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",

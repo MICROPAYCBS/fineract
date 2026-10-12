@@ -63,6 +63,7 @@ cargo {
         sharedClasspath = configurations.driver
         containerProperties {
             def jvmArgs = '--add-exports=java.naming/com.sun.jndi.ldap=ALL-UNNAMED --add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.invoke=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.security=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.management/javax.management=ALL-UNNAMED --add-opens=java.naming/javax.naming=ALL-UNNAMED '
+            jvmArgs += ' -Dfineract.tenant.timezone=Asia/Kolkata '
             if (project.hasProperty('localDebug')) {
                 jvmArgs += ' -agentlib:jdwp=transport=dt_socket,server=y,address=*:9000,suspend=n -Xmx2G -Duser.timezone=Asia/Kolkata '
             }

@@ -394,7 +394,11 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
             final CashierTransaction cashierTxn = CashierTransaction.fromJson(cashier, command);
             cashierTxn.setTxnType(txnType.getId());
 
-            this.cashierTxnRepository.save(cashierTxn);
+            // Flush so EclipseLink assigns the IDENTITY id before the breakdown lines copy it.
+            this.cashierTxnRepository.saveAndFlush(cashierTxn);
+            if (cashierTxn.getId() == null) {
+                throw new IllegalStateException("Cashier transaction id not generated; cannot link legal tender lines");
+            }
 
             for (CashLegalTenderLine line : legalTenderLines) {
                 line.setSourceId(cashierTxn.getId());

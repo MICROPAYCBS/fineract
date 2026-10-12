@@ -293,6 +293,26 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
         sqlValidator.validate(searchParameters.getOrderBy());
         sqlValidator.validate(searchParameters.getSortOrder());
+        final CashierTotals totals = loadCashierTotals(cashierId, currencyCode);
+
+        final Page<CashierTransactionData> cashierTransactions = retrieveCashierTransactions(cashierId, includeAllTellers, fromDate, toDate,
+                currencyCode, searchParameters);
+
+        CashierTransactionData cashierTxnTemplate = retrieveCashierTxnTemplate(cashierId);
+
+        CashierTransactionsWithSummaryData txnsWithSummary = CashierTransactionsWithSummaryData.instance(cashierTransactions, totals.alloc(),
+                totals.cashIn(), totals.cashOut(), totals.settle(), cashierTxnTemplate.getOfficeName(), cashierTxnTemplate.getTellerId(),
+                cashierTxnTemplate.getTellerName(), cashierTxnTemplate.getCashierId(), cashierTxnTemplate.getCashierName());
+        return txnsWithSummary;
+    }
+
+    @Override
+    public BigDecimal retrieveCashierNetCash(final Long cashierId, final String currencyCode) {
+        final CashierTotals totals = loadCashierTotals(cashierId, currencyCode);
+        return totals.alloc().add(totals.cashIn()).subtract(totals.cashOut()).subtract(totals.settle());
+    }
+
+    private CashierTotals loadCashierTotals(final Long cashierId, final String currencyCode) {
         final String nextDay = sqlGenerator.incrementDateByOneDay("c.end_date");
 
         final CashierTransactionSummaryMapper ctsm = new CashierTransactionSummaryMapper();
@@ -320,17 +340,10 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
                 }
             }
         }
-
-        final Page<CashierTransactionData> cashierTransactions = retrieveCashierTransactions(cashierId, includeAllTellers, fromDate, toDate,
-                currencyCode, searchParameters);
-
-        CashierTransactionData cashierTxnTemplate = retrieveCashierTxnTemplate(cashierId);
-
-        CashierTransactionsWithSummaryData txnsWithSummary = CashierTransactionsWithSummaryData.instance(cashierTransactions, allocAmount,
-                cashInAmount, cashOutAmount, settleAmount, cashierTxnTemplate.getOfficeName(), cashierTxnTemplate.getTellerId(),
-                cashierTxnTemplate.getTellerName(), cashierTxnTemplate.getCashierId(), cashierTxnTemplate.getCashierName());
-        return txnsWithSummary;
+        return new CashierTotals(allocAmount, cashInAmount, cashOutAmount, settleAmount);
     }
+
+    private record CashierTotals(BigDecimal alloc, BigDecimal cashIn, BigDecimal cashOut, BigDecimal settle) {}
 
     @Override
     public Page<CashierTransactionData> retrieveCashierTransactions(final Long cashierId, final boolean includeAllTellers,
@@ -349,15 +362,15 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
                 + ctm.savingsTxnSchema() + " where sav_txn.is_reversed = false and c.id = ? and sav.currency_code = ? "
                 + "and sav_txn.transaction_date between c.start_date and " + nextDay
                 + " and renum.enum_value in ('deposit','withdrawal fee', 'Pay Charge', 'withdrawal', 'Annual Fee', 'Waive Charge', 'Interest Posting', 'Overdraft Interest') "
-                + " and (sav_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) AND acnttrans.id IS NULL ) "
+                + " and payType.is_cash_payment = true AND acnttrans.id IS NULL ) "
                 + " union (select " + ctm.loansTxnSchema() + " where loan_txn.is_reversed = false and c.id = ? and loan.currency_code = ? "
                 + "and loan_txn.transaction_date between c.start_date and " + nextDay
                 + " and renum.enum_value IN ('REPAYMENT_AT_DISBURSEMENT','REPAYMENT', 'RECOVERY_REPAYMENT','DISBURSEMENT', 'CHARGE_PAYMENT', 'WAIVE_CHARGES', 'WAIVE_INTEREST', 'WRITEOFF') "
-                + " and (loan_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) " + " AND acnttrans.id IS NULL ) "
+                + " and payType.is_cash_payment = true " + " AND acnttrans.id IS NULL ) "
                 + " union (select " + ctm.clientTxnSchema()
                 + " where cli_txn.is_reversed = false and c.id = ? and cli_txn.currency_code = ? " + "and cli_txn.transaction_date "
                 + " between c.start_date and  " + nextDay + " and renum.enum_value IN ('PAY_CHARGE', 'WAIVE_CHARGE') "
-                + " and (cli_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) ) " + " order by created_date ";
+                + " and payType.is_cash_payment = true ) " + " order by created_date ";
 
         if (searchParameters.hasLimit()) {
             sql += " ";
@@ -642,7 +655,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append("    where sav_txn.is_reversed = false and c.id = ? ");
             sqlBuilder.append(" and sav.currency_code = ? ");
             sqlBuilder.append("    and sav_txn.transaction_date between c.start_date and c.end_date ");
-            sqlBuilder.append("    and (sav_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) ");
+            sqlBuilder.append("    and payType.is_cash_payment = true ");
             sqlBuilder.append("    AND acnttrans.id IS NULL  ");
             sqlBuilder.append("    ) ");
             sqlBuilder.append("    UNION ");
@@ -680,7 +693,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append("    where loan_txn.is_reversed = false and c.id = ? ");
             sqlBuilder.append(" and loan.currency_code = ? ");
             sqlBuilder.append("    and loan_txn.transaction_date between c.start_date and " + nextDay);
-            sqlBuilder.append("    and (loan_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) ");
+            sqlBuilder.append("    and payType.is_cash_payment = true ");
             sqlBuilder.append("    AND acnttrans.id IS NULL  ");
             sqlBuilder.append("    ) ");
             sqlBuilder.append("    UNION ");
@@ -713,7 +726,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append("    where cli_txn.is_reversed = false AND c.id = ?    ");
             sqlBuilder.append(" and cli_txn.currency_code = ? ");
             sqlBuilder.append("    and cli_txn.transaction_date between c.start_date and " + nextDay);
-            sqlBuilder.append(" and (cli_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true)  ");
+            sqlBuilder.append(" and payType.is_cash_payment = true  ");
             sqlBuilder.append("    ) ");
             sqlBuilder.append("    ) txns ");
             sqlBuilder.append("    group by cash_txn_type ");

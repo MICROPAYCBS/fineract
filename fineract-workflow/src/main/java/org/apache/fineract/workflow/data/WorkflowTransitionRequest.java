@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.workflow.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -25,9 +26,13 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@Schema(description = "Directed transition submitted with a workflow definition")
 public class WorkflowTransitionRequest {
 
+    @Schema(description = "Stage code the transition leaves", example = "REVIEW", requiredMode = Schema.RequiredMode.REQUIRED)
     private String fromStageCode;
+    @Schema(description = "Stage code the transition enters", example = "APPROVAL", requiredMode = Schema.RequiredMode.REQUIRED)
     private String toStageCode;
+    @Schema(description = "Order of this transition among those leaving the same stage. Must be greater than zero.", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Integer sequenceNo;
 }

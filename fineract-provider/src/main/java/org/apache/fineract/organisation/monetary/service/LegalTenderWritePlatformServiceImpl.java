@@ -26,12 +26,10 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.serialization.LegalTenderCommandFromApiJsonDeserializer;
 import org.apache.fineract.organisation.teller.domain.CurrencyLegalTender;
 import org.apache.fineract.organisation.teller.domain.CurrencyLegalTenderRepository;
-import org.apache.fineract.organisation.teller.domain.LegalTenderType;
 import org.apache.fineract.organisation.teller.exception.LegalTenderNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -41,9 +39,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlatformService {
 
-    private static final String RESOURCE_NAME = "LEGAL_TENDER";
-
-    private final PlatformSecurityContext context;
     private final CurrencyLegalTenderRepository legalTenderRepository;
     private final ApplicationCurrencyRepositoryWrapper applicationCurrencyRepository;
     private final LegalTenderCommandFromApiJsonDeserializer apiJsonDeserializer;
@@ -52,7 +47,6 @@ public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlat
     @Override
     @Transactional
     public CommandProcessingResult createLegalTender(final String currencyCode, final JsonCommand command) {
-        this.context.authenticatedUser().validateHasCreatePermission(RESOURCE_NAME);
         this.applicationCurrencyRepository.findOneWithNotFoundDetection(currencyCode);
         this.apiJsonDeserializer.validateForCreate(command.json());
 
@@ -71,7 +65,6 @@ public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlat
     @Override
     @Transactional
     public CommandProcessingResult updateLegalTender(final String currencyCode, final Long legalTenderId, final JsonCommand command) {
-        this.context.authenticatedUser().validateHasUpdatePermission(RESOURCE_NAME);
         this.applicationCurrencyRepository.findOneWithNotFoundDetection(currencyCode);
         this.apiJsonDeserializer.validateForUpdate(command.json());
 
@@ -91,7 +84,6 @@ public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlat
     @Override
     @Transactional
     public CommandProcessingResult deleteLegalTender(final String currencyCode, final Long legalTenderId, final JsonCommand command) {
-        this.context.authenticatedUser().validateHasDeletePermission(RESOURCE_NAME);
         final CurrencyLegalTender legalTender = findWithNotFoundDetection(currencyCode, legalTenderId);
         if (this.legalTenderRepository.existsInCashierTransactions(legalTenderId)) {
             throw new PlatformDataIntegrityException("error.msg.legal.tender.in.use",

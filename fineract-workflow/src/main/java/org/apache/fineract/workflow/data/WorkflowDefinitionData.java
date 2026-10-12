@@ -18,20 +18,30 @@
  */
 package org.apache.fineract.workflow.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
+@Schema(description = "Workflow definition with its stages and transitions")
 public class WorkflowDefinitionData {
 
+    @Schema(description = "Workflow definition id", example = "1")
     private final Long id;
+    @Schema(description = "Maker-checker permission code of the task this workflow governs", example = "APPROVE_LOAN")
     private final String taskPermissionCode;
+    @Schema(description = "Workflow name, unique per task", example = "Loan approval")
     private final String name;
+    @Schema(description = "Workflow description", example = "Two-stage approval for loan disbursement")
     private final String description;
+    @Schema(description = "Lifecycle status", example = "DRAFT", allowableValues = { "DRAFT", "ACTIVE", "INACTIVE" })
     private final String status;
+    @Schema(description = "Selection priority. Zero or positive. Lower values are considered first.", example = "1")
     private final Integer priority;
+    @Schema(description = "Stages in this definition")
     private final List<WorkflowStageData> stages;
+    @Schema(description = "Directed transitions between stages")
     private final List<WorkflowTransitionData> transitions;
 }

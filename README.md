@@ -86,7 +86,7 @@ After the default tenant is running (so `fineract_tenants` exists and connection
 ./gradlew :fineract-provider:createNewTenant -PtenantIdentifier=demo
 ```
 
-This creates database `fineract_demo`, inserts `tenant_server_connections` + `tenants` (default name `Demo Tenant`, timezone `Asia/Kolkata`), and reuses the encrypted DB password from connection `id=1` when credentials match. Optional overrides: `-PtenantName`, `-PtenantTimezone`, `-PtenantDbHost`, `-PtenantDbPort`, `-PtenantDbUser`, `-PtenantDbPassword`, `-PtenantAdminUser`, `-PtenantAdminPassword`, `-PmasterPassword`, `-PdbType=postgresql|mariadb|mysql`.
+This creates database `fineract_demo`, inserts `tenant_server_connections` + `tenants` (default name `Demo Tenant`, timezone `Africa/Kampala`), and reuses the encrypted DB password from connection `id=1` when credentials match. Optional overrides: `-PtenantName`, `-PtenantTimezone`, `-PtenantDbHost`, `-PtenantDbPort`, `-PtenantDbUser`, `-PtenantDbPassword`, `-PtenantAdminUser`, `-PtenantAdminPassword`, `-PmasterPassword`, `-PdbType=postgresql|mariadb|mysql`.
 
 If you see `permission denied to create database`, either grant `CREATEDB` to the app user, create the empty DB first (`./gradlew createPGDB -PdbName=fineract_demo` then re-run), or pass a privileged admin user via `-PtenantAdminUser` / `-PtenantAdminPassword`.
 

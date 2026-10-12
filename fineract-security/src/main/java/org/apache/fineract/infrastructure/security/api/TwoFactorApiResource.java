@@ -18,6 +18,14 @@
  */
 package org.apache.fineract.infrastructure.security.api;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.headers.Header;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.DefaultValue;
@@ -57,7 +65,9 @@ import org.springframework.stereotype.Component;
 @Path("/v1/twofactor")
 @Component
 @ConditionalOnProperty("fineract.security.2fa.enabled")
-@Tag(name = "Two Factor", description = "")
+@Tag(name = "Two Factor", description = "Request, validate, and invalidate two-factor access tokens, and enroll an authenticator app. "
+        + "Send the token from validate as the Fineract-Platform-TFA-Token header. Users with BYPASS_TWOFACTOR do not send it. "
+        + "A superseded session returns 401 with Fineract-Platform-Reason: session-superseded.")
 @RequiredArgsConstructor
 public class TwoFactorApiResource {
 
@@ -74,6 +84,10 @@ public class TwoFactorApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "List two-factor delivery methods", description = "Returns the delivery methods available to the authenticated user: email, sms, and totp when each is enabled and the user has a destination.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TwoFactorApiResourceSwagger.GetTwoFactorDeliveryMethodResponse.class))))
+    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
+            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
     public String getOTPDeliveryMethods(@Context final UriInfo uriInfo) {
         AppUser user = context.authenticatedUser();
 
@@ -83,8 +97,15 @@ public class TwoFactorApiResource {
 
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
-    public String requestToken(@QueryParam("deliveryMethod") final String deliveryMethod,
-            @QueryParam("extendedToken") @DefaultValue("false") boolean extendedAccessToken, @Context final UriInfo uriInfo) {
+    @Operation(summary = "Request a one-time password", description = "Creates a one-time password and sends it by the named delivery method. The password is not in the response. Use totp to skip delivery and validate a code from an authenticator app.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
+            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
+    @ApiResponse(responseCode = "403", description = "deliveryMethod is not enabled for this user, or TOTP was requested before enrollment")
+    public String requestToken(
+            @QueryParam("deliveryMethod") @Parameter(description = "How to send the one-time password: email, sms, or totp") final String deliveryMethod,
+            @QueryParam("extendedToken") @DefaultValue("false") @Parameter(description = "When true, the access token created by validate uses the extended lifetime") boolean extendedAccessToken,
+            @Context final UriInfo uriInfo) {
         final AppUser user = context.authenticatedUser();
 
         final OTPRequest request = twoFactorService.createNewOTPToken(user, deliveryMethod, extendedAccessToken);
@@ -94,7 +115,13 @@ public class TwoFactorApiResource {
     @Path("validate")
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
-    public String validate(@QueryParam("token") final String token, @Context final HttpServletRequest request) {
+    @Operation(summary = "Validate a one-time password", description = "Exchanges a one-time password, or a TOTP code, for an access token. Send that token as Fineract-Platform-TFA-Token. validFrom and validTo are epoch milliseconds.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorValidateResponse.class)))
+    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
+            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
+    @ApiResponse(responseCode = "403", description = "The one-time password is missing, expired, or does not match, or TOTP is not enrolled")
+    public String validate(@QueryParam("token") @Parameter(description = "One-time password or authenticator code") final String token,
+            @Context final HttpServletRequest request) {
         final AppUser user = context.authenticatedUser();
 
         TFAccessToken accessToken = twoFactorService.createAccessTokenFromOTP(user, token, resolveClientIpAddress(request),
@@ -115,7 +142,14 @@ public class TwoFactorApiResource {
     @Path("invalidate")
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
-    public String updateConfiguration(final String apiRequestBodyAsJson) {
+    @Operation(summary = "Invalidate a two-factor access token", description = "Disables the access token in the body. The only accepted field is token.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorInvalidateRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorInvalidateResponse.class)))
+    @ApiResponse(responseCode = "400", description = "The body is empty or token is blank")
+    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
+            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
+    @ApiResponse(responseCode = "403", description = "The access token does not exist or is no longer valid, or the caller may not invalidate it")
+    public String updateConfiguration(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().invalidateTwoFactorAccessToken().withJson(apiRequestBodyAsJson)
                 .build();
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -126,6 +160,11 @@ public class TwoFactorApiResource {
     @Path("totp/enroll")
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Start TOTP enrollment", description = "Stages a new authenticator secret for the authenticated user and returns it once, with an otpauth URI. Confirm it with POST /v1/twofactor/totp/confirm.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorTotpEnrollResponse.class)))
+    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
+            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
+    @ApiResponse(responseCode = "403", description = "TOTP delivery is not configured, or this user is already enrolled")
     public String enrollTotp() {
         final AppUser user = context.authenticatedUser();
         final TotpEnrollmentData enrollment = totpService.enroll(user);
@@ -135,7 +174,12 @@ public class TwoFactorApiResource {
     @Path("totp/confirm")
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
-    public String confirmTotp(@QueryParam("token") final String token) {
+    @Operation(summary = "Confirm TOTP enrollment", description = "Checks a code from the authenticator app against the staged secret and enables TOTP for the user.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorTotpConfirmResponse.class)))
+    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
+            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
+    @ApiResponse(responseCode = "403", description = "There is no staged secret, TOTP is already enabled, or the code does not match")
+    public String confirmTotp(@QueryParam("token") @Parameter(description = "Current authenticator code for the staged secret") final String token) {
         final AppUser user = context.authenticatedUser();
         totpService.confirm(user, token);
         final Map<String, Object> result = new HashMap<>();

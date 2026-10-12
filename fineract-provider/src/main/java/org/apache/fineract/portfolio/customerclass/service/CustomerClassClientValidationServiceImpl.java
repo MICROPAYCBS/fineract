@@ -70,7 +70,7 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
             return;
         }
         if (!isYes(currentCustomerClass.getReclassificationAllowed())) {
-            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.client.customerClassId.reclassification.not.allowed",
+            final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.reclassification.not.allowed",
                     "The current customer class does not allow reclassification to another class.", ClientApiConstants.customerClassIdParamName,
                     currentCustomerClass.getClassCode());
             throw new PlatformApiDataValidationException(List.of(error));
@@ -81,17 +81,17 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
     public void validateReadinessForActivation(final CustomerClass customerClass, final Client client) {
         final List<ApiParameterError> errors = new ArrayList<>();
         if (isYes(customerClass.getEnforceCustPhoto()) && client.getImageId() == null) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClass.photo.required",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClass.photo.required",
                     "Customer class `" + customerClass.getClassName() + "` requires a profile photo before activation.",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
         }
         if (isYes(customerClass.getEnforceCustSignature()) && !hasClientSignatureDocument(client.getId())) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClass.signature.required",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClass.signature.required",
                     "Customer class `" + customerClass.getClassName() + "` requires a customer signature before activation.",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
         }
         if (isYes(customerClass.getEnforceCustDocument()) && countActiveClientIdentifiers(client.getId()) == 0) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClass.document.required",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClass.document.required",
                     "Customer class `" + customerClass.getClassName() + "` requires at least one identification document before activation.",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
         }
@@ -128,12 +128,12 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
         }
         final int age = Period.between(dateOfBirth, DateUtils.getBusinessLocalDate()).getYears();
         if (minAge != null && age < minAge) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.age.below.minimum",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.age.below.minimum",
                     "Customer age " + age + " is below the minimum age " + minAge + " for class `" + customerClass.getClassName() + "`.",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
         }
         if (maxAge != null && age > maxAge) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.age.above.maximum",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.age.above.maximum",
                     "Customer age " + age + " is above the maximum age " + maxAge + " for class `" + customerClass.getClassName() + "`.",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
         }
@@ -155,7 +155,7 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
         if (!classLegalForm.equals(clientLegalForm.getValue())) {
             final LegalForm requiredLegalForm = LegalForm.fromInt(classLegalForm);
             final String requiredLabel = requiredLegalForm != null ? requiredLegalForm.getLabel() : "matching";
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.legalForm.mismatch",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.legalForm.mismatch",
                     "Customer class `" + customerClass.getClassName() + "` is for " + requiredLabel
                             + " customers; this client's legal form is " + clientLegalForm.getLabel() + ".",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
@@ -173,24 +173,24 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
                             rs.getObject("end_date", LocalDate.class)),
                     customerClass.getRestrictionId());
             if (restriction == null || !"ACTIVE".equalsIgnoreCase(restriction.status())) {
-                errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.restriction.inactive",
+                errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.restriction.inactive",
                         "The restriction linked to customer class `" + customerClass.getClassName() + "` is not active.",
                         ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
                 return;
             }
             final LocalDate today = DateUtils.getBusinessLocalDate();
             if (restriction.startDate() != null && today.isBefore(restriction.startDate())) {
-                errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.restriction.not.effective",
+                errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.restriction.not.effective",
                         "The restriction linked to customer class `" + customerClass.getClassName() + "` is not yet effective.",
                         ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
             }
             if (restriction.endDate() != null && today.isAfter(restriction.endDate())) {
-                errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.restriction.expired",
+                errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.restriction.expired",
                         "The restriction linked to customer class `" + customerClass.getClassName() + "` has expired.",
                         ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
             }
         } catch (final EmptyResultDataAccessException e) {
-            errors.add(ApiParameterError.parameterError("validation.msg.client.customerClassId.restriction.not.found",
+            errors.add(ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.restriction.not.found",
                     "The restriction linked to customer class `" + customerClass.getClassName() + "` was not found.",
                     ClientApiConstants.customerClassIdParamName, customerClass.getClassCode()));
         }
@@ -253,7 +253,7 @@ public class CustomerClassClientValidationServiceImpl implements CustomerClassCl
     }
 
     private ApiParameterError kycError(final CustomerClass customerClass, final String message) {
-        return ApiParameterError.parameterError("validation.msg.client.customerClassId.kyc.not.met", message,
+        return ApiParameterError.parameterErrorWithValue("validation.msg.client.customerClassId.kyc.not.met", message,
                 ClientApiConstants.customerClassIdParamName, customerClass.getClassCode());
     }
 

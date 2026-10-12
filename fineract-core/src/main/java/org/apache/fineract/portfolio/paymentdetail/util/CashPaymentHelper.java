@@ -25,10 +25,8 @@ public final class CashPaymentHelper {
     private CashPaymentHelper() {}
 
     public static boolean isCashPayment(final PaymentDetail paymentDetail) {
-        if (paymentDetail == null) {
-            return true;
-        }
-        if (paymentDetail.getPaymentType() == null) {
+        // No payment detail = system posting (interest, fees, dividends): not cash. Same rule as loans and the till.
+        if (paymentDetail == null || paymentDetail.getPaymentType() == null) {
             return false;
         }
         return Boolean.TRUE.equals(paymentDetail.getPaymentType().getIsCashPayment());

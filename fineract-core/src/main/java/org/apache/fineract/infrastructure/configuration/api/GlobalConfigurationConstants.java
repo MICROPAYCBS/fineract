@@ -21,7 +21,6 @@ package org.apache.fineract.infrastructure.configuration.api;
 public final class GlobalConfigurationConstants {
 
     public static final String MAKER_CHECKER = "maker-checker";
-    public static final String AMAZON_S3 = "amazon-s3";
     public static final String RESCHEDULE_FUTURE_REPAYMENTS = "reschedule-future-repayments";
     public static final String RESCHEDULE_REPAYMENTS_ON_HOLIDAYS = "reschedule-repayments-on-holidays";
     public static final String ALLOW_TRANSACTIONS_ON_HOLIDAY = "allow-transactions-on-holiday";
@@ -37,7 +36,6 @@ public final class GlobalConfigurationConstants {
     public static final String MEETINGS_MANDATORY_FOR_JLG_LOANS = "meetings-mandatory-for-jlg-loans";
     public static final String OFFICE_SPECIFIC_PRODUCTS_ENABLED = "office-specific-products-enabled";
     public static final String RESTRICT_PRODUCTS_TO_USER_OFFICE = "restrict-products-to-user-office";
-    public static final String OFFICE_OPENING_BALANCES_CONTRA_ACCOUNT = "office-opening-balances-contra-account";
     public static final String ROUNDING_MODE = "rounding-mode";
     public static final String BACKDATE_PENALTIES_ENABLED = "backdate-penalties-enabled";
     public static final String ORGANISATION_START_DATE = "organisation-start-date";
@@ -45,7 +43,6 @@ public final class GlobalConfigurationConstants {
     public static final String INTEREST_CHARGED_FROM_DATE_SAME_AS_DISBURSAL_DATE = "interest-charged-from-date-same-as-disbursal-date";
     public static final String SKIP_REPAYMENT_ON_FIRST_DAY_OF_MONTH = "skip-repayment-on-first-day-of-month";
     public static final String CHANGE_EMI_IF_REPAYMENT_DATE_SAME_AS_DISBURSEMENT_DATE = "change-emi-if-repaymentdate-same-as-disbursementdate";
-    public static final String DAILY_TPT_LIMIT = "daily-tpt-limit";
     public static final String ENABLE_ADDRESS = "enable-address";
     public static final String SUB_RATES = "sub-rates";
     public static final String LOAN_RESCHEDULE_IS_FIRST_PAYDAY_ALLOWED_ON_HOLIDAY = "loan-reschedule-is-first-payday-allowed-on-holiday";
@@ -74,7 +71,6 @@ public final class GlobalConfigurationConstants {
     public static final String ASSET_EXTERNALIZATION_OF_NON_ACTIVE_LOANS = "asset-externalization-of-non-active-loans";
     public static final String ENABLE_SAME_MAKER_CHECKER = "enable-same-maker-checker";
     public static final String NEXT_PAYMENT_DUE_DATE = "next-payment-due-date";
-    public static final String ENABLE_PAYMENT_HUB_INTEGRATION = "enable-payment-hub-integration";
     public static final String ENABLE_IMMEDIATE_CHARGE_ACCRUAL_POST_MATURITY = "enable-immediate-charge-accrual-post-maturity";
     public static final String ASSET_OWNER_TRANSFER_OUTSTANDING_INTEREST_CALCULATION_STRATEGY = "outstanding-interest-calculation-strategy-for-external-asset-transfer";
     public static final String ALLOWED_LOAN_STATUSES_FOR_EXTERNAL_ASSET_TRANSFER = "allowed-loan-statuses-for-external-asset-transfer";

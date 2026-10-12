@@ -123,9 +123,25 @@ final class ChargesApiResourceSwagger {
         public GetChargesPaymentModeResponse chargePaymentMode;
         public BigDecimal minCap;
         public BigDecimal maxCap;
-        @Schema(example = "false")
+        @Schema(description = "When true, amount is taken from chargeTiers and minCap, maxCap, and amount are not used", example = "false")
         public Boolean useChargeTiers;
+        @Schema(description = "Amount bands. amountRangeTo is omitted on the last open-ended tier.")
+        public java.util.List<GetChargeTier> chargeTiers;
         public GetChargesTaxGroup taxGroup;
+
+        static final class GetChargeTier {
+
+            private GetChargeTier() {}
+
+            @Schema(example = "1")
+            public Long id;
+            @Schema(description = "Inclusive lower bound of the band", example = "0.00")
+            public java.math.BigDecimal amountRangeFrom;
+            @Schema(description = "Exclusive upper bound. Null on the last open-ended tier.", example = "1000.00")
+            public java.math.BigDecimal amountRangeTo;
+            @Schema(description = "Charge amount for this band", example = "10.00")
+            public java.math.BigDecimal amount;
+        }
     }
 
     @Schema(description = "PostChargesRequest")
@@ -159,8 +175,10 @@ final class ChargesApiResourceSwagger {
         public BigDecimal minCap;
         @Schema(example = "45.56")
         public BigDecimal maxCap;
-        @Schema(example = "false")
+        @Schema(description = "When true, chargeTiers is required and amount, minCap, and maxCap must be omitted", example = "false")
         public Boolean useChargeTiers;
+        @Schema(description = "Amount bands. Only the last tier may omit amountRangeTo. Requires locale.")
+        public java.util.List<PostChargeTier> chargeTiers;
         @Schema(example = "1")
         public Long taxGroupId;
         @Schema(example = "1")
@@ -171,6 +189,18 @@ final class ChargesApiResourceSwagger {
         public Integer countFrequencyType;
         @Schema(example = "true")
         public boolean enableFreeWithdrawalCharge;
+
+        static final class PostChargeTier {
+
+            private PostChargeTier() {}
+
+            @Schema(description = "Inclusive lower bound", example = "0.00")
+            public java.math.BigDecimal amountRangeFrom;
+            @Schema(description = "Exclusive upper bound. Omit on the last tier.", example = "1000.00")
+            public java.math.BigDecimal amountRangeTo;
+            @Schema(description = "Charge amount for this band", example = "10.00")
+            public java.math.BigDecimal amount;
+        }
     }
 
     @Schema(description = "PostChargesResponse")
@@ -233,6 +263,10 @@ final class ChargesApiResourceSwagger {
         public BigDecimal maxCap;
         @Schema(example = "1")
         public Long taxGroupId;
+        @Schema(description = "When true, chargeTiers replaces the amount. When false, chargeTiers must be omitted.", example = "false")
+        public Boolean useChargeTiers;
+        @Schema(description = "Replacement amount bands. Requires locale.")
+        public java.util.List<PostChargesRequest.PostChargeTier> chargeTiers;
     }
 
     @Schema(description = "PutChargesChargeIdResponse")

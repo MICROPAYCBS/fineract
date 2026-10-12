@@ -35,11 +35,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.campaigns.sms.data.CampaignPreviewData;
@@ -211,11 +211,11 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
             HashMap<String, String> queryParamForRunReport = new ObjectMapper().readValue(smsCampaign.getParamValue(),
                     new TypeReference<>() {});
 
-            List<HashMap<String, Object>> runReportObject = getRunReportByServiceImpl(campaignParams.get("reportName"),
+            List<Map<String, Object>> runReportObject = getRunReportByServiceImpl(campaignParams.get("reportName"),
                     queryParamForRunReport);
 
             if (runReportObject != null) {
-                for (HashMap<String, Object> entry : runReportObject) {
+                for (Map<String, Object> entry : runReportObject) {
                     String textMessage = compileSmsTemplate(smsCampaign.getMessage(), smsCampaign.getCampaignName(), entry);
                     Integer clientId = (Integer) entry.get("id");
                     Object mobileNo = entry.get("mobileNo");
@@ -268,11 +268,11 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
                 campaignParams.put("clientId", client.getId().toString());
                 queryParamForRunReport.put("clientId", client.getId().toString());
 
-                List<HashMap<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
+                List<Map<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
                         queryParamForRunReport);
 
                 if (runReportObject != null && runReportObject.size() > 0) {
-                    for (HashMap<String, Object> entry : runReportObject) {
+                    for (Map<String, Object> entry : runReportObject) {
                         String textMessage = this.compileSmsTemplate(smsCampaign.getMessage(), smsCampaign.getCampaignName(), entry);
                         Object mobileNo = entry.get("mobileNo");
 
@@ -311,11 +311,11 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
             campaignParams.put("clientId", client.getId().toString());
             queryParamForRunReport.put("clientId", client.getId().toString());
 
-            List<HashMap<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
+            List<Map<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
                     queryParamForRunReport);
 
             if (runReportObject != null && runReportObject.size() > 0) {
-                for (HashMap<String, Object> entry : runReportObject) {
+                for (Map<String, Object> entry : runReportObject) {
                     String textMessage = this.compileSmsTemplate(smsCampaign.getMessage(), smsCampaign.getCampaignName(), entry);
                     Object mobileNo = entry.get("mobileNo");
 
@@ -352,11 +352,11 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
             queryParamForRunReport.put("savingsId", savingsAccount.getId().toString());
 
             Client client = savingsAccount.getClient();
-            List<HashMap<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
+            List<Map<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
                     queryParamForRunReport);
 
             if (runReportObject != null && runReportObject.size() > 0) {
-                for (HashMap<String, Object> entry : runReportObject) {
+                for (Map<String, Object> entry : runReportObject) {
                     String textMessage = this.compileSmsTemplate(smsCampaign.getMessage(), smsCampaign.getCampaignName(), entry);
                     Object mobileNo = entry.get("mobileNo");
 
@@ -463,7 +463,7 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
         return stringWriter.toString();
     }
 
-    private List<HashMap<String, Object>> getRunReportByServiceImpl(final String reportName, final Map<String, String> queryParams)
+    private List<Map<String, Object>> getRunReportByServiceImpl(final String reportName, final Map<String, String> queryParams)
             throws IOException {
         final String reportType = "report";
 
@@ -476,23 +476,34 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
             resultList = new ObjectMapper().readValue(response, new TypeReference<List<HashMap<String, Object>>>() {});
         } catch (JsonParseException e) {
             log.warn("Conversion of report query results to JSON failed", e);
-            return resultList;
+            return new ArrayList<>();
         }
         // loop changes array date to string date
-        for (Iterator<HashMap<String, Object>> iter = resultList.iterator(); iter.hasNext();) {
-            HashMap<String, Object> entry = iter.next();
-            for (Iterator<Map.Entry<String, Object>> it = entry.entrySet().iterator(); it.hasNext();) {
-                Map.Entry<String, Object> map = it.next();
-                String key = map.getKey();
+        for (HashMap<String, Object> entry : resultList) {
+            for (Map.Entry<String, Object> map : entry.entrySet()) {
                 Object ob = map.getValue();
-                if (ob instanceof ArrayList && ((ArrayList) ob).size() == 3) {
-                    String changeArrayDateToStringDate = ((ArrayList) ob).get(2).toString() + "-" + ((ArrayList) ob).get(1).toString() + "-"
-                            + ((ArrayList) ob).get(0).toString();
-                    entry.put(key, changeArrayDateToStringDate);
+                if (ob instanceof ArrayList && ((ArrayList<?>) ob).size() == 3) {
+                    String changeArrayDateToStringDate = ((ArrayList<?>) ob).get(2).toString() + "-" + ((ArrayList<?>) ob).get(1).toString()
+                            + "-" + ((ArrayList<?>) ob).get(0).toString();
+                    map.setValue(changeArrayDateToStringDate);
                 }
             }
         }
-        return resultList;
+        return toCaseInsensitiveRows(resultList);
+    }
+
+    /**
+     * PostgreSQL returns unquoted column aliases in lower case (mobileno), MySQL keeps them as written (mobileNo).
+     * Campaign code and message templates use camelCase names, so look columns up without regard to case.
+     */
+    static List<Map<String, Object>> toCaseInsensitiveRows(final List<? extends Map<String, Object>> rows) {
+        final List<Map<String, Object>> result = new ArrayList<>(rows.size());
+        for (final Map<String, Object> row : rows) {
+            final Map<String, Object> ci = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+            ci.putAll(row);
+            result.add(ci);
+        }
+        return result;
     }
 
     @Override
@@ -509,11 +520,11 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
             HashMap<String, String> campaignParams = new ObjectMapper().readValue(smsParams, new TypeReference<>() {});
             HashMap<String, String> queryParamForRunReport = new ObjectMapper().readValue(smsParams, new TypeReference<>() {});
 
-            List<HashMap<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
+            List<Map<String, Object>> runReportObject = this.getRunReportByServiceImpl(campaignParams.get("reportName"),
                     queryParamForRunReport);
 
             if (runReportObject != null && !runReportObject.isEmpty()) {
-                for (HashMap<String, Object> entry : runReportObject) {
+                for (Map<String, Object> entry : runReportObject) {
                     // add string object to campaignParam object
                     String textMessage = this.compileSmsTemplate(textMessageTemplate, "SmsCampaign", entry);
                     if (!textMessage.isEmpty()) {

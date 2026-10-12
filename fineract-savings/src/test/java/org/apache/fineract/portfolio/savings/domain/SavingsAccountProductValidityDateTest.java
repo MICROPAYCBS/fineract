@@ -71,7 +71,7 @@ class SavingsAccountProductValidityDateTest {
         final PlatformApiDataValidationException exception = assertThrows(PlatformApiDataValidationException.class,
                 () -> account.validateNewApplicationState("savingsaccount"));
         assertThat(exception.getErrors()).anyMatch(error -> error.getUserMessageGlobalisationCode()
-                .contains("cannot.be.before.savings.product.start.date"));
+                .equals("validation.msg.savingsaccount.submittal.cannot.be.before.savings.product.start.date"));
     }
 
     @Test
@@ -82,7 +82,7 @@ class SavingsAccountProductValidityDateTest {
         final PlatformApiDataValidationException exception = assertThrows(PlatformApiDataValidationException.class,
                 () -> account.validateNewApplicationState("savingsaccount"));
         assertThat(exception.getErrors()).anyMatch(error -> error.getUserMessageGlobalisationCode()
-                .contains("cannot.be.after.savings.product.close.date"));
+                .equals("validation.msg.savingsaccount.submittal.cannot.be.after.savings.product.close.date"));
     }
 
     private SavingsProduct productWithDates(final LocalDate startDate, final LocalDate closeDate) {

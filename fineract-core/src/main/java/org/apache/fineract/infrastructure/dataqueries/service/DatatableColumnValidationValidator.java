@@ -42,7 +42,7 @@ public final class DatatableColumnValidationValidator {
         final String value = rawValue.trim();
         if (columnHeader.getColumnLength() != null && value.length() > columnHeader.getColumnLength()) {
             throw validationException(columnHeader.getColumnName(), "validation.msg.datatable.column.exceeds.max.length",
-                    "Value exceeds maximum length of " + columnHeader.getColumnLength(), "maxLength", columnHeader.getColumnLength());
+                    "Value exceeds maximum length of " + columnHeader.getColumnLength(), columnHeader.getColumnLength());
         }
 
         final String regex = columnHeader.getValidationRegex();
@@ -54,19 +54,19 @@ public final class DatatableColumnValidationValidator {
             if (!Pattern.compile(regex).matcher(value).matches()) {
                 final String message = StringUtils.defaultIfBlank(columnHeader.getValidationMessage(),
                         "Value does not match the required format");
-                throw validationException(columnHeader.getColumnName(), "validation.msg.datatable.column.invalid.format", message, "regex",
-                        regex);
+                throw validationException(columnHeader.getColumnName(), "validation.msg.datatable.column.invalid.format", message, regex);
             }
         } catch (final PatternSyntaxException e) {
             throw validationException(columnHeader.getColumnName(), "validation.msg.datatable.column.invalid.regex.config",
-                    "Column validation regex is invalid", "regex", regex);
+                    "Column validation regex is invalid", regex);
         }
     }
 
     private static PlatformApiDataValidationException validationException(final String columnName, final String globalisationCode,
-            final String defaultUserMessage, final String valueName, final Object value) {
+            final String defaultUserMessage, final Object limit) {
         final List<ApiParameterError> errors = new ArrayList<>();
-        errors.add(ApiParameterError.parameterError(globalisationCode, defaultUserMessage, columnName, valueName, value));
+        // limit is declared Object, so this binds to parameterError(code, message, parameterName, Object... args)
+        errors.add(ApiParameterError.parameterError(globalisationCode, defaultUserMessage, columnName, limit));
         throw new PlatformApiDataValidationException(errors);
     }
 }

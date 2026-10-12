@@ -21,6 +21,11 @@ package org.apache.fineract.portfolio.client.api;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -46,7 +51,7 @@ import org.springframework.stereotype.Component;
 
 @Path("/v1/clients/{clientId}/incomesources")
 @Component
-@Tag(name = "Client Income Source", description = "")
+@Tag(name = "Client Income Source", description = "Client income sources and the code-value options used to record them")
 @RequiredArgsConstructor
 public class ClientIncomeSourcesApiResource {
 
@@ -60,17 +65,24 @@ public class ClientIncomeSourcesApiResource {
     @GET
     @Path("/{incomeSourceId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve a client income source", operationId = "retrieveOneClientIncomeSource")
-    public ClientIncomeSourceData getIncomeSource(@PathParam("incomeSourceId") final Long incomeSourceId,
-            @PathParam("clientId") @Parameter(description = "clientId") final Long clientId) {
+    @Operation(summary = "Retrieve a client income source", description = "Returns one income source by its identifier. "
+            + "The clientId path value is not used to filter the row.", operationId = "retrieveOneClientIncomeSource")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientIncomeSourceData.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for IncomeSources.")
+    public ClientIncomeSourceData getIncomeSource(
+            @PathParam("incomeSourceId") @Parameter(description = "Income source identifier", required = true, example = "1") final Long incomeSourceId,
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return this.readPlatformService.getClientIncomeSource(incomeSourceId);
     }
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List all client income sources", operationId = "retrieveAllClientIncomeSources")
-    public List<ClientIncomeSourceData> getIncomeSources(@PathParam("clientId") final long clientId) {
+    @Operation(summary = "List all client income sources", description = "Returns the client's income sources, primary sources first.", operationId = "retrieveAllClientIncomeSources")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = ClientIncomeSourceData.class))))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for IncomeSources.")
+    public List<ClientIncomeSourceData> getIncomeSources(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return this.readPlatformService.getClientIncomeSources(clientId);
     }
@@ -78,8 +90,12 @@ public class ClientIncomeSourcesApiResource {
     @GET
     @Path("/template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve client income source template", operationId = "retrieveTemplateClientIncomeSource")
-    public ClientIncomeSourceData getTemplate(@PathParam("clientId") final long clientId) {
+    @Operation(summary = "Retrieve client income source template", description = "Returns code-value option lists for income source type, "
+            + "source of funds, income frequency, and verification status.", operationId = "retrieveTemplateClientIncomeSource")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientIncomeSourceData.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for IncomeSources.")
+    public ClientIncomeSourceData getTemplate(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return this.readPlatformService.retrieveTemplate();
     }
@@ -87,8 +103,16 @@ public class ClientIncomeSourcesApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Add a client income source", operationId = "createClientIncomeSource")
-    public CommandProcessingResult addIncomeSource(@PathParam("clientId") final long clientId,
+    @Operation(summary = "Add a client income source", description = "Adds an income source for the client. startDate and endDate are "
+            + "date strings interpreted with dateFormat and locale. The command is submitted through maker-checker.", operationId = "createClientIncomeSource")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientIncomeSourceRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, or a field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to create the income source.")
+    @ApiResponse(responseCode = "404", description = "The client was not found.")
+    public CommandProcessingResult addIncomeSource(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final long clientId,
             ClientIncomeSourceRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().addIncomeSources(clientId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -99,9 +123,18 @@ public class ClientIncomeSourcesApiResource {
     @Path("/{incomeSourceId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update a client income source", operationId = "updateClientIncomeSource")
-    public CommandProcessingResult updateIncomeSource(@PathParam("incomeSourceId") final long incomeSourceId,
-            ClientIncomeSourceRequest request, @PathParam("clientId") @Parameter(description = "clientId") final Long clientId) {
+    @Operation(summary = "Update a client income source", description = "Updates an income source. startDate and endDate are date strings "
+            + "interpreted with dateFormat and locale. A missing income source is rejected as a domain rule. "
+            + "The command is submitted through maker-checker.", operationId = "updateClientIncomeSource")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientIncomeSourceRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, or a field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to update the income source, or the income source does not exist.")
+    public CommandProcessingResult updateIncomeSource(
+            @PathParam("incomeSourceId") @Parameter(description = "Income source identifier", required = true, example = "1") final long incomeSourceId,
+            ClientIncomeSourceRequest request,
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateIncomeSources(incomeSourceId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -110,9 +143,15 @@ public class ClientIncomeSourcesApiResource {
     @DELETE
     @Path("/{incomeSourceId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete a client income source", operationId = "deleteClientIncomeSource")
-    public CommandProcessingResult deleteIncomeSource(@PathParam("incomeSourceId") final long incomeSourceId,
-            @PathParam("clientId") @Parameter(description = "clientId") final Long clientId) {
+    @Operation(summary = "Delete a client income source", description = "Deletes an income source. A missing income source is rejected "
+            + "as a domain rule. The command is submitted through maker-checker.", operationId = "deleteClientIncomeSource")
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The income source identifier is missing or is not greater than zero.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to delete the income source, or the income source does not exist.")
+    public CommandProcessingResult deleteIncomeSource(
+            @PathParam("incomeSourceId") @Parameter(description = "Income source identifier", required = true, example = "1") final long incomeSourceId,
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final Long clientId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteIncomeSources(incomeSourceId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

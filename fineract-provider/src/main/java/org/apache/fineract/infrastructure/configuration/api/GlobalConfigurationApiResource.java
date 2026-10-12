@@ -84,7 +84,8 @@ public class GlobalConfigurationApiResource {
             + "\n" + "Example Requests:\n" + "\n" + "configurations\n\n" + "\n"
             + "Returns the list global enable/disable survey configurations.\n" + "\n" + "Example Requests:\n" + "\n"
             + "configurations/survey")
-    @ApiResponse(responseCode = "200", description = "List of example \\n response \\nsurveys response   \\ngiven below", content = @Content(schema = @Schema(implementation = GlobalConfigurationApiResourceSwagger.GetGlobalConfigurationsResponse.class)))
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = GlobalConfigurationApiResourceSwagger.GetGlobalConfigurationsResponse.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_CONFIGURATION permission.")
     public String retrieveConfiguration(@Context final UriInfo uriInfo,
             @DefaultValue("false") @QueryParam("survey") @Parameter(description = "survey") final boolean survey) {
 
@@ -102,6 +103,8 @@ public class GlobalConfigurationApiResource {
     @Operation(summary = "Retrieve Global Configuration", operationId = "retrieveOneGlobalConfiguration", description = "Returns a global enable/disable configurations.\n"
             + "\n" + "Example Requests:\n" + "\n" + "configurations/1")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = GlobalConfigurationPropertyData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_CONFIGURATION permission.")
+    @ApiResponse(responseCode = "404", description = "No configuration with this id.")
     public String retrieveOne(@PathParam("configId") @Parameter(description = "configId") final Long configId,
             @Context final UriInfo uriInfo) {
 
@@ -119,6 +122,8 @@ public class GlobalConfigurationApiResource {
     @Operation(summary = "Retrieve Global Configuration", description = "Returns a global enable/disable configuration.\n" + "\n"
             + "Example Requests:\n" + "\n" + "configurations/name/enable-address")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = GlobalConfigurationPropertyData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_CONFIGURATION permission.")
+    @ApiResponse(responseCode = "404", description = "No configuration with this name.")
     public String retrieveOneByName(@PathParam("name") @Parameter(description = "name") final String name, @Context final UriInfo uriInfo) {
 
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
@@ -136,6 +141,9 @@ public class GlobalConfigurationApiResource {
     @Operation(summary = "Update Global Configuration", operationId = "updateGlobalConfiguration", description = "Updates an enable/disable global configuration item.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = GlobalConfigurationApiResourceSwagger.PutGlobalConfigurationsRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = GlobalConfigurationApiResourceSwagger.PutGlobalConfigurationsResponse.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The user lacks UPDATE_CONFIGURATION permission.")
+    @ApiResponse(responseCode = "404", description = "No configuration with this id.")
     public String updateConfiguration(@PathParam("configId") @Parameter(description = "configId") final Long configId,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
 
@@ -156,6 +164,9 @@ public class GlobalConfigurationApiResource {
     @Operation(summary = "Update Global Configuration by name", description = "Updates an enable/disable global configuration item by name")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = GlobalConfigurationApiResourceSwagger.PutGlobalConfigurationsRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = GlobalConfigurationApiResourceSwagger.PutGlobalConfigurationsResponse.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The user lacks UPDATE_CONFIGURATION permission.")
+    @ApiResponse(responseCode = "404", description = "No configuration with this name.")
     public String updateConfigurationByName(@PathParam("configName") @Parameter(description = "configName") final String configName,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
 

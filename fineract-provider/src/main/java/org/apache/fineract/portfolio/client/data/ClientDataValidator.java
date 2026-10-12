@@ -609,8 +609,26 @@ public final class ClientDataValidator {
         }
 
         if (this.fromApiJsonHelper.parameterExists("isStaff", element)) {
+            atLeastOneParameterPassedForUpdate = true;
             final Boolean isStaffFlag = this.fromApiJsonHelper.extractBooleanNamed("isStaff", element);
             baseDataValidator.reset().parameter("isStaff").value(isStaffFlag).notNull();
+        }
+
+        for (final String idParam : List.of(ClientApiConstants.subIndustryIdParamName, ClientApiConstants.customerClassIdParamName,
+                ClientApiConstants.titleIdParamName, ClientApiConstants.nationalityCountryIdParamName,
+                ClientApiConstants.customerRiskProfileIdParamName, ClientApiConstants.maritalStatusIdParamName)) {
+            if (this.fromApiJsonHelper.parameterExists(idParam, element)) {
+                atLeastOneParameterPassedForUpdate = true;
+                final Long id = this.fromApiJsonHelper.extractLongNamed(idParam, element);
+                baseDataValidator.reset().parameter(idParam).value(id).ignoreIfNull().longGreaterThanZero();
+            }
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.emailAddressParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String emailAddress = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.emailAddressParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.emailAddressParamName).value(emailAddress).ignoreIfNull()
+                    .notExceedingLengthOf(50);
         }
 
         validateDateFormatWhenPresent(element, dataValidationErrors);

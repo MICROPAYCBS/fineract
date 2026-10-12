@@ -23,7 +23,6 @@ import java.util.Map;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
-import org.apache.fineract.infrastructure.codes.exception.CodeValueNotFoundException;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -32,6 +31,7 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
+import org.apache.fineract.portfolio.client.api.IdentityTypeConstants;
 import org.apache.fineract.portfolio.client.command.ClientIdentifierCommand;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
@@ -89,8 +89,8 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
         try {
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
 
-            final CodeValue documentType = this.codeValueRepository
-                    .findOneWithNotFoundDetection(clientIdentifierCommand.getDocumentTypeId());
+            final CodeValue documentType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                    IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME, clientIdentifierCommand.getDocumentTypeId());
             documentTypeId = documentType.getId();
             documentTypeLabel = documentType.getLabel();
 
@@ -138,10 +138,8 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
             final Map<String, Object> changes = clientIdentifierForUpdate.update(command);
 
             if (changes.containsKey("documentTypeId")) {
-                documentType = this.codeValueRepository.findOneWithNotFoundDetection(documentTypeId);
-                if (documentType == null) {
-                    throw new CodeValueNotFoundException(documentTypeId);
-                }
+                documentType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                        IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME, documentTypeId);
 
                 documentTypeId = documentType.getId();
                 documentTypeLabel = documentType.getLabel();
@@ -230,8 +228,8 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
             final ClientIdentifierCommand clientIdentifierCommand = this.clientIdentifierCommandFromApiJsonDeserializer
                     .commandFromApiJson(element.toString());
             clientIdentifierCommand.validateForCreate();
-            final CodeValue documentType = this.codeValueRepository
-                    .findOneWithNotFoundDetection(clientIdentifierCommand.getDocumentTypeId());
+            final CodeValue documentType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
+                    IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME, clientIdentifierCommand.getDocumentTypeId());
             this.clientIdentifierValidationService.validateDocumentKey(documentType.getId(),
                     clientIdentifierCommand.getDocumentKey());
             final ClientIdentifier clientIdentifier = ClientIdentifier.create(client, documentType,

@@ -38,11 +38,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
@@ -53,7 +55,9 @@ import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChe
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
+import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
+import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
@@ -64,8 +68,11 @@ import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.note.domain.NoteRepository;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDataValidator;
+import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 import org.apache.fineract.portfolio.savings.domain.DepositAccountOnHoldTransactionRepository;
 import org.apache.fineract.portfolio.savings.domain.GSIMRepositoy;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
@@ -76,6 +83,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrap
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountTransactionNotFoundException;
+import org.apache.fineract.portfolio.savings.exception.SavingsInterestPostingGlMappingMissingException;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.junit.jupiter.api.AfterEach;
@@ -453,5 +461,106 @@ class SavingsAccountWritePlatformServiceJpaRepositoryImplTest {
 
         // Then
         assertThat(result.getTransactionId()).isEqualTo(expectedTransactionId.toString());
+    }
+
+    @Test
+    void selectAccountId_cashInterestOnSavingsMissing_namesTheMapping() {
+        final SavingsAccountData account = interestPostingAccount(11L, 55L, AccountingRuleType.CASH_BASED);
+        mapAllGlAccounts(account);
+        account.setGlAccountIdForInterestOnSavings(0L);
+        final SavingsAccountTransactionData transaction = interestPosting(account, BigDecimal.TEN);
+
+        assertThat(account.getSavingsProductId()).isEqualTo(55L);
+        assertThatThrownBy(() -> service.selectAccountId(transaction, account))
+                .isInstanceOf(SavingsInterestPostingGlMappingMissingException.class)
+                .hasMessageContaining("savings account 11").hasMessageContaining("product 55")
+                .hasMessageContaining("Interest on Savings (3)");
+    }
+
+    @Test
+    void selectAccountId_accrualInterestPayableMissing_namesTheMapping() {
+        final SavingsAccountData account = interestPostingAccount(12L, 56L, AccountingRuleType.ACCRUAL_PERIODIC);
+        mapAllGlAccounts(account);
+        account.setGlAccountIdForInterestPayable(0L);
+        final SavingsAccountTransactionData transaction = interestPosting(account, BigDecimal.TEN);
+
+        assertThatThrownBy(() -> service.selectAccountId(transaction, account))
+                .isInstanceOf(SavingsInterestPostingGlMappingMissingException.class).hasMessageContaining("Interest Payable (17)");
+    }
+
+    @Test
+    void selectAccountId_accountingNoneWithUnsetMappings_doesNotThrow() {
+        final SavingsAccountData account = interestPostingAccount(13L, 57L, AccountingRuleType.NONE);
+        final SavingsAccountTransactionData transaction = interestPosting(account, BigDecimal.TEN);
+
+        assertThatNoException().isThrownBy(() -> service.selectAccountId(transaction, account));
+    }
+
+    @Test
+    void selectAccountId_allMapped_setsDebitAndCreditFromTheAccountingTable() {
+        final SavingsAccountData cash = interestPostingAccount(21L, 71L, AccountingRuleType.CASH_BASED);
+        mapAllGlAccounts(cash);
+        final SavingsAccountTransactionData cashInterest = interestPosting(cash, BigDecimal.TEN);
+        service.selectAccountId(cashInterest, cash);
+        assertThat(cashInterest.getAccountDebit()).isEqualTo(3L);
+        assertThat(cashInterest.getAccountCredit()).isEqualTo(2L);
+
+        final SavingsAccountTransactionData cashOverdraft = overdraftInterest(cash, new BigDecimal("-5"));
+        service.selectAccountId(cashOverdraft, cash);
+        assertThat(cashOverdraft.getAccountDebit()).isEqualTo(1L);
+        assertThat(cashOverdraft.getAccountCredit()).isEqualTo(12L);
+
+        final SavingsAccountData accrual = interestPostingAccount(22L, 72L, AccountingRuleType.ACCRUAL_PERIODIC);
+        mapAllGlAccounts(accrual);
+        final SavingsAccountTransactionData accrualInterest = interestPosting(accrual, BigDecimal.TEN);
+        service.selectAccountId(accrualInterest, accrual);
+        assertThat(accrualInterest.getAccountDebit()).isEqualTo(17L);
+        assertThat(accrualInterest.getAccountCredit()).isEqualTo(2L);
+
+        final SavingsAccountTransactionData accrualOverdraftPositive = overdraftInterest(accrual, BigDecimal.ONE);
+        service.selectAccountId(accrualOverdraftPositive, accrual);
+        assertThat(accrualOverdraftPositive.getAccountDebit()).isEqualTo(2L);
+        assertThat(accrualOverdraftPositive.getAccountCredit()).isEqualTo(18L);
+
+        final SavingsAccountTransactionData accrualOverdraftNotPositive = overdraftInterest(accrual, BigDecimal.ZERO);
+        service.selectAccountId(accrualOverdraftNotPositive, accrual);
+        assertThat(accrualOverdraftNotPositive.getAccountDebit()).isEqualTo(11L);
+        assertThat(accrualOverdraftNotPositive.getAccountCredit()).isEqualTo(18L);
+    }
+
+    private SavingsAccountData interestPostingAccount(final Long accountId, final Long productId, final AccountingRuleType rule) {
+        setupTenantContext(LocalDate.of(2026, 1, 31));
+        final SavingsAccountData data = SavingsAccountData.instance(accountId, "ACC-" + accountId, null, null, null, null, null, null,
+                productId, "Savings", null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, false,
+                null, false, null, null, false, null, false, null, null, null, null, false, null, null, false, null, null, null, null);
+        data.setSavingsProduct(SavingsProductData.createForInterestPosting(productId,
+                new EnumOptionData(rule.getValue().longValue(), rule.getCode(), rule.getValue().toString())));
+        return data;
+    }
+
+    private static void mapAllGlAccounts(final SavingsAccountData account) {
+        account.setGlAccountIdForSavingsReference(1L);
+        account.setGlAccountIdForSavingsControl(2L);
+        account.setGlAccountIdForInterestOnSavings(3L);
+        account.setGlAccountIdForOverdraftPorfolio(11L);
+        account.setGlAccountIdForIncomeFromInterest(12L);
+        account.setGlAccountIdForInterestPayable(17L);
+        account.setGlAccountIdForInterestReceivable(18L);
+    }
+
+    private static SavingsAccountTransactionData interestPosting(final SavingsAccountData account, final BigDecimal runningBalance) {
+        final CurrencyData currency = new CurrencyData("USD", 2, 1);
+        final SavingsAccountTransactionData transaction = SavingsAccountTransactionData.interestPosting(account, LocalDate.of(2026, 1, 31),
+                Money.of(currency, new BigDecimal("10.00")), false);
+        transaction.updateRunningBalance(Money.of(currency, runningBalance));
+        return transaction;
+    }
+
+    private static SavingsAccountTransactionData overdraftInterest(final SavingsAccountData account, final BigDecimal runningBalance) {
+        final CurrencyData currency = new CurrencyData("USD", 2, 1);
+        final SavingsAccountTransactionData transaction = SavingsAccountTransactionData.overdraftInterest(account,
+                LocalDate.of(2026, 1, 31), Money.of(currency, new BigDecimal("10.00")), false, true);
+        transaction.updateRunningBalance(Money.of(currency, runningBalance));
+        return transaction;
     }
 }

@@ -120,8 +120,10 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill,
             final SavingsAccountTransactionType transactionType, final GLAccount glAccount) {
         final AppUser currentUser = context.authenticatedUser();
-        validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, transactionBooleanValues.isAccountTransfer(),
-                transactionBooleanValues.isRegularTransaction());
+        if (!transactionBooleanValues.isAccountTransfer() && transactionBooleanValues.isRegularTransaction()) {
+            this.cashierTransactionDataValidator.validateCashOut(currentUser, paymentDetail, account.getCurrency().getCode(),
+                    transactionAmount);
+        }
         account.validateForAccountBlock();
         account.validateForDebitBlock();
         final SavingsChannelLimitHold channelLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,

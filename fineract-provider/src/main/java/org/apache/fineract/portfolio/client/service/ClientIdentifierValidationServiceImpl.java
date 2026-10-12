@@ -62,12 +62,12 @@ public class ClientIdentifierValidationServiceImpl implements ClientIdentifierVa
         try {
             if (!Pattern.compile(regex).matcher(documentKey.trim()).matches()) {
                 final String message = resolveValidationMessage(identityType);
-                final ApiParameterError error = ApiParameterError.parameterError("validation.msg.client.identifier.invalid.format", message,
+                final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.identifier.invalid.format", message,
                         ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY, documentKey);
                 throw new PlatformApiDataValidationException(List.of(error));
             }
         } catch (final PatternSyntaxException e) {
-            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.identity.type.invalid.regex.config",
+            final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.identity.type.invalid.regex.config",
                     "Identity type validation regex is invalid.", ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY,
                     documentKey);
             throw new PlatformApiDataValidationException(List.of(error));
@@ -100,7 +100,7 @@ public class ClientIdentifierValidationServiceImpl implements ClientIdentifierVa
             throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
                     "validation.msg.client.identifiers.required",
                     "At least one client identifier is required when onboarding a person customer.",
-                    ClientApiConstants.clientIdentifiers, null)));
+                    ClientApiConstants.clientIdentifiers)));
         }
     }
 

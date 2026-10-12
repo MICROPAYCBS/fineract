@@ -20,6 +20,11 @@
 package org.apache.fineract.portfolio.client.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -42,7 +47,7 @@ import org.springframework.stereotype.Component;
 
 @Path("/v1/clients/{clientId}/complianceprofile")
 @Component
-@Tag(name = "Client Compliance Profile", description = "")
+@Tag(name = "Client Compliance Profile", description = "Client compliance profile, including PEP, FATCA, and other bank accounts")
 @RequiredArgsConstructor
 public class ClientComplianceProfileApiResource {
 
@@ -55,8 +60,12 @@ public class ClientComplianceProfileApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve a client compliance profile", operationId = "retrieveClientComplianceProfile")
-    public ClientComplianceProfileData getComplianceProfile(@PathParam("clientId") final long clientId) {
+    @Operation(summary = "Retrieve a client compliance profile", description = "Returns the client's compliance profile. "
+            + "When no profile has been saved, the response contains the clientId and an empty otherBankAccounts list.", operationId = "retrieveClientComplianceProfile")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientComplianceProfileData.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for ComplianceProfile.")
+    public ClientComplianceProfileData getComplianceProfile(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return this.readPlatformService.getClientComplianceProfile(clientId);
     }
@@ -64,8 +73,16 @@ public class ClientComplianceProfileApiResource {
     @PUT
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update a client compliance profile", operationId = "updateClientComplianceProfile")
-    public CommandProcessingResult updateComplianceProfile(@PathParam("clientId") final long clientId,
+    @Operation(summary = "Update a client compliance profile", description = "Creates or replaces the client's compliance profile. "
+            + "The command is submitted through maker-checker.", operationId = "updateClientComplianceProfile")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientComplianceProfileRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, or a field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to update the compliance profile.")
+    @ApiResponse(responseCode = "404", description = "The client was not found.")
+    public CommandProcessingResult updateComplianceProfile(
+            @PathParam("clientId") @Parameter(description = "Client identifier", required = true, example = "1") final long clientId,
             ClientComplianceProfileRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateComplianceProfile(clientId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();

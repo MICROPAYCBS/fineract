@@ -162,13 +162,6 @@ public class GlobalConfigurationHelper {
         makerCheckerDefault.put("trapDoor", false);
         defaults.add(makerCheckerDefault);
 
-        HashMap<String, Object> amazonS3Default = new HashMap<>();
-        amazonS3Default.put("name", GlobalConfigurationConstants.AMAZON_S3);
-        amazonS3Default.put("value", 0L);
-        amazonS3Default.put("enabled", false);
-        amazonS3Default.put("trapDoor", false);
-        defaults.add(amazonS3Default);
-
         HashMap<String, Object> rescheduleFuturePaymentsDefault = new HashMap<>();
         rescheduleFuturePaymentsDefault.put("name", GlobalConfigurationConstants.RESCHEDULE_FUTURE_REPAYMENTS);
         rescheduleFuturePaymentsDefault.put("value", 0L);
@@ -289,13 +282,6 @@ public class GlobalConfigurationHelper {
         restrictProductsToUserOfficeDefault.put("trapDoor", false);
         defaults.add(restrictProductsToUserOfficeDefault);
 
-        HashMap<String, Object> officeOpeningBalancesContraAccountDefault = new HashMap<>();
-        officeOpeningBalancesContraAccountDefault.put("name", GlobalConfigurationConstants.OFFICE_OPENING_BALANCES_CONTRA_ACCOUNT);
-        officeOpeningBalancesContraAccountDefault.put("value", 0L);
-        officeOpeningBalancesContraAccountDefault.put("enabled", true);
-        officeOpeningBalancesContraAccountDefault.put("trapDoor", false);
-        defaults.add(officeOpeningBalancesContraAccountDefault);
-
         HashMap<String, Object> roundingModeDefault = new HashMap<>();
         roundingModeDefault.put("name", GlobalConfigurationConstants.ROUNDING_MODE);
         roundingModeDefault.put("value", 6L);
@@ -347,13 +333,6 @@ public class GlobalConfigurationHelper {
         changeEmiIfRepaymentDateSameAsDisbursementDateDefault.put("enabled", true);
         changeEmiIfRepaymentDateSameAsDisbursementDateDefault.put("trapDoor", false);
         defaults.add(changeEmiIfRepaymentDateSameAsDisbursementDateDefault);
-
-        HashMap<String, Object> dailyTptLimitDefault = new HashMap<>();
-        dailyTptLimitDefault.put("name", GlobalConfigurationConstants.DAILY_TPT_LIMIT);
-        dailyTptLimitDefault.put("value", 0L);
-        dailyTptLimitDefault.put("enabled", false);
-        dailyTptLimitDefault.put("trapDoor", false);
-        defaults.add(dailyTptLimitDefault);
 
         HashMap<String, Object> enableAddressDefault = new HashMap<>();
         enableAddressDefault.put("name", GlobalConfigurationConstants.ENABLE_ADDRESS);
@@ -557,14 +536,6 @@ public class GlobalConfigurationHelper {
         nextPaymentDateConfigForLoan.put("trapDoor", false);
         nextPaymentDateConfigForLoan.put("string_value", "earliest-unpaid-date");
         defaults.add(nextPaymentDateConfigForLoan);
-
-        HashMap<String, Object> enablePaymentHubIntegrationConfig = new HashMap<>();
-        enablePaymentHubIntegrationConfig.put("name", GlobalConfigurationConstants.ENABLE_PAYMENT_HUB_INTEGRATION);
-        enablePaymentHubIntegrationConfig.put("value", 0L);
-        enablePaymentHubIntegrationConfig.put("enabled", false);
-        enablePaymentHubIntegrationConfig.put("trapDoor", false);
-        enablePaymentHubIntegrationConfig.put("string_value", "enable payment hub integration");
-        defaults.add(enablePaymentHubIntegrationConfig);
 
         HashMap<String, Object> enableImmediateChargeAccrualPostMaturity = new HashMap<>();
         enableImmediateChargeAccrualPostMaturity.put("name", GlobalConfigurationConstants.ENABLE_IMMEDIATE_CHARGE_ACCRUAL_POST_MATURITY);

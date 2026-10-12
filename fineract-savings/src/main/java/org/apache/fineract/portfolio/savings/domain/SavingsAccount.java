@@ -2251,7 +2251,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
-                .resource(resourceName + SavingsApiConstants.summitalAction);
+                .resource(resourceName + SavingsApiConstants.submittalAction);
 
         validateLockinDetails(baseDataValidator);
         if (!dataValidationErrors.isEmpty()) {

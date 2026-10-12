@@ -47,6 +47,7 @@ import org.apache.fineract.infrastructure.core.config.FineractProperties;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.core.service.database.JdbcJavaType;
 import org.apache.fineract.infrastructure.dataqueries.data.GenericResultsetData;
@@ -257,10 +258,32 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
         // Step 4 — apply stretchy parameter defaults for registered params omitted from the request
         for (Map.Entry<String, String> entry : this.reportParameterTypeResolver.loadParamDefaults(name).entrySet()) {
-            normalisedParams.putIfAbsent(entry.getKey(), entry.getValue());
+            final String defaultValue = usableDefault(entry.getValue(), paramFormatTypes.get(entry.getKey()));
+            if (defaultValue != null) {
+                normalisedParams.putIfAbsent(entry.getKey(), defaultValue);
+            }
         }
 
         return buildPreparedQuery(name, normalisedParams, sql, paramFormatTypes);
+    }
+
+    /**
+     * Turns a stored stretchy_parameter default into a value that can be bound. "today" on a date parameter becomes the
+     * business date; empty and "n/a" mean "no default", so the request fails with error.msg.report.missing.parameter
+     * instead of binding a value that cannot match.
+     */
+    static String usableDefault(final String storedDefault, final String formatType) {
+        if (storedDefault == null) {
+            return null;
+        }
+        final String value = storedDefault.trim();
+        if (value.isEmpty() || "n/a".equalsIgnoreCase(value)) {
+            return null;
+        }
+        if ("today".equalsIgnoreCase(value) && "date".equalsIgnoreCase(formatType)) {
+            return DateUtils.getBusinessLocalDate().toString(); // yyyy-MM-dd
+        }
+        return value;
     }
 
     private static boolean isAllowedDisplayLiteralFormatType(final String formatType) {

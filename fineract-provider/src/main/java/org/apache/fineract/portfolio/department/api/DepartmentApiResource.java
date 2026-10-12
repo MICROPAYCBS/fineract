@@ -19,6 +19,12 @@
 package org.apache.fineract.portfolio.department.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -48,9 +54,12 @@ import org.springframework.stereotype.Component;
 
 @Path("/v1/departments")
 @Component
-@Tag(name = "Department", description = "GL department master data")
+@Tag(name = "Department", description = "GL departments. A department can be mapped to offices.")
 @RequiredArgsConstructor
 public class DepartmentApiResource {
+
+    private static final String WRITE_OK = "Command accepted. When maker-checker holds the command, the body is "
+            + "{ commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.";
 
     private final DepartmentReadPlatformService readPlatformService;
     private final OfficeReadPlatformService officeReadPlatformService;
@@ -59,9 +68,11 @@ public class DepartmentApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List departments", description = "When officeId is provided, returns active departments mapped to that office "
-            + "via entity-to-entity mapping (office_access_to_departments). Otherwise returns all departments.", operationId = "retrieveAllDepartments")
-    public List<DepartmentData> retrieveAll(@QueryParam("officeId") final Long officeId) {
+    @Operation(summary = "List departments", description = "When officeId is set, returns only active departments mapped to that office. "
+            + "Otherwise returns every department.", operationId = "retrieveAllDepartments")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = DepartmentData.class))))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_DEPARTMENT permission.")
+    public List<DepartmentData> retrieveAll(@QueryParam("officeId") @Parameter(description = "When set, return only active departments mapped to this office", example = "1") final Long officeId) {
         if (officeId != null) {
             return this.readPlatformService.retrieveActiveMappedToOffice(officeId);
         }
@@ -71,7 +82,8 @@ public class DepartmentApiResource {
     @GET
     @Path("/template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve department template", operationId = "retrieveDepartmentTemplate")
+    @Operation(summary = "Retrieve department template", operationId = "retrieveDepartmentTemplate", description = "Returns the active/inactive options and the offices a department can be linked to.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = DepartmentApiResourceSwagger.GetDepartmentTemplateResponse.class)))
     public Map<String, Object> retrieveTemplate() {
         final Map<String, Object> response = new HashMap<>();
         response.put("activeOptions",
@@ -83,15 +95,24 @@ public class DepartmentApiResource {
     @GET
     @Path("/{departmentId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve department", operationId = "retrieveDepartment")
-    public DepartmentData retrieveOne(@PathParam("departmentId") final Long departmentId) {
+    @Operation(summary = "Retrieve department", operationId = "retrieveDepartment", description = "Returns one department.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = DepartmentData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_DEPARTMENT permission.")
+    @ApiResponse(responseCode = "404", description = "No department with this id (error.msg.department.not.found).")
+    public DepartmentData retrieveOne(
+            @PathParam("departmentId") @Parameter(description = "Department id", example = "1") final Long departmentId) {
         return this.readPlatformService.retrieveOne(departmentId);
     }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create department", operationId = "createDepartment")
+    @Operation(summary = "Create department", operationId = "createDepartment", description = "Creates a department. departmentCode and departmentName are required. "
+            + "departmentCode must be unique. officeId must be positive when sent. active is a boolean. The command can be held by maker-checker.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DepartmentRequest.class)))
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation: departmentCode or departmentName blank or too long, officeId not positive, active not a boolean.")
+    @ApiResponse(responseCode = "403", description = "The user lacks CREATE_DEPARTMENT permission, or departmentCode already exists (error.msg.department.duplicate.code).")
     public CommandProcessingResult create(final DepartmentRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createDepartment()
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -102,8 +123,15 @@ public class DepartmentApiResource {
     @Path("/{departmentId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update department", operationId = "updateDepartment")
-    public CommandProcessingResult update(@PathParam("departmentId") final Long departmentId, final DepartmentRequest request) {
+    @Operation(summary = "Update department", operationId = "updateDepartment", description = "Updates the fields sent. A changed departmentCode must stay unique. The command can be held by maker-checker.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = DepartmentRequest.class)))
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The user lacks UPDATE_DEPARTMENT permission, or departmentCode already exists (error.msg.department.duplicate.code).")
+    @ApiResponse(responseCode = "404", description = "No department with this id (error.msg.department.not.found).")
+    public CommandProcessingResult update(
+            @PathParam("departmentId") @Parameter(description = "Department id", example = "1") final Long departmentId,
+            final DepartmentRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateDepartment(departmentId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -112,8 +140,12 @@ public class DepartmentApiResource {
     @DELETE
     @Path("/{departmentId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete department", operationId = "deleteDepartment")
-    public CommandProcessingResult delete(@PathParam("departmentId") final Long departmentId) {
+    @Operation(summary = "Delete department", operationId = "deleteDepartment", description = "Deletes a department that is not in use. The command can be held by maker-checker.")
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks DELETE_DEPARTMENT permission, or the department is in use (error.msg.department.in.use).")
+    @ApiResponse(responseCode = "404", description = "No department with this id (error.msg.department.not.found).")
+    public CommandProcessingResult delete(
+            @PathParam("departmentId") @Parameter(description = "Department id", example = "1") final Long departmentId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteDepartment(departmentId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

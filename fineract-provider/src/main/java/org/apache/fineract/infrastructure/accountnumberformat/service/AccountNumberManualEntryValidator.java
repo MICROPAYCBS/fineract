@@ -53,7 +53,7 @@ public class AccountNumberManualEntryValidator {
                 : defaults.getFormatPattern();
         final int expectedLength = AccountNumberFormatPatternParser.parse(formatPattern).stream().mapToInt(FormatSegment::getWidth).sum();
         if (accountNumber.length() != expectedLength) {
-            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
+            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterErrorWithValue(
                     "validation.msg.account.number.manual.invalid.length",
                     "Manual account number length must be " + expectedLength + " for structured format.", "accountNo", accountNumber)));
         }

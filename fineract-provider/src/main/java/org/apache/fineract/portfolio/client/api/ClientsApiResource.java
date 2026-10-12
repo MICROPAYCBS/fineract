@@ -161,7 +161,9 @@ public class ClientsApiResource {
     @Operation(summary = "Retrieve a Client", operationId = "retrieveOneClient", description = "Example Requests:\n" + "\n" + "clients/1\n"
             + "\n" + "\n" + "clients/1?template=true\n" + "\n" + "\n" + "clients/1?fields=id,displayName,officeName")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.GetClientsClientIdResponse.class)))
-    public String retrieveOne(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
+    @ApiResponse(responseCode = "403", description = "The caller may not read this client")
+    @ApiResponse(responseCode = "404", description = "No client exists with this id")
+    public String retrieveOne(@PathParam("clientId") @Parameter(description = "Client id") final Long clientId,
             @Context final UriInfo uriInfo,
             @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") @Parameter(description = "staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly) {
         return retrieveClient(clientId, null, staffInSelectedOfficeOnly, uriInfo);
@@ -170,13 +172,15 @@ public class ClientsApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create a Client", operationId = "createClient", description = "Note:\n\n"
-            + "1. You can enter either:firstname/middlename/lastname - for a person (middlename is optional) OR fullname - for a business or organisation (or person known by one name).\n"
-            + "\n" + "2.If address is enable(enable-address=true), then additional field called address has to be passed.\n\n"
-            + "Mandatory Fields: firstname and lastname OR fullname, officeId, active=true and activationDate OR active=false, if(address enabled) address\n\n"
-            + "Optional Fields: groupId, externalId, accountNo, staffId, mobileNo, savingsProductId, genderId, clientTypeId, clientClassificationId")
+    @Operation(summary = "Create a Client", operationId = "createClient", description = "Creates a person or an entity client.\n\n"
+            + "Send firstname and lastname for a person (middlename is optional) or fullname for an entity. "
+            + "officeId is required. When active is true, activationDate is required. Date fields are strings interpreted with dateFormat and locale in the same object.\n\n"
+            + "Micropay onboarding fields: customerClassId, subIndustryId, titleId, nationalityCountryId, customerRiskProfileId, maritalStatusId, "
+            + "taxIdentificationNumber, alternativeMobileNo, alternativeEmailAddress, familyMembers, contacts, incomeSources, complianceProfile, and clientIdentifiers.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PostClientsRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PostClientsResponse.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PostClientsResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation error, including an unknown field or a customer class that does not match legalFormId")
+    @ApiResponse(responseCode = "403", description = "The caller may not create clients, or a business rule was violated")
     public String create(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
 
         final CommandWrapper commandRequest = new CommandWrapperBuilder() //
@@ -196,10 +200,14 @@ public class ClientsApiResource {
     @Operation(summary = "Update a Client", operationId = "updateClient", description = "Note: You can update any of the basic attributes of a client (but not its associations) using this API.\n"
             + "\n"
             + "Changing the relationship between a client and its office is not supported through this API. An API specific to handling transfers of clients between offices is available for the same.\n"
-            + "\n" + "The relationship between a client and a group must be removed through the Groups API.")
+            + "\n"             + "The relationship between a client and a group must be removed through the Groups API. "
+            + "Onboarding fields that can be changed include customerClassId, subIndustryId, titleId, nationalityCountryId, customerRiskProfileId, maritalStatusId, taxIdentificationNumber, alternativeMobileNo, and alternativeEmailAddress.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdResponse.class)))
-    public String update(@Parameter(description = "clientId") @PathParam("clientId") final Long clientId,
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation error")
+    @ApiResponse(responseCode = "403", description = "The caller may not update this client, or a business rule was violated")
+    @ApiResponse(responseCode = "404", description = "No client exists with this id")
+    public String update(@Parameter(description = "Client id") @PathParam("clientId") final Long clientId,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         return updateClient(clientId, null, apiRequestBodyAsJson);
     }
@@ -208,7 +216,9 @@ public class ClientsApiResource {
     @Path("{clientId}")
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Delete a Client", operationId = "deleteClient", description = "If a client is in Pending state, you are allowed to Delete it. The delete is a 'hard delete' and cannot be recovered from. Once clients become active or have loans or savings associated with them, you cannot delete the client but you may Close the client if they have left the program.")
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.DeleteClientsClientIdResponse.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.DeleteClientsClientIdResponse.class)))
+    @ApiResponse(responseCode = "403", description = "The caller may not delete this client, or the client is not in a state that can be deleted")
+    @ApiResponse(responseCode = "404", description = "No client exists with this id")
     public String delete(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId) {
         return deleteClient(clientId, null);
     }

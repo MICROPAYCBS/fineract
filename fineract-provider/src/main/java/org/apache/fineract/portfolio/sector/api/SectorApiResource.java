@@ -19,6 +19,12 @@
 package org.apache.fineract.portfolio.sector.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -45,9 +51,13 @@ import org.springframework.stereotype.Component;
 
 @Path("/v1/sectors")
 @Component
-@Tag(name = "Sector", description = "Micropay sector master data")
+@Tag(name = "Sector", description = "Economic sectors used to classify clients (Micropay master data). "
+        + "A sector can have a parent sector. Industries belong to a sector.")
 @RequiredArgsConstructor
 public class SectorApiResource {
+
+    private static final String WRITE_OK = "Command accepted. When maker-checker holds the command, the body is "
+            + "{ commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.";
 
     private final SectorReadPlatformService readPlatformService;
     private final ToApiJsonSerializer<SectorRequest> toApiJsonSerializer;
@@ -55,7 +65,9 @@ public class SectorApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List sectors", operationId = "retrieveAllSectors")
+    @Operation(summary = "List sectors", operationId = "retrieveAllSectors", description = "Returns every sector, active and inactive.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = SectorData.class))))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_SECTOR permission.")
     public List<SectorData> retrieveAll() {
         return this.readPlatformService.retrieveAll();
     }
@@ -63,7 +75,8 @@ public class SectorApiResource {
     @GET
     @Path("/template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve sector template", operationId = "retrieveSectorTemplate")
+    @Operation(summary = "Retrieve sector template", operationId = "retrieveSectorTemplate", description = "Returns the allowed status values and the active sectors that can be chosen as parent.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = SectorApiResourceSwagger.GetSectorTemplateResponse.class)))
     public Map<String, Object> retrieveTemplate() {
         final Map<String, Object> response = new HashMap<>();
         response.put("statusOptions", List.of("ACTIVE", "INACTIVE"));
@@ -74,15 +87,24 @@ public class SectorApiResource {
     @GET
     @Path("/{sectorId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve sector", operationId = "retrieveSector")
-    public SectorData retrieveOne(@PathParam("sectorId") final Long sectorId) {
+    @Operation(summary = "Retrieve sector", operationId = "retrieveSector", description = "Returns one sector with the name of its parent.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = SectorData.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks READ_SECTOR permission.")
+    @ApiResponse(responseCode = "404", description = "No sector with this id (error.msg.sector.not.found).")
+    public SectorData retrieveOne(@PathParam("sectorId") @Parameter(description = "Sector id", example = "1") final Long sectorId) {
         return this.readPlatformService.retrieveOne(sectorId);
     }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create sector", operationId = "createSector")
+    @Operation(summary = "Create sector", operationId = "createSector", description = "Creates a sector. sectorCode and sectorName are required. "
+            + "sectorCode must be unique. status is ACTIVE or INACTIVE. The command can be held by maker-checker.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = SectorRequest.class)))
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation: sectorCode or sectorName blank or too long, status not ACTIVE/INACTIVE, parentId not positive.")
+    @ApiResponse(responseCode = "403", description = "The user lacks CREATE_SECTOR permission, or sectorCode already exists (error.msg.sector.duplicate.code).")
+    @ApiResponse(responseCode = "404", description = "parentId names a sector that does not exist (error.msg.sector.not.found).")
     public CommandProcessingResult create(final SectorRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createSector()
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -93,8 +115,16 @@ public class SectorApiResource {
     @Path("/{sectorId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update sector", operationId = "updateSector")
-    public CommandProcessingResult update(@PathParam("sectorId") final Long sectorId, final SectorRequest request) {
+    @Operation(summary = "Update sector", operationId = "updateSector", description = "Updates the fields sent. A changed sectorCode must stay unique. "
+            + "A sector cannot be its own parent. The command can be held by maker-checker.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = SectorRequest.class)))
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "A field fails validation.")
+    @ApiResponse(responseCode = "403", description = "The user lacks UPDATE_SECTOR permission, sectorCode already exists (error.msg.sector.duplicate.code), "
+            + "or parentId equals the sector's own id (error.msg.sector.invalid.parent).")
+    @ApiResponse(responseCode = "404", description = "The sector, or the parent sector, does not exist (error.msg.sector.not.found).")
+    public CommandProcessingResult update(@PathParam("sectorId") @Parameter(description = "Sector id", example = "1") final Long sectorId,
+            final SectorRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateSector(sectorId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -103,8 +133,11 @@ public class SectorApiResource {
     @DELETE
     @Path("/{sectorId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete sector", operationId = "deleteSector")
-    public CommandProcessingResult delete(@PathParam("sectorId") final Long sectorId) {
+    @Operation(summary = "Delete sector", operationId = "deleteSector", description = "Deletes a sector that no industry, client or child sector uses. The command can be held by maker-checker.")
+    @ApiResponse(responseCode = "200", description = WRITE_OK, content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks DELETE_SECTOR permission, or the sector is in use (error.msg.sector.in.use).")
+    @ApiResponse(responseCode = "404", description = "No sector with this id (error.msg.sector.not.found).")
+    public CommandProcessingResult delete(@PathParam("sectorId") @Parameter(description = "Sector id", example = "1") final Long sectorId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteSector(sectorId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

@@ -54,12 +54,12 @@ public class ClientContactValidationServiceImpl implements ClientContactValidati
             if (!Pattern.compile(regex).matcher(value.trim()).matches()) {
                 final String message = StringUtils.defaultIfBlank(contactType.getExample(),
                         "Contact value does not match the required format for type `" + contactType.getTypeName() + "`.");
-                final ApiParameterError error = ApiParameterError.parameterError("validation.msg.client.contact.invalid.format", message,
+                final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.contact.invalid.format", message,
                         ClientContactCommandFromApiJsonDeserializer.CONTACT_VALUE, value);
                 throw new PlatformApiDataValidationException(List.of(error));
             }
         } catch (final PatternSyntaxException e) {
-            final ApiParameterError error = ApiParameterError.parameterError("validation.msg.contact.type.invalid.regex.config",
+            final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.contact.type.invalid.regex.config",
                     "Contact type validation regex is invalid.", ClientContactCommandFromApiJsonDeserializer.CONTACT_VALUE, value);
             throw new PlatformApiDataValidationException(List.of(error));
         }

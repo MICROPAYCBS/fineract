@@ -19,6 +19,11 @@
 package org.apache.fineract.infrastructure.security.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.POST;
@@ -61,7 +66,11 @@ public class UserSessionsApiResource {
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "List active sessions for a user", description = "Returns the user's active two-factor sessions with device metadata (IP address, user agent, validity window). Token values are never returned. Users may always view their own sessions; viewing another user's sessions requires the READ_USERSESSION permission.")
-    public String retrieveActiveSessions(@PathParam("userId") final Long userId) {
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = UserSessionsApiResourceSwagger.GetUserSessionResponse.class))))
+    @ApiResponse(responseCode = "403", description = "The caller is viewing another user and does not have permission to read user sessions")
+    @ApiResponse(responseCode = "404", description = "User not found")
+    public String retrieveActiveSessions(
+            @PathParam("userId") @Parameter(description = "Identifier of the user whose active two-factor sessions are listed") final Long userId) {
         final AppUser requester = context.authenticatedUser();
         if (!requester.getId().equals(userId)) {
             requester.validateHasReadPermission(TwoFactorConstants.USERSESSION_RESOURCE_NAME);
@@ -78,7 +87,12 @@ public class UserSessionsApiResource {
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Revoke a user's session", description = "Revokes the given session so the device's next API call is rejected and it must sign in again. Processed through the command framework, so the action is audited and supports maker-checker.")
-    public String revokeSession(@PathParam("userId") final Long userId, @PathParam("sessionId") final Long sessionId) {
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = UserSessionsApiResourceSwagger.PostRevokeUserSessionResponse.class)))
+    @ApiResponse(responseCode = "403", description = "The user does not have permission to revoke user sessions")
+    @ApiResponse(responseCode = "404", description = "User not found, or the session does not belong to that user or is no longer enabled")
+    public String revokeSession(
+            @PathParam("userId") @Parameter(description = "Identifier of the user who owns the session") final Long userId,
+            @PathParam("sessionId") @Parameter(description = "Identifier of the two-factor session to revoke") final Long sessionId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().revokeUserSession(userId, sessionId).build();
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 

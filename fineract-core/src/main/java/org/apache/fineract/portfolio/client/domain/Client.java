@@ -368,7 +368,7 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
         if (isNotPending()) {
             final String defaultUserMessage = "Cannot activate client. Client must be in Pending status.";
-            final ApiParameterError error = ApiParameterError.parameterError("error.msg.clients.must.be.pending.to.activate",
+            final ApiParameterError error = ApiParameterError.parameterErrorWithValue("error.msg.clients.must.be.pending.to.activate",
                     defaultUserMessage, ClientApiConstants.activationDateParamName, activationLocalDate.format(formatter));
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();

@@ -18,17 +18,26 @@
  */
 package org.apache.fineract.workflow.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
+@Schema(description = "In-flight approval workflow for a held maker-checker command")
 public class WorkflowInstanceData {
 
+    @Schema(description = "Workflow instance id", example = "7")
     private final Long id;
+    @Schema(description = "Maker-checker command id this instance belongs to", example = "42")
     private final Long commandSourceId;
+    @Schema(description = "Workflow definition governing this instance", example = "1")
     private final Long workflowDefinitionId;
+    @Schema(description = "Maker-checker permission code of the held task", example = "APPROVE_LOAN")
     private final String taskPermissionCode;
+    @Schema(description = "Stage code the instance is waiting on", example = "REVIEW")
     private final String currentStageCode;
+    @Schema(description = "Instance status", example = "IN_PROGRESS", allowableValues = { "IN_PROGRESS", "COMPLETED", "REJECTED",
+            "RETURNED" })
     private final String status;
 }

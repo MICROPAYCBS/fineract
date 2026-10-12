@@ -19,6 +19,12 @@
 package org.apache.fineract.portfolio.client.api;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -40,7 +46,6 @@ import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.codes.service.CodeValueReadPlatformService;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer;
-import org.apache.fineract.portfolio.client.api.IdentityTypeConstants;
 import org.apache.fineract.portfolio.client.data.IdentityTypeData;
 import org.apache.fineract.portfolio.client.data.IdentityTypeRequest;
 import org.apache.fineract.portfolio.client.service.IdentityTypeReadPlatformService;
@@ -59,7 +64,10 @@ public class IdentityTypeApiResource {
 
     @GET
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List identity type validation rules", operationId = "retrieveAllIdentityTypes")
+    @Operation(summary = "List identity type validation rules", description = "Returns every identity document validation rule, "
+            + "ordered by display order and code value name.", operationId = "retrieveAllIdentityTypes")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = IdentityTypeData.class))))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for IDENTITYTYPE.")
     public List<IdentityTypeData> retrieveAll() {
         return this.readPlatformService.retrieveAll();
     }
@@ -67,7 +75,9 @@ public class IdentityTypeApiResource {
     @GET
     @Path("/template")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve identity type template", operationId = "retrieveIdentityTypeTemplate")
+    @Operation(summary = "Retrieve identity type template", description = "Returns Customer Identifier code values and the ACTIVE and "
+            + "INACTIVE status values used when creating an identity type rule.", operationId = "retrieveIdentityTypeTemplate")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = IdentityTypeApiResourceSwagger.GetIdentityTypeTemplateResponse.class)))
     public Map<String, Object> retrieveTemplate() {
         final Map<String, Object> response = new HashMap<>();
         final List<CodeValueData> codeValueOptions = this.codeValueReadPlatformService
@@ -80,15 +90,27 @@ public class IdentityTypeApiResource {
     @GET
     @Path("/{identityTypeId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve identity type validation rule", operationId = "retrieveIdentityType")
-    public IdentityTypeData retrieveOne(@PathParam("identityTypeId") final Long identityTypeId) {
+    @Operation(summary = "Retrieve identity type validation rule", description = "Returns one identity document validation rule.", operationId = "retrieveIdentityType")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = IdentityTypeData.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks read permission for IDENTITYTYPE.")
+    @ApiResponse(responseCode = "404", description = "The identity type was not found.")
+    public IdentityTypeData retrieveOne(
+            @PathParam("identityTypeId") @Parameter(description = "Identity type identifier", required = true, example = "1") final Long identityTypeId) {
         return this.readPlatformService.retrieveOne(identityTypeId);
     }
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create identity type validation rule", operationId = "createIdentityType")
+    @Operation(summary = "Create identity type validation rule", description = "Creates a validation rule for one Customer Identifier "
+            + "code value. The code value cannot already have a rule, and validationRegex, when supplied, must compile. "
+            + "The command is submitted through maker-checker.", operationId = "createIdentityType")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = IdentityTypeRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, a field fails validation, validationRegex does not compile, or codeValueId is not a Customer Identifier code value.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to create the identity type, or a rule already exists for the code value.")
+    @ApiResponse(responseCode = "404", description = "The code value was not found.")
     public CommandProcessingResult create(final IdentityTypeRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createIdentityType()
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
@@ -99,8 +121,17 @@ public class IdentityTypeApiResource {
     @Path("/{identityTypeId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update identity type validation rule", operationId = "updateIdentityType")
-    public CommandProcessingResult update(@PathParam("identityTypeId") final Long identityTypeId, final IdentityTypeRequest request) {
+    @Operation(summary = "Update identity type validation rule", description = "Updates a validation rule. A changed code value must still "
+            + "belong to Customer Identifier and must not already have a rule. The command is submitted through maker-checker.", operationId = "updateIdentityType")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = IdentityTypeRequest.class)))
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The JSON body is missing or invalid, a field fails validation, validationRegex does not compile, or codeValueId is not a Customer Identifier code value.")
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to update the identity type, or a rule already exists for the code value.")
+    @ApiResponse(responseCode = "404", description = "The identity type or code value was not found.")
+    public CommandProcessingResult update(
+            @PathParam("identityTypeId") @Parameter(description = "Identity type identifier", required = true, example = "1") final Long identityTypeId,
+            final IdentityTypeRequest request) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateIdentityType(identityTypeId)
                 .withJson(this.toApiJsonSerializer.serialize(request)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -109,8 +140,14 @@ public class IdentityTypeApiResource {
     @DELETE
     @Path("/{identityTypeId}")
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Delete identity type validation rule", operationId = "deleteIdentityType")
-    public CommandProcessingResult delete(@PathParam("identityTypeId") final Long identityTypeId) {
+    @Operation(summary = "Delete identity type validation rule", description = "Deletes a validation rule that is not referenced by other records. "
+            + "The command is submitted through maker-checker.", operationId = "deleteIdentityType")
+    @ApiResponse(responseCode = "200", description = "Command accepted. "
+            + "When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The authenticated user lacks permission to delete the identity type, or the rule is referenced by other records.")
+    @ApiResponse(responseCode = "404", description = "The identity type was not found.")
+    public CommandProcessingResult delete(
+            @PathParam("identityTypeId") @Parameter(description = "Identity type identifier", required = true, example = "1") final Long identityTypeId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteIdentityType(identityTypeId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

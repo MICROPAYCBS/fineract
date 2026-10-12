@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.workflow.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,12 +27,19 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
+@Schema(description = "Create or replace a workflow definition")
 public class WorkflowDefinitionRequest {
 
+    @Schema(description = "Maker-checker permission code of the task this workflow governs", example = "APPROVE_LOAN", requiredMode = Schema.RequiredMode.REQUIRED)
     private String taskPermissionCode;
+    @Schema(description = "Workflow name, unique per task", example = "Loan approval", requiredMode = Schema.RequiredMode.REQUIRED)
     private String name;
+    @Schema(description = "Workflow description", example = "Two-stage approval for loan disbursement")
     private String description;
+    @Schema(description = "Selection priority. Omit, or send zero or a positive integer.", example = "1")
     private Integer priority;
+    @Schema(description = "Stages. Required before the definition can be activated.")
     private List<WorkflowStageRequest> stages;
+    @Schema(description = "Directed transitions between stages")
     private List<WorkflowTransitionRequest> transitions;
 }

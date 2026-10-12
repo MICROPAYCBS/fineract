@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.portfolio.floatingrates.domain.FloatingRate;
@@ -222,7 +223,7 @@ public class LoanProductUpdateUtil {
         final String externalIdTypeParamName = "externalId";
         if (command.isChangeInExternalIdParameterNamed(externalIdTypeParamName, loanProduct.getExternalId())) {
             final ExternalId newValue = ExternalIdFactory.produce(command.stringValueOfParameterNamed(externalIdTypeParamName));
-            actualChanges.put(accountingTypeParamName, newValue);
+            actualChanges.put(externalIdTypeParamName, newValue.getValue());
             loanProduct.setExternalId(newValue);
         }
         trancheDetailsUpdateUtil.update(loanProduct.getLoanProductTrancheDetails(), command, actualChanges);
@@ -289,84 +290,41 @@ public class LoanProductUpdateUtil {
 
         final String configurableAttributesChanges = LoanProductConstants.allowAttributeOverridesParamName;
         if (command.hasParameter(configurableAttributesChanges)) {
-            if (!command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                    .isJsonNull()) {
-                actualChanges.put(configurableAttributesChanges, command.jsonFragment(configurableAttributesChanges));
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.amortizationTypeParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getAmortizationBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setAmortizationType(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.amortizationTypeParamName).getAsBoolean());
+            final JsonObject overrides = LoanProductConfigurableAttributes.overridesObject(command);
+            if (overrides != null) {
+                LoanProductConfigurableAttributes attributes = loanProduct.getLoanConfigurableAttributes();
+                if (attributes == null) {
+                    attributes = LoanProductConfigurableAttributes.populateDefaultsForConfigurableAttributes();
+                    attributes.updateLoanProduct(loanProduct);
+                    loanProduct.setLoanConfigurableAttributes(attributes);
                 }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.interestTypeParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getInterestMethodBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setInterestType(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.interestTypeParamName).getAsBoolean());
-                }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.transactionProcessingStrategyCodeParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getTransactionProcessingStrategyBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setTransactionProcessingStrategyCode(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.transactionProcessingStrategyCodeParamName).getAsBoolean());
-                }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.interestCalculationPeriodTypeParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getInterestCalcPeriodBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setInterestCalculationPeriodType(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.interestCalculationPeriodTypeParamName).getAsBoolean());
-                }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.inArrearsToleranceParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getArrearsToleranceBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setInArrearsTolerance(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.inArrearsToleranceParamName).getAsBoolean());
-                }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.repaymentEveryParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getRepaymentEveryBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setRepaymentEvery(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.repaymentEveryParamName).getAsBoolean());
-                }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.graceOnPrincipalAndInterestPaymentParamName)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getGraceOnPrincipalAndInterestPaymentBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setGraceOnPrincipalAndInterestPayment(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.graceOnPrincipalAndInterestPaymentParamName).getAsBoolean());
-                }
-
-                if (command.parsedJson().getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                        .getAsJsonPrimitive(LoanProductConstants.GRACE_ON_ARREARS_AGEING_PARAMETER_NAME)
-                        .getAsBoolean() != loanProduct.getLoanConfigurableAttributes().getGraceOnArrearsAgingBoolean()) {
-                    loanProduct.getLoanConfigurableAttributes()
-                            .setGraceOnArrearsAgeing(command.parsedJson().getAsJsonObject()
-                                    .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                                    .getAsJsonPrimitive(LoanProductConstants.GRACE_ON_ARREARS_AGEING_PARAMETER_NAME).getAsBoolean());
+                final LoanProductConfigurableAttributes before = LoanProductConfigurableAttributes.copyOf(attributes);
+                attributes.setAmortizationType(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.amortizationTypeParamName, attributes.getAmortizationBoolean()));
+                attributes.setInterestType(LoanProductConfigurableAttributes.readFlag(overrides, LoanProductConstants.interestTypeParamName,
+                        attributes.getInterestMethodBoolean()));
+                attributes.setTransactionProcessingStrategyCode(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.transactionProcessingStrategyCodeParamName,
+                        attributes.getTransactionProcessingStrategyBoolean()));
+                attributes.setInterestCalculationPeriodType(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.interestCalculationPeriodTypeParamName, attributes.getInterestCalcPeriodBoolean()));
+                attributes.setInArrearsTolerance(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.inArrearsToleranceParamName, attributes.getArrearsToleranceBoolean()));
+                attributes.setRepaymentEvery(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.repaymentEveryParamName, attributes.getRepaymentEveryBoolean()));
+                attributes.setGraceOnPrincipalAndInterestPayment(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.graceOnPrincipalAndInterestPaymentParamName,
+                        attributes.getGraceOnPrincipalAndInterestPaymentBoolean()));
+                attributes.setGraceOnArrearsAgeing(LoanProductConfigurableAttributes.readFlag(overrides,
+                        LoanProductConstants.GRACE_ON_ARREARS_AGEING_PARAMETER_NAME, attributes.getGraceOnArrearsAgingBoolean()));
+                if (!before.sameFlagsAs(attributes)) {
+                    actualChanges.put(configurableAttributesChanges, command.jsonFragment(configurableAttributesChanges));
                 }
             } else {
+                // "allowAttributeOverrides": null resets every flag to the default (true)
                 loanProduct.setLoanConfigurableAttributes(LoanProductConfigurableAttributes.populateDefaultsForConfigurableAttributes());
                 loanProduct.getLoanConfigurableAttributes().updateLoanProduct(loanProduct);
+                actualChanges.put(configurableAttributesChanges, null);
             }
         }
 
@@ -381,7 +339,7 @@ public class LoanProductUpdateUtil {
                 actualChanges.put(LoanProductConstants.minimumGuaranteeFromOwnFundsParamName,
                         loanProduct.getLoanProductGuaranteeDetails().getMinimumGuaranteeFromOwnFunds());
             } else {
-                loanProduct.setLoanProductRelatedDetail(null);
+                loanProduct.setLoanProductGuaranteeDetails(null);
             }
 
         } else if (loanProduct.isHoldGuaranteeFunds()) {
@@ -531,16 +489,12 @@ public class LoanProductUpdateUtil {
 
     private Map<String, Object> updateBorrowerCycleVariations(final LoanProduct loanProduct, final JsonCommand command) {
         final Map<String, Object> actualChanges = new LinkedHashMap<>(20);
-        List<Long> variationIds = fetchAllVariationIds(loanProduct);
         updateBorrowerCycleVariations(loanProduct, command, LoanProductParamType.PRINCIPAL.getValue(),
-                LoanProductConstants.PRINCIPAL_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME, actualChanges, variationIds);
+                LoanProductConstants.PRINCIPAL_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME, actualChanges);
         updateBorrowerCycleVariations(loanProduct, command, LoanProductParamType.INTERESTRATE.getValue(),
-                LoanProductConstants.INTEREST_RATE_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME, actualChanges, variationIds);
+                LoanProductConstants.INTEREST_RATE_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME, actualChanges);
         updateBorrowerCycleVariations(loanProduct, command, LoanProductParamType.REPAYMENT.getValue(),
-                LoanProductConstants.NUMBER_OF_REPAYMENT_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME, actualChanges, variationIds);
-        for (Long id : variationIds) {
-            loanProduct.getBorrowerCycleVariations().remove(fetchLoanProductBorrowerCycleVariationById(loanProduct, id));
-        }
+                LoanProductConstants.NUMBER_OF_REPAYMENT_VARIATIONS_FOR_BORROWER_CYCLE_PARAMETER_NAME, actualChanges);
         return actualChanges;
     }
 
@@ -555,18 +509,23 @@ public class LoanProductUpdateUtil {
         return borrowerCycleVariation;
     }
 
-    private List<Long> fetchAllVariationIds(LoanProduct loanProduct) {
+    private List<Long> fetchVariationIds(final LoanProduct loanProduct, final Integer paramType) {
         List<Long> list = new ArrayList<>();
         for (LoanProductBorrowerCycleVariations cycleVariation : loanProduct.getBorrowerCycleVariations()) {
-            list.add(cycleVariation.getId());
+            if (cycleVariation.getId() != null && paramType.equals(cycleVariation.getParamType().getValue())) {
+                list.add(cycleVariation.getId());
+            }
         }
         return list;
     }
 
     private void updateBorrowerCycleVariations(final LoanProduct loanProduct, final JsonCommand command, Integer paramType,
-            String variationParameterName, final Map<String, Object> actualChanges, List<Long> variationIds) {
-        if (command.parameterExists(variationParameterName)) {
-            final JsonArray variationArray = command.arrayOfParameterNamed(variationParameterName);
+            String variationParameterName, final Map<String, Object> actualChanges) {
+        if (!command.parameterExists(variationParameterName)) {
+            return; // not sent: keep the stored variations of this type
+        }
+        final List<Long> variationIds = fetchVariationIds(loanProduct, paramType);
+        final JsonArray variationArray = command.arrayOfParameterNamed(variationParameterName);
             if (variationArray != null && variationArray.size() > 0) {
                 int i = 0;
                 do {
@@ -615,6 +574,10 @@ public class LoanProductUpdateUtil {
                         variationIds.remove(id);
                         LoanProductBorrowerCycleVariations existingCycleVariation = fetchLoanProductBorrowerCycleVariationById(loanProduct,
                                 id);
+                        if (existingCycleVariation == null) {
+                            throw new PlatformApiDataValidationException("validation.msg.loanproduct.borrowerCycle.id.not.found",
+                                    "Borrower cycle variation " + id + " does not belong to this product.", variationParameterName, id);
+                        }
                         if (!existingCycleVariation.equals(borrowerCycleVariations)) {
                             existingCycleVariation.copy(borrowerCycleVariations);
                             actualChanges.put("borrowerCycleId", id);
@@ -623,6 +586,9 @@ public class LoanProductUpdateUtil {
                     i++;
                 } while (i < variationArray.size());
             }
+        for (Long id : variationIds) {
+            loanProduct.getBorrowerCycleVariations().remove(fetchLoanProductBorrowerCycleVariationById(loanProduct, id));
+            actualChanges.put(variationParameterName, command.jsonFragment(variationParameterName));
         }
     }
 

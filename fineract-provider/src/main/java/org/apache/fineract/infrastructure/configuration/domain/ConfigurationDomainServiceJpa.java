@@ -82,11 +82,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
-    public boolean isAmazonS3Enabled() {
-        return getGlobalConfigurationPropertyData(GlobalConfigurationConstants.AMAZON_S3).isEnabled();
-    }
-
-    @Override
     public boolean isRescheduleFutureRepaymentsEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.RESCHEDULE_FUTURE_REPAYMENTS);
@@ -166,13 +161,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Long retrievePasswordLiveTime() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.FORCE_PASSWORD_RESET_DAYS);
-        return property.getValue();
-    }
-
-    @Override
-    public Long retrieveOpeningBalancesContraAccount() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.OFFICE_OPENING_BALANCES_CONTRA_ACCOUNT);
         return property.getValue();
     }
 
@@ -305,19 +293,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.CHANGE_EMI_IF_REPAYMENT_DATE_SAME_AS_DISBURSEMENT_DATE);
         return property.isEnabled();
-    }
-
-    @Override
-    public boolean isDailyTPTLimitEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(GlobalConfigurationConstants.DAILY_TPT_LIMIT);
-        return property.isEnabled();
-    }
-
-    @Override
-    public Long getDailyTPTLimit() {
-        final String propertyName = "daily-tpt-limit";
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(propertyName);
-        return property.getValue();
     }
 
     @Override
@@ -569,7 +544,10 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Integer retrieveSessionIdleTimeoutMinutes() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);
-        if (property.getValue() == null) {
+        if (!property.isEnabled()) {
+            return 0; // switched off: no idle logout
+        }
+        if (property.getValue() == null || property.getValue() < 0) {
             return 15;
         }
         return property.getValue().intValue();
@@ -579,7 +557,10 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Integer retrieveSessionIdleWarningSeconds() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.SESSION_IDLE_WARNING_SECONDS);
-        if (property.getValue() == null) {
+        if (!property.isEnabled()) {
+            return 0; // switched off: log out without a warning
+        }
+        if (property.getValue() == null || property.getValue() < 0) {
             return 60;
         }
         return property.getValue().intValue();

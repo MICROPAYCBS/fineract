@@ -25,6 +25,11 @@ import static org.apache.fineract.workflow.api.WorkflowApiConstants.WORKFLOW_DEF
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.parameters.RequestBody;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DELETE;
@@ -45,6 +50,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.workflow.data.WorkflowDefinitionData;
+import org.apache.fineract.workflow.data.WorkflowDefinitionRequest;
 import org.apache.fineract.workflow.service.WorkflowDefinitionReadPlatformService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -63,10 +69,12 @@ public class WorkflowDefinitionApiResource {
     @GET
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "List workflow definitions", description = "Lists workflow definitions with optional task and status filters")
+    @Operation(summary = "List workflow definitions", description = "Lists workflow definitions with optional task and status filters. status must be DRAFT, ACTIVE, or INACTIVE when supplied.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = WorkflowDefinitionData.class))))
+    @ApiResponse(responseCode = "403", description = "The user does not have permission to read workflow definitions")
     public List<WorkflowDefinitionData> retrieveAll(
-            @QueryParam("taskPermissionCode") @Parameter(description = "taskPermissionCode") final String taskPermissionCode,
-            @QueryParam("status") @Parameter(description = "status") final String status) {
+            @QueryParam("taskPermissionCode") @Parameter(description = "Optional filter. Maker-checker permission code of the task the workflow governs.") final String taskPermissionCode,
+            @QueryParam("status") @Parameter(description = "Optional lifecycle filter: DRAFT, ACTIVE, or INACTIVE.") final String status) {
         this.context.authenticatedUser().validateHasReadPermission(WORKFLOW_DEFINITION_RESOURCE_NAME);
         return this.readPlatformService.retrieveAll(taskPermissionCode, status);
     }
@@ -76,7 +84,11 @@ public class WorkflowDefinitionApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Retrieve a workflow definition", description = "Retrieves a workflow definition with stages, actions and transitions")
-    public WorkflowDefinitionData retrieveOne(@PathParam("definitionId") @Parameter(description = "definitionId") final Long definitionId) {
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = WorkflowDefinitionData.class)))
+    @ApiResponse(responseCode = "403", description = "The user does not have permission to read workflow definitions")
+    @ApiResponse(responseCode = "404", description = "Workflow definition not found")
+    public WorkflowDefinitionData retrieveOne(
+            @PathParam("definitionId") @Parameter(description = "Identifier of the workflow definition to retrieve") final Long definitionId) {
         this.context.authenticatedUser().validateHasReadPermission(WORKFLOW_DEFINITION_RESOURCE_NAME);
         return this.readPlatformService.retrieveOne(definitionId);
     }
@@ -85,6 +97,10 @@ public class WorkflowDefinitionApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Create a workflow definition", description = "Creates a workflow definition in DRAFT status, including stages, actions and transitions")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = WorkflowDefinitionRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The body is missing or invalid, or a required field fails validation")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission, the task permission code is unknown, or a workflow with the same name already exists for the task")
     public CommandProcessingResult create(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createWorkflowDefinition().withJson(apiRequestBodyAsJson).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
@@ -94,8 +110,14 @@ public class WorkflowDefinitionApiResource {
     @Path("{definitionId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update a workflow definition", description = "Updates a DRAFT workflow definition; the stage/transition structure is replaced with the submitted one")
-    public CommandProcessingResult update(@PathParam("definitionId") @Parameter(description = "definitionId") final Long definitionId,
+    @Operation(summary = "Update a workflow definition", description = "Replaces the submitted fields and the stage and transition structure. A DRAFT definition may always be replaced. An ACTIVE or INACTIVE definition may be replaced only when no IN_PROGRESS instance still uses it. An ACTIVE definition is validated again after the replacement.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = WorkflowDefinitionRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "The body is missing or invalid, or a required field fails validation")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission, the definition still has in-progress instances, the task is unknown, or an active definition fails structure rules")
+    @ApiResponse(responseCode = "404", description = "Workflow definition not found")
+    public CommandProcessingResult update(
+            @PathParam("definitionId") @Parameter(description = "Identifier of the workflow definition to update") final Long definitionId,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateWorkflowDefinition(definitionId)
                 .withJson(apiRequestBodyAsJson).build();
@@ -107,9 +129,13 @@ public class WorkflowDefinitionApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Activate or deactivate a workflow definition", description = "command=activate validates the workflow structure and makes the definition the sole ACTIVE workflow for its task (fails if another ACTIVE definition already exists for that task); command=deactivate stops it from governing new instances")
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "400", description = "command is missing or is not activate or deactivate")
+    @ApiResponse(responseCode = "403", description = "The user lacks permission, the definition is already in the requested state, activation fails structure or maker-checker rules, or another ACTIVE definition already exists for the task")
+    @ApiResponse(responseCode = "404", description = "Workflow definition not found")
     public CommandProcessingResult stateTransition(
-            @PathParam("definitionId") @Parameter(description = "definitionId") final Long definitionId,
-            @QueryParam("command") @Parameter(description = "command") final String commandParam) {
+            @PathParam("definitionId") @Parameter(description = "Identifier of the workflow definition to activate or deactivate") final Long definitionId,
+            @QueryParam("command") @Parameter(description = "Lifecycle action: activate or deactivate.", required = true) final String commandParam) {
         final CommandWrapper commandRequest;
         if (COMMAND_ACTIVATE.equalsIgnoreCase(commandParam)) {
             commandRequest = new CommandWrapperBuilder().activateWorkflowDefinition(definitionId).build();
@@ -126,7 +152,11 @@ public class WorkflowDefinitionApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     @Operation(summary = "Delete a workflow definition", description = "Deletes a DRAFT workflow definition")
-    public CommandProcessingResult delete(@PathParam("definitionId") @Parameter(description = "definitionId") final Long definitionId) {
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    @ApiResponse(responseCode = "403", description = "The user lacks permission, or the definition is not in DRAFT status")
+    @ApiResponse(responseCode = "404", description = "Workflow definition not found")
+    public CommandProcessingResult delete(
+            @PathParam("definitionId") @Parameter(description = "Identifier of the DRAFT workflow definition to delete") final Long definitionId) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().deleteWorkflowDefinition(definitionId).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }

@@ -22,6 +22,9 @@ import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABL
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
@@ -51,10 +54,11 @@ public class WorkflowInstanceApiResource {
     @Path("by-command/{commandSourceId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Retrieve workflow instance by maker-checker command id",
-            description = "Returns the in-flight workflow instance for a held command (checker inbox row id).")
+    @Operation(summary = "Retrieve workflow instance by maker-checker command id", description = "Returns the in-flight workflow instance for a held command (checker inbox row id). Any authenticated user may call this resource.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = WorkflowInstanceData.class)))
+    @ApiResponse(responseCode = "404", description = "No workflow instance exists for the maker-checker command")
     public WorkflowInstanceData retrieveByCommandSourceId(
-            @PathParam("commandSourceId") @Parameter(description = "commandSourceId") final Long commandSourceId) {
+            @PathParam("commandSourceId") @Parameter(description = "Identifier of the held maker-checker command (checker inbox row id)") final Long commandSourceId) {
         this.context.authenticatedUser();
         return this.readPlatformService.retrieveByCommandSourceId(commandSourceId)
                 .orElseThrow(() -> new WorkflowInstanceNotFoundException(commandSourceId));

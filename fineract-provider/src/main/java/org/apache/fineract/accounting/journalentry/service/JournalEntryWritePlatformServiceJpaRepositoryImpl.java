@@ -1068,7 +1068,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
             if (contraId == null) {
                 throw new GeneralPlatformDomainRuleException(
                         "error.msg.financial.activity.mapping.opening.balance.contra.account.cannot.be.null",
-                        "office-opening-balances-contra-account value can not be null", "office-opening-balances-contra-account");
+                        "Opening balances contra account (financial activity mapping 300) is not set", "office-opening-balances-contra-account");
             }
 
             validateJournalEntriesArePostedBefore(contraId);
@@ -1129,7 +1129,7 @@ public class JournalEntryWritePlatformServiceJpaRepositoryImpl implements Journa
         if (!GLAccountType.fromInt(contraAccount.getType()).isEquityType()) {
             throw new GeneralPlatformDomainRuleException(
                     "error.msg.configuration.opening.balance.contra.account.value.is.invalid.account.type",
-                    "Global configuration 'office-opening-balances-contra-account' value is not an equity type account", contraAccountId);
+                    "Opening balances contra account (financial activity mapping 300) is not an equity account", contraAccountId);
         }
         validateGLAccountForTransaction(contraAccount);
         final JournalEntryType contraType = getContraType(type);

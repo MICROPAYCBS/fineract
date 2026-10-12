@@ -19,6 +19,7 @@
 
 package org.apache.fineract.portfolio.client.data;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
@@ -30,14 +31,24 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@Schema(description = "Other bank account submitted with a compliance profile")
 public class ClientOtherBankAccountRequest implements Serializable {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "Optional existing other-bank-account identifier.", example = "1")
     private Long id;
+
+    @Schema(description = "Bank name. Required when the account is not blank. Maximum length 200.", example = "Example Bank", maxLength = 200)
     private String bankName;
+
+    @Schema(description = "Branch name. Optional. Maximum length 200.", example = "Main Branch", maxLength = 200)
     private String branchName;
+
+    @Schema(description = "Account number. Required when the account is not blank. Maximum length 50.", example = "0012345678", maxLength = 50)
     private String accountNumber;
+
+    @Schema(description = "Display order from 1 to 2. Defaults to the account position in the list when omitted.", example = "1")
     private Integer displayOrder;
 }

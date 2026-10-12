@@ -30,9 +30,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
@@ -79,6 +81,27 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanProductWritePlatformService {
+
+    /**
+     * Settings that existing loans read from the product every time (not copied into the loan). Changing them would change
+     * every existing loan at once, so they are locked once the product has loans. Policy decided 2026-10-11.
+     */
+    private static final List<String> LIVE_SETTINGS_LOCKED_WHEN_PRODUCT_HAS_LOANS = List.of( //
+            "accountingRule", //
+            LoanProductConstants.OVERDUE_DAYS_FOR_NPA_PARAMETER_NAME, //
+            LoanProductConstants.ACCOUNT_MOVES_OUT_OF_NPA_ONLY_ON_ARREARS_COMPLETION_PARAM_NAME, //
+            LoanProductConstants.DELINQUENCY_BUCKET_PARAM_NAME, //
+            LoanProductConstants.holdGuaranteeFundsParamName, //
+            LoanProductConstants.mandatoryGuaranteeParamName, //
+            LoanProductConstants.minimumGuaranteeFromOwnFundsParamName, //
+            LoanProductConstants.minimumGuaranteeFromGuarantorParamName, //
+            LoanProductConstants.MULTI_DISBURSE_LOAN_PARAMETER_NAME, //
+            LoanProductConstants.MAX_TRANCHE_COUNT_PARAMETER_NAME, //
+            LoanProductConstants.DISALLOW_EXPECTED_DISBURSEMENTS, //
+            LoanProductConstants.ALLOW_APPROVED_DISBURSED_AMOUNTS_OVER_APPLIED, //
+            LoanProductConstants.OVER_APPLIED_CALCULATION_TYPE, //
+            LoanProductConstants.OVER_APPLIED_NUMBER, //
+            "syncExpectedWithDisbursementDate");
 
     private final PlatformSecurityContext context;
     private final LoanProductDataValidator fromApiJsonDeserializer;
@@ -215,6 +238,8 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
 
             final Map<String, Object> changes = loanProductUpdateUtil.update(product, command, this.aprCalculator, floatingRate);
 
+            rejectLiveSettingChangesWhenProductHasLoans(product.getId(), changes);
+
             if (changes.containsKey("fundId")) {
                 final Long fundId = (Long) changes.get("fundId");
                 final Fund fund = findFundByIdIfProvided(fundId);
@@ -325,6 +350,24 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
             return CommandProcessingResult.empty();
         }
 
+    }
+
+    private void rejectLiveSettingChangesWhenProductHasLoans(final Long productId, final Map<String, Object> changes) {
+        final List<String> lockedChanges = LIVE_SETTINGS_LOCKED_WHEN_PRODUCT_HAS_LOANS.stream().filter(changes::containsKey).toList();
+        if (lockedChanges.isEmpty() || !this.loanRepositoryWrapper.doLoansExistForProduct(productId)) {
+            return;
+        }
+        final List<ApiParameterError> errors = new ArrayList<>();
+        for (final String field : lockedChanges) {
+            // 4th argument is a Long, so this binds to parameterError(code, defaultUserMessage, parameterName, Object... args).
+            errors.add(ApiParameterError.parameterError("validation.msg.loanproduct." + field + ".cannot.change.when.product.has.loans",
+                    "`" + field + "` cannot be changed because loans already use this product. Create a new loan product instead.", field,
+                    productId));
+        }
+        throw new PlatformApiDataValidationException("validation.msg.loanproduct.has.loans.live.settings.locked",
+                "This loan product already has loans. These settings cannot be changed: " + String.join(", ", lockedChanges)
+                        + ". Create a new loan product with the new settings.",
+                errors);
     }
 
     private boolean anyChangeInCriticalFloatingRateLinkedParams(JsonCommand command, LoanProduct product) {

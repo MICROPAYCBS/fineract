@@ -142,10 +142,10 @@ public class ChargeWritePlatformServiceJpaRepositoryImpl implements ChargeWriteP
     public CommandProcessingResult updateCharge(final Long chargeId, final JsonCommand command) {
 
         try {
-            this.fromApiJsonDeserializer.validateForUpdate(command.json());
-
             final Charge chargeForUpdate = this.chargeRepository.findById(chargeId)
                     .orElseThrow(() -> new ChargeNotFoundException(chargeId));
+
+            this.fromApiJsonDeserializer.validateForUpdate(command.json(), chargeForUpdate.getChargeAppliesTo());
 
             final Map<String, Object> changes = chargeForUpdate.update(command);
 
