@@ -51,8 +51,8 @@ public class AccountNumberFormat extends AbstractPersistableCustom<Long> {
     @Column(name = AccountNumberFormatConstants.CHECK_DIGIT_ALGORITHM_ENUM_COLUMN_NAME, nullable = true)
     private Integer checkDigitAlgorithmEnum;
 
-    @Column(name = AccountNumberFormatConstants.STRUCTURED_ENABLED_COLUMN_NAME, nullable = true)
-    private Boolean structuredEnabled;
+    @Column(name = AccountNumberFormatConstants.STRUCTURED_ENABLED_COLUMN_NAME, nullable = false)
+    private Boolean structuredEnabled = Boolean.FALSE;
 
     protected AccountNumberFormat() {
         //
@@ -95,7 +95,7 @@ public class AccountNumberFormat extends AbstractPersistableCustom<Long> {
     }
 
     public void setPrefix(AccountNumberPrefixType accountNumberPrefixType) {
-        setPrefixEnum(accountNumberPrefixType.getValue());
+        setPrefixEnum(accountNumberPrefixType != null ? accountNumberPrefixType.getValue() : null);
     }
 
     public void setPrefixCharacter(String prefixCharacter) {

@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberGenerationContext;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
+import org.apache.fineract.infrastructure.accountnumberformat.exception.AccountNumberSequenceExhaustedException;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatPatternParser.FormatSegment;
 import org.springframework.stereotype.Service;
 
@@ -37,36 +37,39 @@ public class AccountNumberFormatEngineImpl implements AccountNumberFormatEngine 
     public String generate(final AccountNumberGenerationContext context) {
         final List<FormatSegment> segments = AccountNumberFormatPatternParser.parse(context.getFormatPattern());
         final StringBuilder bodyBeforeCheckDigit = new StringBuilder();
-        String accountNumber = null;
 
         for (final FormatSegment segment : segments) {
             if (segment.isCheckDigit()) {
                 final String checkDigit = CheckDigitCalculator.calculate(context.getCheckDigitAlgorithm(),
                         bodyBeforeCheckDigit.toString());
-                accountNumber = bodyBeforeCheckDigit.append(CheckDigitCalculator.normalizeSegmentValue(checkDigit, segment.getWidth(), true))
-                        .toString();
+                bodyBeforeCheckDigit.append(CheckDigitCalculator.normalizeSegmentValue(checkDigit, segment.getWidth(), true));
             } else {
                 bodyBeforeCheckDigit.append(resolveSegmentValue(context, segment));
             }
         }
 
-        if (accountNumber == null) {
-            accountNumber = bodyBeforeCheckDigit.toString();
-        }
-        return accountNumber;
+        return bodyBeforeCheckDigit.toString();
     }
 
     @Override
     public String buildScopeKey(final AccountNumberGenerationContext context) {
         final String entityCode = context.getEntityAccountType().name();
         final AccountNumberSequenceScope scope = context.getSequenceScope();
+        final List<FormatSegment> segments = AccountNumberFormatPatternParser.parse(context.getFormatPattern());
         return switch (scope) {
             case GLOBAL -> entityCode;
-            case OFFICE -> entityCode + "|" + (context.getOfficeCode() != null ? context.getOfficeCode() : "000");
-            case OFFICE_PRODUCT -> entityCode + "|" + (context.getOfficeCode() != null ? context.getOfficeCode() : "000") + "|"
-                    + (context.getProductCode() != null ? context.getProductCode() : "00");
+            case OFFICE -> entityCode + "|" + scopePart(segments, "officeCode", context.getOfficeCode(), "000");
+            case OFFICE_PRODUCT -> entityCode + "|" + scopePart(segments, "officeCode", context.getOfficeCode(), "000") + "|"
+                    + scopePart(segments, "productCode", context.getProductCode(), "00");
             default -> entityCode;
         };
+    }
+
+    // The counter is keyed by the value as printed, so codes that print the same share one counter.
+    private String scopePart(final List<FormatSegment> segments, final String token, final String rawValue, final String fallback) {
+        return segments.stream().filter(segment -> token.equals(segment.getToken())).findFirst()
+                .map(segment -> CheckDigitCalculator.normalizeSegmentValue(rawValue, segment.getWidth(), "officeCode".equals(token)))
+                .orElse(rawValue != null ? rawValue : fallback);
     }
 
     private String resolveSegmentValue(final AccountNumberGenerationContext context, final FormatSegment segment) {
@@ -78,9 +81,13 @@ public class AccountNumberFormatEngineImpl implements AccountNumberFormatEngine 
             case "clientTypeCode" -> CheckDigitCalculator.normalizeSegmentValue(context.getClientTypeCode(), segment.getWidth(), false);
             case "entityTypeCode" -> CheckDigitCalculator.normalizeSegmentValue(context.getEntityTypeCode(), segment.getWidth(), true);
             case "sequence" -> {
+                final String scopeKey = buildScopeKey(context);
                 final long sequenceValue = context.isPreview()
-                        ? accountNumberSequenceWritePlatformService.previewNextSequenceValue(buildScopeKey(context))
-                        : accountNumberSequenceWritePlatformService.nextSequenceValue(buildScopeKey(context));
+                        ? accountNumberSequenceWritePlatformService.previewNextSequenceValue(scopeKey)
+                        : accountNumberSequenceWritePlatformService.nextSequenceValue(scopeKey);
+                if (String.valueOf(sequenceValue).length() > segment.getWidth()) {
+                    throw new AccountNumberSequenceExhaustedException(scopeKey, segment.getWidth());
+                }
                 yield CheckDigitCalculator.normalizeSegmentValue(String.valueOf(sequenceValue), segment.getWidth(), true);
             }
             default -> StringUtils.repeat("0", segment.getWidth());

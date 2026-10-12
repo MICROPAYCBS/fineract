@@ -142,4 +142,5 @@
   <include relativeToChangelogFile="true" file="parts/3102_job_sequence_cancel_recovery.xml"/>
   <include relativeToChangelogFile="true" file="parts/3103_delete_quipo_reports.xml"/>
   <include relativeToChangelogFile="true" file="parts/3104_remove_unused_global_configuration.xml"/>
+  <include relativeToChangelogFile="true" file="parts/3105_account_number_structured_flag.xml"/>
 </databaseChangeLog>

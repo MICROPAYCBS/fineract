@@ -30,10 +30,11 @@ public final class CheckDigitCalculator {
         if (algorithm == null || algorithm == CheckDigitAlgorithm.NONE) {
             return "0";
         }
-        final String numericBody = body.replaceAll("[^0-9A-Za-z]", "").toUpperCase();
+        final String alphanumericBody = body.replaceAll("[^0-9A-Za-z]", "").toUpperCase();
+        final String numericBody = body.replaceAll("[^0-9]", "");
         return switch (algorithm) {
             case LUHN -> String.valueOf(luhnCheckDigit(numericBody));
-            case MOD10 -> String.valueOf(mod10CheckDigit(numericBody));
+            case MOD10 -> String.valueOf(mod10CheckDigit(alphanumericBody));
             case MOD11 -> String.valueOf(mod11CheckDigit(numericBody));
             default -> "0";
         };
@@ -72,12 +73,13 @@ public final class CheckDigitCalculator {
             weight = weight >= 7 ? 2 : weight + 1;
         }
         final int remainder = sum % 11;
-        return remainder == 0 ? 0 : 11 - remainder;
+        final int digit = 11 - remainder;
+        return digit >= 10 ? 0 : digit;
     }
 
     public static String normalizeSegmentValue(final String rawValue, final int width, final boolean numericPadding) {
         if (StringUtils.isBlank(rawValue)) {
-            return StringUtils.repeat(numericPadding ? "0" : " ", width);
+            return StringUtils.repeat("0", width);
         }
         String value = rawValue.trim().toUpperCase().replaceAll("[^A-Z0-9]", "");
         if (value.length() > width) {
@@ -86,6 +88,6 @@ public final class CheckDigitCalculator {
         if (numericPadding) {
             return StringUtils.leftPad(value, width, '0');
         }
-        return StringUtils.rightPad(value, width, ' ');
+        return StringUtils.rightPad(value, width, '0');
     }
 }

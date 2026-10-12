@@ -32,6 +32,7 @@ import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumb
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatLookup;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberGeneratorService;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberManualEntryValidator;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
@@ -90,6 +91,7 @@ public class WorkingCapitalLoanAssemblerImpl implements WorkingCapitalLoanAssemb
     private final WorkingCapitalBreachRepository breachRepository;
     private final WorkingCapitalNearBreachRepository nearBreachRepository;
     private final WorkingCapitalLoanPaymentAllocationMapper workingCapitalLoanPaymentAllocationMapper;
+    private final AccountNumberManualEntryValidator accountNumberManualEntryValidator;
 
     @Override
     public WorkingCapitalLoan assembleFrom(final JsonCommand command) {
@@ -106,6 +108,8 @@ public class WorkingCapitalLoanAssemblerImpl implements WorkingCapitalLoanAssemb
         final Fund fund = fundId != null ? fundRepository.findById(fundId).orElseThrow(() -> new FundNotFoundException(fundId)) : null;
 
         final String accountNo = fromApiJsonHelper.extractStringNamed(WorkingCapitalLoanConstants.accountNoParameterName, element);
+        accountNumberManualEntryValidator.validateManualAccountNumberIfStructuredModeEnabled(EntityAccountType.WORKING_CAPITAL_LOAN,
+                accountNo);
         final String externalIdStr = fromApiJsonHelper.extractStringNamed(WorkingCapitalLoanConstants.externalIdParameterName, element);
         final ExternalId externalId = externalIdFactory.create(externalIdStr);
 

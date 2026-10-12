@@ -19,12 +19,14 @@
 package org.apache.fineract.infrastructure.accountnumberformat.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberGenerationContext;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.accountnumberformat.exception.AccountNumberSequenceExhaustedException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -72,5 +74,45 @@ public class AccountNumberFormatEngineImplTest {
         final String accountNumber = engine.generate(context);
         assertThat(accountNumber).hasSize(13);
         assertThat(accountNumber.substring(4, 12)).isEqualTo("00000007");
+    }
+
+    @Test
+    public void productCodesThatPrintTheSameShareOneCounter() {
+        when(accountNumberSequenceWritePlatformService.nextSequenceValue("SAVINGS|001|SV")).thenReturn(1L);
+
+        final String first = engine.generate(savingsContext("SV01"));
+        final String second = engine.generate(savingsContext("SV02"));
+
+        assertThat(first).startsWith("001SV");
+        assertThat(second).startsWith("001SV");
+    }
+
+    @Test
+    public void shortTextSegmentsArePaddedWithZero() {
+        when(accountNumberSequenceWritePlatformService.nextSequenceValue("SAVINGS")).thenReturn(1L);
+
+        final AccountNumberGenerationContext context = AccountNumberGenerationContext.builder().entityAccountType(EntityAccountType.SAVINGS)
+                .regionCode("S").formatPattern("{regionCode:2}{sequence:1}").sequenceScope(AccountNumberSequenceScope.GLOBAL)
+                .checkDigitAlgorithm(CheckDigitAlgorithm.NONE).preview(false).build();
+
+        assertThat(engine.generate(context)).isEqualTo("S01");
+    }
+
+    @Test
+    public void sequenceThatNoLongerFitsItsWidthIsRejected() {
+        when(accountNumberSequenceWritePlatformService.nextSequenceValue("SAVINGS")).thenReturn(1000L);
+
+        final AccountNumberGenerationContext context = AccountNumberGenerationContext.builder().entityAccountType(EntityAccountType.SAVINGS)
+                .formatPattern("{sequence:3}").sequenceScope(AccountNumberSequenceScope.GLOBAL).checkDigitAlgorithm(CheckDigitAlgorithm.NONE)
+                .preview(false).build();
+
+        assertThatThrownBy(() -> engine.generate(context)).isInstanceOf(AccountNumberSequenceExhaustedException.class);
+    }
+
+    private AccountNumberGenerationContext savingsContext(final String productCode) {
+        return AccountNumberGenerationContext.builder().entityAccountType(EntityAccountType.SAVINGS).officeCode("001")
+                .productCode(productCode).formatPattern("{officeCode:3}{productCode:2}{sequence:3}")
+                .sequenceScope(AccountNumberSequenceScope.OFFICE_PRODUCT).checkDigitAlgorithm(CheckDigitAlgorithm.NONE).preview(false)
+                .build();
     }
 }

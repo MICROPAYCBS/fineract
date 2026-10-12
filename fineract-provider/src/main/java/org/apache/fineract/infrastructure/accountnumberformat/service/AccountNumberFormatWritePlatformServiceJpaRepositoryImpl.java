@@ -20,7 +20,9 @@ package org.apache.fineract.infrastructure.accountnumberformat.service;
 
 import jakarta.persistence.PersistenceException;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatDataValidator;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
@@ -29,10 +31,13 @@ import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumb
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.StructuredAccountNumberRuleDefaults;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,8 +83,11 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
                     .integerValueSansLocaleOfParameterNamed(AccountNumberFormatConstants.checkDigitAlgorithmParamName);
             final Boolean structuredEnabled = command.booleanObjectValueOfParameterNamed(AccountNumberFormatConstants.structuredEnabledParamName);
 
-            AccountNumberFormat accountNumberFormat = new AccountNumberFormat(entityAccountType, accountNumberPrefixType, prefixCharacter);
+            AccountNumberFormat accountNumberFormat = new AccountNumberFormat(entityAccountType, accountNumberPrefixType,
+                    StringUtils.trimToNull(prefixCharacter));
             applyStructuredFields(accountNumberFormat, formatPattern, sequenceScopeId, checkDigitAlgorithmId, structuredEnabled);
+            validateStructuredRule(accountNumberFormat);
+            validatePrefixShortName(accountNumberFormat);
 
             this.accountNumberFormatRepository.saveAndFlush(accountNumberFormat);
 
@@ -112,14 +120,15 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
             if (command.isChangeInIntegerSansLocaleParameterNamed(AccountNumberFormatConstants.prefixTypeParamName,
                     accountNumberFormatForUpdate.getPrefixEnum())) {
                 final Integer newValue = command.integerValueSansLocaleOfParameterNamed(AccountNumberFormatConstants.prefixTypeParamName);
-                final AccountNumberPrefixType accountNumberPrefixType = AccountNumberPrefixType.fromInt(newValue);
+                final AccountNumberPrefixType accountNumberPrefixType = newValue != null ? AccountNumberPrefixType.fromInt(newValue) : null;
                 actualChanges.put(AccountNumberFormatConstants.prefixTypeParamName, accountNumberPrefixType);
                 accountNumberFormatForUpdate.setPrefix(accountNumberPrefixType);
             }
 
             if (command.isChangeInStringParameterNamed(AccountNumberFormatConstants.prefixCharacterParamName,
                     accountNumberFormatForUpdate.getPrefixCharacter())) {
-                final String newValue = command.stringValueOfParameterNamed(AccountNumberFormatConstants.prefixCharacterParamName);
+                final String newValue = StringUtils
+                        .trimToNull(command.stringValueOfParameterNamed(AccountNumberFormatConstants.prefixCharacterParamName));
                 actualChanges.put(AccountNumberFormatConstants.prefixCharacterParamName, newValue);
                 accountNumberFormatForUpdate.setPrefixCharacter(newValue);
             }
@@ -152,6 +161,9 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
                 actualChanges.put(AccountNumberFormatConstants.structuredEnabledParamName, newValue);
                 accountNumberFormatForUpdate.setStructuredEnabled(newValue);
             }
+
+            validateStructuredRule(accountNumberFormatForUpdate);
+            validatePrefixShortName(accountNumberFormatForUpdate);
 
             if (!actualChanges.isEmpty()) {
                 this.accountNumberFormatRepository.saveAndFlush(accountNumberFormatForUpdate);
@@ -197,6 +209,29 @@ public class AccountNumberFormatWritePlatformServiceJpaRepositoryImpl implements
         LOG.error("Error occured.", dve);
         throw ErrorHandler.getMappable(dve, "error.msg.account.number.format.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource.");
+    }
+
+    private void validateStructuredRule(final AccountNumberFormat format) {
+        if (!Boolean.TRUE.equals(format.getStructuredEnabled()) && StringUtils.isBlank(format.getFormatPattern())) {
+            return;
+        }
+        final StructuredAccountNumberRuleDefaults defaults = StructuredAccountNumberRuleDefaults.forEntityType(format.getAccountType());
+        final String pattern = StringUtils.isNotBlank(format.getFormatPattern()) ? format.getFormatPattern() : defaults.getFormatPattern();
+        final AccountNumberSequenceScope scope = format.getSequenceScope() != null ? format.getSequenceScope() : defaults.getSequenceScope();
+        final List<ApiParameterError> errors = StructuredAccountNumberPatternValidator.validate(format.getAccountType(), pattern, scope);
+        if (!errors.isEmpty()) {
+            throw new PlatformApiDataValidationException(errors);
+        }
+    }
+
+    private void validatePrefixShortName(final AccountNumberFormat format) {
+        if (AccountNumberPrefixType.PREFIX_SHORT_NAME.getValue().equals(format.getPrefixEnum())
+                && StringUtils.isBlank(format.getPrefixCharacter())) {
+            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
+                    "validation.msg.accountNumberFormat.prefixCharacter.required",
+                    "Prefix text is required when the prefix type is prefix short name.",
+                    AccountNumberFormatConstants.prefixCharacterParamName)));
+        }
     }
 
     private void applyStructuredFields(final AccountNumberFormat accountNumberFormat, final String formatPattern,

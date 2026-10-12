@@ -150,9 +150,8 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     private boolean useStructuredGeneration(final AccountNumberFormat accountNumberFormat) {
-        return configurationDomainService.isStructuredAccountNumberFormatsEnabled()
-                && (accountNumberFormat == null || accountNumberFormat.getStructuredEnabled() == null
-                        || Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled()));
+        return configurationDomainService.isStructuredAccountNumberFormatsEnabled() && accountNumberFormat != null
+                && Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled());
     }
 
     private String generateAccountNumber(Map<String, String> propertyMap, AccountNumberFormat accountNumberFormat) {
@@ -199,6 +198,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
                 break;
 
                 case PREFIX_SHORT_NAME:
+                    if (StringUtils.isBlank(accountNumberFormat.getPrefixCharacter())) {
+                        break;
+                    }
                     generatePrefix(propertyMap, propertyMap.get(ID), accountMaxLength, accountNumberFormat);
                     prefix = propertyMap.get(PREFIX_SHORT_NAME);
                 break;
@@ -210,7 +212,7 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
             if (prefix != null) {
                 prefix = prefix.substring(0, Math.min(prefix.length(), 10));
             }
-            if (accountNumberPrefixType.getValue().equals(AccountNumberPrefixType.PREFIX_SHORT_NAME.getValue())) {
+            if (accountNumberPrefixType == AccountNumberPrefixType.PREFIX_SHORT_NAME && prefix != null) {
                 Integer prefixLength = prefix.length();
 
                 if (randomAccountNumber.isEnabled()) {

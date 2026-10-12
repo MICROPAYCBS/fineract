@@ -29,10 +29,17 @@ public class CheckDigitCalculatorTest {
     public void normalizesSegmentValues() {
         assertThat(CheckDigitCalculator.normalizeSegmentValue("1", 3, true)).isEqualTo("001");
         assertThat(CheckDigitCalculator.normalizeSegmentValue("SAVINGS", 2, false)).isEqualTo("SA");
+        assertThat(CheckDigitCalculator.normalizeSegmentValue("S", 2, false)).isEqualTo("S0");
     }
 
     @Test
     public void calculatesLuhnCheckDigit() {
         assertThat(CheckDigitCalculator.calculate(CheckDigitAlgorithm.LUHN, "7992739871")).isEqualTo("3");
+        assertThat(CheckDigitCalculator.calculate(CheckDigitAlgorithm.LUHN, "7992739871A")).isEqualTo("3");
+    }
+
+    @Test
+    public void mod11RemainderOneIsZero() {
+        assertThat(CheckDigitCalculator.calculate(CheckDigitAlgorithm.MOD11, "6")).isEqualTo("0");
     }
 }

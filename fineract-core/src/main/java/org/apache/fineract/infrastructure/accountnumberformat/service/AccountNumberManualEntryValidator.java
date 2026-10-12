@@ -44,12 +44,11 @@ public class AccountNumberManualEntryValidator {
         }
         final AccountNumberFormat accountNumberFormat = accountNumberFormatRepository
                 .findOneByAccountTypeEnum(entityAccountType.getValue());
-        if (accountNumberFormat != null && Boolean.FALSE.equals(accountNumberFormat.getStructuredEnabled())) {
+        if (accountNumberFormat == null || !Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled())) {
             return;
         }
         final StructuredAccountNumberRuleDefaults defaults = StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType);
-        final String formatPattern = accountNumberFormat != null && StringUtils.isNotBlank(accountNumberFormat.getFormatPattern())
-                ? accountNumberFormat.getFormatPattern()
+        final String formatPattern = StringUtils.isNotBlank(accountNumberFormat.getFormatPattern()) ? accountNumberFormat.getFormatPattern()
                 : defaults.getFormatPattern();
         final int expectedLength = AccountNumberFormatPatternParser.parse(formatPattern).stream().mapToInt(FormatSegment::getWidth).sum();
         if (accountNumber.length() != expectedLength) {

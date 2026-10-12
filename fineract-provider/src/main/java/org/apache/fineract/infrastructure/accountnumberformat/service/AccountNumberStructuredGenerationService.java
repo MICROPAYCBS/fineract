@@ -124,7 +124,10 @@ public class AccountNumberStructuredGenerationService {
         final StructuredAccountNumberRuleDefaults defaults = StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType);
         final String formatPattern = resolveFormatPattern(accountNumberFormat, defaults);
         final OfficeExtension officeExtension = officeId != null ? officeExtensionRepository.findById(officeId).orElse(null) : null;
-        final String officeCode = officeExtension != null ? officeExtension.getOfficeCode() : "001";
+        final String officeCode = officeId == null ? "001" : officeExtension != null ? officeExtension.getOfficeCode() : null;
+        if (officeId != null && AccountNumberFormatPatternParser.requiresOfficeCode(formatPattern) && StringUtils.isBlank(officeCode)) {
+            throw new OfficeCodeRequiredForAccountNumberException(officeId);
+        }
         return AccountNumberGenerationContext.builder().entityAccountType(entityAccountType).officeCode(officeCode)
                 .regionCode(officeExtension != null ? officeExtension.getRegionCode() : null)
                 .branchType(officeExtension != null ? officeExtension.getBranchType() : null)
@@ -160,7 +163,7 @@ public class AccountNumberStructuredGenerationService {
 
     private CheckDigitAlgorithm resolveCheckDigitAlgorithm(final AccountNumberFormat accountNumberFormat,
             final StructuredAccountNumberRuleDefaults defaults) {
-        if (accountNumberFormat != null && accountNumberFormat.getCheckDigitAlgorithm() != null) {
+        if (accountNumberFormat != null && accountNumberFormat.getCheckDigitAlgorithmEnum() != null) {
             return accountNumberFormat.getCheckDigitAlgorithm();
         }
         return defaults.getCheckDigitAlgorithm();

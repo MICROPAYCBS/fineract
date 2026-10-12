@@ -39,7 +39,9 @@ import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccou
 import org.apache.fineract.infrastructure.accountnumberformat.domain.StructuredAccountNumberFormatEnumerations;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.StructuredAccountNumberRuleDefaults;
 import org.apache.fineract.infrastructure.accountnumberformat.exception.AccountNumberFormatNotFoundException;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -145,6 +147,11 @@ public class AccountNumberFormatReadPlatformServiceImpl implements AccountNumber
     public AccountNumberFormatPreviewData previewAccountNumber(final Integer accountType, final Long officeId,
             final String productShortName, final String clientTypeLabel, final String formatPattern, final Integer sequenceScope,
             final Integer checkDigitAlgorithm) {
+        if (accountType == null || EntityAccountType.fromInt(accountType) == null) {
+            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterErrorWithValue(
+                    "validation.msg.accountNumberFormat.accountType.invalid", "accountType must be 1 to 7.",
+                    AccountNumberFormatConstants.accountTypeParamName, accountType == null ? null : String.valueOf(accountType))));
+        }
         final EntityAccountType entityAccountType = EntityAccountType.fromInt(accountType);
         final AccountNumberFormat previewFormat = new AccountNumberFormat(entityAccountType, null, null);
         if (StringUtils.isNotBlank(formatPattern)) {
@@ -159,6 +166,13 @@ public class AccountNumberFormatReadPlatformServiceImpl implements AccountNumber
         }
         final String resolvedPattern = StringUtils.isNotBlank(formatPattern) ? formatPattern
                 : StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType).getFormatPattern();
+        final AccountNumberSequenceScope resolvedScope = previewFormat.getSequenceScope() != null ? previewFormat.getSequenceScope()
+                : StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType).getSequenceScope();
+        final List<ApiParameterError> patternErrors = StructuredAccountNumberPatternValidator.validate(entityAccountType, resolvedPattern,
+                resolvedScope);
+        if (!patternErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(patternErrors);
+        }
         final String accountNumber = accountNumberStructuredGenerationService.preview(entityAccountType, officeId, productShortName,
                 clientTypeLabel, previewFormat);
         return new AccountNumberFormatPreviewData(accountNumber, resolvedPattern, accountType);

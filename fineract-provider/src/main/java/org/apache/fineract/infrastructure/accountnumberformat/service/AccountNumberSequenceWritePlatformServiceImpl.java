@@ -21,6 +21,8 @@ package org.apache.fineract.infrastructure.accountnumberformat.service;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequence;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceRepository;
+import org.apache.fineract.infrastructure.core.service.database.DatabaseTypeResolver;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,15 +31,25 @@ import org.springframework.transaction.annotation.Transactional;
 public class AccountNumberSequenceWritePlatformServiceImpl implements AccountNumberSequenceWritePlatformService {
 
     private final AccountNumberSequenceRepository accountNumberSequenceRepository;
+    private final JdbcTemplate jdbcTemplate;
+    private final DatabaseTypeResolver databaseTypeResolver;
 
     @Override
     @Transactional
     public long nextSequenceValue(final String scopeKey) {
+        ensureSequenceRow(scopeKey);
         final AccountNumberSequence sequence = accountNumberSequenceRepository.findByScopeKeyForUpdate(scopeKey)
-                .orElseGet(() -> accountNumberSequenceRepository.saveAndFlush(new AccountNumberSequence(scopeKey)));
+                .orElseThrow(() -> new IllegalStateException("Account number sequence row was not inserted for " + scopeKey));
         sequence.setLastValue(sequence.getLastValue() + 1);
         accountNumberSequenceRepository.saveAndFlush(sequence);
         return sequence.getLastValue();
+    }
+
+    private void ensureSequenceRow(final String scopeKey) {
+        final String sql = databaseTypeResolver.isPostgreSQL()
+                ? "INSERT INTO m_account_number_sequence (scope_key, last_value, version) VALUES (?, 0, 0) ON CONFLICT (scope_key) DO NOTHING"
+                : "INSERT IGNORE INTO m_account_number_sequence (scope_key, last_value, version) VALUES (?, 0, 0)";
+        jdbcTemplate.update(sql, scopeKey);
     }
 
     @Override

@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import lombok.Getter;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 
 public final class AccountNumberFormatPatternParser {
 

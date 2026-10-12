@@ -91,11 +91,12 @@ public class AccountNumberFormatDataValidator {
             DataValidatorBuilder dataValidatorForValidatingPrefixType = baseDataValidator.reset()
                     .parameter(AccountNumberFormatConstants.prefixTypeParamName).value(prefixType).notNull().integerGreaterThanZero();
 
-            if (prefixType.equals(AccountNumberPrefixType.PREFIX_SHORT_NAME.getValue())) {
+            if (AccountNumberPrefixType.PREFIX_SHORT_NAME.getValue().equals(prefixType)) {
                 final String prefixCharacter = this.fromApiJsonHelper
                         .extractStringNamed(AccountNumberFormatConstants.prefixCharacterParamName, element);
 
-                baseDataValidator.reset().parameter(AccountNumberFormatConstants.prefixTypeParamName).value(prefixCharacter).notBlank();
+                baseDataValidator.reset().parameter(AccountNumberFormatConstants.prefixCharacterParamName).value(prefixCharacter).notBlank()
+                        .notExceedingLengthOf(10);
             }
 
             /**
@@ -175,13 +176,13 @@ public class AccountNumberFormatDataValidator {
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
                 .resource(AccountNumberFormatConstants.ENTITY_NAME);
 
-        boolean atLeastOneParameterPassedForUpdate = false;
+        final boolean atLeastOneParameterPassedForUpdate = ACCOUNT_NUMBER_FORMAT_UPDATE_REQUEST_DATA_PARAMETERS.stream()
+                .anyMatch(parameterName -> this.fromApiJsonHelper.parameterExists(parameterName, element));
         if (this.fromApiJsonHelper.parameterExists(AccountNumberFormatConstants.prefixTypeParamName, element)) {
-            atLeastOneParameterPassedForUpdate = true;
             Set<Integer> validAccountNumberPrefixes = determineValidAccountNumberPrefixes(entityAccountType);
             final Integer prefixType = this.fromApiJsonHelper
                     .extractIntegerSansLocaleNamed(AccountNumberFormatConstants.prefixTypeParamName, element);
-            baseDataValidator.reset().parameter(AccountNumberFormatConstants.prefixTypeParamName).value(prefixType).notNull()
+            baseDataValidator.reset().parameter(AccountNumberFormatConstants.prefixTypeParamName).value(prefixType).ignoreIfNull()
                     .integerGreaterThanZero().isOneOfTheseValues(validAccountNumberPrefixes.toArray());
         }
 
