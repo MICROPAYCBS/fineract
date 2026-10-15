@@ -587,5 +587,3 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
                 "Unknown data integrity issue with resource: " + realCause.getMessage());
     }
 }
-
-}
