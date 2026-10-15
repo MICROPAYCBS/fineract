@@ -90,7 +90,9 @@ public class RoleWritePlatformServiceJpaRepositoryImpl implements RoleWritePlatf
      * Guaranteed to throw an exception no matter what the data integrity issue is.
      */
     private void handleDataIntegrityIssues(final JsonCommand command, final Throwable realCause, final Exception dve) {
-        if (realCause.getMessage().contains("unq_name")) {
+        final String dbMessage = realCause == null || realCause.getMessage() == null ? "" : realCause.getMessage();
+        // MySQL names the constraint unq_name; PostgreSQL names the column unique constraint m_role_name_key.
+        if (dbMessage.contains("unq_name") || dbMessage.contains("m_role_name_key")) {
             final String name = command.stringValueOfParameterNamed("name");
             throw new PlatformDataIntegrityException("error.msg.role.duplicate.name", "Role with name `" + name + "` already exists",
                     "name", name);
