@@ -97,6 +97,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERMEDIARYSALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INVALIDATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_MANUAL_INTEREST_REFUND_TRANSACTION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_MARKASNPA;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_MERCHANTISSUEDREFUND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_PAY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_PAYOUTREFUND;
@@ -138,6 +139,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDO;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOAPPROVAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOCHARGEOFF;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDODISBURSAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOREJECT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOTRANSACTION;
@@ -1804,6 +1806,24 @@ public class CommandWrapperBuilder {
         this.entityId = loanId;
         this.loanId = loanId;
         this.href = "/loans/" + loanId;
+        return this;
+    }
+
+    public CommandWrapperBuilder markAsNpa(final Long loanId) {
+        this.actionName = ACTION_MARKASNPA;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "?command=markAsNpa";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoMarkAsNpa(final Long loanId) {
+        this.actionName = ACTION_UNDOMARKASNPA;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "?command=undoMarkAsNpa";
         return this;
     }
 

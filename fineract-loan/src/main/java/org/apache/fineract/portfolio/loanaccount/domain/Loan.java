@@ -359,6 +359,26 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "is_npa", nullable = false)
     private boolean isNpa;
 
+    @Column(name = "deliberate_npa", nullable = false)
+    private boolean deliberateNpa;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "npa_reason_cv_id")
+    private CodeValue npaReason;
+
+    @Column(name = "npa_reason_note", length = 500)
+    private String npaReasonNote;
+
+    @Column(name = "deliberate_npa_on_date")
+    private LocalDate deliberateNpaOnDate;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "deliberate_npa_by_userid")
+    private AppUser deliberateNpaBy;
+
+    @Column(name = "npa_arrears_qualified", nullable = false)
+    private boolean npaArrearsQualified;
+
     @Setter
     @Column(name = "accrued_till")
     private LocalDate accruedTill;
@@ -1405,6 +1425,25 @@ public class Loan extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public boolean isNpa() {
         return this.isNpa;
+    }
+
+    public void markDeliberateNpa(final CodeValue reason, final String note, final AppUser classifiedBy, final LocalDate classifiedOn) {
+        this.isNpa = true;
+        this.deliberateNpa = true;
+        this.npaReason = reason;
+        this.npaReasonNote = note;
+        this.deliberateNpaBy = classifiedBy;
+        this.deliberateNpaOnDate = classifiedOn;
+    }
+
+    public void undoDeliberateNpa(final boolean stillMeetsOverdueRule) {
+        this.deliberateNpa = false;
+        this.npaReason = null;
+        this.npaReasonNote = null;
+        this.deliberateNpaBy = null;
+        this.deliberateNpaOnDate = null;
+        this.npaArrearsQualified = false;
+        this.isNpa = stillMeetsOverdueRule;
     }
 
     public Integer getLoanRepaymentScheduleInstallmentsSize() {

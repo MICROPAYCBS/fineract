@@ -889,7 +889,9 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     + " la.overdue_since_date_derived as overdueSinceDate, "
                     + " l.sync_disbursement_with_meeting as syncDisbursementWithMeeting,"
                     + " l.loan_counter as loanCounter, l.loan_product_counter as loanProductCounter,"
-                    + " l.is_npa as isNPA, l.days_in_month_enum as daysInMonth, l.days_in_year_enum as daysInYear, "
+                    + " l.is_npa as isNPA, l.deliberate_npa as deliberateNpa, l.npa_reason_cv_id as npaReasonId, npacode.code_value as npaReason, "
+                    + " l.npa_reason_note as npaReasonNote, l.deliberate_npa_on_date as deliberateNpaOnDate, "
+                    + " l.days_in_month_enum as daysInMonth, l.days_in_year_enum as daysInYear, "
                     + " l.interest_recalculation_enabled as isInterestRecalculationEnabled, "
                     + " lir.id as lirId, lir.loan_id as loanId, lir.compound_type_enum as compoundType, lir.reschedule_strategy_enum as rescheduleStrategy, "
                     + " lir.rest_frequency_type_enum as restFrequencyEnum, lir.rest_frequency_interval as restFrequencyInterval, "
@@ -937,6 +939,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     + " left join m_code_value cv on cv.id = l.loanpurpose_cv_id"
                     + " left join m_code_value codev on codev.id = l.writeoff_reason_cv_id"
                     + " left join m_code_value codec on codec.id = l.charge_off_reason_cv_id"
+                    + " left join m_code_value npacode on npacode.id = l.npa_reason_cv_id"
                     + " left join m_product_loan_variable_installment_config lpvi on lpvi.loan_product_id = l.product_id"
                     + " left join m_loan_topup as topup on l.id = topup.loan_id"
                     + " left join m_loan as topuploan on topuploan.id = topup.closure_loan_id ";
@@ -1313,6 +1316,12 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     rs.getString("buyDownFeeIncomeType"));
             final boolean merchantBuyDownFee = rs.getBoolean("merchantBuyDownFee");
 
+            final boolean deliberateNpa = rs.getBoolean("deliberateNpa");
+            final Long npaReasonId = JdbcSupport.getLong(rs, "npaReasonId");
+            final String npaReason = rs.getString("npaReason");
+            final String npaReasonNote = rs.getString("npaReasonNote");
+            final LocalDate deliberateNpaOnDate = JdbcSupport.getLocalDate(rs, "deliberateNpaOnDate");
+
             return LoanAccountData.basicLoanDetails(id, accountNo, status, externalId, clientId, clientAccountNo, clientName,
                     clientOfficeId, clientExternalId, groupData, loanType, loanProductId, loanProductName, loanProductDescription,
                     isLoanProductLinkedToFloatingRate, fundId, fundName, loanPurposeId, loanPurposeName, loanOfficerId, loanOfficerName,
@@ -1334,7 +1343,8 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService, Loa
                     chargeOffBehaviour.getValueAsStringEnumOptionData(), interestRecognitionOnDisbursementDate, allowFullTermForTranche,
                     daysInYearCustomStrategy, enableIncomeCapitalization, capitalizedIncomeCalculationType, capitalizedIncomeStrategy,
                     capitalizedIncomeType, enableBuyDownFee, buyDownFeeCalculationType, buyDownFeeStrategy, buyDownFeeIncomeType,
-                    merchantBuyDownFee);
+                    merchantBuyDownFee).setDeliberateNpa(deliberateNpa).setNpaReasonId(npaReasonId).setNpaReason(npaReason)
+                    .setNpaReasonNote(npaReasonNote).setDeliberateNpaOnDate(deliberateNpaOnDate);
         }
     }
 

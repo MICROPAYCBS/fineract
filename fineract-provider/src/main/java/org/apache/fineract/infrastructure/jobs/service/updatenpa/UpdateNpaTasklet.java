@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.infrastructure.jobs.service.updatenpa;
 
+import java.time.OffsetDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -46,45 +47,72 @@ public class UpdateNpaTasklet implements Tasklet {
     public RepeatStatus execute(StepContribution contribution, ChunkContext chunkContext) throws Exception {
         AppUser user = context.getAuthenticatedUserIfPresent();
         final JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSourceServiceFactory.determineDataSourceService().retrieveDataSource());
+        final Long userId = user.getId();
+        final OffsetDateTime auditTime = DateUtils.getAuditOffsetDateTime();
 
-        final StringBuilder resetNPASqlBuilder = new StringBuilder();
-        resetNPASqlBuilder.append("update m_loan loan ");
-        String fromPart = " (SELECT loan2.* FROM m_loan loan2 left join m_loan_arrears_aging laa on laa.loan_id = loan2.id "
-                + "inner join m_product_loan mpl on mpl.id = loan2.product_id and mpl.overdue_days_for_npa is not null "
-                + "WHERE loan2.loan_status_id = 300 and mpl.account_moves_out_of_npa_only_on_arrears_completion = false"
-                + " or (mpl.account_moves_out_of_npa_only_on_arrears_completion = true"
-                + " and laa.overdue_since_date_derived is null)) sl";
-        String wherePart = " where loan.id = sl.id ";
-
-        if (databaseTypeResolver.isMySQL()) {
-            resetNPASqlBuilder.append(", ").append(fromPart).append(" set loan.is_npa = false")
-                    .append(", loan.last_modified_by = ?, loan.last_modified_on_utc = ? ").append(wherePart);
-        } else {
-            resetNPASqlBuilder.append("set is_npa = false").append(", last_modified_by = ?, last_modified_on_utc = ? ").append(" FROM ")
-                    .append(fromPart).append(wherePart);
-        }
-        jdbcTemplate.update(resetNPASqlBuilder.toString(), user.getId(), DateUtils.getAuditOffsetDateTime());
-
-        final StringBuilder updateSqlBuilder = new StringBuilder(900);
-
-        fromPart = " (select loan.id " + " FROM m_loan_arrears_aging laa" + " INNER JOIN  m_loan loan on laa.loan_id = loan.id "
-                + " INNER JOIN m_product_loan mpl on mpl.id = loan.product_id AND mpl.overdue_days_for_npa is not null "
-                + "WHERE loan.loan_status_id = 300 and " + "laa.overdue_since_date_derived < "
-                + sqlGenerator.subDate(sqlGenerator.currentBusinessDate(), "COALESCE(mpl.overdue_days_for_npa, 0)", "day")
-                + " group by loan.id) as sl ";
-        wherePart = " where ml.id=sl.id ";
-        updateSqlBuilder.append("UPDATE m_loan as ml ");
-        if (databaseTypeResolver.isMySQL()) {
-            updateSqlBuilder.append(", ").append(fromPart).append(" SET ml.is_npa = true")
-                    .append(", ml.last_modified_by = ?, ml.last_modified_on_utc = ? ").append(wherePart);
-        } else {
-            updateSqlBuilder.append(" SET is_npa = true").append(", last_modified_by = ?, last_modified_on_utc = ? ").append(" FROM ")
-                    .append(fromPart).append(wherePart);
-        }
-
-        final int result = jdbcTemplate.update(updateSqlBuilder.toString(), user.getId(), DateUtils.getAuditOffsetDateTime());
+        jdbcTemplate.update(qualifyArrearsSql(), userId, auditTime);
+        jdbcTemplate.update(resetNpaSql(), userId, auditTime);
+        final int result = jdbcTemplate.update(markOverdueNpaSql(), userId, auditTime);
 
         log.debug("{}: Records affected by updateNPA: {}", ThreadLocalContextUtil.getTenant().getName(), result);
         return RepeatStatus.FINISHED;
+    }
+
+    private String overdueLoanIdsSql() {
+        return "(select npa_loan.id FROM m_loan_arrears_aging laa" + " INNER JOIN m_loan npa_loan on laa.loan_id = npa_loan.id"
+                + " INNER JOIN m_product_loan mpl on mpl.id = npa_loan.product_id AND mpl.overdue_days_for_npa is not null"
+                + " WHERE npa_loan.loan_status_id = 300 and laa.overdue_since_date_derived < "
+                + sqlGenerator.subDate(sqlGenerator.currentBusinessDate(), "COALESCE(mpl.overdue_days_for_npa, 0)", "day")
+                + " group by npa_loan.id)";
+    }
+
+    private String qualifyArrearsSql() {
+        final String fromPart = overdueLoanIdsSql() + " sl";
+        final String wherePart = " where loan.id = sl.id";
+        final StringBuilder sql = new StringBuilder("update m_loan loan ");
+        if (databaseTypeResolver.isMySQL()) {
+            sql.append(", ").append(fromPart).append(" set loan.npa_arrears_qualified = true")
+                    .append(", loan.last_modified_by = ?, loan.last_modified_on_utc = ?").append(wherePart);
+        } else {
+            sql.append("set npa_arrears_qualified = true").append(", last_modified_by = ?, last_modified_on_utc = ?").append(" FROM ")
+                    .append(fromPart).append(wherePart);
+        }
+        return sql.toString();
+    }
+
+    private String resetNpaSql() {
+        final String fromPart = " (SELECT loan2.* FROM m_loan loan2 left join m_loan_arrears_aging laa on laa.loan_id = loan2.id "
+                + "inner join m_product_loan mpl on mpl.id = loan2.product_id and mpl.overdue_days_for_npa is not null "
+                + "WHERE ((loan2.loan_status_id = 300 and mpl.account_moves_out_of_npa_only_on_arrears_completion = false)"
+                + " or (mpl.account_moves_out_of_npa_only_on_arrears_completion = true and laa.overdue_since_date_derived is null))"
+                + " and not (loan2.deliberate_npa = true and loan2.npa_arrears_qualified = false)"
+                + " and loan2.id not in " + overdueLoanIdsSql() + ") sl";
+        final String wherePart = " where loan.id = sl.id ";
+        final StringBuilder sql = new StringBuilder("update m_loan loan ");
+        if (databaseTypeResolver.isMySQL()) {
+            sql.append(", ").append(fromPart).append(" set loan.is_npa = false, loan.deliberate_npa = false")
+                    .append(", loan.npa_reason_cv_id = null, loan.npa_reason_note = null, loan.deliberate_npa_on_date = null")
+                    .append(", loan.deliberate_npa_by_userid = null, loan.npa_arrears_qualified = false")
+                    .append(", loan.last_modified_by = ?, loan.last_modified_on_utc = ? ").append(wherePart);
+        } else {
+            sql.append("set is_npa = false, deliberate_npa = false, npa_reason_cv_id = null, npa_reason_note = null")
+                    .append(", deliberate_npa_on_date = null, deliberate_npa_by_userid = null, npa_arrears_qualified = false")
+                    .append(", last_modified_by = ?, last_modified_on_utc = ? ").append(" FROM ").append(fromPart).append(wherePart);
+        }
+        return sql.toString();
+    }
+
+    private String markOverdueNpaSql() {
+        final String fromPart = overdueLoanIdsSql() + " as sl ";
+        final String wherePart = " where ml.id=sl.id ";
+        final StringBuilder sql = new StringBuilder("UPDATE m_loan as ml ");
+        if (databaseTypeResolver.isMySQL()) {
+            sql.append(", ").append(fromPart).append(" SET ml.is_npa = true")
+                    .append(", ml.last_modified_by = ?, ml.last_modified_on_utc = ? ").append(wherePart);
+        } else {
+            sql.append(" SET is_npa = true").append(", last_modified_by = ?, last_modified_on_utc = ? ").append(" FROM ").append(fromPart)
+                    .append(wherePart);
+        }
+        return sql.toString();
     }
 }

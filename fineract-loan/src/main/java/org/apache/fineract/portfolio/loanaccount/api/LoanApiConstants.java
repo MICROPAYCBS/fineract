@@ -141,6 +141,7 @@ public interface LoanApiConstants {
     String WRITEOFFREASONS = "WriteOffReasons";
     // loan charge-off
     String CHARGE_OFF_REASONS = "ChargeOffReasons";
+    String LOAN_NPA_REASONS = "LoanNPAReasons";
     // loan ReAge
     String REAGE_REASONS = "ReAgeReasons";
     // loan ReAmortization
@@ -182,6 +183,9 @@ public interface LoanApiConstants {
     // Commands
     String CHARGEBACK_TRANSACTION_COMMAND = "chargeback";
     String MARK_AS_FRAUD_COMMAND = "markAsFraud";
+    String MARK_AS_NPA_COMMAND = "markAsNpa";
+    String UNDO_MARK_AS_NPA_COMMAND = "undoMarkAsNpa";
+    String npaReasonIdParamName = "npaReasonId";
     String CAPITALIZED_INCOME_TRANSACTION_COMMAND = "capitalizedIncome";
     String CAPITALIZED_INCOME_ADJUSTMENT_TRANSACTION_COMMAND = "capitalizedIncomeAdjustment";
     String ACCRUE_COMMAND = "accrue";

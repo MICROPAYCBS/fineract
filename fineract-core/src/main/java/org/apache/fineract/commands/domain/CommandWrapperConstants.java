@@ -76,6 +76,8 @@ public final class CommandWrapperConstants {
     public static final String ACTION_UNDO = "UNDO";
     public static final String ACTION_BOUNCE = "BOUNCE";
     public static final String ACTION_SETFRAUD = "SETFRAUD";
+    public static final String ACTION_MARKASNPA = "MARKASNPA";
+    public static final String ACTION_UNDOMARKASNPA = "UNDOMARKASNPA";
     public static final String ACTION_UNDODISBURSAL = "UNDODISBURSAL";
     public static final String ACTION_UNDOAPPROVAL = "UNDOAPPROVAL";
     public static final String ACTION_DISBURSETOSAVINGS = "DISBURSETOSAVINGS";
