@@ -19,6 +19,7 @@
 package org.apache.fineract.portfolio.paymenttype.service;
 
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.Strings;
@@ -38,7 +39,6 @@ import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
 import org.apache.fineract.portfolio.paymenttype.exception.PaymentTypeNotFoundException;
 import org.apache.fineract.portfolio.paymenttype.mapper.PaymentTypeCreateRequestMapper;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 
@@ -48,7 +48,7 @@ public class PaymentTypeWriteServiceImpl implements PaymentTypeWriteService {
     private final PaymentTypeRepository repository;
     private final PaymentTypeCreateRequestMapper createRequestMapper;
     private final PaymentTypeHoldRepository holdRepository;
-    private final ApplicationEventPublisher eventPublisher;
+    private final List<PaymentTypeReactivatedHandler> reactivationHandlers;
 
     @Override
     @CacheEvict(value = "payment_types", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier().concat('payment_types')")
@@ -141,7 +141,9 @@ public class PaymentTypeWriteServiceImpl implements PaymentTypeWriteService {
         this.holdRepository.findByPaymentType_IdAndEndedOnDateIsNull(paymentType.getId()).ifPresent(hold -> {
             hold.setEndedOnDate(DateUtils.getBusinessLocalDate());
             this.holdRepository.saveAndFlush(hold);
-            this.eventPublisher.publishEvent(new PaymentTypeReactivatedEvent(paymentType.getId()));
+            for (final PaymentTypeReactivatedHandler handler : this.reactivationHandlers) {
+                handler.onPaymentTypeReactivated(paymentType.getId());
+            }
         });
     }
 

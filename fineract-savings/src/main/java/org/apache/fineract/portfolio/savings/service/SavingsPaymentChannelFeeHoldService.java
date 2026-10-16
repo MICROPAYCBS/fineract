@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.savings.service;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeHold;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeHoldRepository;
@@ -36,6 +37,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsPaymentChannelStatus;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannel;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannelHold;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannelHoldRepository;
+import org.apache.fineract.portfolio.savings.exception.SavingsPaymentChannelSchemaMissingException;
 import org.apache.fineract.portfolio.savings.service.SavingsPaymentChannelFeeCycle.HoldWindow;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -79,8 +81,9 @@ public class SavingsPaymentChannelFeeHoldService {
         final SavingsProductPaymentChannelHold hold = open.get();
         hold.setEndedOnDate(endedOn);
         this.productHoldRepository.saveAndFlush(hold);
-        final List<SavingsAccountPaymentChannel> subscriptions = this.accountChannelRepository
-                .findByProductPaymentChannelIdAndStatus(channel.getId(), SavingsPaymentChannelStatus.ACTIVE.getValue());
+        final List<SavingsAccountPaymentChannel> subscriptions = activeSubscriptions(
+                () -> this.accountChannelRepository.findByProductPaymentChannelIdAndStatus(channel.getId(),
+                        SavingsPaymentChannelStatus.ACTIVE.getValue()));
         for (final SavingsAccountPaymentChannel subscription : subscriptions) {
             skipMissedCycles(subscription);
         }
@@ -91,8 +94,9 @@ public class SavingsPaymentChannelFeeHoldService {
         if (paymentTypeId == null) {
             return;
         }
-        final List<SavingsAccountPaymentChannel> subscriptions = this.accountChannelRepository.findByPaymentTypeIdAndStatus(paymentTypeId,
-                SavingsPaymentChannelStatus.ACTIVE.getValue());
+        final List<SavingsAccountPaymentChannel> subscriptions = activeSubscriptions(
+                () -> this.accountChannelRepository.findByPaymentTypeIdAndStatus(paymentTypeId,
+                        SavingsPaymentChannelStatus.ACTIVE.getValue()));
         for (final SavingsAccountPaymentChannel subscription : subscriptions) {
             skipMissedCycles(subscription);
         }
@@ -147,6 +151,24 @@ public class SavingsPaymentChannelFeeHoldService {
             this.savingsAccountChargeRepository.save(charge);
         }
         return moved;
+    }
+
+    private List<SavingsAccountPaymentChannel> activeSubscriptions(final Supplier<List<SavingsAccountPaymentChannel>> query) {
+        try {
+            return query.get();
+        } catch (final RuntimeException exception) {
+            throw schemaMissingOrRethrow(exception);
+        }
+    }
+
+    private static RuntimeException schemaMissingOrRethrow(final RuntimeException exception) {
+        for (Throwable current = exception; current != null; current = current.getCause()) {
+            final String message = current.getMessage();
+            if (message != null && message.contains("m_savings_account_payment_channel") && message.contains("does not exist")) {
+                return new SavingsPaymentChannelSchemaMissingException(exception);
+            }
+        }
+        return exception;
     }
 
     private SavingsAccountPaymentChannel activeSubscription(final SavingsAccountCharge charge) {

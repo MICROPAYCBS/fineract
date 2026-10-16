@@ -19,8 +19,7 @@
 package org.apache.fineract.portfolio.savings.service;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReactivatedEvent;
-import org.springframework.context.event.EventListener;
+import org.apache.fineract.portfolio.paymenttype.service.PaymentTypeReactivatedHandler;
 import org.springframework.stereotype.Component;
 
 /**
@@ -28,12 +27,12 @@ import org.springframework.stereotype.Component;
  */
 @Component
 @RequiredArgsConstructor
-public class PaymentTypeReactivatedListener {
+public class PaymentTypeReactivatedListener implements PaymentTypeReactivatedHandler {
 
     private final SavingsPaymentChannelFeeHoldService feeHoldService;
 
-    @EventListener
-    public void onPaymentTypeReactivated(final PaymentTypeReactivatedEvent event) {
-        this.feeHoldService.skipMissedCyclesForPaymentType(event.paymentTypeId());
+    @Override
+    public void onPaymentTypeReactivated(final Long paymentTypeId) {
+        this.feeHoldService.skipMissedCyclesForPaymentType(paymentTypeId);
     }
 }

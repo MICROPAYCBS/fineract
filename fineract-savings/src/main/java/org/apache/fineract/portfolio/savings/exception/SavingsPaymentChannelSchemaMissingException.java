@@ -16,9 +16,19 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.paymenttype.service;
+package org.apache.fineract.portfolio.savings.exception;
+
+import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 
 /**
- * Published after a payment type is turned back on and its open hold has been closed.
+ * Thrown when savings payment channel tables have not been created on the tenant database.
  */
-public record PaymentTypeReactivatedEvent(Long paymentTypeId) {}
+public class SavingsPaymentChannelSchemaMissingException extends PlatformDataIntegrityException {
+
+    public static final String MESSAGE = "Savings payment channels are not available because the table "
+            + "m_savings_account_payment_channel does not exist. Apply the savings payment channel database migration and try again.";
+
+    public SavingsPaymentChannelSchemaMissingException(final Throwable cause) {
+        super("error.msg.savings.payment.channel.schema.missing", MESSAGE, cause);
+    }
+}

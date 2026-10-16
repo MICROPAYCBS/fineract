@@ -19,11 +19,11 @@
 package org.apache.fineract.infrastructure.accountnumberformat.service;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequence;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceRepository;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseTypeResolver;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -35,14 +35,30 @@ public class AccountNumberSequenceWritePlatformServiceImpl implements AccountNum
     private final DatabaseTypeResolver databaseTypeResolver;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public long nextSequenceValue(final String scopeKey) {
         ensureSequenceRow(scopeKey);
-        final AccountNumberSequence sequence = accountNumberSequenceRepository.findByScopeKeyForUpdate(scopeKey)
-                .orElseThrow(() -> new IllegalStateException("Account number sequence row was not inserted for " + scopeKey));
-        sequence.setLastValue(sequence.getLastValue() + 1);
-        accountNumberSequenceRepository.saveAndFlush(sequence);
-        return sequence.getLastValue();
+        // Atomic increment in its own transaction so a rolled-back account create cannot reuse the same number.
+        if (databaseTypeResolver.isPostgreSQL()) {
+            final Long next = jdbcTemplate.queryForObject("""
+                    UPDATE m_account_number_sequence
+                       SET last_value = last_value + 1, version = version + 1
+                     WHERE scope_key = ?
+                    RETURNING last_value
+                    """, Long.class, scopeKey);
+            if (next == null) {
+                throw new IllegalStateException("Account number sequence row was not inserted for " + scopeKey);
+            }
+            return next;
+        }
+        jdbcTemplate.update(
+                "UPDATE m_account_number_sequence SET last_value = LAST_INSERT_ID(last_value + 1), version = version + 1 WHERE scope_key = ?",
+                scopeKey);
+        final Long next = jdbcTemplate.queryForObject("SELECT LAST_INSERT_ID()", Long.class);
+        if (next == null) {
+            throw new IllegalStateException("Account number sequence row was not inserted for " + scopeKey);
+        }
+        return next;
     }
 
     private void ensureSequenceRow(final String scopeKey) {

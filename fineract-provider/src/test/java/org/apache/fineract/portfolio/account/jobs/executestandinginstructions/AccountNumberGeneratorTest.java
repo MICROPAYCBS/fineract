@@ -141,6 +141,40 @@ public class AccountNumberGeneratorTest {
     }
 
     @Test
+    public void testGenerateSavingsAccountNumberSkipsDuplicatePrefixedNumber() {
+        final GlobalConfigurationPropertyData accountLengthConfig = mock(GlobalConfigurationPropertyData.class);
+        when(accountLengthConfig.isEnabled()).thenReturn(true);
+        when(accountLengthConfig.getValue()).thenReturn(10L);
+        when(configService.retrieveGlobalConfiguration(GlobalConfigurationConstants.CUSTOM_ACCOUNT_NUMBER_LENGTH))
+                .thenReturn(accountLengthConfig);
+
+        final GlobalConfigurationPropertyData randomAccountConfig = mock(GlobalConfigurationPropertyData.class);
+        when(randomAccountConfig.isEnabled()).thenReturn(false);
+        when(configService.retrieveGlobalConfiguration(GlobalConfigurationConstants.RANDOM_ACCOUNT_NUMBER)).thenReturn(randomAccountConfig);
+
+        final SavingsAccount savings = mock(SavingsAccount.class);
+        final Office office = mock(Office.class);
+        final SavingsProduct product = mock(SavingsProduct.class);
+        when(savings.getId()).thenReturn(1L);
+        when(savings.office()).thenReturn(office);
+        when(office.getName()).thenReturn("Head Office");
+        when(savings.savingsProduct()).thenReturn(product);
+        when(product.getShortName()).thenReturn("CSV");
+
+        final AccountNumberFormat format = mock(AccountNumberFormat.class);
+        when(format.getPrefixEnum()).thenReturn(401);
+        when(format.getPrefixCharacter()).thenReturn("1");
+        when(format.getStructuredEnabled()).thenReturn(false);
+
+        final SavingsAccount existing = mock(SavingsAccount.class);
+        when(existing.getId()).thenReturn(50L);
+        when(savingsRepo.findSavingsAccountByAccountNumber("1000000001")).thenReturn(existing);
+
+        final String accountNumber = generator.generate(savings, format);
+        assertThat(accountNumber).isEqualTo("1000000002");
+    }
+
+    @Test
     public void testGenerateShareAccountNumber() {
         ShareAccount share = mock(ShareAccount.class);
         ShareProduct product = mock(ShareProduct.class);
