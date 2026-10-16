@@ -83,7 +83,6 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrap
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountTransactionNotFoundException;
-import org.apache.fineract.portfolio.savings.exception.SavingsInterestPostingGlMappingMissingException;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.junit.jupiter.api.AfterEach;
@@ -464,28 +463,16 @@ class SavingsAccountWritePlatformServiceJpaRepositoryImplTest {
     }
 
     @Test
-    void selectAccountId_cashInterestOnSavingsMissing_namesTheMapping() {
-        final SavingsAccountData account = interestPostingAccount(11L, 55L, AccountingRuleType.CASH_BASED);
-        mapAllGlAccounts(account);
-        account.setGlAccountIdForInterestOnSavings(0L);
-        final SavingsAccountTransactionData transaction = interestPosting(account, BigDecimal.TEN);
+    void selectAccountId_missingMappings_doesNotThrow() {
+        final SavingsAccountData accrual = interestPostingAccount(12L, 56L, AccountingRuleType.ACCRUAL_PERIODIC);
+        final SavingsAccountTransactionData overdraft = overdraftInterest(accrual, BigDecimal.ZERO);
+        assertThatNoException().isThrownBy(() -> service.selectAccountId(overdraft, accrual));
 
-        assertThat(account.getSavingsProductId()).isEqualTo(55L);
-        assertThatThrownBy(() -> service.selectAccountId(transaction, account))
-                .isInstanceOf(SavingsInterestPostingGlMappingMissingException.class)
-                .hasMessageContaining("savings account 11").hasMessageContaining("product 55")
-                .hasMessageContaining("Interest on Savings (3)");
-    }
-
-    @Test
-    void selectAccountId_accrualInterestPayableMissing_namesTheMapping() {
-        final SavingsAccountData account = interestPostingAccount(12L, 56L, AccountingRuleType.ACCRUAL_PERIODIC);
-        mapAllGlAccounts(account);
-        account.setGlAccountIdForInterestPayable(0L);
-        final SavingsAccountTransactionData transaction = interestPosting(account, BigDecimal.TEN);
-
-        assertThatThrownBy(() -> service.selectAccountId(transaction, account))
-                .isInstanceOf(SavingsInterestPostingGlMappingMissingException.class).hasMessageContaining("Interest Payable (17)");
+        final SavingsAccountData cash = interestPostingAccount(11L, 55L, AccountingRuleType.CASH_BASED);
+        final SavingsAccountTransactionData interest = interestPosting(cash, BigDecimal.TEN);
+        assertThatNoException().isThrownBy(() -> service.selectAccountId(interest, cash));
+        assertThat(interest.getAccountDebit()).isNull();
+        assertThat(interest.getAccountCredit()).isNull();
     }
 
     @Test
@@ -502,13 +489,13 @@ class SavingsAccountWritePlatformServiceJpaRepositoryImplTest {
         mapAllGlAccounts(cash);
         final SavingsAccountTransactionData cashInterest = interestPosting(cash, BigDecimal.TEN);
         service.selectAccountId(cashInterest, cash);
-        assertThat(cashInterest.getAccountDebit()).isEqualTo(3L);
+        assertThat(cashInterest.getAccountDebit()).isEqualTo(17L);
         assertThat(cashInterest.getAccountCredit()).isEqualTo(2L);
 
         final SavingsAccountTransactionData cashOverdraft = overdraftInterest(cash, new BigDecimal("-5"));
         service.selectAccountId(cashOverdraft, cash);
-        assertThat(cashOverdraft.getAccountDebit()).isEqualTo(1L);
-        assertThat(cashOverdraft.getAccountCredit()).isEqualTo(12L);
+        assertThat(cashOverdraft.getAccountDebit()).isEqualTo(11L);
+        assertThat(cashOverdraft.getAccountCredit()).isEqualTo(18L);
 
         final SavingsAccountData accrual = interestPostingAccount(22L, 72L, AccountingRuleType.ACCRUAL_PERIODIC);
         mapAllGlAccounts(accrual);

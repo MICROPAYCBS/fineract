@@ -366,8 +366,6 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                     "apm2.gl_account_id as glAccountIdForInterestReceivable,apm3.gl_account_id as glAccountIdForOverdraftPorfolio, ");
             sqlBuilder.append("apm4.gl_account_id as glAccountIdForInterestPayable, ");
             sqlBuilder.append(
-                    "apm5.gl_account_id as glAccountIdForSavingsReference, apm6.gl_account_id as glAccountIdForIncomeFromInterest, ");
-            sqlBuilder.append(
                     "mtc.id as taxComponentId, mtc.debit_account_id as debitAccountId, mtc.credit_account_id as creditAccountId, mtc.percentage as taxPercentage ");
             sqlBuilder.append("from m_savings_account sa ");
             sqlBuilder.append("join m_savings_product sp ON sa.product_id = sp.id ");
@@ -392,10 +390,6 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                     "left join acc_product_mapping apm3 on apm3.product_type = 2 and apm3.product_id = sp.id and apm3.financial_account_type = 11 ");
             sqlBuilder.append(
                     "left join acc_product_mapping apm4 on apm4.product_type = 2 and apm4.product_id = sp.id and apm4.financial_account_type = 17 ");
-            sqlBuilder.append(
-                    "left join acc_product_mapping apm5 on apm5.product_type = 2 and apm5.product_id = sp.id and apm5.financial_account_type=1 and apm5.payment_type is null ");
-            sqlBuilder.append(
-                    "left join acc_product_mapping apm6 on apm6.product_type = 2 and apm6.product_id = sp.id and apm6.financial_account_type=12 ");
 
             this.schemaSql = sqlBuilder.toString();
         }
@@ -453,8 +447,6 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
                     final Long glAccountIdForInterestReceivable = rs.getLong("glAccountIdForInterestReceivable");
 
                     final Long glAccountIdForInterestPayable = rs.getLong("glAccountIdForInterestPayable");
-                    final Long glAccountIdForSavingsReference = rs.getLong("glAccountIdForSavingsReference");
-                    final Long glAccountIdForIncomeFromInterest = rs.getLong("glAccountIdForIncomeFromInterest");
 
                     final Long productId = rs.getLong("productId");
                     final Integer accountType = rs.getInt("accountingType");
@@ -620,8 +612,6 @@ public class SavingsAccountReadPlatformServiceImpl implements SavingsAccountRead
 
                     savingsAccountData.setGlAccountIdForInterestOnSavings(glAccountIdForInterestOnSavings);
                     savingsAccountData.setGlAccountIdForSavingsControl(glAccountIdForSavingsControl);
-                    savingsAccountData.setGlAccountIdForSavingsReference(glAccountIdForSavingsReference);
-                    savingsAccountData.setGlAccountIdForIncomeFromInterest(glAccountIdForIncomeFromInterest);
                     final Integer version = JdbcSupport.getInteger(rs, "version");
                     savingsAccountData.setVersion(version);
                 }

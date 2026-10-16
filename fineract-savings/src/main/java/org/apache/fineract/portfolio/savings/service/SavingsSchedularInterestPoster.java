@@ -118,14 +118,13 @@ public class SavingsSchedularInterestPoster {
                                         + savingsAccountData.getId());
                     }
                     savingsAccountTransactionData.setId(dataFromFetch.getId());
-                    // Use the GL accounts selected for this transaction (cash: interest-on-savings; accrual: interest-payable).
-                    // Do not key off interest-on-savings alone — that wrongly entered the JE path for cash products while
-                    // debit was still interest-payable (0), causing FK failures and rolling back interest inserts.
-                    final Long debitAccountId = savingsAccountTransactionData.getAccountDebit();
-                    final Long creditAccountId = savingsAccountTransactionData.getAccountCredit();
-                    if (isValidGlAccountId(debitAccountId) && isValidGlAccountId(creditAccountId)) {
+                    if (isNonZeroGlAccountId(savingsAccountData.getGlAccountIdForSavingsControl())
+                            && isNonZeroGlAccountId(savingsAccountData.getGlAccountIdForInterestOnSavings())
+                            && isNonZeroGlAccountId(savingsAccountTransactionData.getAccountDebit())
+                            && isNonZeroGlAccountId(savingsAccountTransactionData.getAccountCredit())) {
                         OffsetDateTime auditDatetime = DateUtils.getAuditOffsetDateTime();
-                        paramsForGLInsertion.add(new Object[] { creditAccountId, savingsAccountData.getOfficeId(), null, currencyCode,
+                        paramsForGLInsertion.add(new Object[] { savingsAccountTransactionData.getAccountCredit(),
+                                savingsAccountData.getOfficeId(), null, currencyCode,
                                 SAVINGS_TRANSACTION_IDENTIFIER + savingsAccountTransactionData.getId().toString(),
                                 savingsAccountTransactionData.getId(), null, false, null, false,
                                 savingsAccountTransactionData.getTransactionDate(), JournalEntryType.CREDIT.getValue().longValue(),
@@ -134,7 +133,8 @@ public class SavingsSchedularInterestPoster {
                                 savingsAccountTransactionData.getTransactionDate(), null, userId, userId,
                                 DateUtils.getBusinessLocalDate() });
 
-                        paramsForGLInsertion.add(new Object[] { debitAccountId, savingsAccountData.getOfficeId(), null, currencyCode,
+                        paramsForGLInsertion.add(new Object[] { savingsAccountTransactionData.getAccountDebit(),
+                                savingsAccountData.getOfficeId(), null, currencyCode,
                                 SAVINGS_TRANSACTION_IDENTIFIER + savingsAccountTransactionData.getId().toString(),
                                 savingsAccountTransactionData.getId(), null, false, null, false,
                                 savingsAccountTransactionData.getTransactionDate(), JournalEntryType.DEBIT.getValue().longValue(),
@@ -142,10 +142,6 @@ public class SavingsSchedularInterestPoster {
                                 savingsAccountData.getId(), auditDatetime, auditDatetime, false, BigDecimal.ZERO, BigDecimal.ZERO, null,
                                 savingsAccountTransactionData.getTransactionDate(), null, userId, userId,
                                 DateUtils.getBusinessLocalDate() });
-                    } else if (Boolean.TRUE.equals(savingsAccountData.isCashBasedAccountingEnabledOnSavingsProduct())
-                            || Boolean.TRUE.equals(savingsAccountData.isAccrualBasedAccountingEnabledOnSavingsProduct())) {
-                        throw new IllegalStateException("No GL accounts selected for interest transaction refNo=" + key
-                                + " on savings account " + savingsAccountData.getId() + "; journal entry would be missing");
                     }
 
                 }
@@ -271,7 +267,7 @@ public class SavingsSchedularInterestPoster {
         }
     }
 
-    private static boolean isValidGlAccountId(final Long accountId) {
+    private static boolean isNonZeroGlAccountId(final Long accountId) {
         return accountId != null && accountId != 0L;
     }
 
