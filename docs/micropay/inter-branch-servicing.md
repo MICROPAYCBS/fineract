@@ -455,7 +455,7 @@ No per-branch pairing matrix is required. New branches are automatically eligibl
 | Loan stamping | `LoanAccountDomainServiceJpa` (repayment path) |
 | APIs | `InterBranchGlRuleApiResource` |
 
-Migrations (`fineract-provider/.../module/micropay/parts/`):
+Migrations (`custom/micropay/platform/db/.../db/custom-changelog/`):
 
 | Migration | Purpose |
 |-----------|---------|

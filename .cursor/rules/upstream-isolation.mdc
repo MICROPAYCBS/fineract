@@ -1,0 +1,22 @@
+---
+description: Keep Micropay changes out of upstream Apache Fineract files so merges from upstream stay easy
+alwaysApply: true
+---
+
+# Upstream isolation
+
+New Micropay work goes in `custom/micropay/<category>/<module>`. Do not edit `fineract-*` unless a custom module cannot reach the type. Layout and the residual upstream inventory: `custom/micropay/README.md`, `custom/micropay/docs/fork-patch-set.md`.
+
+Stop at the first option that works:
+
+1. New feature: a module under `custom/micropay/`. A new module needs only `build.gradle` and `dependencies.gradle`. Do not add it to `fineract-provider` dependencies.
+2. New command: `MicropayCommandWrapperBuilder` / `MicropayCommandWrapperConstants` in `platform/core`. Do not add methods to `CommandWrapperBuilder`.
+3. New global-configuration key: `MicropayConfigurationService` / `MicropayGlobalConfigurationConstants`. Do not add keys to `GlobalConfigurationConstants` or `ConfigurationDomainService`.
+4. Schema change: a new Liquibase file under `custom/micropay/platform/db` (workflow schema under `workflow/starter`). See `docs/micropay/database-migrations.md`. Never edit an upstream changelog.
+5. Change an existing service: copy it as `@Service Micropay<UpstreamName>` in the matching module. If the upstream impl has no seam, the only upstream edit is `@ConditionalOnMissingBean(value = Iface.class, ignored = UpstreamImpl.class)`. Record the twin in the fork patch set. After an upstream merge, re-apply that impl's upstream hunks onto the twin.
+6. New operation on an upstream interface: a `default` method that throws `UnsupportedOperationException`, overridden on the twin.
+7. Unavoidable upstream touch (entity column, response DTO the frontend already consumes, accounting processor, validator wired by concrete type): the smallest seam (hook interface, default method, inject the interface rather than the concrete class). Record the file in the fork patch set. Do not edit behaviour in place.
+
+`org.apache.fineract.**` classes are component-scanned. `com.micropay.fineract.**` classes need a `Micropay…AutoConfiguration` listed in `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports`.
+
+Run with `:custom:micropay:app:boot:devRun`, not `:fineract-provider:devRun`.

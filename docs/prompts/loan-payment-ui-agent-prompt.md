@@ -245,7 +245,7 @@ Fineract must include Liquibase migration **`3066_add_allow_direct_loan_repaymen
 
 ## Reference — backend source
 
-- `fineract-provider/.../micropay/parts/3066_add_allow_direct_loan_repayments_configuration.xml`
+- `custom/micropay/platform/db/src/main/resources/db/custom-changelog/micropay_3066_add_allow_direct_loan_repayments_configuration.xml`
 - `fineract-core/.../configuration/api/GlobalConfigurationConstants.java`
 - `fineract-provider/.../loanaccount/api/LoanTransactionsApiResource.java` — `command=repayment`
 - `fineract-provider/.../account/api/AccountTransfersApiResource.java` — savings → loan transfer

@@ -44,6 +44,7 @@ public interface LoanTransactionMapper {
     @Mapping(target = "numberOfPastInstallments", ignore = true)
     @Mapping(target = "nextInstallmentDueDate", ignore = true)
     @Mapping(target = "calculatedStartDate", ignore = true)
+    @Mapping(target = "periodicAccrualPayoff", ignore = true)
     @Mapping(target = "overpaymentPortion", ignore = true)
     @Mapping(target = "transfer", ignore = true)
     @Mapping(target = "fixedEmiAmount", ignore = true)

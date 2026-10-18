@@ -222,6 +222,7 @@ public class MicropayLoanReadPlatformServiceImpl implements LoanReadPlatformServ
     private final LoanMaximumAmountCalculator loanMaximumAmountCalculator;
     private final LoanRepaymentScheduleService loanRepaymentScheduleService;
     private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+    private final PeriodicAccrualPayoffAssembler periodicAccrualPayoffAssembler;
 
     @Override
     public LoanAccountData retrieveOne(final Long loanId) {
@@ -612,6 +613,8 @@ public class MicropayLoanReadPlatformServiceImpl implements LoanReadPlatformServ
         this.loanUtilService.validateRepaymentTransactionType(repaymentTransactionType);
 
         final Loan loan = this.loanRepositoryWrapper.findOneWithNotFoundDetection(loanId, true);
+        // Snapshot the stored schedule before fetchPrepaymentDetail rebuilds one for an interest-recalculation quote.
+        final PeriodicAccrualPayoffAssembler.StoredSchedule storedSchedule = this.periodicAccrualPayoffAssembler.captureIfPeriodic(loan);
 
         final MonetaryCurrency currency = loan.getCurrency();
         final ApplicationCurrency applicationCurrency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currency);
@@ -631,13 +634,18 @@ public class MicropayLoanReadPlatformServiceImpl implements LoanReadPlatformServ
         BigDecimal adjustedChargeAmount = adjustPrepayInstallmentCharge(loan, onDate);
         BigDecimal totalAdjusted = outstandingAmounts.getTotalOutstanding().getAmount().subtract(adjustedChargeAmount);
 
-        return LoanTransactionData.builder().type(transactionType).currency(currencyData).date(earliestUnpaidInstallmentDate)
-                .amount(totalAdjusted).netDisbursalAmount(loan.getNetDisbursalAmount())
+        final LoanTransactionData template = LoanTransactionData.builder().type(transactionType).currency(currencyData)
+                .date(earliestUnpaidInstallmentDate).amount(totalAdjusted).netDisbursalAmount(loan.getNetDisbursalAmount())
                 .principalPortion(outstandingAmounts.principal().getAmount()).interestPortion(outstandingAmounts.interest().getAmount())
                 .feeChargesPortion(outstandingAmounts.feeCharges().getAmount().subtract(adjustedChargeAmount))
                 .penaltyChargesPortion(outstandingAmounts.penaltyCharges().getAmount()).unrecognizedIncomePortion(unrecognizedIncomePortion)
                 .paymentTypeOptions(paymentOptions).externalId(ExternalId.empty()).outstandingLoanBalance(outstandingLoanBalance)
                 .manuallyReversed(false).loanId(loanId).externalLoanId(loan.getExternalId()).build();
+        if (storedSchedule != null) {
+            template.setPeriodicAccrualPayoff(
+                    this.periodicAccrualPayoffAssembler.assemble(loan, onDate, storedSchedule, outstandingAmounts));
+        }
+        return template;
     }
 
     private BigDecimal adjustPrepayInstallmentCharge(Loan loan, final LocalDate onDate) {

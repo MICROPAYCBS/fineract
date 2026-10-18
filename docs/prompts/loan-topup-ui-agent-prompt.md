@@ -126,6 +126,8 @@ The minimum principal is the payoff of the loan to close **on the expected disbu
 | `feeChargesPortion` | Fees |
 | `penaltyChargesPortion` | Penalties |
 
+A periodic-accrual loan also returns `periodicAccrualPayoff` (`contractPayoff`, `earnedPayoff`, `interestNotYetInBooks`). Ignore it on top-up. The minimum principal is still `amount`.
+
 Reload the quote when the selected loan or `expectedDisbursementDate` changes. Label it as an estimate. Approval and disbursement calculate it again.
 
 `principal` must be **greater than or equal to** `amount`. Equal is allowed. The error text says "greater than"; the check is `outstanding > principal`.

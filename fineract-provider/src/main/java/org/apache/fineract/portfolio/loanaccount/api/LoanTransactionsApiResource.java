@@ -69,6 +69,7 @@ import org.apache.fineract.portfolio.loanaccount.api.request.ReAgePreviewRequest
 import org.apache.fineract.portfolio.loanaccount.api.request.ReAmortizationPreviewRequest;
 import org.apache.fineract.portfolio.loanaccount.data.LoanRepaymentScheduleInstallmentData;
 import org.apache.fineract.portfolio.loanaccount.data.LoanTransactionData;
+import org.apache.fineract.portfolio.loanaccount.data.PeriodicAccrualPayoffData;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTransactionTypeException;
 import org.apache.fineract.portfolio.loanaccount.exception.LoanNotFoundException;
@@ -99,10 +100,10 @@ public class LoanTransactionsApiResource {
     public static final String UNDO_REAMORTIZE = "undoReAmortize";
     public static final String CAPITALIZED_INCOME = "capitalizedIncome";
     public static final String INTEREST_REFUND_COMMAND_VALUE = "interest-refund";
-    private final Set<String> responseDataParameters = new HashSet<>(
-            Arrays.asList("id", "type", "date", "currency", "amount", "externalId", LoanApiConstants.REVERSAL_EXTERNAL_ID_PARAMNAME,
-                    LoanApiConstants.REVERSED_ON_DATE_PARAMNAME, "classification", "submittedByUsername", "numberOfFutureInstallments",
-                    "numberOfPastInstallments", "nextInstallmentDueDate", "calculatedStartDate"));
+    private final Set<String> responseDataParameters = new HashSet<>(Arrays.asList("id", "type", "date", "currency", "amount", "externalId",
+            LoanApiConstants.REVERSAL_EXTERNAL_ID_PARAMNAME, LoanApiConstants.REVERSED_ON_DATE_PARAMNAME, "classification",
+            "submittedByUsername", "numberOfFutureInstallments", "numberOfPastInstallments", "nextInstallmentDueDate",
+            "calculatedStartDate", PeriodicAccrualPayoffData.RESPONSE_PARAMETER));
 
     private static final String RESOURCE_NAME_FOR_PERMISSIONS = "LOAN";
 

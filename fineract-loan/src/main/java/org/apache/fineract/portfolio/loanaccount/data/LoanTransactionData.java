@@ -131,6 +131,13 @@ public class LoanTransactionData implements Serializable {
     private LocalDate nextInstallmentDueDate;
     private LocalDate calculatedStartDate;
 
+    /**
+     * Payoff split for a periodic-accrual prepay template. Null, and therefore omitted, for every other template and
+     * for cash or upfront-accrual loans.
+     */
+    @Setter
+    private PeriodicAccrualPayoffData periodicAccrualPayoff;
+
     public static LoanTransactionData importInstance(BigDecimal repaymentAmount, LocalDate lastRepaymentDate, Long repaymentTypeId,
             Integer rowIndex, String locale, String dateFormat) {
         return LoanTransactionData.builder().transactionAmount(repaymentAmount).transactionDate(lastRepaymentDate)
