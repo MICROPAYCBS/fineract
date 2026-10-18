@@ -515,6 +515,10 @@ public class LoanChargeService {
                     amountPercentageAppliedTo = loanTrancheDisbursementCharge.getloanDisbursementDetails().getPrincipal();
                 break;
                 default:
+                    // Micropay tiered flat charges look the amount up by loan principal
+                    if (loanCharge.getCharge() != null && loanCharge.getCharge().isTiered()) {
+                        amountPercentageAppliedTo = loanCharge.getLoan().getPrincipal().getAmount();
+                    }
                 break;
             }
         }

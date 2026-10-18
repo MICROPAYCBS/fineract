@@ -178,6 +178,7 @@ public class PortfolioCommandSourceWritePlatformServiceImpl implements Portfolio
                 commandSourceInput.getGroupId(), commandSourceInput.getClientId(), commandSourceInput.getLoanId(),
                 commandSourceInput.getSavingsId(), commandSourceInput.getTransactionId(), commandSourceInput.getResourceGetUrl(),
                 commandSourceInput.getProductId(), commandSourceInput.getCreditBureauId(),
-                commandSourceInput.getOrganisationCreditBureauId(), commandSourceInput.getJobName(), commandSourceInput.getLoanExternalId());
+                commandSourceInput.getOrganisationCreditBureauId(), commandSourceInput.getJobName(),
+                commandSourceInput.getLoanExternalId());
     }
 }

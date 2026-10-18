@@ -106,9 +106,8 @@ class LegalTenderBreakdownValidatorTest {
     void requiredModeRejectsMissingLines() {
         final JsonCommand command = jsonCommand(JSON_AMOUNT_ONLY);
 
-        assertThrows(CashierLegalTenderValidationException.class,
-                () -> this.validator.validateAndBuildLines(command, "UGX", new BigDecimal("5000000"), LegalTenderCaptureMode.REQUIRED,
-                        CashLegalTenderSourceType.SAVINGS_TXN, 42L));
+        assertThrows(CashierLegalTenderValidationException.class, () -> this.validator.validateAndBuildLines(command, "UGX",
+                new BigDecimal("5000000"), LegalTenderCaptureMode.REQUIRED, CashLegalTenderSourceType.SAVINGS_TXN, 42L));
     }
 
     @Test

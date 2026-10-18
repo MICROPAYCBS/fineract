@@ -31,7 +31,11 @@ public interface TwoFactorService {
 
     OTPRequest createNewOTPToken(AppUser user, String deliveryMethodName, boolean extendedAccessToken);
 
-    TFAccessToken createAccessTokenFromOTP(AppUser user, String otpToken, String ipAddress, String userAgent);
+    TFAccessToken createAccessTokenFromOTP(AppUser user, String otpToken);
+
+    default TFAccessToken createAccessTokenFromOTP(AppUser user, String otpToken, String ipAddress, String userAgent) {
+        return createAccessTokenFromOTP(user, otpToken);
+    }
 
     void validateTwoFactorAccessToken(AppUser user, String token);
 
@@ -39,8 +43,12 @@ public interface TwoFactorService {
 
     TFAccessToken invalidateAccessToken(AppUser user, JsonCommand command);
 
-    List<TFAccessToken> fetchActiveSessionsForUser(AppUser user);
+    default List<TFAccessToken> fetchActiveSessionsForUser(AppUser user) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
-    TFAccessToken revokeSessionForUser(Long userId, Long sessionId);
+    default TFAccessToken revokeSessionForUser(Long userId, Long sessionId) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
 }

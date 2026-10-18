@@ -34,8 +34,7 @@ public class UnblockSavingsAccountPaymentChannelCommandHandler implements NewCom
     private final SavingsAccountPaymentChannelWritePlatformService writePlatformService;
 
     @Autowired
-    public UnblockSavingsAccountPaymentChannelCommandHandler(
-            final SavingsAccountPaymentChannelWritePlatformService writePlatformService) {
+    public UnblockSavingsAccountPaymentChannelCommandHandler(final SavingsAccountPaymentChannelWritePlatformService writePlatformService) {
         this.writePlatformService = writePlatformService;
     }
 

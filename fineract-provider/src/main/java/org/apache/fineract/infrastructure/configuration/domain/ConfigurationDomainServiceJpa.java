@@ -29,7 +29,6 @@ import org.apache.fineract.infrastructure.cache.domain.PlatformCache;
 import org.apache.fineract.infrastructure.cache.domain.PlatformCacheRepository;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
-import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
 import org.apache.fineract.useradministration.domain.Permission;
 import org.apache.fineract.useradministration.domain.PermissionRepository;
 import org.apache.fineract.useradministration.exception.PermissionNotFoundException;
@@ -493,16 +492,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
-    public LegalTenderCaptureMode retrieveLegalTenderCaptureModeForCashTransactions() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.CAPTURE_LEGAL_TENDER_FOR_CASH_TRANSACTIONS);
-        if (!property.isEnabled()) {
-            return LegalTenderCaptureMode.OFF;
-        }
-        return LegalTenderCaptureMode.fromString(property.getStringValue());
-    }
-
-    @Override
     public boolean isStructuredAccountNumberFormatsEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.STRUCTURED_ACCOUNT_NUMBER_FORMATS);
@@ -510,33 +499,9 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
-    public boolean isStructuredGlCodesEnforced() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.ENFORCE_STRUCTURED_GL_CODES);
-        return property.isEnabled();
-    }
-
-    @Override
-    public int retrieveStructuredGlCodeLength() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.STRUCTURED_GL_CODE_LENGTH);
-        if (property.getValue() == null || property.getValue() <= 0) {
-            return 6;
-        }
-        return property.getValue().intValue();
-    }
-
-    @Override
     public boolean isAllowDirectLoanRepaymentsEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ALLOW_DIRECT_LOAN_REPAYMENTS);
-        return property.isEnabled();
-    }
-
-    @Override
-    public boolean isOrganizationWideAuditViewEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW);
         return property.isEnabled();
     }
 
@@ -562,19 +527,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         }
         if (property.getValue() == null || property.getValue() < 0) {
             return 60;
-        }
-        return property.getValue().intValue();
-    }
-
-    @Override
-    public Integer retrieveMaxActiveSessions() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.ENFORCE_SINGLE_SESSION);
-        if (!property.isEnabled()) {
-            return null;
-        }
-        if (property.getValue() == null || property.getValue() < 1) {
-            return 1;
         }
         return property.getValue().intValue();
     }
@@ -722,16 +674,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Long getOfficeId() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(GlobalConfigurationConstants.OFFICE_ID);
         return property.getValue();
-    }
-
-    @Override
-    public Integer getGlBalanceSnapshotDailyRetentionDays() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.GL_BALANCE_SNAPSHOT_DAILY_RETENTION_DAYS);
-        if (property.isEnabled() && property.getValue() != null) {
-            return property.getValue().intValue();
-        }
-        return null;
     }
 
     @Override

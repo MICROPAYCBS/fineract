@@ -104,12 +104,10 @@ public class ContactTypeWritePlatformServiceImpl implements ContactTypeWritePlat
 
     private ContactType mapFromJson(final ContactType contactType, final JsonObject json, final boolean create) {
         if (create || json.has(ContactTypeCommandFromApiJsonDeserializer.TYPE_CODE)) {
-            contactType.setTypeCode(
-                    this.fromApiJsonHelper.extractStringNamed(ContactTypeCommandFromApiJsonDeserializer.TYPE_CODE, json));
+            contactType.setTypeCode(this.fromApiJsonHelper.extractStringNamed(ContactTypeCommandFromApiJsonDeserializer.TYPE_CODE, json));
         }
         if (create || json.has(ContactTypeCommandFromApiJsonDeserializer.TYPE_NAME)) {
-            contactType.setTypeName(
-                    this.fromApiJsonHelper.extractStringNamed(ContactTypeCommandFromApiJsonDeserializer.TYPE_NAME, json));
+            contactType.setTypeName(this.fromApiJsonHelper.extractStringNamed(ContactTypeCommandFromApiJsonDeserializer.TYPE_NAME, json));
         }
         if (json.has(ContactTypeCommandFromApiJsonDeserializer.EXAMPLE)) {
             contactType.setExample(this.fromApiJsonHelper.extractStringNamed(ContactTypeCommandFromApiJsonDeserializer.EXAMPLE, json));

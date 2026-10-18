@@ -84,13 +84,6 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
     }
 
     @Override
-    public Collection<AppUserData> retrieveAllSearchTemplate() {
-        final AppUserLookupMapper mapper = new AppUserLookupMapper();
-        final String sql = "select " + mapper.allUsersSchema();
-        return this.jdbcTemplate.query(sql, mapper); // NOSONAR
-    }
-
-    @Override
     public AppUserData retrieveNewUserDetails() {
 
         final Collection<OfficeData> offices = this.officeReadPlatformService.retrieveAllOfficesForDropdown();
@@ -129,7 +122,6 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
         AppUserData retUser = AppUserData.instance(user.getId(), user.getUsername(), user.getEmail(), user.getOffice().getId(),
                 user.getOffice().getName(), user.getFirstname(), user.getLastname(), availableRoles, selectedUserRoles, linkedStaff,
                 user.getPasswordNeverExpires());
-        retUser.setTotpEnabled(user.isTotpEnabled());
 
         return retUser;
     }
@@ -156,7 +148,6 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
             final String officeName = rs.getString("officeName");
             final Long staffId = JdbcSupport.getLong(rs, "staffId");
             final Boolean passwordNeverExpire = rs.getBoolean("passwordNeverExpires");
-            final Boolean totpEnabled = rs.getBoolean("totpEnabled");
             final Collection<RoleData> selectedRoles = this.roleReadPlatformService.retrieveAppUserRoles(id);
 
             final StaffData linkedStaff;
@@ -165,15 +156,13 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
             } else {
                 linkedStaff = null;
             }
-            final AppUserData user = AppUserData.instance(id, username, email, officeId, officeName, firstname, lastname, null,
-                    selectedRoles, linkedStaff, passwordNeverExpire);
-            user.setTotpEnabled(totpEnabled);
-            return user;
+            return AppUserData.instance(id, username, email, officeId, officeName, firstname, lastname, null, selectedRoles, linkedStaff,
+                    passwordNeverExpire);
         }
 
         public String schema() {
             return " u.id as id, u.username as username, u.firstname as firstname, u.lastname as lastname, u.email as email, u.password_never_expires as passwordNeverExpires, "
-                    + " u.totp_enabled as totpEnabled, u.office_id as officeId, o.name as officeName, u.staff_id as staffId from m_appuser u "
+                    + " u.office_id as officeId, o.name as officeName, u.staff_id as staffId from m_appuser u "
                     + " join m_office o on o.id = u.office_id where o.hierarchy like ? and u.is_deleted=false order by u.username";
         }
 
@@ -193,10 +182,6 @@ public class AppUserReadPlatformServiceImpl implements AppUserReadPlatformServic
         public String schema() {
             return " u.id as id, u.username as username from m_appuser u "
                     + " join m_office o on o.id = u.office_id where o.hierarchy like ? and u.is_deleted=false order by u.username";
-        }
-
-        public String allUsersSchema() {
-            return " u.id as id, u.username as username from m_appuser u where u.is_deleted=false order by u.username";
         }
     }
 

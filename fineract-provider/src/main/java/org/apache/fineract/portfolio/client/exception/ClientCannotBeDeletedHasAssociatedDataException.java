@@ -30,31 +30,28 @@ public class ClientCannotBeDeletedHasAssociatedDataException extends AbstractPla
         FAMILY_MEMBERS("error.msg.client.cannot.be.deleted.has.family.members",
                 "Client with identifier %d cannot be deleted because it has one or more family members. "
                         + "Remove all family members before deleting the client.",
-                "FK_m_family_members_client_id_m_client"),
-        ADDRESSES("error.msg.client.cannot.be.deleted.has.addresses",
-                "Client with identifier %d cannot be deleted because it has one or more addresses. "
-                        + "Remove all addresses before deleting the client.",
-                "clientaddressfk"),
-        CONTACTS("error.msg.client.cannot.be.deleted.has.contacts",
-                "Client with identifier %d cannot be deleted because it has one or more contacts. "
-                        + "Remove all contacts before deleting the client.",
-                "fk_client_contact_client"),
-        INCOME_SOURCES("error.msg.client.cannot.be.deleted.has.income.sources",
-                "Client with identifier %d cannot be deleted because it has one or more income sources. "
-                        + "Remove all income sources before deleting the client.",
-                "FK_m_client_income_source_client_id"),
-        COMPLIANCE_PROFILE("error.msg.client.cannot.be.deleted.has.compliance.profile",
-                "Client with identifier %d cannot be deleted because it has a compliance profile. "
-                        + "Remove the compliance profile before deleting the client.",
-                "FK_m_client_compliance_profile_client_id"),
-        OTHER_BANK_ACCOUNTS("error.msg.client.cannot.be.deleted.has.other.bank.accounts",
-                "Client with identifier %d cannot be deleted because it has one or more other bank accounts. "
-                        + "Remove all other bank accounts before deleting the client.",
-                "FK_m_client_other_bank_account_client_id"),
-        IDENTIFIERS("error.msg.client.cannot.be.deleted.has.identifiers",
-                "Client with identifier %d cannot be deleted because it has one or more identifiers. "
-                        + "Remove all identifiers before deleting the client.",
-                "FK_m_client_document_m_client");
+                "FK_m_family_members_client_id_m_client"), ADDRESSES("error.msg.client.cannot.be.deleted.has.addresses",
+                        "Client with identifier %d cannot be deleted because it has one or more addresses. "
+                                + "Remove all addresses before deleting the client.",
+                        "clientaddressfk"), CONTACTS("error.msg.client.cannot.be.deleted.has.contacts",
+                                "Client with identifier %d cannot be deleted because it has one or more contacts. "
+                                        + "Remove all contacts before deleting the client.",
+                                "fk_client_contact_client"), INCOME_SOURCES("error.msg.client.cannot.be.deleted.has.income.sources",
+                                        "Client with identifier %d cannot be deleted because it has one or more income sources. "
+                                                + "Remove all income sources before deleting the client.",
+                                        "FK_m_client_income_source_client_id"), COMPLIANCE_PROFILE(
+                                                "error.msg.client.cannot.be.deleted.has.compliance.profile",
+                                                "Client with identifier %d cannot be deleted because it has a compliance profile. "
+                                                        + "Remove the compliance profile before deleting the client.",
+                                                "FK_m_client_compliance_profile_client_id"), OTHER_BANK_ACCOUNTS(
+                                                        "error.msg.client.cannot.be.deleted.has.other.bank.accounts",
+                                                        "Client with identifier %d cannot be deleted because it has one or more other bank accounts. "
+                                                                + "Remove all other bank accounts before deleting the client.",
+                                                        "FK_m_client_other_bank_account_client_id"), IDENTIFIERS(
+                                                                "error.msg.client.cannot.be.deleted.has.identifiers",
+                                                                "Client with identifier %d cannot be deleted because it has one or more identifiers. "
+                                                                        + "Remove all identifiers before deleting the client.",
+                                                                "FK_m_client_document_m_client");
 
         private final String errorCode;
         private final String messageTemplate;

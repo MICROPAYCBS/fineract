@@ -66,7 +66,7 @@ class ScheduledJobDetailTest {
     }
 
     private JsonCommand command(final String json) {
-        return JsonCommand.from(json, JsonParser.parseString(json), fromJsonHelper, null, 1L, 2L, 3L, 4L, null, null, null, null, null, null,
-                null, null, null);
+        return JsonCommand.from(json, JsonParser.parseString(json), fromJsonHelper, null, 1L, 2L, 3L, 4L, null, null, null, null, null,
+                null, null, null, null);
     }
 }

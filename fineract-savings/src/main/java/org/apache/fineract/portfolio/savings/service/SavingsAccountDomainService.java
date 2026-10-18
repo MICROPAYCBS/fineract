@@ -39,12 +39,16 @@ public interface SavingsAccountDomainService {
             BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean isAccountTransfer, boolean isRegularTransaction,
             boolean backdatedTxnsAllowedTill);
 
-    SavingsAccountTransaction handleGlToSavings(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
-            BigDecimal transactionAmount, PaymentDetail paymentDetail, GLAccount glAccount, boolean backdatedTxnsAllowedTill);
+    default SavingsAccountTransaction handleGlToSavings(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, GLAccount glAccount, boolean backdatedTxnsAllowedTill) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
-    SavingsAccountTransaction handleSavingsToGl(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
+    default SavingsAccountTransaction handleSavingsToGl(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
             BigDecimal transactionAmount, PaymentDetail paymentDetail, SavingsTransactionBooleanValues transactionBooleanValues,
-            GLAccount glAccount, boolean backdatedTxnsAllowedTill);
+            GLAccount glAccount, boolean backdatedTxnsAllowedTill) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
     void postJournalEntries(SavingsAccount savingsAccount, Set<Long> existingTransactionIds, Set<Long> existingReversedTransactionIds,
             boolean backdatedTxnsAllowedTill);

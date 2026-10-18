@@ -109,6 +109,13 @@ public class ClientFamilyMembers extends AbstractPersistableCustom<Long> {
     }
 
     public static ClientFamilyMembers fromJson(final Client client, final String firstName, final String middleName, final String lastName,
+            final String qualification, final String mobileNumber, final Long age, final Boolean isDependent, final CodeValue relationship,
+            final CodeValue maritalStatus, final CodeValue gender, final LocalDate dateOfBirth, final CodeValue profession) {
+        return fromJson(client, firstName, middleName, lastName, qualification, mobileNumber, null, null, age, isDependent, relationship,
+                maritalStatus, gender, dateOfBirth, profession);
+    }
+
+    public static ClientFamilyMembers fromJson(final Client client, final String firstName, final String middleName, final String lastName,
             final String qualification, final String mobileNumber, final String emailAddress, final String address, final Long age,
             final Boolean isDependent, final CodeValue relationship, final CodeValue maritalStatus, final CodeValue gender,
             final LocalDate dateOfBirth, final CodeValue profession) {

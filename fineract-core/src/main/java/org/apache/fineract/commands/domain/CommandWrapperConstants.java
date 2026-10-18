@@ -41,7 +41,6 @@ public final class CommandWrapperConstants {
     public static final String ACTION_DISCOUNTFEEADJUSTMENT = "DISCOUNTFEEADJUSTMENT";
     public static final String ACTION_ACTIVATE = "ACTIVATE";
     public static final String ACTION_SUBMIT = "SUBMIT";
-    public static final String ACTION_DEACTIVATE = "DEACTIVATE";
     public static final String ACTION_CLOSE = "CLOSE";
     public static final String ACTION_WITHDRAW = "WITHDRAW";
     public static final String ACTION_REACTIVATE = "REACTIVATE";
@@ -105,6 +104,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_SUBSCRIBE = "SUBSCRIBE";
     public static final String ACTION_UPDATECHANNELLIMIT = "UPDATECHANNELLIMIT";
     public static final String ACTION_UNSUBSCRIBE = "UNSUBSCRIBE";
+    public static final String ACTION_REVOKE = "REVOKE";
     public static final String ACTION_SAVECOLLECTIONSHEET = "SAVECOLLECTIONSHEET";
     public static final String ACTION_ASSOCIATECLIENTS = "ASSOCIATECLIENTS";
     public static final String ACTION_DISASSOCIATECLIENTS = "DISASSOCIATECLIENTS";
@@ -142,7 +142,6 @@ public final class CommandWrapperConstants {
     public static final String ACTION_BLOCK = "BLOCK";
     public static final String ACTION_UNBLOCK = "UNBLOCK";
     public static final String ACTION_INVALIDATE = "INVALIDATE";
-    public static final String ACTION_REVOKE = "REVOKE";
     public static final String ACTION_CHARGEOFF = "CHARGEOFF";
     public static final String ACTION_UNDOCHARGEOFF = "UNDOCHARGEOFF";
     public static final String ACTION_INTERMEDIARYSALE = "INTERMEDIARYSALE";
@@ -180,15 +179,10 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_FAMILYMEMBERS = "FAMILYMEMBERS";
     public static final String ENTITY_INCOMESOURCES = "INCOMESOURCES";
     public static final String ENTITY_COMPLIANCEPROFILE = "COMPLIANCEPROFILE";
-    public static final String ENTITY_CUSTOMERCLASS = "CUSTOMERCLASS";
     public static final String ENTITY_CLIENTTITLE = "CLIENTTITLE";
     public static final String ENTITY_CONTACTTYPE = "CONTACTTYPE";
-    public static final String ENTITY_SECTOR = "SECTOR";
     public static final String ENTITY_DEPARTMENT = "DEPARTMENT";
     public static final String ENTITY_LEGAL_TENDER = "LEGAL_TENDER";
-    public static final String ENTITY_JOBSEQUENCE = "JOBSEQUENCE";
-    public static final String ENTITY_INDUSTRY = "INDUSTRY";
-    public static final String ENTITY_SUBINDUSTRY = "SUBINDUSTRY";
     public static final String ENTITY_IDENTITYTYPE = "IDENTITYTYPE";
     public static final String ENTITY_INTERBRANCHRULE = "INTERBRANCHRULE";
     public static final String ENTITY_CLIENTCONTACT = "CLIENTCONTACT";
@@ -229,6 +223,7 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_STANDINGINSTRUCTION = "STANDINGINSTRUCTION";
     public static final String ENTITY_SAVINGSACCOUNTCHARGE = "SAVINGSACCOUNTCHARGE";
     public static final String ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL = "SAVINGSACCOUNTPAYMENTCHANNEL";
+    public static final String ENTITY_USERSESSION = "USERSESSION";
     public static final String ENTITY_FIXEDDEPOSITPRODUCT = "FIXEDDEPOSITPRODUCT";
     public static final String ENTITY_RECURRINGDEPOSITPRODUCT = "RECURRINGDEPOSITPRODUCT";
     public static final String ENTITY_CALENDAR = "CALENDAR";
@@ -267,7 +262,6 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_EMAIL_CONFIGURATION = "EMAIL_CONFIGURATION";
     public static final String ENTITY_TWOFACTOR_ACCESSTOKEN = "TWOFACTOR_ACCESSTOKEN";
     public static final String ENTITY_TWOFACTOR_CONFIGURATION = "TWOFACTOR_CONFIGURATION";
-    public static final String ENTITY_USERSESSION = "USERSESSION";
     public static final String ENTITY_RATE = "RATE";
     public static final String ENTITY_DELINQUENCY_RANGE = "DELINQUENCY_RANGE";
     public static final String ENTITY_DELINQUENCY_BUCKET = "DELINQUENCY_BUCKET";
@@ -279,7 +273,6 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_DELINQUENCY_ACTION = "DELINQUENCY_ACTION";
     public static final String ENTITY_LOAN_AVAILABLE_DISBURSEMENT_AMOUNT = "LOAN_AVAILABLE_DISBURSEMENT_AMOUNT";
     public static final String ENTITY_LOAN_ORIGINATOR = "LOAN_ORIGINATOR";
-    public static final String ENTITY_WORKFLOW_DEFINITION = "WORKFLOW_DEFINITION";
     public static final String ENTITY_WORKINGDAYS = "WORKINGDAYS";
     public static final String ENTITY_SHAREPRODUCT = "SHAREPRODUCT";
     public static final String ENTITY_INTEREST_PAUSE = "INTEREST_PAUSE";

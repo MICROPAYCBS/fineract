@@ -21,11 +21,13 @@ package org.apache.fineract.infrastructure.report.service;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseTypeResolver;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = ReportParameterTypeResolver.class, ignored = ReportParameterTypeResolverImpl.class)
 public final class ReportParameterTypeResolverImpl implements ReportParameterTypeResolver {
 
     private final JdbcTemplate jdbcTemplate;

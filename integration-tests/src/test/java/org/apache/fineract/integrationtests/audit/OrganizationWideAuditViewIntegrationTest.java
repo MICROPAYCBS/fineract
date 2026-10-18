@@ -36,9 +36,9 @@ import org.apache.fineract.client.models.PostUsersRequest;
 import org.apache.fineract.client.models.PutGlobalConfigurationsRequest;
 import org.apache.fineract.client.models.PutRolesRoleIdPermissionsRequest;
 import org.apache.fineract.client.util.Calls;
-import org.apache.fineract.infrastructure.audit.api.OrganizationWideAuditConstants;
 import org.apache.fineract.integrationtests.client.IntegrationTest;
 import org.apache.fineract.integrationtests.common.ClientHelper;
+import org.apache.fineract.integrationtests.common.MicropayConfigurationNames;
 import org.apache.fineract.integrationtests.common.OfficeHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,6 +52,8 @@ import retrofit2.Response;
  */
 public class OrganizationWideAuditViewIntegrationTest extends IntegrationTest {
 
+    private static final String ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW = MicropayConfigurationNames.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW;
+    private static final String VIEW_ORGANIZATION_AUDIT_PERMISSION = MicropayConfigurationNames.VIEW_ORGANIZATION_AUDIT_PERMISSION;
     private static final String AUDITOR_PASSWORD = "A1b2c3d4e5f$";
     private static final LocalDate OFFICE_OPENING_DATE = LocalDate.of(2007, 7, 1);
     private static final ResponseSpecification OK_RESPONSE = new ResponseSpecBuilder().expectStatusCode(200).build();
@@ -92,7 +94,7 @@ public class OrganizationWideAuditViewIntegrationTest extends IntegrationTest {
         enableOrganizationWideAuditView();
 
         final String branchAuditor = createAuditorClient(branchA.getOfficeId(),
-                Map.of("READ_AUDIT", true, OrganizationWideAuditConstants.VIEW_ORGANIZATION_AUDIT_PERMISSION, true));
+                Map.of("READ_AUDIT", true, VIEW_ORGANIZATION_AUDIT_PERMISSION, true));
 
         final List<HashMap<String, Object>> audits = fetchClientCreateAudits(branchAuditor, branchBClient.getClientId());
         assertThat(audits).hasSize(1);
@@ -125,32 +127,32 @@ public class OrganizationWideAuditViewIntegrationTest extends IntegrationTest {
     @SuppressWarnings("unchecked")
     private List<HashMap<String, Object>> fetchClientCreateAudits(final String username, final Long clientId) {
         final RequestSpecification requestSpec = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
-        requestSpec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey(username, AUDITOR_PASSWORD));
+        requestSpec.header("Authorization",
+                "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey(username, AUDITOR_PASSWORD));
         final String url = "/fineract-provider/api/v1/audits?" + Utils.TENANT_IDENTIFIER + "&entityName=CLIENT&resourceId=" + clientId
                 + "&actionName=CREATE";
         return Utils.performServerGet(requestSpec, OK_RESPONSE, url, "");
     }
 
     private void ensureOrganizationWideAuditViewConfigPresent() {
-        final Response<GlobalConfigurationPropertyData> configResponse = Calls.executeU(fineractClient().globalConfigurations
-                .retrieveOneByName(OrganizationWideAuditConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW));
+        final Response<GlobalConfigurationPropertyData> configResponse = Calls
+                .executeU(fineractClient().globalConfigurations.retrieveOneByName(ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW));
         if (configResponse.code() == 404) {
-            throw new AssertionError("Micropay configuration '" + OrganizationWideAuditConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW
+            throw new AssertionError("Micropay configuration '" + ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW
                     + "' was not found. Ensure tenant migration 3076 has been applied.");
         }
         if (configResponse.code() != 200 || configResponse.body() == null) {
-            throw new AssertionError("Could not read '" + OrganizationWideAuditConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW + "' (HTTP "
-                    + configResponse.code() + ").");
+            throw new AssertionError("Could not read '" + ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW + "' (HTTP " + configResponse.code() + ").");
         }
     }
 
     private void enableOrganizationWideAuditView() {
-        ok(fineractClient().globalConfigurations.updateConfigurationByName(
-                OrganizationWideAuditConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW, new PutGlobalConfigurationsRequest().enabled(true)));
+        ok(fineractClient().globalConfigurations.updateConfigurationByName(ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW,
+                new PutGlobalConfigurationsRequest().enabled(true)));
     }
 
     private void disableOrganizationWideAuditView() {
-        ok(fineractClient().globalConfigurations.updateConfigurationByName(
-                OrganizationWideAuditConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW, new PutGlobalConfigurationsRequest().enabled(false)));
+        ok(fineractClient().globalConfigurations.updateConfigurationByName(ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW,
+                new PutGlobalConfigurationsRequest().enabled(false)));
     }
 }

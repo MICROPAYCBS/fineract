@@ -64,10 +64,10 @@ public final class ClientIncomeSourceCommandFromApiJsonDeserializer {
     public static final String INCOME_SOURCES = "incomeSources";
     public static final String RESOURCE = "IncomeSources";
 
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(INCOME_SOURCE_TYPE_ID, SOURCE_OF_FUNDS_ID,
-            EMPLOYER_BUSINESS_NAME, EMPLOYER_ADDRESS, OCCUPATION, SUB_INDUSTRY_ID, MONTHLY_INCOME, INCOME_CURRENCY_CODE, INCOME_FREQUENCY_ID, START_DATE,
-            END_DATE, IS_PRIMARY_SOURCE, VERIFICATION_STATUS_ID, SUPPORTING_DOCUMENT, REMARKS, STATUS, LOCALE, DATE_FORMAT, INCOME_SOURCES,
-            "id", "clientId"));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
+            Arrays.asList(INCOME_SOURCE_TYPE_ID, SOURCE_OF_FUNDS_ID, EMPLOYER_BUSINESS_NAME, EMPLOYER_ADDRESS, OCCUPATION, SUB_INDUSTRY_ID,
+                    MONTHLY_INCOME, INCOME_CURRENCY_CODE, INCOME_FREQUENCY_ID, START_DATE, END_DATE, IS_PRIMARY_SOURCE,
+                    VERIFICATION_STATUS_ID, SUPPORTING_DOCUMENT, REMARKS, STATUS, LOCALE, DATE_FORMAT, INCOME_SOURCES, "id", "clientId"));
 
     private final FromJsonHelper fromApiJsonHelper;
 

@@ -118,12 +118,10 @@ public class ClientTitleWritePlatformServiceImpl implements ClientTitleWritePlat
 
     private ClientTitle mapFromJson(final ClientTitle clientTitle, final JsonObject json, final boolean create) {
         if (create || json.has(ClientTitleCommandFromApiJsonDeserializer.TITLE_CODE)) {
-            clientTitle.setTitleCode(
-                    this.fromApiJsonHelper.extractStringNamed(ClientTitleCommandFromApiJsonDeserializer.TITLE_CODE, json));
+            clientTitle.setTitleCode(this.fromApiJsonHelper.extractStringNamed(ClientTitleCommandFromApiJsonDeserializer.TITLE_CODE, json));
         }
         if (create || json.has(ClientTitleCommandFromApiJsonDeserializer.TITLE_NAME)) {
-            clientTitle.setTitleName(
-                    this.fromApiJsonHelper.extractStringNamed(ClientTitleCommandFromApiJsonDeserializer.TITLE_NAME, json));
+            clientTitle.setTitleName(this.fromApiJsonHelper.extractStringNamed(ClientTitleCommandFromApiJsonDeserializer.TITLE_NAME, json));
         }
         if (json.has(ClientTitleCommandFromApiJsonDeserializer.GENDER_ID)) {
             clientTitle.setGenderEnum(

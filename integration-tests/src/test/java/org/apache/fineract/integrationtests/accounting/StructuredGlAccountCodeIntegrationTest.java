@@ -27,8 +27,8 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccountUsage;
 import org.apache.fineract.client.models.PostGLAccountsRequest;
 import org.apache.fineract.client.models.PostGLAccountsResponse;
 import org.apache.fineract.client.util.CallFailedRuntimeException;
-import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.integrationtests.BaseLoanIntegrationTest;
+import org.apache.fineract.integrationtests.common.MicropayConfigurationNames;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.accounting.AccountHelper;
 import org.junit.jupiter.api.AfterEach;
@@ -40,12 +40,12 @@ public class StructuredGlAccountCodeIntegrationTest extends BaseLoanIntegrationT
 
     @BeforeEach
     void enableStructuredGlCodes() {
-        globalConfigurationHelper.manageConfigurations(GlobalConfigurationConstants.ENFORCE_STRUCTURED_GL_CODES, true);
+        globalConfigurationHelper.manageConfigurations(MicropayConfigurationNames.ENFORCE_STRUCTURED_GL_CODES, true);
     }
 
     @AfterEach
     void disableStructuredGlCodes() {
-        globalConfigurationHelper.manageConfigurations(GlobalConfigurationConstants.ENFORCE_STRUCTURED_GL_CODES, false);
+        globalConfigurationHelper.manageConfigurations(MicropayConfigurationNames.ENFORCE_STRUCTURED_GL_CODES, false);
     }
 
     @Test
@@ -62,9 +62,10 @@ public class StructuredGlAccountCodeIntegrationTest extends BaseLoanIntegrationT
     void acceptsValidStructuredGlCodeWhenEnforcementEnabled() {
         String uniqueName = Utils.uniqueRandomStringGenerator("GL_VALID" + Calendar.getInstance().getTimeInMillis(), 5);
         String glCode = "4" + String.format("%05d", Calendar.getInstance().getTimeInMillis() % 100000);
-        final PostGLAccountsResponse newAccount = AccountHelper.createGLAccount(new PostGLAccountsRequest()
-                .type(GLAccountType.INCOME.getValue()).glCode(glCode).manualEntriesAllowed(true).usage(1).description(uniqueName)
-                .name(uniqueName).tagId(4L));
+        final PostGLAccountsResponse newAccount = AccountHelper
+                .createGLAccount(new PostGLAccountsRequest().type(GLAccountType.INCOME.getValue()).glCode(glCode).manualEntriesAllowed(true)
+                        .usage(1).description(uniqueName).name(uniqueName)); // no tagId: IncomeAccountTags code values
+                                                                             // are tenant data, not part of this check
         Assertions.assertNotNull(newAccount.getResourceId());
         AccountHelper.deleteGLAccount(newAccount.getResourceId());
     }
@@ -75,13 +76,13 @@ public class StructuredGlAccountCodeIntegrationTest extends BaseLoanIntegrationT
         String childName = Utils.uniqueRandomStringGenerator("GL_CHD" + Calendar.getInstance().getTimeInMillis(), 5);
         String headerGlCode = "110000";
 
-        final PostGLAccountsResponse header = AccountHelper.createGLAccount(new PostGLAccountsRequest()
-                .type(GLAccountType.ASSET.getValue()).glCode(headerGlCode).manualEntriesAllowed(false)
-                .usage(GLAccountUsage.HEADER.getValue()).description(headerName).name(headerName));
+        final PostGLAccountsResponse header = AccountHelper
+                .createGLAccount(new PostGLAccountsRequest().type(GLAccountType.ASSET.getValue()).glCode(headerGlCode)
+                        .manualEntriesAllowed(false).usage(GLAccountUsage.HEADER.getValue()).description(headerName).name(headerName));
 
-        final PostGLAccountsResponse child = AccountHelper.createGLAccount(new PostGLAccountsRequest()
-                .type(GLAccountType.ASSET.getValue()).glCode("110001").manualEntriesAllowed(true).usage(GLAccountUsage.DETAIL.getValue())
-                .parentId(header.getResourceId()).description(childName).name(childName));
+        final PostGLAccountsResponse child = AccountHelper.createGLAccount(
+                new PostGLAccountsRequest().type(GLAccountType.ASSET.getValue()).glCode("110001").manualEntriesAllowed(true)
+                        .usage(GLAccountUsage.DETAIL.getValue()).parentId(header.getResourceId()).description(childName).name(childName));
 
         Assertions.assertNotNull(child.getResourceId());
         AccountHelper.deleteGLAccount(child.getResourceId());
@@ -94,9 +95,9 @@ public class StructuredGlAccountCodeIntegrationTest extends BaseLoanIntegrationT
         String childName = Utils.uniqueRandomStringGenerator("GL_CHD" + Calendar.getInstance().getTimeInMillis(), 5);
         String headerGlCode = "110000";
 
-        final PostGLAccountsResponse header = AccountHelper.createGLAccount(new PostGLAccountsRequest()
-                .type(GLAccountType.ASSET.getValue()).glCode(headerGlCode).manualEntriesAllowed(false)
-                .usage(GLAccountUsage.HEADER.getValue()).description(headerName).name(headerName));
+        final PostGLAccountsResponse header = AccountHelper
+                .createGLAccount(new PostGLAccountsRequest().type(GLAccountType.ASSET.getValue()).glCode(headerGlCode)
+                        .manualEntriesAllowed(false).usage(GLAccountUsage.HEADER.getValue()).description(headerName).name(headerName));
 
         CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class,
                 () -> AccountHelper.createGLAccount(new PostGLAccountsRequest().type(GLAccountType.ASSET.getValue()).glCode("120001")

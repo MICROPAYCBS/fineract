@@ -50,11 +50,6 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.fineract.accounting.glaccount.domain.GLAccount;
-import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
-import org.apache.fineract.accounting.glaccount.exception.GLAccountNotFoundException;
-import org.apache.fineract.accounting.journalentry.exception.JournalEntryInvalidException;
-import org.apache.fineract.accounting.journalentry.exception.JournalEntryInvalidException.GlJournalEntryInvalidReason;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -80,14 +75,8 @@ import org.apache.fineract.infrastructure.event.business.domain.savings.SavingsP
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
-import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
-import org.apache.fineract.organisation.teller.domain.CashLegalTenderLine;
-import org.apache.fineract.organisation.teller.domain.CashLegalTenderSourceType;
-import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownValidator;
-import org.apache.fineract.organisation.teller.service.LegalTenderBreakdownWritePlatformService;
-import org.apache.fineract.portfolio.paymentdetail.util.CashPaymentHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.organisation.staff.domain.StaffRepositoryWrapper;
@@ -112,7 +101,6 @@ import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePla
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
-import org.apache.fineract.portfolio.savings.domain.SavingsChannelLimitDirection;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountChargeDataValidator;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountDataValidator;
@@ -180,12 +168,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
     private final SavingsAccountInterestPostingService savingsAccountInterestPostingService;
     private final ExternalIdFactory externalIdFactory;
     private final ErrorHandler errorHandler;
-    private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
-    private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
-    private final SavingsAccountPaymentChannelAllowListService paymentChannelAllowListService;
-    private final SavingsPaymentChannelFeeHoldService paymentChannelFeeHoldService;
-    private final SavingsChannelLimitService savingsChannelLimitService;
-    private final GLAccountRepository glAccountRepository;
 
     @Transactional
     @Override
@@ -322,15 +304,12 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         final Map<String, Object> changes = new LinkedHashMap<>();
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
-        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
         boolean isAccountTransfer = false;
         boolean isRegularTransaction = true;
         final SavingsAccountTransaction deposit = this.savingsAccountDomainService.handleDeposit(account, fmt, transactionDate,
                 transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction, backdatedTxnsAllowedTill);
         deposit.updateExternalId(externalId);
         this.savingsAccountTransactionRepository.save(deposit);
-
-        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, deposit);
 
         if (isGsim && (deposit.getId() != null)) {
 
@@ -397,7 +376,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         checkClientOrGroupActive(account);
 
         this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(transactionDate, account);
-        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
 
         final boolean isAccountTransfer = false;
         final boolean isRegularTransaction = true;
@@ -410,8 +388,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 transactionAmount, paymentDetail, transactionBooleanValues, backdatedTxnsAllowedTill);
         withdrawal.updateExternalId(externalId);
         this.savingsAccountTransactionRepository.save(withdrawal);
-
-        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, withdrawal);
 
         if (isGsim && (withdrawal.getId() != null)) {
             GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
@@ -435,108 +411,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 .withSavingsId(savingsId) //
                 .with(changes) //
                 .build();
-    }
-
-    @Transactional
-    @Override
-    public CommandProcessingResult glToSavings(final Long savingsId, final JsonCommand command) {
-        this.context.authenticatedUser();
-        this.savingsAccountTransactionDataValidator.validateGlSubstitution(command);
-
-        final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
-        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
-        checkClientOrGroupActive(account);
-
-        final Locale locale = command.extractLocale();
-        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
-        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
-        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
-        final ExternalId externalId = this.externalIdFactory.createFromCommand(command, SavingsApiConstants.externalIdParamName);
-        this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(transactionDate, account);
-
-        final Map<String, Object> changes = new LinkedHashMap<>();
-        final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
-        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
-        final GLAccount glAccount = resolveManualGlAccount(command.longValueOfParameterNamed(SavingsApiConstants.glAccountIdParamName),
-                account);
-
-        final SavingsAccountTransaction transaction = this.savingsAccountDomainService.handleGlToSavings(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, glAccount, backdatedTxnsAllowedTill);
-        transaction.updateExternalId(externalId);
-        this.savingsAccountTransactionRepository.save(transaction);
-        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, transaction);
-        if (account.getGsim() != null && transaction.getId() != null) {
-            final GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
-            gsim.setParentDeposit(gsim.getParentDeposit().add(transactionAmount));
-            gsimRepository.save(gsim);
-        }
-        saveNoteIfPresent(account, transaction, command);
-
-        return new CommandProcessingResultBuilder().withEntityId(transaction.getId()).withOfficeId(account.officeId())
-                .withClientId(account.clientId()).withGroupId(account.groupId()).withSavingsId(savingsId).with(changes).build();
-    }
-
-    @Transactional
-    @Override
-    public CommandProcessingResult savingsToGl(final Long savingsId, final JsonCommand command) {
-        this.savingsAccountTransactionDataValidator.validateGlSubstitution(command);
-
-        final LocalDate transactionDate = command.localDateValueOfParameterNamed("transactionDate");
-        final BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("transactionAmount");
-        final ExternalId externalId = this.externalIdFactory.createFromCommand(command, SavingsApiConstants.externalIdParamName);
-        final Locale locale = command.extractLocale();
-        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
-        final Map<String, Object> changes = new LinkedHashMap<>();
-        final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
-        final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
-        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
-        checkClientOrGroupActive(account);
-        this.savingsAccountTransactionDataValidator.validateTransactionWithPivotDate(transactionDate, account);
-        this.paymentChannelAllowListService.validatePaymentTypeAllowed(account, paymentDetail);
-        final GLAccount glAccount = resolveManualGlAccount(command.longValueOfParameterNamed(SavingsApiConstants.glAccountIdParamName),
-                account);
-
-        final SavingsTransactionBooleanValues transactionBooleanValues = new SavingsTransactionBooleanValues(false, true, true, false,
-                false);
-        final SavingsAccountTransaction transaction = this.savingsAccountDomainService.handleSavingsToGl(account, fmt, transactionDate,
-                transactionAmount, paymentDetail, transactionBooleanValues, glAccount, backdatedTxnsAllowedTill);
-        transaction.updateExternalId(externalId);
-        this.savingsAccountTransactionRepository.save(transaction);
-        persistCashLegalTenderLinesIfApplicable(command, account, paymentDetail, transactionAmount, transaction);
-        if (account.getGsim() != null && transaction.getId() != null) {
-            final GroupSavingsIndividualMonitoring gsim = gsimRepository.findById(account.getGsim().getId()).orElseThrow();
-            gsim.setParentDeposit(gsim.getParentDeposit().subtract(transactionAmount));
-            gsimRepository.save(gsim);
-        }
-        saveNoteIfPresent(account, transaction, command);
-
-        return new CommandProcessingResultBuilder().withEntityId(transaction.getId()).withOfficeId(account.officeId())
-                .withClientId(account.clientId()).withGroupId(account.groupId()).withSavingsId(savingsId).with(changes).build();
-    }
-
-    private void saveNoteIfPresent(final SavingsAccount account, final SavingsAccountTransaction transaction, final JsonCommand command) {
-        final String noteText = command.stringValueOfParameterNamed("note");
-        if (StringUtils.isNotBlank(noteText)) {
-            this.noteRepository.save(Note.savingsTransactionNote(account, transaction, noteText));
-        }
-    }
-
-    private GLAccount resolveManualGlAccount(final Long glAccountId, final SavingsAccount account) {
-        if (!account.savingsProduct().isCashBasedAccountingEnabled() && !account.savingsProduct().isAccrualBasedAccountingEnabled()) {
-            throw new GeneralPlatformDomainRuleException("error.msg.savingsaccount.transaction.accounting.not.enabled",
-                    "GL to savings and savings to GL require cash or accrual accounting on the savings product");
-        }
-        final GLAccount glAccount = this.glAccountRepository.findById(glAccountId)
-                .orElseThrow(() -> new GLAccountNotFoundException(glAccountId));
-        if (glAccount.isDisabled()) {
-            throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.GL_ACCOUNT_DISABLED, null, glAccount.getName(),
-                    glAccount.getGlCode());
-        }
-        if (!glAccount.isManualEntriesAllowed()) {
-            throw new JournalEntryInvalidException(GlJournalEntryInvalidReason.GL_ACCOUNT_MANUAL_ENTRIES_NOT_PERMITTED, null,
-                    glAccount.getName(), glAccount.getGlCode());
-        }
-        return glAccount;
     }
 
     @Transactional
@@ -942,7 +816,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         if (account.isNotActive()) {
             throwValidationForActiveStatus(SavingsApiConstants.undoTransactionAction);
         }
-        this.savingsChannelLimitService.release(transactionId);
         account.undoTransaction(transactionId);
 
         // undoing transaction is withdrawal then undo withdrawal fee
@@ -951,7 +824,6 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
             final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
                     .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
             if (nextSavingsAccountTransaction != null && nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()) {
-                this.savingsChannelLimitService.release(transactionId + 1);
                 account.undoTransaction(transactionId + 1);
             }
         }
@@ -1037,18 +909,12 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         final PaymentDetail paymentDetail = this.paymentDetailWritePlatformService.createAndPersistPaymentDetail(command, changes);
 
         final MathContext mc = new MathContext(10, MoneyHelper.getRoundingMode());
-        this.savingsChannelLimitService.release(transactionId);
-        final SavingsChannelLimitDirection replacementDirection = savingsAccountTransaction.isDeposit() ? SavingsChannelLimitDirection.CREDIT
-                : SavingsChannelLimitDirection.DEBIT;
-        final SavingsChannelLimitHold replacementLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,
-                transactionDate, transactionAmount, paymentDetail, replacementDirection, false, true, false));
         account.undoTransaction(transactionId);
 
         // for undo withdrawal fee
         final SavingsAccountTransaction nextSavingsAccountTransaction = this.savingsAccountTransactionRepository
                 .findOneByIdAndSavingsAccountId(transactionId + 1, savingsId);
         if (nextSavingsAccountTransaction != null && nextSavingsAccountTransaction.isWithdrawalFeeAndNotReversed()) {
-            this.savingsChannelLimitService.release(transactionId + 1);
             account.undoTransaction(transactionId + 1);
         }
 
@@ -1059,20 +925,12 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
                 paymentDetail, null, accountType);
         UUID refNo = UUID.randomUUID();
         if (savingsAccountTransaction.isDeposit()) {
-            transaction = account.deposit(transactionDTO, savingsAccountTransaction.getTransactionType(), false,
-                    relaxingDaysConfigForPivotDate, refNo.toString());
+            transaction = account.deposit(transactionDTO, false, relaxingDaysConfigForPivotDate, refNo.toString());
         } else {
-            transaction = account.withdraw(transactionDTO, true, false, relaxingDaysConfigForPivotDate, refNo.toString(),
-                    savingsAccountTransaction.getTransactionType());
-        }
-        if (savingsAccountTransaction.isGlToSavings() || savingsAccountTransaction.isSavingsToGl()) {
-            final Long requestedGlAccountId = command.longValueOfParameterNamed(SavingsApiConstants.glAccountIdParamName);
-            final Long glAccountId = requestedGlAccountId != null ? requestedGlAccountId : savingsAccountTransaction.getGlAccountId();
-            transaction.setGlAccount(resolveManualGlAccount(glAccountId, account));
+            transaction = account.withdraw(transactionDTO, true, false, relaxingDaysConfigForPivotDate, refNo.toString());
         }
         transaction.updateExternalId(externalId);
         final Long newtransactionId = saveTransactionToGenerateTransactionId(transaction);
-        this.savingsChannelLimitService.record(replacementLimitHold, newtransactionId);
         final LocalDate postInterestOnDate = null;
         boolean postReversals = false;
         if (account.isBeforeLastPostingPeriod(transactionDate, false)
@@ -1630,14 +1488,7 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
 
         final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MM yyyy").withZone(DateUtils.getDateTimeZoneOfTenant());
 
-        if (this.paymentChannelFeeHoldService.isCollectionPaused(savingsAccountCharge)) {
-            return;
-        }
-
         while (savingsAccountCharge.isNotFullyPaid() && DateUtils.isBefore(savingsAccountCharge.getDueDate(), transactionDate)) {
-            if (this.paymentChannelFeeHoldService.advancePastClosedHolds(savingsAccountCharge)) {
-                continue;
-            }
             payCharge(savingsAccountCharge, transactionDate, savingsAccountCharge.amoutOutstanding(), fmt, false);
         }
     }
@@ -2234,16 +2085,5 @@ public class SavingsAccountWritePlatformServiceJpaRepositoryImpl implements Savi
         if (StringUtils.isBlank(reasonForBlock)) {
             throw new PlatformDataIntegrityException("Reason For Block is Mandatory", "error.msg.reason.for.block.mandatory");
         }
-    }
-
-    private void persistCashLegalTenderLinesIfApplicable(final JsonCommand command, final SavingsAccount account,
-            final PaymentDetail paymentDetail, final BigDecimal transactionAmount, final SavingsAccountTransaction transaction) {
-        if (!CashPaymentHelper.isCashPayment(paymentDetail)) {
-            return;
-        }
-        final LegalTenderCaptureMode captureMode = this.configurationDomainService.retrieveLegalTenderCaptureModeForCashTransactions();
-        final List<CashLegalTenderLine> lines = this.legalTenderBreakdownValidator.validateAndBuildLines(command,
-                account.getCurrency().getCode(), transactionAmount, captureMode, CashLegalTenderSourceType.SAVINGS_TXN, transaction.getId());
-        this.legalTenderBreakdownWritePlatformService.saveLines(lines);
     }
 }

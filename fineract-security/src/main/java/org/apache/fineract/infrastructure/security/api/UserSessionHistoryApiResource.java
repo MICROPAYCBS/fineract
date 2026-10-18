@@ -62,8 +62,7 @@ public class UserSessionHistoryApiResource {
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = UserSessionHistoryApiResourceSwagger.GetUserSessionHistoryResponse.class)))
     @ApiResponse(responseCode = "400", description = "fromDate or toDate is not an ISO date (yyyy-MM-dd)")
     @ApiResponse(responseCode = "403", description = "The user does not have permission to read user sessions")
-    public String retrieveSessionHistory(
-            @QueryParam("userId") @Parameter(description = "Restrict to one user") final Long userId,
+    public String retrieveSessionHistory(@QueryParam("userId") @Parameter(description = "Restrict to one user") final Long userId,
             @QueryParam("fromDate") @Parameter(description = "Earliest login date, ISO format (yyyy-MM-dd)") final String fromDate,
             @QueryParam("toDate") @Parameter(description = "Latest login date inclusive, ISO format (yyyy-MM-dd)") final String toDate,
             @QueryParam("offset") @Parameter(description = "Record offset, a multiple of limit") final Integer offset,

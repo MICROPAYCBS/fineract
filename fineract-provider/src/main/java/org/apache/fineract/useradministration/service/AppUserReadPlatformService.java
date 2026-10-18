@@ -27,7 +27,9 @@ public interface AppUserReadPlatformService {
 
     Collection<AppUserData> retrieveSearchTemplate();
 
-    Collection<AppUserData> retrieveAllSearchTemplate();
+    default Collection<AppUserData> retrieveAllSearchTemplate() {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
     AppUserData retrieveNewUserDetails();
 

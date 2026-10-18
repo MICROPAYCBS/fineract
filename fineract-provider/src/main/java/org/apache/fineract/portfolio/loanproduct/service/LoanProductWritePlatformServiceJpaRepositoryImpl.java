@@ -30,11 +30,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.accounting.producttoaccountmapping.service.ProductToGLAccountMappingWritePlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
@@ -42,10 +40,9 @@ import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAcc
 import org.apache.fineract.infrastructure.event.business.domain.loan.product.LoanProductCreateBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.charge.data.ProductChargeLink;
+import org.apache.fineract.organisation.monetary.exception.InvalidCurrencyException;
 import org.apache.fineract.portfolio.charge.domain.Charge;
-import org.apache.fineract.portfolio.charge.service.ProductChargeAmountService;
-import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
+import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucketRepository;
 import org.apache.fineract.portfolio.delinquency.exception.DelinquencyBucketNotFoundException;
@@ -82,32 +79,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanProductWritePlatformService {
 
-    /**
-     * Settings that existing loans read from the product every time (not copied into the loan). Changing them would change
-     * every existing loan at once, so they are locked once the product has loans. Policy decided 2026-10-11.
-     */
-    private static final List<String> LIVE_SETTINGS_LOCKED_WHEN_PRODUCT_HAS_LOANS = List.of( //
-            "accountingRule", //
-            LoanProductConstants.OVERDUE_DAYS_FOR_NPA_PARAMETER_NAME, //
-            LoanProductConstants.ACCOUNT_MOVES_OUT_OF_NPA_ONLY_ON_ARREARS_COMPLETION_PARAM_NAME, //
-            LoanProductConstants.DELINQUENCY_BUCKET_PARAM_NAME, //
-            LoanProductConstants.holdGuaranteeFundsParamName, //
-            LoanProductConstants.mandatoryGuaranteeParamName, //
-            LoanProductConstants.minimumGuaranteeFromOwnFundsParamName, //
-            LoanProductConstants.minimumGuaranteeFromGuarantorParamName, //
-            LoanProductConstants.MULTI_DISBURSE_LOAN_PARAMETER_NAME, //
-            LoanProductConstants.MAX_TRANCHE_COUNT_PARAMETER_NAME, //
-            LoanProductConstants.DISALLOW_EXPECTED_DISBURSEMENTS, //
-            LoanProductConstants.ALLOW_APPROVED_DISBURSED_AMOUNTS_OVER_APPLIED, //
-            LoanProductConstants.OVER_APPLIED_CALCULATION_TYPE, //
-            LoanProductConstants.OVER_APPLIED_NUMBER, //
-            "syncExpectedWithDisbursementDate");
-
     private final PlatformSecurityContext context;
     private final LoanProductDataValidator fromApiJsonDeserializer;
     private final LoanProductRepository loanProductRepository;
     private final AprCalculator aprCalculator;
     private final FundRepository fundRepository;
+    private final ChargeRepositoryWrapper chargeRepository;
     private final RateRepositoryWrapper rateRepository;
     private final ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService;
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
@@ -120,8 +97,6 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
     private final CreditAllocationsJsonParser creditAllocationsJsonParser;
     private final LoanProductAssembler loanProductAssembler;
     private final LoanProductUpdateUtil loanProductUpdateUtil;
-    private final ProductChargeLinkAssembler productChargeLinkAssembler;
-    private final ProductChargeAmountService productChargeAmountService;
     private final LoanProductPaymentAllocationRuleMerger loanProductPaymentAllocationRuleMerger = new LoanProductPaymentAllocationRuleMerger();
     private final LoanProductCreditAllocationRuleMerger loanProductCreditAllocationRuleMerger = new LoanProductCreditAllocationRuleMerger();
 
@@ -141,9 +116,7 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
             final String loanTransactionProcessingStrategyCode = command.stringValueOfParameterNamed("transactionProcessingStrategyCode");
 
             final String currencyCode = command.stringValueOfParameterNamed("currencyCode");
-            final List<ProductChargeLink> productChargeLinks = this.productChargeLinkAssembler.assembleLoanProductCharges(command,
-                    currencyCode);
-            final List<Charge> charges = ProductChargeLinkAssembler.toCharges(productChargeLinks);
+            final List<Charge> charges = assembleListOfProductCharges(command, currencyCode);
             final List<Rate> rates = assembleListOfProductRates(command);
             final List<LoanProductPaymentAllocationRule> loanProductPaymentAllocationRules = advancedPaymentJsonParser
                     .assembleLoanProductPaymentAllocationRules(command, loanTransactionProcessingStrategyCode);
@@ -167,7 +140,6 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
             }
 
             this.loanProductRepository.saveAndFlush(loanProduct);
-            this.productChargeAmountService.syncLoanProductChargeAmounts(loanProduct.getId(), productChargeLinks);
 
             // save accounting mappings
             this.accountMappingWritePlatformService.createLoanProductToGLAccountMapping(loanProduct.getId(), command);
@@ -238,8 +210,6 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
 
             final Map<String, Object> changes = loanProductUpdateUtil.update(product, command, this.aprCalculator, floatingRate);
 
-            rejectLiveSettingChangesWhenProductHasLoans(product.getId(), changes);
-
             if (changes.containsKey("fundId")) {
                 final Long fundId = (Long) changes.get("fundId");
                 final Fund fund = findFundByIdIfProvided(fundId);
@@ -258,11 +228,12 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
                 product.setTransactionProcessingStrategyName(transactionProcessingStrategyName);
             }
 
-            List<ProductChargeLink> productChargeLinks = null;
-            if (command.parameterExists("charges")) {
-                productChargeLinks = this.productChargeLinkAssembler.assembleLoanProductCharges(command, product.getCurrency().getCode());
-                product.update(ProductChargeLinkAssembler.toCharges(productChargeLinks));
-                changes.put("charges", command.arrayOfParameterNamed("charges"));
+            if (changes.containsKey("charges")) {
+                final List<Charge> productCharges = assembleListOfProductCharges(command, product.getCurrency().getCode());
+                final boolean updated = product.update(productCharges);
+                if (!updated) {
+                    changes.remove("charges");
+                }
             }
 
             if (changes.containsKey("paymentAllocation")) {
@@ -331,9 +302,6 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
                 product.validateLoanProductPreSave();
                 this.loanProductRepository.saveAndFlush(product);
             }
-            if (productChargeLinks != null) {
-                this.productChargeAmountService.syncLoanProductChargeAmounts(product.getId(), productChargeLinks);
-            }
 
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //
@@ -352,24 +320,6 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
 
     }
 
-    private void rejectLiveSettingChangesWhenProductHasLoans(final Long productId, final Map<String, Object> changes) {
-        final List<String> lockedChanges = LIVE_SETTINGS_LOCKED_WHEN_PRODUCT_HAS_LOANS.stream().filter(changes::containsKey).toList();
-        if (lockedChanges.isEmpty() || !this.loanRepositoryWrapper.doLoansExistForProduct(productId)) {
-            return;
-        }
-        final List<ApiParameterError> errors = new ArrayList<>();
-        for (final String field : lockedChanges) {
-            // 4th argument is a Long, so this binds to parameterError(code, defaultUserMessage, parameterName, Object... args).
-            errors.add(ApiParameterError.parameterError("validation.msg.loanproduct." + field + ".cannot.change.when.product.has.loans",
-                    "`" + field + "` cannot be changed because loans already use this product. Create a new loan product instead.", field,
-                    productId));
-        }
-        throw new PlatformApiDataValidationException("validation.msg.loanproduct.has.loans.live.settings.locked",
-                "This loan product already has loans. These settings cannot be changed: " + String.join(", ", lockedChanges)
-                        + ". Create a new loan product with the new settings.",
-                errors);
-    }
-
     private boolean anyChangeInCriticalFloatingRateLinkedParams(JsonCommand command, LoanProduct product) {
         final boolean isChangeFromFloatingToFlatOrViceVersa = command.isChangeInBooleanParameterNamed("isLinkedToFloatingInterestRates",
                 product.isLinkedToFloatingInterestRate());
@@ -378,6 +328,39 @@ public class LoanProductWritePlatformServiceJpaRepositoryImpl implements LoanPro
                         || command.isChangeInBigDecimalParameterNamed("interestRateDifferential",
                                 product.getFloatingRates().getInterestRateDifferential()));
         return isChangeFromFloatingToFlatOrViceVersa || isChangeInCriticalFloatingRateParams;
+    }
+
+    private List<Charge> assembleListOfProductCharges(final JsonCommand command, final String currencyCode) {
+
+        final List<Charge> charges = new ArrayList<>();
+
+        String loanProductCurrencyCode = command.stringValueOfParameterNamed("currencyCode");
+        if (loanProductCurrencyCode == null) {
+            loanProductCurrencyCode = currencyCode;
+        }
+
+        if (command.parameterExists("charges")) {
+            final JsonArray chargesArray = command.arrayOfParameterNamed("charges");
+            if (chargesArray != null) {
+                for (int i = 0; i < chargesArray.size(); i++) {
+
+                    final JsonObject jsonObject = chargesArray.get(i).getAsJsonObject();
+                    if (jsonObject.has("id")) {
+                        final Long id = jsonObject.get("id").getAsLong();
+
+                        final Charge charge = this.chargeRepository.findOneWithNotFoundDetection(id);
+
+                        if (!loanProductCurrencyCode.equals(charge.getCurrencyCode())) {
+                            final String errorMessage = "Charge and Loan Product must have the same currency.";
+                            throw new InvalidCurrencyException("charge", "attach.to.loan.product", errorMessage);
+                        }
+                        charges.add(charge);
+                    }
+                }
+            }
+        }
+
+        return charges;
     }
 
     private List<Rate> assembleListOfProductRates(final JsonCommand command) {

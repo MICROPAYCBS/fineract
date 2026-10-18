@@ -72,25 +72,27 @@ cd fineract
 ./gradlew createPGDB -PdbName=fineract_tenants
 ./gradlew createPGDB -PdbName=fineract_default
 
-# start backend
-./gradlew devRun
+# start backend (Micropay distribution: fineract-provider + every custom/micropay/** module)
+./gradlew :custom:micropay:app:boot:devRun
 ```
 
 After a minute or two, Fineract will be listening for API requests on port 8443.
+
+Do not start the server with `:fineract-provider:bootRun` / `:fineract-provider:devRun`: that classpath has none of the Micropay modules, so the moved endpoints (customer classes, sectors, job sequences, workflows, GL enquiry, ...) answer 404 and the Micropay service replacements are absent. Those tasks now fail fast; pass `-PupstreamOnly` if you really want upstream-only Fineract. See [custom/micropay/README.md](custom/micropay/README.md).
 
 ### Create an additional tenant
 
 After the default tenant is running (so `fineract_tenants` exists and connection `id=1` is seeded), register another empty tenant database and row with:
 
 ```bash
-./gradlew :fineract-provider:createNewTenant -PtenantIdentifier=demo
+./gradlew :custom:micropay:app:boot:createNewTenant -PtenantIdentifier=demo
 ```
 
 This creates database `fineract_demo`, inserts `tenant_server_connections` + `tenants` (default name `Demo Tenant`, timezone `Africa/Kampala`), and reuses the encrypted DB password from connection `id=1` when credentials match. Optional overrides: `-PtenantName`, `-PtenantTimezone`, `-PtenantDbHost`, `-PtenantDbPort`, `-PtenantDbUser`, `-PtenantDbPassword`, `-PtenantAdminUser`, `-PtenantAdminPassword`, `-PmasterPassword`, `-PdbType=postgresql|mariadb|mysql`.
 
 If you see `permission denied to create database`, either grant `CREATEDB` to the app user, create the empty DB first (`./gradlew createPGDB -PdbName=fineract_demo` then re-run), or pass a privileged admin user via `-PtenantAdminUser` / `-PtenantAdminPassword`.
 
-**Restart Fineract** (or re-run `devRun` / `bootRun`) so `TenantDatabaseUpgradeService` Liquibase-migrates the new schema. Then use header `Fineract-Platform-TenantId: demo`. The task does not run Liquibase itself.
+**Restart Fineract** (re-run `:custom:micropay:app:boot:devRun`) so `TenantDatabaseUpgradeService` Liquibase-migrates the new schema. Then use header `Fineract-Platform-TenantId: demo`. The task does not run Liquibase itself.
 
 > [!TIP]
 > Java properties or environment variables can be used to override default settings. See `fineract-provider/src/main/resources/application.properties`.

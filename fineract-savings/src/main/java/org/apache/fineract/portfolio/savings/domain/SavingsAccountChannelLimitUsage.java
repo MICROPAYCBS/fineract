@@ -35,9 +35,8 @@ import lombok.experimental.Accessors;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 
 @Entity
-@Table(name = "m_savings_account_channel_limit_usage", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "savings_account_id", "product_payment_channel_id", "direction", "period_type",
-                "period_start" }, name = "uk_saclu_bucket") })
+@Table(name = "m_savings_account_channel_limit_usage", uniqueConstraints = { @UniqueConstraint(columnNames = { "savings_account_id",
+        "product_payment_channel_id", "direction", "period_type", "period_start" }, name = "uk_saclu_bucket") })
 @Getter
 @Setter
 @NoArgsConstructor

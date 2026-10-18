@@ -46,8 +46,9 @@ class ChargeDefinitionCommandFromApiJsonDeserializerUpdateTest {
 
     @Test
     void loanChargeRejectsASavingsWithdrawalTimeType() {
-        final PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> this.deserializer.validateForUpdate("{\"useChargeTiers\":true,\"chargeTimeType\":5}", ChargeAppliesTo.LOAN.getValue()));
-        assertTrue(ex.getErrors().stream().anyMatch(error -> error.getUserMessageGlobalisationCode().contains("not.supported.for.charge.time.type")));
+        final PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class, () -> this.deserializer
+                .validateForUpdate("{\"useChargeTiers\":true,\"chargeTimeType\":5}", ChargeAppliesTo.LOAN.getValue()));
+        assertTrue(ex.getErrors().stream()
+                .anyMatch(error -> error.getUserMessageGlobalisationCode().contains("not.supported.for.charge.time.type")));
     }
 }

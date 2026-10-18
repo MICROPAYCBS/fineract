@@ -128,13 +128,13 @@ public class CashBasedAccountingProcessorForSavings implements AccountingProcess
                     if (savingsTransactionDTO.isAccountTransfer()) {
                         this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
                                 currencyCode, this.interBranchAccountingHelper.liabilityTransferAccountType(),
-                                CashAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId, transactionId,
-                                transactionDate, amount, isReversal);
+                                CashAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
                     } else {
                         this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
                                 currencyCode, CashAccountsForSavings.SAVINGS_REFERENCE.getValue(),
-                                CashAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId, transactionId,
-                                transactionDate, amount, isReversal);
+                                CashAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
                     }
                 } else if (savingsTransactionDTO.isAccountTransfer()) {
                     this.helper.createCashBasedJournalEntriesAndReversalsForSavings(office, currencyCode,

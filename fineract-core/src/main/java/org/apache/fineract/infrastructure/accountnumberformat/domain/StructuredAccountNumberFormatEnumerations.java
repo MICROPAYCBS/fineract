@@ -25,8 +25,7 @@ import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 
 public final class StructuredAccountNumberFormatEnumerations {
 
-    private StructuredAccountNumberFormatEnumerations() {
-    }
+    private StructuredAccountNumberFormatEnumerations() {}
 
     public static List<EnumOptionData> sequenceScopeOptions() {
         final List<EnumOptionData> options = new ArrayList<>();

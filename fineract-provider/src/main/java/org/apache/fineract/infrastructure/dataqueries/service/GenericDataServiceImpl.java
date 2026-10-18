@@ -48,6 +48,7 @@ import org.apache.fineract.infrastructure.dataqueries.data.ResultsetColumnHeader
 import org.apache.fineract.infrastructure.dataqueries.data.ResultsetColumnValueData;
 import org.apache.fineract.infrastructure.dataqueries.data.ResultsetRowData;
 import org.apache.fineract.infrastructure.dataqueries.exception.DatatableNotFoundException;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -56,6 +57,7 @@ import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = GenericDataService.class, ignored = GenericDataServiceImpl.class)
 @Slf4j
 @RequiredArgsConstructor
 public class GenericDataServiceImpl implements GenericDataService {
@@ -65,7 +67,6 @@ public class GenericDataServiceImpl implements GenericDataService {
     private final DatabaseIndependentQueryService databaseIndependentQueryService;
     private final DatatableKeywordGenerator datatableKeywordGenerator;
     private final DatabaseTypeResolver databaseTypeResolver;
-    private final DatatableColumnValidationReadService datatableColumnValidationReadService;
 
     @Override
     public GenericResultsetData fillGenericResultSet(final String sql) {
@@ -88,7 +89,7 @@ public class GenericDataServiceImpl implements GenericDataService {
 
             return new GenericResultsetData(columnHeaders, resultsetDataRows);
         } catch (DataAccessException e) {
-            logReportingError(e);
+            log.error("Reporting error: {}", e.getMessage());
             throw ErrorHandler.getMappable(e, "error.msg.report.unknown.data.integrity.issue", e.getClass().getName(), null, e);
         }
     }
@@ -114,17 +115,8 @@ public class GenericDataServiceImpl implements GenericDataService {
 
             return new GenericResultsetData(columnHeaders, resultsetDataRows);
         } catch (DataAccessException e) {
-            logReportingError(e);
-            throw ErrorHandler.getMappable(e, "error.msg.report.unknown.data.integrity.issue", e.getClass().getName(), null, e);
-        }
-    }
-
-    private void logReportingError(final DataAccessException e) {
-        final Throwable cause = e.getMostSpecificCause();
-        if (cause != null && cause != e) {
-            log.error("Reporting error: {} | cause: {}", e.getMessage(), cause.getMessage());
-        } else {
             log.error("Reporting error: {}", e.getMessage());
+            throw ErrorHandler.getMappable(e, "error.msg.report.unknown.data.integrity.issue", e.getClass().getName(), null, e);
         }
     }
 
@@ -167,7 +159,7 @@ public class GenericDataServiceImpl implements GenericDataService {
                     columnValues, codeName, columnIsUnique, columnIsIndexed, dialect));
         }
 
-        return datatableColumnValidationReadService.enrichColumnHeaders(tableName, columnHeaders);
+        return columnHeaders;
     }
 
     @NonNull
@@ -273,9 +265,7 @@ public class GenericDataServiceImpl implements GenericDataService {
                         final LocalDate localDate = (LocalDate) currVal;
                         writer.append(format("[%d,%d,%d]", localDate.getYear(), localDate.getMonthValue(), localDate.getDayOfMonth()));
                     } else if (colDisplayType == ResultsetColumnHeaderData.DisplayType.DATETIME) {
-                        final LocalDateTime localDateTime = currVal instanceof Timestamp
-                                ? ((Timestamp) currVal).toLocalDateTime()
-                                : (LocalDateTime) currVal;
+                        final LocalDateTime localDateTime = (LocalDateTime) currVal;
                         writer.append(format("[%d,%d,%d,%d,%d,%d,%d]", localDateTime.getYear(), localDateTime.getMonthValue(),
                                 localDateTime.getDayOfMonth(), localDateTime.getHour(), localDateTime.getMinute(),
                                 localDateTime.getSecond(), localDateTime.getNano()));

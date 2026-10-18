@@ -37,8 +37,8 @@ import org.apache.fineract.infrastructure.dataqueries.data.DatatableData;
 import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.staff.data.StaffData;
 import org.apache.fineract.portfolio.address.data.AddressData;
-import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
+import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 
@@ -341,10 +341,10 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
                 middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
-                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, joinedDate, imageId,
-                staffId, staffName, officeOptions, groups, staffOptions, narrations, genderOptions, timeline, savingProductOptions,
-                savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType, clientClassification,
-                clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
+                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, joinedDate, imageId, staffId, staffName,
+                officeOptions, groups, staffOptions, narrations, genderOptions, timeline, savingProductOptions, savingsProductId,
+                savingsProductName, savingsAccountId, savingAccountOptions, clientType, clientClassification, clientTypeOptions,
+                clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
                 clientNonPersonDetails, clientLegalFormOptions, familyMemberOptions, legalForm, address, isAddressEnabled, datatables,
                 isStaff, clientCollateralManagements);
 
@@ -407,10 +407,11 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
                 clientData.activationDate, clientData.imageId, clientData.staffId, clientData.staffName, clientData.officeOptions,
                 parentGroups, clientData.staffOptions, null, null, clientData.timeline, clientData.savingProductOptions,
                 clientData.savingsProductId, clientData.savingsProductName, clientData.savingsAccountId, clientData.savingAccountOptions,
-                clientData.clientType, clientData.clientClassification, clientData.clientTypeOptions, clientData.clientClassificationOptions,
-                clientData.clientNonPersonConstitutionOptions, clientData.clientNonPersonMainBusinessLineOptions,
-                clientData.clientNonPersonDetails, clientData.clientLegalFormOptions, clientData.familyMemberOptions, clientData.legalForm,
-                clientData.address, clientData.isAddressEnabled, null, clientData.isStaff, clientCollateralManagements);
+                clientData.clientType, clientData.clientClassification, clientData.clientTypeOptions,
+                clientData.clientClassificationOptions, clientData.clientNonPersonConstitutionOptions,
+                clientData.clientNonPersonMainBusinessLineOptions, clientData.clientNonPersonDetails, clientData.clientLegalFormOptions,
+                clientData.familyMemberOptions, clientData.legalForm, clientData.address, clientData.isAddressEnabled, null,
+                clientData.isStaff, clientCollateralManagements);
         copyProfileCodeValues(clientData, merged);
         return merged;
     }
@@ -467,12 +468,12 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
                 middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
-                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, activationDate,
-                imageId, staffId, staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline,
-                savingProductOptions, savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType,
-                clientClassification, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
-                clientNonPersonMainBusinessLineOptions, clientNonPerson, clientLegalFormOptions, familyMemberOptions, legalForm, null, null,
-                null, isStaff, clientCollateralManagements);
+                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, activationDate, imageId, staffId,
+                staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline, savingProductOptions,
+                savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType, clientClassification,
+                clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
+                clientNonPerson, clientLegalFormOptions, familyMemberOptions, legalForm, null, null, null, isStaff,
+                clientCollateralManagements);
     }
 
     public static ClientData lookup(final Long id, final String displayName, final Long officeId, final String officeName) {
@@ -523,12 +524,12 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final Set<ClientCollateralManagementData> clientCollateralManagements = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
                 middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
-                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, activationDate,
-                imageId, staffId, staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline,
-                savingProductOptions, savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType,
-                clientClassification, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
-                clientNonPersonMainBusinessLineOptions, clientNonPerson, clientLegalFormOptions, familyMemberOptions, legalForm, null, null,
-                null, isStaff, clientCollateralManagements);
+                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, activationDate, imageId, staffId,
+                staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline, savingProductOptions,
+                savingsProductId, savingsProductName, savingsAccountId, savingAccountOptions, clientType, clientClassification,
+                clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
+                clientNonPerson, clientLegalFormOptions, familyMemberOptions, legalForm, null, null, null, isStaff,
+                clientCollateralManagements);
 
     }
 
@@ -536,6 +537,20 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final Long officeId = null;
         final String officeName = null;
         return lookup(id, displayName, officeId, officeName);
+    }
+
+    public static ClientData instance(final String accountNo, final EnumOptionData status, final CodeValueData subStatus,
+            final Long officeId, final String officeName, final Long transferToOfficeId, final String transferToOfficeName, final Long id,
+            final String firstname, final String middlename, final String lastname, final String fullname, final String displayName,
+            final ExternalId externalId, final String mobileNo, final String emailAddress, final LocalDate dateOfBirth,
+            final CodeValueData gender, final LocalDate activationDate, final Long imageId, final Long staffId, final String staffName,
+            final ClientTimelineData timeline, final Long savingsProductId, final String savingsProductName, final Long savingsAccountId,
+            final CodeValueData clientType, final CodeValueData clientClassification, final EnumOptionData legalForm,
+            final ClientNonPersonData clientNonPerson, final Boolean isStaff) {
+        return instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
+                middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, null, null, null, null, dateOfBirth,
+                gender, activationDate, imageId, staffId, staffName, timeline, savingsProductId, savingsProductName, savingsAccountId,
+                clientType, clientClassification, legalForm, clientNonPerson, isStaff);
     }
 
     public static ClientData instance(final String accountNo, final EnumOptionData status, final CodeValueData subStatus,
@@ -562,11 +577,11 @@ public final class ClientData implements Comparable<ClientData>, Serializable {
         final ClientFamilyMembersData familyMemberOptions = null;
         return new ClientData(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id, firstname,
                 middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, taxIdentificationNumber,
-                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, activationDate,
-                imageId, staffId, staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline,
-                savingProductOptions, savingsProductId, savingsProductName, savingsAccountId, null, clientType, clientClassification,
-                clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions,
-                clientNonPerson, clientLegalFormOptions, familyMemberOptions, legalForm, null, null, null, isStaff, null);
+                alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender, activationDate, imageId, staffId,
+                staffName, allowedOffices, groups, staffOptions, closureReasons, genderOptions, timeline, savingProductOptions,
+                savingsProductId, savingsProductName, savingsAccountId, null, clientType, clientClassification, clientTypeOptions,
+                clientClassificationOptions, clientNonPersonConstitutionOptions, clientNonPersonMainBusinessLineOptions, clientNonPerson,
+                clientLegalFormOptions, familyMemberOptions, legalForm, null, null, null, isStaff, null);
 
     }
 

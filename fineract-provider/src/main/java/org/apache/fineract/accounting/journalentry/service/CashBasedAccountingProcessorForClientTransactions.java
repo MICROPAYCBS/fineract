@@ -78,12 +78,13 @@ public class CashBasedAccountingProcessorForClientTransactions implements Accoun
 
         if (amount != null && !(amount.compareTo(BigDecimal.ZERO) == 0)) {
             if (crossBranch) {
-                final BigDecimal totalCreditedAmount = this.interBranchAccountingHelper.createCrossBranchClientChargePaymentCredits(homeOffice,
-                        currencyCode, clientId, transactionId, transactionDate, isReversal, clientTransactionDTO.getChargePayments());
-                this.interBranchAccountingHelper.createCrossBranchClientChargePaymentFundSourceDebit(servicingOffice, currencyCode, clientId,
+                final BigDecimal totalCreditedAmount = this.interBranchAccountingHelper.createCrossBranchClientChargePaymentCredits(
+                        homeOffice, currencyCode, clientId, transactionId, transactionDate, isReversal,
+                        clientTransactionDTO.getChargePayments());
+                this.interBranchAccountingHelper.createCrossBranchClientChargePaymentFundSourceDebit(servicingOffice, currencyCode,
+                        clientId, transactionId, transactionDate, totalCreditedAmount, isReversal);
+                this.interBranchAccountingHelper.postClientClearingBridge(servicingOffice, homeOffice, currencyCode, clientId,
                         transactionId, transactionDate, totalCreditedAmount, isReversal);
-                this.interBranchAccountingHelper.postClientClearingBridge(servicingOffice, homeOffice, currencyCode, clientId, transactionId,
-                        transactionDate, totalCreditedAmount, isReversal);
             } else {
                 BigDecimal totalCreditedAmount = this.helper.createCreditJournalEntryOrReversalForClientPayments(homeOffice, currencyCode,
                         clientId, transactionId, transactionDate, isReversal, clientTransactionDTO.getChargePayments());

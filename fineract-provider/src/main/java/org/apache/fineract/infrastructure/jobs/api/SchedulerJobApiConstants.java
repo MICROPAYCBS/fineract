@@ -60,10 +60,9 @@ public final class SchedulerJobApiConstants {
     public static final String JOB_RUN_HISTORY = "runhistory";
     public static final String SCHEDULER_STATUS_PATH = "scheduler";
 
-    static final Set<String> JOB_DETAIL_RESPONSE_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(jobIdentifierParamName, displayNameParamName, descriptionParamName, nextRunTimeParamName,
-                    initializingErrorParamName, cronExpressionParamName, jobActiveStatusParamName, currentlyRunningParamName,
-                    lastRunHistoryObjParamName));
+    static final Set<String> JOB_DETAIL_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(jobIdentifierParamName, displayNameParamName,
+            descriptionParamName, nextRunTimeParamName, initializingErrorParamName, cronExpressionParamName, jobActiveStatusParamName,
+            currentlyRunningParamName, lastRunHistoryObjParamName));
 
     static final Set<String> JOB_HISTORY_RESPONSE_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList(idParamName, versionParamName, jobRunStartTimeParamName, jobRunEndTimeParamName, statusParamName,

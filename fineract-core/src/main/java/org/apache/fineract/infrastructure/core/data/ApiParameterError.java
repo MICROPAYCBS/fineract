@@ -67,15 +67,6 @@ public final class ApiParameterError {
         return new ApiParameterError(globalisationMessageCode, defaultUserMessage, defaultUserMessageArgs, "id", null);
     }
 
-    /**
-     * Sets a developer message that differs from the user message. A call written as
-     * {@code parameterError(code, message, field, stringValue)} binds to this overload and shifts the field name into
-     * {@code defaultUserMessage}. Use {@link #parameterErrorWithValue} when the rejected value is a String.
-     *
-     * @deprecated prefer {@link #parameterError(String, String, String, Object...)} or
-     *             {@link #parameterErrorWithValue(String, String, String, String, Object...)}
-     */
-    @Deprecated
     public static ApiParameterError parameterError(final String globalisationMessageCode, final String developerMessage,
             final String defaultUserMessage, final String parameterName, final Object... defaultUserMessageArgs) {
         return new ApiParameterError(globalisationMessageCode, developerMessage, defaultUserMessage, defaultUserMessageArgs, parameterName,

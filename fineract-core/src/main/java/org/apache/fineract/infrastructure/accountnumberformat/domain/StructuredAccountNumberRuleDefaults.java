@@ -33,9 +33,9 @@ public final class StructuredAccountNumberRuleDefaults {
         return switch (entityAccountType) {
             case CLIENT -> new StructuredAccountNumberRuleDefaults("{officeCode:3}{clientTypeCode:1}{sequence:8}{checkDigit:1}",
                     AccountNumberSequenceScope.OFFICE, CheckDigitAlgorithm.LUHN);
-            case LOAN, SAVINGS, SHARES, WORKING_CAPITAL_LOAN -> new StructuredAccountNumberRuleDefaults(
-                    "{officeCode:3}{productCode:2}{sequence:9}{checkDigit:1}", AccountNumberSequenceScope.OFFICE_PRODUCT,
-                    CheckDigitAlgorithm.LUHN);
+            case LOAN, SAVINGS, SHARES, WORKING_CAPITAL_LOAN ->
+                new StructuredAccountNumberRuleDefaults("{officeCode:3}{productCode:2}{sequence:9}{checkDigit:1}",
+                        AccountNumberSequenceScope.OFFICE_PRODUCT, CheckDigitAlgorithm.LUHN);
             case GROUP, CENTER -> new StructuredAccountNumberRuleDefaults("{officeCode:3}{entityTypeCode:1}{sequence:7}{checkDigit:1}",
                     AccountNumberSequenceScope.OFFICE, CheckDigitAlgorithm.LUHN);
         };

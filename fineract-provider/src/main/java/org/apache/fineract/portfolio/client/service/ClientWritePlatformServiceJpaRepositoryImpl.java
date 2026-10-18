@@ -22,7 +22,6 @@ import com.google.gson.JsonElement;
 import jakarta.persistence.PersistenceException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -37,18 +36,14 @@ import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
-import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberManualEntryValidator;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
-import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -77,15 +72,7 @@ import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientStatus;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.apache.fineract.portfolio.client.exception.ClientActiveForUpdateException;
-import org.apache.fineract.portfolio.client.exception.ClientCannotBeDeletedHasAssociatedDataException;
-import org.apache.fineract.portfolio.client.exception.ClientCannotBeDeletedHasAssociatedDataException.AssociatedDataType;
-import org.apache.fineract.portfolio.customerclass.domain.CustomerClass;
-import org.apache.fineract.portfolio.customerclass.domain.CustomerClassRepository;
-import org.apache.fineract.portfolio.customerclass.exception.CustomerClassNotFoundException;
-import org.apache.fineract.portfolio.customerclass.service.CustomerClassClientValidationService;
 import org.apache.fineract.portfolio.client.exception.ClientHasNoStaffException;
-import org.apache.fineract.portfolio.client.exception.ClientMustBeDraftToBeSubmittedException;
-import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeActivatedException;
 import org.apache.fineract.portfolio.client.exception.ClientMustBePendingToBeDeletedException;
 import org.apache.fineract.portfolio.client.exception.InvalidClientSavingProductException;
 import org.apache.fineract.portfolio.client.exception.InvalidClientStateTransitionException;
@@ -103,8 +90,8 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrap
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
 import org.apache.fineract.portfolio.savings.service.SavingsApplicationProcessWritePlatformService;
-import org.apache.fineract.portfolio.subindustry.domain.SubIndustryRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
@@ -112,13 +99,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 @AllArgsConstructor
 @Service
+@ConditionalOnMissingBean(value = ClientWritePlatformService.class, ignored = ClientWritePlatformServiceJpaRepositoryImpl.class)
 @Slf4j
 public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWritePlatformService {
 
     private final PlatformSecurityContext context;
     private final ClientRepositoryWrapper clientRepository;
     private final ClientNonPersonRepositoryWrapper clientNonPersonRepository;
-    private final ClientDeleteAssociatedDataValidator clientDeleteAssociatedDataValidator;
     private final OfficeRepositoryWrapper officeRepositoryWrapper;
     private final NoteRepository noteRepository;
     private final GroupRepository groupRepository;
@@ -133,23 +120,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
     private final CommandProcessingService commandProcessingService;
     private final ConfigurationDomainService configurationDomainService;
     private final AccountNumberFormatRepositoryWrapper accountNumberFormatRepository;
-    private final AccountNumberManualEntryValidator accountNumberManualEntryValidator;
     private final FromJsonHelper fromApiJsonHelper;
     private final AddressWritePlatformService addressWritePlatformService;
     private final ClientFamilyMembersWritePlatformService clientFamilyMembersWritePlatformService;
-    private final ClientIncomeSourcesWritePlatformService clientIncomeSourcesWritePlatformService;
-    private final ClientComplianceProfileWritePlatformService clientComplianceProfileWritePlatformService;
-    private final ClientIdentifierWritePlatformService clientIdentifierWritePlatformService;
-    private final ClientIdentifierValidationService clientIdentifierValidationService;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ExternalIdFactory externalIdFactory;
-    private final CustomerClassRepository customerClassRepository;
-    private final CustomerClassClientValidationService customerClassClientValidationService;
-    private final ClientTitleWritePlatformService clientTitleWritePlatformService;
-    private final ClientContactValidationService clientContactValidationService;
-    private final ClientContactWritePlatformService clientContactWritePlatformService;
-    private final SubIndustryRepository subIndustryRepository;
 
     @Transactional
     @Override
@@ -157,10 +133,9 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
         try {
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
 
-            if (!client.isDraftOrPending()) {
+            if (client.isNotPending()) {
                 throw new ClientMustBePendingToBeDeletedException(clientId);
             }
-            this.clientDeleteAssociatedDataValidator.validateNoAssociatedData(clientId);
             final List<Note> relatedNotes = this.noteRepository.findByClient(client);
             this.noteRepository.deleteAllInBatch(relatedNotes);
 
@@ -178,19 +153,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     .withEntityId(clientId) //
                     .build();
         } catch (final JpaSystemException | DataIntegrityViolationException dve) {
-            throw deleteDataIntegrityException(clientId, ExceptionUtils.getRootCause(dve), dve);
+            Throwable throwable = ExceptionUtils.getRootCause(dve.getCause());
+            log.error("Error occured.", throwable);
+            throw ErrorHandler.getMappable(dve, "error.msg.client.unknown.data.integrity.issue",
+                    "Unknown data integrity issue with resource.");
         }
-    }
-
-    private RuntimeException deleteDataIntegrityException(final Long clientId, final Throwable realCause, final Exception dve) {
-        final String message = realCause != null ? realCause.getMessage() : null;
-        final AssociatedDataType associatedDataType = AssociatedDataType.fromForeignKeyConstraintName(message);
-        if (associatedDataType != null) {
-            return new ClientCannotBeDeletedHasAssociatedDataException(clientId, associatedDataType);
-        }
-        log.error("Error occured.", realCause);
-        return ErrorHandler.getMappable(dve, "error.msg.client.unknown.data.integrity.issue",
-                "Unknown data integrity issue with resource.");
     }
 
     /*
@@ -209,12 +176,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final String mobileNo = command.stringValueOfParameterNamed("mobileNo");
             throw new PlatformDataIntegrityException("error.msg.client.duplicate.mobileNo",
                     "Client with mobileNo `" + mobileNo + "` already exists", "mobileNo", mobileNo);
-        } else if (realCause.getMessage().contains("tax_identification_number")) {
-            final String taxIdentificationNumber = command
-                    .stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
-            throw new PlatformDataIntegrityException("error.msg.client.duplicate.taxIdentificationNumber",
-                    "Client with taxIdentificationNumber `" + taxIdentificationNumber + "` already exists", "taxIdentificationNumber",
-                    taxIdentificationNumber);
         }
 
         logAsErrorUnexpectedDataIntegrityException(dve);
@@ -250,7 +211,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 staff = this.staffRepository.findByOfficeHierarchyWithNotFoundDetection(staffId, clientOffice.getHierarchy());
             }
 
-            Integer genderEnum = resolveGenderEnum(command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName));
+            CodeValue gender = null;
+            final Long genderId = command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName);
+            if (genderId != null) {
+                gender = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.GENDER, genderId);
+            }
 
             CodeValue clientType = null;
             final Long clientTypeId = command.longValueOfParameterNamed(ClientApiConstants.clientTypeIdParamName);
@@ -286,21 +251,8 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
 
             final String accountNo = command.stringValueOfParameterNamed(ClientApiConstants.accountNoParamName);
-            this.accountNumberManualEntryValidator.validateManualAccountNumberIfStructuredModeEnabled(EntityAccountType.CLIENT, accountNo);
             final String mobileNo = command.stringValueOfParameterNamed(ClientApiConstants.mobileNoParamName);
             final String emailAddress = command.stringValueOfParameterNamed(ClientApiConstants.emailAddressParamName);
-            final String taxIdentificationNumber = command
-                    .stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
-            final String alternativeMobileNo = command
-                    .stringValueOfParameterNamed(ClientApiConstants.alternativeMobileNoParamName);
-            final String alternativeEmailAddress = command
-                    .stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
-            final Long subIndustryId = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
-            final Long customerClassId = command.longValueOfParameterNamed(ClientApiConstants.customerClassIdParamName);
-            final Long titleId = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
-            final Long nationalityCountryId = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
-            final Long customerRiskProfileId = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
-            final Long maritalStatusId = command.longValueOfParameterNamed(ClientApiConstants.maritalStatusIdParamName);
             final String firstname = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
             final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
             final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
@@ -308,7 +260,7 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             final boolean isStaff = command.booleanPrimitiveValueOfParameterNamed(ClientApiConstants.isStaffParamName);
             final LocalDate dataOfBirth = command.localDateValueOfParameterNamed(ClientApiConstants.dateOfBirthParamName);
 
-            ClientStatus status = ClientStatus.DRAFT;
+            ClientStatus status = ClientStatus.PENDING;
             boolean active = false;
             if (command.hasParameter("active")) {
                 active = command.booleanPrimitiveValueOfParameterNamed(ClientApiConstants.activeParamName);
@@ -335,46 +287,11 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             final Client newClient = Client.instance(currentUser, status, clientOffice, clientParentGroup, accountNo, firstname, middlename,
                     lastname, fullname, activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate,
-                    savingsProductId, savingsAccountId, dataOfBirth, genderEnum, clientType, clientClassification, legalForm.getValue(),
+                    savingsProductId, savingsAccountId, dataOfBirth, gender, clientType, clientClassification, legalForm.getValue(),
                     isStaff);
-            if (StringUtils.isNotBlank(taxIdentificationNumber)) {
-                newClient.setTaxIdentificationNumber(taxIdentificationNumber.trim());
-            }
-            if (StringUtils.isNotBlank(alternativeMobileNo)) {
-                newClient.setAlternativeMobileNo(alternativeMobileNo.trim());
-            }
-            if (StringUtils.isNotBlank(alternativeEmailAddress)) {
-                newClient.setAlternativeEmailAddress(alternativeEmailAddress.trim());
-            }
-            if (subIndustryId != null) {
-                validateSubIndustryExists(subIndustryId);
-                newClient.setSubIndustryId(subIndustryId);
-            }
-            if (customerClassId != null) {
-                newClient.setCustomerClassId(customerClassId);
-            }
-            if (titleId != null) {
-                this.clientTitleWritePlatformService.validateTitleForGender(titleId, genderEnum);
-                newClient.updateTitle(titleId);
-            }
-            if (nationalityCountryId != null) {
-                newClient.setNationality(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        ClientApiConstants.COUNTRY, nationalityCountryId));
-            }
-            if (customerRiskProfileId != null) {
-                newClient.updateCustomerRiskProfile(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        ClientApiConstants.CUSTOMER_RISK_PROFILE, customerRiskProfileId));
-            }
-            if (maritalStatusId != null) {
-                newClient.updateMaritalStatus(this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        ClientApiConstants.MARITAL_STATUS, maritalStatusId));
-            }
 
             // Account Number generation
             this.clientRepository.saveAndFlush(newClient);
-            if (customerClassId != null) {
-                validateCustomerClassAssignment(customerClassId, newClient);
-            }
             if (StringUtils.isBlank(accountNo)) {
                 AccountNumberFormat accountNumberFormat = this.accountNumberFormatRepository.findByAccountType(EntityAccountType.CLIENT);
                 newClient.updateAccountNo(accountNumberGenerator.generate(newClient, accountNumberFormat));
@@ -385,12 +302,8 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             if (newClient.isActive()) {
                 validateParentGroupRulesBeforeClientActivation(newClient);
                 runEntityDatatableCheck(newClient.getId(), newClient.getLegalForm());
-                // Creating an active client also stands for the Micropay submit step:
-                // require SUBMIT_CLIENT and honour maker-checker on it, as for command=submit.
-                final CommandWrapper submitWrapper = new CommandWrapperBuilder().submitClient(null).build();
-                rollbackTransaction = this.commandProcessingService.validateRollbackCommand(submitWrapper, currentUser);
                 final CommandWrapper commandWrapper = new CommandWrapperBuilder().activateClient(null).build();
-                rollbackTransaction |= this.commandProcessingService.validateRollbackCommand(commandWrapper, currentUser);
+                rollbackTransaction = this.commandProcessingService.validateRollbackCommand(commandWrapper, currentUser);
             }
             this.clientRepository.saveAndFlush(newClient);
 
@@ -411,32 +324,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
             if (command.arrayOfParameterNamed("familyMembers") != null) {
                 this.clientFamilyMembersWritePlatformService.addClientFamilyMember(newClient, command);
-            }
-
-            if (command.arrayOfParameterNamed(ClientApiConstants.contacts) != null) {
-                this.clientContactWritePlatformService.addClientContacts(newClient, command);
-            }
-
-            if (command.arrayOfParameterNamed(ClientApiConstants.incomeSources) != null) {
-                this.clientIncomeSourcesWritePlatformService.addClientIncomeSources(newClient, command);
-            }
-
-            if (command.parameterExists(ClientApiConstants.complianceProfile)) {
-                this.clientComplianceProfileWritePlatformService.saveComplianceProfile(newClient, command);
-            }
-
-            if (command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers) != null) {
-                this.clientIdentifierWritePlatformService.addClientIdentifiers(newClient, command);
-            }
-
-            if (newClient.isActive()) {
-                this.clientContactValidationService.validateMandatoryContactsForClient(newClient.getId());
-                this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonClient(newClient.getId(),
-                        newClient.getLegalForm());
-            }
-
-            if (newClient.getCustomerClassId() != null && newClient.isActive()) {
-                validateCustomerClassReadinessForActivation(newClient);
             }
 
             if (command.parameterExists(ClientApiConstants.datatables)) {
@@ -562,74 +449,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 clientForUpdate.setEmailAddress(StringUtils.defaultIfEmpty(newValue, null));
             }
 
-            if (command.isChangeInStringParameterNamed(ClientApiConstants.taxIdentificationNumberParamName,
-                    clientForUpdate.getTaxIdentificationNumber())) {
-                final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.taxIdentificationNumberParamName);
-                changes.put(ClientApiConstants.taxIdentificationNumberParamName, newValue);
-                clientForUpdate.setTaxIdentificationNumber(StringUtils.defaultIfEmpty(newValue, null));
-            }
-
-            if (command.isChangeInStringParameterNamed(ClientApiConstants.alternativeMobileNoParamName,
-                    clientForUpdate.getAlternativeMobileNo())) {
-                final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.alternativeMobileNoParamName);
-                changes.put(ClientApiConstants.alternativeMobileNoParamName, newValue);
-                clientForUpdate.setAlternativeMobileNo(StringUtils.defaultIfEmpty(newValue, null));
-            }
-
-            if (command.isChangeInStringParameterNamed(ClientApiConstants.alternativeEmailAddressParamName,
-                    clientForUpdate.getAlternativeEmailAddress())) {
-                final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.alternativeEmailAddressParamName);
-                changes.put(ClientApiConstants.alternativeEmailAddressParamName, newValue);
-                clientForUpdate.setAlternativeEmailAddress(StringUtils.defaultIfEmpty(newValue, null));
-            }
-
-            if (command.isChangeInLongParameterNamed(ClientApiConstants.subIndustryIdParamName, clientForUpdate.getSubIndustryId())) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.subIndustryIdParamName);
-                if (newValue != null) {
-                    validateSubIndustryExists(newValue);
-                }
-                changes.put(ClientApiConstants.subIndustryIdParamName, newValue);
-                clientForUpdate.setSubIndustryId(newValue);
-            }
-
-            if (command.isChangeInLongParameterNamed(ClientApiConstants.customerClassIdParamName,
-                    clientForUpdate.getCustomerClassId())) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerClassIdParamName);
-                changes.put(ClientApiConstants.customerClassIdParamName, newValue);
-                if (newValue != null) {
-                    final CustomerClass newCustomerClass = findCustomerClassWithNotFoundDetection(newValue);
-                    final Long currentCustomerClassId = clientForUpdate.getCustomerClassId();
-                    if (currentCustomerClassId != null && !currentCustomerClassId.equals(newValue)) {
-                        this.customerClassClientValidationService.validateReclassification(
-                                findCustomerClassWithNotFoundDetection(currentCustomerClassId), newCustomerClass);
-                    }
-                    this.customerClassClientValidationService.validateAssignment(newCustomerClass, clientForUpdate);
-                }
-                clientForUpdate.setCustomerClassId(newValue);
-            }
-
-            if (command.isChangeInLongParameterNamed(ClientApiConstants.titleIdParamName, clientForUpdate.titleId())) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
-                changes.put(ClientApiConstants.titleIdParamName, newValue);
-            }
-
-            if (command.isChangeInLongParameterNamed(ClientApiConstants.nationalityCountryIdParamName,
-                    clientForUpdate.nationalityCountryId())) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
-                changes.put(ClientApiConstants.nationalityCountryIdParamName, newValue);
-            }
-
-            if (command.isChangeInLongParameterNamed(ClientApiConstants.customerRiskProfileIdParamName,
-                    clientForUpdate.customerRiskProfileId())) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
-                changes.put(ClientApiConstants.customerRiskProfileIdParamName, newValue);
-            }
-
-            if (command.isChangeInLongParameterNamed(ClientApiConstants.maritalStatusIdParamName, clientForUpdate.maritalStatusId())) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.maritalStatusIdParamName);
-                changes.put(ClientApiConstants.maritalStatusIdParamName, newValue);
-            }
-
             if (command.isChangeInStringParameterNamed(ClientApiConstants.firstnameParamName, clientForUpdate.getFirstname())) {
                 final String newValue = command.stringValueOfParameterNamed(ClientApiConstants.firstnameParamName);
                 changes.put(ClientApiConstants.firstnameParamName, newValue);
@@ -678,6 +497,24 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                     clientForUpdate.clientClassificationId())) {
                 final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.clientClassificationIdParamName);
                 changes.put(ClientApiConstants.clientClassificationIdParamName, newValue);
+            }
+
+            if (command.isChangeInIntegerParameterNamed(ClientApiConstants.legalFormIdParamName, clientForUpdate.getLegalForm())) {
+                final Integer newValue = command.integerValueOfParameterNamed(ClientApiConstants.legalFormIdParamName);
+                if (newValue != null) {
+                    LegalForm legalForm = LegalForm.fromInt(newValue);
+                    if (legalForm != null) {
+                        changes.put(ClientApiConstants.legalFormIdParamName, ClientEnumerations.legalForm(newValue));
+                        clientForUpdate.setLegalForm(legalForm.getValue());
+                        clientForUpdate.resetDerivedNames(legalForm);
+                    } else {
+                        changes.put(ClientApiConstants.legalFormIdParamName, null);
+                        clientForUpdate.setLegalForm(null);
+                    }
+                } else {
+                    changes.put(ClientApiConstants.legalFormIdParamName, null);
+                    clientForUpdate.setLegalForm(null);
+                }
             }
 
             final String dateFormatAsInput = command.dateFormat();
@@ -729,47 +566,12 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             }
 
             if (changes.containsKey(ClientApiConstants.genderIdParamName)) {
-                final Integer newValue = resolveGenderEnum(command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName));
-                clientForUpdate.updateGender(newValue);
-                if (clientForUpdate.titleId() != null) {
-                    this.clientTitleWritePlatformService.validateTitleForGender(clientForUpdate.titleId(), newValue);
-                }
-            }
-
-            if (changes.containsKey(ClientApiConstants.titleIdParamName)) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.titleIdParamName);
-                this.clientTitleWritePlatformService.validateTitleForGender(newValue, clientForUpdate.getGenderEnum());
-                clientForUpdate.updateTitle(newValue);
-            }
-
-            if (changes.containsKey(ClientApiConstants.nationalityCountryIdParamName)) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.nationalityCountryIdParamName);
-                CodeValue nationality = null;
+                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.genderIdParamName);
+                CodeValue gender = null;
                 if (newValue != null) {
-                    nationality = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.COUNTRY,
-                            newValue);
+                    gender = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(ClientApiConstants.GENDER, newValue);
                 }
-                clientForUpdate.updateNationality(nationality);
-            }
-
-            if (changes.containsKey(ClientApiConstants.customerRiskProfileIdParamName)) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.customerRiskProfileIdParamName);
-                CodeValue customerRiskProfile = null;
-                if (newValue != null) {
-                    customerRiskProfile = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                            ClientApiConstants.CUSTOMER_RISK_PROFILE, newValue);
-                }
-                clientForUpdate.updateCustomerRiskProfile(customerRiskProfile);
-            }
-
-            if (changes.containsKey(ClientApiConstants.maritalStatusIdParamName)) {
-                final Long newValue = command.longValueOfParameterNamed(ClientApiConstants.maritalStatusIdParamName);
-                CodeValue maritalStatus = null;
-                if (newValue != null) {
-                    maritalStatus = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                            ClientApiConstants.MARITAL_STATUS, newValue);
-                }
-                clientForUpdate.updateMaritalStatus(maritalStatus);
+                clientForUpdate.updateGender(gender);
             }
 
             if (changes.containsKey(ClientApiConstants.savingsProductIdParamName)) {
@@ -808,6 +610,26 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 this.clientRepository.saveAndFlush(clientForUpdate);
             }
 
+            if (changes.containsKey(ClientApiConstants.legalFormIdParamName)) {
+                Integer legalFormValue = clientForUpdate.getLegalForm();
+                boolean isChangedToEntity = false;
+                if (legalFormValue != null) {
+                    LegalForm legalForm = LegalForm.fromInt(legalFormValue);
+                    if (legalForm != null) {
+                        isChangedToEntity = legalForm.isEntity();
+                    }
+                }
+
+                if (isChangedToEntity) {
+                    extractAndCreateClientNonPerson(clientForUpdate, command);
+                } else {
+                    final ClientNonPerson clientNonPerson = this.clientNonPersonRepository.findOneByClientId(clientForUpdate.getId());
+                    if (clientNonPerson != null) {
+                        this.clientNonPersonRepository.delete(clientNonPerson);
+                    }
+                }
+            }
+
             final ClientNonPerson clientNonPersonForUpdate = this.clientNonPersonRepository.findOneByClientId(clientId);
             if (clientNonPersonForUpdate != null) {
                 final JsonElement clientNonPersonElement = command.jsonElement(ClientApiConstants.clientNonPersonDetailsParamName);
@@ -844,10 +666,10 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
 
                 changes.putAll(clientNonPersonChanges);
             } else {
-                final Integer legalFormValue = clientForUpdate.getLegalForm();
+                final Integer legalFormParamValue = command.integerValueOfParameterNamed(ClientApiConstants.legalFormIdParamName);
                 boolean isEntity = false;
-                if (legalFormValue != null) {
-                    final LegalForm legalForm = LegalForm.fromInt(legalFormValue);
+                if (legalFormParamValue != null) {
+                    final LegalForm legalForm = LegalForm.fromInt(legalFormParamValue);
                     if (legalForm != null) {
                         isEntity = legalForm.isEntity();
                     }
@@ -881,14 +703,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             this.fromApiJsonDeserializer.validateActivation(command);
 
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId, true);
-            if (client.isNotPending()) {
-                throw new ClientMustBePendingToBeActivatedException(clientId);
-            }
-            if (client.getCustomerClassId() != null) {
-                validateCustomerClassReadinessForActivation(client);
-            }
-            this.clientContactValidationService.validateMandatoryContactsForClient(clientId);
-            this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonClient(clientId, client.getLegalForm());
             validateParentGroupRulesBeforeClientActivation(client);
             final Locale locale = command.extractLocale();
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat()).withLocale(locale);
@@ -914,27 +728,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
             handleDataIntegrityIssues(command, dve.getMostSpecificCause(), dve);
             return CommandProcessingResult.empty();
         }
-    }
-
-    @Transactional
-    @Override
-    public CommandProcessingResult submitClient(final Long clientId, final JsonCommand command) {
-        this.context.authenticatedUser();
-
-        final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
-        if (client.isNotDraft()) {
-            throw new ClientMustBeDraftToBeSubmittedException(clientId);
-        }
-        client.submit();
-        this.clientRepository.saveAndFlush(client);
-
-        return new CommandProcessingResultBuilder() //
-                .withCommandId(command.commandId()) //
-                .withOfficeId(client.officeId()) //
-                .withEntityExternalId(client.getExternalId()) //
-                .withClientId(clientId) //
-                .withEntityId(clientId) //
-                .build();
     }
 
     private CommandProcessingResult openSavingsAccount(final Client client, final DateTimeFormatter fmt) {
@@ -1300,44 +1093,6 @@ public class ClientWritePlatformServiceJpaRepositoryImpl implements ClientWriteP
                 .withEntityId(entityId) //
                 .withEntityExternalId(client.getExternalId()) //
                 .build();
-    }
-
-    private CustomerClass findCustomerClassWithNotFoundDetection(final Long customerClassId) {
-        return this.customerClassRepository.findById(customerClassId)
-                .orElseThrow(() -> new CustomerClassNotFoundException(customerClassId));
-    }
-
-    private void validateSubIndustryExists(final Long subIndustryId) {
-        if (!this.subIndustryRepository.existsById(subIndustryId)) {
-            final List<ApiParameterError> errors = new ArrayList<>();
-            new DataValidatorBuilder(errors).resource("client").parameter(ClientApiConstants.subIndustryIdParamName).value(subIndustryId)
-                    .failWithCode("not.found");
-            throw new PlatformApiDataValidationException(errors);
-        }
-    }
-
-    private void validateCustomerClassAssignment(final Long customerClassId, final Client client) {
-        this.customerClassClientValidationService.validateAssignment(findCustomerClassWithNotFoundDetection(customerClassId), client);
-    }
-
-    private void validateCustomerClassReadinessForActivation(final Client client) {
-        this.customerClassClientValidationService.validateReadinessForActivation(
-                findCustomerClassWithNotFoundDetection(client.getCustomerClassId()), client);
-    }
-
-    private Integer resolveGenderEnum(final Long genderId) {
-        if (genderId == null) {
-            return null;
-        }
-        final Integer genderEnum = genderId.intValue();
-        if (org.apache.fineract.portfolio.client.domain.Gender.fromInt(genderEnum) == null) {
-            throw new org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException(
-                    java.util.List.of(
-                            org.apache.fineract.infrastructure.core.data.ApiParameterError.parameterError(
-                                    "validation.msg.client.genderId.invalid", "Gender must be Male or Female.",
-                                    ClientApiConstants.genderIdParamName, genderId)));
-        }
-        return genderEnum;
     }
 
 }

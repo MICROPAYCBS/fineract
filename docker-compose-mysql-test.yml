@@ -67,7 +67,6 @@ services:
       - ./config/docker/env/fineract-common.env
       - ./config/docker/env/fineract-mysql.env
     environment:
-      FINERACT_DEFAULT_TENANTDB_TIMEZONE: Asia/Kolkata
       AWS_ACCESS_KEY_ID: localstack
       AWS_SECRET_ACCESS_KEY: localstack
       AWS_REGION: us-east-1

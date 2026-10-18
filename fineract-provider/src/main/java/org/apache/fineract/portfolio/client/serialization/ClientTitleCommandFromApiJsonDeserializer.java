@@ -48,8 +48,8 @@ public final class ClientTitleCommandFromApiJsonDeserializer {
     public static final String STATUS = "status";
     public static final String RESOURCE = "ClientTitle";
 
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(TITLE_CODE, TITLE_NAME, GENDER_ID, DISPLAY_ORDER,
-            STATUS));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
+            Arrays.asList(TITLE_CODE, TITLE_NAME, GENDER_ID, DISPLAY_ORDER, STATUS));
     private static final List<Integer> GENDER_IDS = List.of(Gender.MALE.getValue(), Gender.FEMALE.getValue());
     private static final List<String> STATUSES = List.of("ACTIVE", "INACTIVE");
 

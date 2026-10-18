@@ -116,8 +116,7 @@ public class IdentityTypeWritePlatformServiceImpl implements IdentityTypeWritePl
 
     private CodeValue resolveCustomerIdentifierCodeValue(final Long codeValueId) {
         final CodeValue codeValue = this.codeValueRepository.findOneWithNotFoundDetection(codeValueId);
-        if (codeValue.getCode() == null
-                || !IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME.equals(codeValue.getCode().getName())) {
+        if (codeValue.getCode() == null || !IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME.equals(codeValue.getCode().getName())) {
             final List<ApiParameterError> errors = new ArrayList<>();
             errors.add(ApiParameterError.parameterError("validation.msg.identity.type.invalid.code.value",
                     "Code value must belong to the `" + IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME + "` code list.",
@@ -144,8 +143,8 @@ public class IdentityTypeWritePlatformServiceImpl implements IdentityTypeWritePl
                     this.fromApiJsonHelper.extractStringNamed(IdentityTypeCommandFromApiJsonDeserializer.VALIDATION_REGEX, json));
         }
         if (json.has(IdentityTypeCommandFromApiJsonDeserializer.DISPLAY_ORDER)) {
-            identityType.setDisplayOrder(this.fromApiJsonHelper
-                    .extractIntegerSansLocaleNamed(IdentityTypeCommandFromApiJsonDeserializer.DISPLAY_ORDER, json));
+            identityType.setDisplayOrder(
+                    this.fromApiJsonHelper.extractIntegerSansLocaleNamed(IdentityTypeCommandFromApiJsonDeserializer.DISPLAY_ORDER, json));
         }
         if (create || json.has(IdentityTypeCommandFromApiJsonDeserializer.STATUS)) {
             final String status = this.fromApiJsonHelper.extractStringNamed(IdentityTypeCommandFromApiJsonDeserializer.STATUS, json);

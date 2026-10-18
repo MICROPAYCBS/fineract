@@ -66,10 +66,10 @@ import org.apache.fineract.infrastructure.security.service.SqlValidator;
 import org.apache.fineract.portfolio.accountdetails.data.AccountSummaryCollectionData;
 import org.apache.fineract.portfolio.accountdetails.service.AccountDetailsReadPlatformService;
 import org.apache.fineract.portfolio.client.data.ClientData;
-import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.service.ClientReadPlatformService;
 import org.apache.fineract.portfolio.client.service.ClientTemplateReadPlatformService;
+import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.loanaccount.guarantor.data.ObligeeData;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorReadPlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
@@ -200,7 +200,7 @@ public class ClientsApiResource {
     @Operation(summary = "Update a Client", operationId = "updateClient", description = "Note: You can update any of the basic attributes of a client (but not its associations) using this API.\n"
             + "\n"
             + "Changing the relationship between a client and its office is not supported through this API. An API specific to handling transfers of clients between offices is available for the same.\n"
-            + "\n"             + "The relationship between a client and a group must be removed through the Groups API. "
+            + "\n" + "The relationship between a client and a group must be removed through the Groups API. "
             + "Onboarding fields that can be changed include customerClassId, subIndustryId, titleId, nationalityCountryId, customerRiskProfileId, maritalStatusId, taxIdentificationNumber, alternativeMobileNo, and alternativeEmailAddress.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdResponse.class)))
@@ -488,7 +488,7 @@ public class ClientsApiResource {
                 clientData.setMaritalStatus(maritalStatus);
                 clientData.setCustomerClass(customerClass);
                 clientData.setTitleOptions(templateData.getTitleOptions());
-            clientData.setClientTitleOptions(templateData.getClientTitleOptions());
+                clientData.setClientTitleOptions(templateData.getClientTitleOptions());
                 clientData.setNationalityOptions(templateData.getNationalityOptions());
                 clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
                 clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());

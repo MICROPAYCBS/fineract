@@ -29,11 +29,13 @@ import org.apache.fineract.infrastructure.contentstore.service.ContentStoreServi
 import org.apache.fineract.infrastructure.documentmanagement.adapter.EntityImageIdAdapter;
 import org.apache.fineract.infrastructure.documentmanagement.data.DocumentContent;
 import org.apache.fineract.infrastructure.documentmanagement.domain.ImageRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @RequiredArgsConstructor
 @Service
+@ConditionalOnMissingBean(value = ImageReadPlatformService.class, ignored = ImageReadPlatformServiceImpl.class)
 public class ImageReadPlatformServiceImpl implements ImageReadPlatformService {
 
     @Deprecated

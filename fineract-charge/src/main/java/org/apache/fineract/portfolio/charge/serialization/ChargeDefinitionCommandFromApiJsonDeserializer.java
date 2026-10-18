@@ -78,12 +78,12 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
     /**
      * The parameters supported for this command.
      */
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(NAME, AMOUNT, LOCALE, CURRENCY_CODE,
-            CURRENCY_OPTIONS, CHARGE_APPLIES_TO, CHARGE_TIME_TYPE, CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY,
-            ACTIVE, CHARGE_PAYMENT_MODE, FEE_ON_MONTH_DAY, FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY,
-            ENABLE_FREE_WITHDRAWAL_CHARGE, FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID,
-            ENABLE_PAYMENT_TYPE, USE_CHARGE_TIERS, CHARGE_TIERS, ChargesApiConstants.glAccountIdParamName,
-            ChargesApiConstants.taxGroupIdParamName));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
+            Arrays.asList(NAME, AMOUNT, LOCALE, CURRENCY_CODE, CURRENCY_OPTIONS, CHARGE_APPLIES_TO, CHARGE_TIME_TYPE,
+                    CHARGE_CALCULATION_TYPE, CHARGE_CALCULATION_TYPE_OPTIONS, PENALTY, ACTIVE, CHARGE_PAYMENT_MODE, FEE_ON_MONTH_DAY,
+                    FEE_INTERVAL, MONTH_DAY_FORMAT, MIN_CAP, MAX_CAP, FEE_FREQUENCY, ENABLE_FREE_WITHDRAWAL_CHARGE,
+                    FREE_WITHDRAWAL_FREQUENCY, RESTART_COUNT_FREQUENCY, COUNT_FREQUENCY_TYPE, PAYMENT_TYPE_ID, ENABLE_PAYMENT_TYPE,
+                    USE_CHARGE_TIERS, CHARGE_TIERS, ChargesApiConstants.glAccountIdParamName, ChargesApiConstants.taxGroupIdParamName));
     private final FromJsonHelper fromApiJsonHelper;
     private final ChargeTierCommandParser chargeTierCommandParser;
 

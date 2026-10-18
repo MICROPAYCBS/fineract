@@ -78,8 +78,8 @@ public class UserSessionsApiResource {
 
         final AppUser user = appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
 
-        final List<UserSessionData> sessions = twoFactorService.fetchActiveSessionsForUser(user).stream()
-                .map(TFAccessToken::toSessionData).toList();
+        final List<UserSessionData> sessions = twoFactorService.fetchActiveSessionsForUser(user).stream().map(TFAccessToken::toSessionData)
+                .toList();
         return this.sessionDataSerializer.serialize(sessions);
     }
 

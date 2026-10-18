@@ -18,7 +18,14 @@
  */
 package org.apache.fineract.integrationtests.organization.teller;
 
+import com.google.gson.Gson;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
+import io.restassured.http.ContentType;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.fineract.client.models.GetOfficesResponse;
@@ -26,7 +33,6 @@ import org.apache.fineract.client.models.GetPermissionsResponse;
 import org.apache.fineract.client.models.GetTellersTellerIdCashiersCashierIdResponse;
 import org.apache.fineract.client.models.GetTellersTellerIdCashiersResponse;
 import org.apache.fineract.client.models.PostRolesRequest;
-import org.apache.fineract.client.models.PostTellersRequest;
 import org.apache.fineract.client.models.PostTellersTellerIdCashiersRequest;
 import org.apache.fineract.client.models.PostUsersRequest;
 import org.apache.fineract.client.models.PutRolesRoleIdPermissionsRequest;
@@ -69,11 +75,11 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
     void readMyCashierUserCanViewOwnCashier() {
         final CashierFixture fixture = createCashierFixture();
 
-        final FineractClient tellerClient = createUserClient(fixture.ownStaffId(), Map.of(TellerCashierAccessConstants.READ_MY_CASHIER_PERMISSION,
-                true));
+        final FineractClient tellerClient = createUserClient(fixture.ownStaffId(),
+                Map.of(TellerCashierAccessConstants.READ_MY_CASHIER_PERMISSION, true));
 
-        final GetTellersTellerIdCashiersCashierIdResponse cashier = ok(tellerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(),
-                fixture.ownCashierId()));
+        final GetTellersTellerIdCashiersCashierIdResponse cashier = ok(
+                tellerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(), fixture.ownCashierId()));
 
         assertThat(cashier.getId()).isEqualTo(fixture.ownCashierId());
         assertThat(cashier.getStaffId()).isEqualTo(fixture.ownStaffId());
@@ -83,11 +89,11 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
     void readMyCashierUserGets404ForOtherStaffCashier() {
         final CashierFixture fixture = createCashierFixture();
 
-        final FineractClient tellerClient = createUserClient(fixture.ownStaffId(), Map.of(TellerCashierAccessConstants.READ_MY_CASHIER_PERMISSION,
-                true));
+        final FineractClient tellerClient = createUserClient(fixture.ownStaffId(),
+                Map.of(TellerCashierAccessConstants.READ_MY_CASHIER_PERMISSION, true));
 
-        final Response<GetTellersTellerIdCashiersCashierIdResponse> response = Calls.executeU(tellerClient.tellers
-                .retrieveOneCashierForTeller(fixture.tellerId(), fixture.otherCashierId()));
+        final Response<GetTellersTellerIdCashiersCashierIdResponse> response = Calls
+                .executeU(tellerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(), fixture.otherCashierId()));
 
         assertThat(response.code()).isEqualTo(404);
     }
@@ -96,10 +102,11 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
     void readMyCashierUserSeesOnlyOwnCashierInList() {
         final CashierFixture fixture = createCashierFixture();
 
-        final FineractClient tellerClient = createUserClient(fixture.ownStaffId(), Map.of(TellerCashierAccessConstants.READ_MY_CASHIER_PERMISSION,
-                true));
+        final FineractClient tellerClient = createUserClient(fixture.ownStaffId(),
+                Map.of(TellerCashierAccessConstants.READ_MY_CASHIER_PERMISSION, true));
 
-        final GetTellersTellerIdCashiersResponse cashiers = ok(tellerClient.tellers.retrieveAllCashiersForTeller(fixture.tellerId(), null, null));
+        final GetTellersTellerIdCashiersResponse cashiers = ok(
+                tellerClient.tellers.retrieveAllCashiersForTeller(fixture.tellerId(), null, null));
 
         assertThat(cashiers.getCashiers()).hasSize(1);
         assertThat(cashiers.getCashiers().get(0).getId()).isEqualTo(fixture.ownCashierId());
@@ -113,10 +120,10 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
         final FineractClient managerClient = createUserClient(fixture.ownStaffId(),
                 Map.of(TellerCashierAccessConstants.READ_TELLER_PERMISSION, true));
 
-        final GetTellersTellerIdCashiersCashierIdResponse ownCashier = ok(managerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(),
-                fixture.ownCashierId()));
-        final GetTellersTellerIdCashiersCashierIdResponse otherCashier = ok(managerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(),
-                fixture.otherCashierId()));
+        final GetTellersTellerIdCashiersCashierIdResponse ownCashier = ok(
+                managerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(), fixture.ownCashierId()));
+        final GetTellersTellerIdCashiersCashierIdResponse otherCashier = ok(
+                managerClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(), fixture.otherCashierId()));
 
         assertThat(ownCashier.getId()).isEqualTo(fixture.ownCashierId());
         assertThat(otherCashier.getId()).isEqualTo(fixture.otherCashierId());
@@ -128,8 +135,8 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
 
         final FineractClient restrictedClient = createUserClient(fixture.ownStaffId(), Map.of("READ_CLIENT", true));
 
-        final Response<GetTellersTellerIdCashiersCashierIdResponse> response = Calls.executeU(restrictedClient.tellers
-                .retrieveOneCashierForTeller(fixture.tellerId(), fixture.ownCashierId()));
+        final Response<GetTellersTellerIdCashiersCashierIdResponse> response = Calls
+                .executeU(restrictedClient.tellers.retrieveOneCashierForTeller(fixture.tellerId(), fixture.ownCashierId()));
 
         assertThat(response.code()).isEqualTo(403);
     }
@@ -144,27 +151,45 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
     }
 
     private Long createStaff() {
-        return ok(fineractClient().staff.createStaff(new StaffCreateRequest().officeId(OFFICE_ID).firstname(Utils.randomFirstNameGenerator())
-                .lastname(Utils.randomLastNameGenerator()).joiningDate(TELLER_START.toString()).dateFormat(FineractClient.DATE_FORMAT)
-                .locale("en"))).getResourceId();
+        return ok(fineractClient().staff.createStaff(new StaffCreateRequest().officeId(OFFICE_ID)
+                .firstname(Utils.randomFirstNameGenerator()).lastname(Utils.randomLastNameGenerator()).joiningDate(TELLER_START.toString())
+                .dateFormat(FineractClient.DATE_FORMAT).locale("en"))).getResourceId();
     }
 
     private Long createTeller() {
-        return ok(fineractClient().tellers.createTeller(new PostTellersRequest().officeId(OFFICE_ID)
-                .name(Utils.uniqueRandomStringGenerator("Teller_", 8)).description("Cashier read test teller").startDate(TELLER_START)
-                .status(PostTellersRequest.StatusEnum.ACTIVE).dateFormat(FineractClient.DATE_FORMAT).locale("en"))).getResourceId();
+        // The generated client models PostTellersRequest.status as the TellerStatus enum ("ACTIVE") while the server
+        // reads it as the numeric code (300); post the JSON directly, as the upstream teller tests do.
+        final Map<String, Object> teller = new HashMap<>();
+        teller.put("officeId", OFFICE_ID);
+        teller.put("name", Utils.uniqueRandomStringGenerator("Teller_", 8));
+        teller.put("description", "Cashier read test teller");
+        teller.put("startDate", TELLER_START.toString());
+        teller.put("status", 300);
+        teller.put("dateFormat", FineractClient.DATE_FORMAT);
+        teller.put("locale", "en");
+        final RequestSpecification requestSpec = new RequestSpecBuilder().setContentType(ContentType.JSON)
+                .addHeader("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey()).build();
+        final ResponseSpecification responseSpec = new ResponseSpecBuilder().expectStatusCode(200).build();
+        final Object resourceId = CashierTransactionsHelper.createTellerWithJson(requestSpec, responseSpec, new Gson().toJson(teller))
+                .get("resourceId");
+        return ((Number) resourceId).longValue();
     }
 
     private Long createCashier(final Long tellerId, final Long staffId) {
-        return ok(fineractClient().tellers.createCashierForTeller(tellerId,
+        ok(fineractClient().tellers.createCashierForTeller(tellerId,
                 new PostTellersTellerIdCashiersRequest().staffId(staffId).startDate(CASHIER_START).endDate(CASHIER_END).isFullDay(true)
-                        .description("Cashier read test").dateFormat(FineractClient.DATE_FORMAT).locale("en")))
-                .getResourceId();
+                        .description("Cashier read test").dateFormat(FineractClient.DATE_FORMAT).locale("en")));
+        // POST /tellers/{id}/cashiers answers with resourceId = teller id and no subResourceId (the cashier id is only
+        // assigned at flush), so resolve the new cashier through the admin list instead.
+        final GetTellersTellerIdCashiersResponse cashiers = ok(fineractClient().tellers.retrieveAllCashiersForTeller(tellerId, null, null));
+        return cashiers.getCashiers().stream().filter(c -> staffId.equals(c.getStaffId())).map(c -> c.getId()).findFirst()
+                .orElseThrow(() -> new AssertionError("Cashier for staff " + staffId + " not found on teller " + tellerId));
     }
 
     private FineractClient createUserClient(final Long staffId, final Map<String, Boolean> permissions) {
         final String roleName = Utils.uniqueRandomStringGenerator("CASHIER_ROLE_", 10);
-        final Long roleId = ok(fineractClient().roles.createRole(new PostRolesRequest().name(roleName).description("Cashier read test role")))
+        final Long roleId = ok(
+                fineractClient().roles.createRole(new PostRolesRequest().name(roleName).description("Cashier read test role")))
                 .getResourceId();
 
         final PutRolesRoleIdPermissionsRequest permissionsRequest = new PutRolesRoleIdPermissionsRequest();
@@ -195,5 +220,6 @@ public class CashierSelfReadIntegrationTest extends IntegrationTest {
                 + "/fineract-provider/api/";
     }
 
-    private record CashierFixture(Long tellerId, Long ownStaffId, Long otherStaffId, Long ownCashierId, Long otherCashierId) {}
+    private record CashierFixture(Long tellerId, Long ownStaffId, Long otherStaffId, Long ownCashierId, Long otherCashierId) {
+    }
 }

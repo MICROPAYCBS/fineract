@@ -674,21 +674,21 @@ public class GlobalConfigurationHelper {
         defaults.add(enableCrossBranchServicing);
 
         HashMap<String, Object> enforceStructuredGlCodes = new HashMap<>();
-        enforceStructuredGlCodes.put("name", GlobalConfigurationConstants.ENFORCE_STRUCTURED_GL_CODES);
+        enforceStructuredGlCodes.put("name", MicropayConfigurationNames.ENFORCE_STRUCTURED_GL_CODES);
         enforceStructuredGlCodes.put("value", 0L);
         enforceStructuredGlCodes.put("enabled", false);
         enforceStructuredGlCodes.put("trapDoor", false);
         defaults.add(enforceStructuredGlCodes);
 
         HashMap<String, Object> structuredGlCodeLength = new HashMap<>();
-        structuredGlCodeLength.put("name", GlobalConfigurationConstants.STRUCTURED_GL_CODE_LENGTH);
+        structuredGlCodeLength.put("name", MicropayConfigurationNames.STRUCTURED_GL_CODE_LENGTH);
         structuredGlCodeLength.put("value", 6L);
         structuredGlCodeLength.put("enabled", true);
         structuredGlCodeLength.put("trapDoor", false);
         defaults.add(structuredGlCodeLength);
 
         HashMap<String, Object> enableOrganizationWideAuditView = new HashMap<>();
-        enableOrganizationWideAuditView.put("name", GlobalConfigurationConstants.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW);
+        enableOrganizationWideAuditView.put("name", MicropayConfigurationNames.ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW);
         enableOrganizationWideAuditView.put("value", 0L);
         enableOrganizationWideAuditView.put("enabled", false);
         enableOrganizationWideAuditView.put("trapDoor", false);

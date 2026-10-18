@@ -33,8 +33,8 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
-import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.paymenttype.domain.PaymentTypeRepository;
 import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink;
@@ -152,8 +152,8 @@ class SavingsProductPaymentChannelAssemblerTest {
                           "locale": "en"
                         }
                         """), "USD"));
-        assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
-                && e.getUserMessageGlobalisationCode().contains("must.not.exceed.daily")));
+        assertTrue(ex.getErrors().stream().anyMatch(
+                e -> e.getUserMessageGlobalisationCode() != null && e.getUserMessageGlobalisationCode().contains("must.not.exceed.daily")));
         assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
                 && e.getUserMessageGlobalisationCode().contains("multiple.account.transfer.channels")));
     }
@@ -193,8 +193,8 @@ class SavingsProductPaymentChannelAssemblerTest {
                           "locale": "en"
                         }
                         """), "USD"));
-        assertTrue(ex.getErrors().stream().anyMatch(e -> e.getUserMessageGlobalisationCode() != null
-                && e.getUserMessageGlobalisationCode().contains("duplicated")));
+        assertTrue(ex.getErrors().stream()
+                .anyMatch(e -> e.getUserMessageGlobalisationCode() != null && e.getUserMessageGlobalisationCode().contains("duplicated")));
     }
 
     @Test

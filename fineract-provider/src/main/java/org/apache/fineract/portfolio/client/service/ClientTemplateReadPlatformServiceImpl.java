@@ -44,15 +44,15 @@ import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientFamilyMembersData;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
-import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
-import org.apache.fineract.portfolio.customerclass.service.CustomerClassReadPlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 @Service
+@ConditionalOnMissingBean(value = ClientTemplateReadPlatformService.class, ignored = ClientTemplateReadPlatformServiceImpl.class)
 @RequiredArgsConstructor
 public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateReadPlatformService {
 
@@ -67,9 +67,6 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
     private final AddressReadPlatformService addressReadPlatformService;
     private final ClientFamilyMembersReadPlatformService clientFamilyMembersReadPlatformService;
     private final ConfigurationDomainService configurationDomainService;
-    private final CustomerClassReadPlatformService customerClassReadPlatformService;
-    private final ClientTitleReadPlatformService clientTitleReadPlatformService;
-    private final ContactTypeReadPlatformService contactTypeReadPlatformService;
 
     @Override
     public ClientData retrieveTemplate(final Long officeId, final boolean staffInSelectedOfficeOnly) {
@@ -101,22 +98,8 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         if (CollectionUtils.isEmpty(staffOptions)) {
             staffOptions = null;
         }
-        final List<CodeValueData> genderOptions = ClientEnumerations.gender(Gender.values()).stream()
-                .map(option -> CodeValueData.instance(option.getId(), option.getValue())).toList();
-
-        final List<org.apache.fineract.portfolio.client.data.ClientTitleData> clientTitleOptions = this.clientTitleReadPlatformService
-                .retrieveActiveForClientDropdown();
-        final List<CodeValueData> titleOptions = clientTitleOptions.stream()
-                .map(title -> CodeValueData.instance(title.getId(), title.getTitleName())).toList();
-
-        final List<CodeValueData> nationalityOptions = new ArrayList<>(
-                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.COUNTRY));
-
-        final List<CodeValueData> customerRiskProfileOptions = new ArrayList<>(
-                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CUSTOMER_RISK_PROFILE));
-
-        final List<CodeValueData> maritalStatusOptions = new ArrayList<>(
-                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.MARITAL_STATUS));
+        final List<CodeValueData> genderOptions = new ArrayList<>(
+                this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.GENDER));
 
         final List<CodeValueData> clientTypeOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode(ClientApiConstants.CLIENT_TYPE));
@@ -135,18 +118,10 @@ public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateRead
         final List<DatatableData> datatableTemplates = this.entityDatatableChecksReadService.retrieveTemplates(StatusEnum.CREATE.getValue(),
                 EntityTables.CLIENT.getName(), null);
 
-        final ClientData templateData = ClientData.template(defaultOfficeId, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), offices, staffOptions, null,
+        return ClientData.template(defaultOfficeId, LocalDate.now(DateUtils.getDateTimeZoneOfTenant()), offices, staffOptions, null,
                 genderOptions, savingsProductDatas, clientTypeOptions, clientClassificationOptions, clientNonPersonConstitutionOptions,
                 clientNonPersonMainBusinessLineOptions, clientLegalFormOptions, familyMemberOptions,
                 new ArrayList<AddressData>(Arrays.asList(address)), isAddressEnabled, datatableTemplates);
-        templateData.setTitleOptions(titleOptions);
-        templateData.setClientTitleOptions(clientTitleOptions);
-        templateData.setNationalityOptions(nationalityOptions);
-        templateData.setCustomerRiskProfileOptions(customerRiskProfileOptions);
-        templateData.setMaritalStatusOptions(maritalStatusOptions);
-        templateData.setCustomerClassOptions(this.customerClassReadPlatformService.retrieveActiveForClientDropdown());
-        templateData.setContactTypeOptions(this.contactTypeReadPlatformService.retrieveActiveForClientDropdown());
-        return templateData;
     }
 
     private Long defaultToUsersOfficeIfNull(final Long officeId) {

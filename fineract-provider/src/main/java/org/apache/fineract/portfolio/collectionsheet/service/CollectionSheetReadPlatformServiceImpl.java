@@ -82,7 +82,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @RequiredArgsConstructor
 @Service
-@ConditionalOnMissingBean(value = CollectionSheetReadPlatformService.class, ignored = CollectionSheetReadPlatformService.class)
+@ConditionalOnMissingBean(value = CollectionSheetReadPlatformService.class, ignored = CollectionSheetReadPlatformServiceImpl.class)
 public class CollectionSheetReadPlatformServiceImpl implements CollectionSheetReadPlatformService {
 
     private final PlatformSecurityContext context;
@@ -254,8 +254,8 @@ public class CollectionSheetReadPlatformServiceImpl implements CollectionSheetRe
                     .append("loandata.productShortName, loandata.productId, loandata.currencyCode, loandata.currencyDigits, loandata.inMultiplesOf, ")
                     .append("loandata.currencyName, loandata.currencyDisplaySymbol, loandata.currencyNameCode, loandata.disbursementAmount, ")
                     .append("loandata.principalDue, loandata.principalPaid, loandata.interestDue, loandata.interestPaid, loandata.feeDue, loandata.feePaid, ")
-                    .append("loandata.attendanceTypeId ")
-                    .append("ORDER BY loandata.groupId, ").append("loandata.clientId, ").append("loandata.loanId ");
+                    .append("loandata.attendanceTypeId ").append("ORDER BY loandata.groupId, ").append("loandata.clientId, ")
+                    .append("loandata.loanId ");
 
             return sql.toString();
 
@@ -521,7 +521,8 @@ public class CollectionSheetReadPlatformServiceImpl implements CollectionSheetRe
                     .append("and (cl.status_enum = 300 or (cl.status_enum = 600 and cl.closedon_date >= :dueDate)) ")
                     .append("GROUP BY gp.display_name, gp.id, cl.display_name, cl.id, sf.id, sf.display_name, gl.id, gl.level_name, sa.id, ")
                     .append("sa.account_no, sa.status_enum, sp.short_name, sp.id, sa.currency_code, sa.currency_digits, sa.currency_multiplesof, ")
-                    .append("rc." + sqlGenerator.escape("name") + ", rc.display_symbol, rc.internationalized_name_code, sa.deposit_type_enum ")
+                    .append("rc." + sqlGenerator.escape("name")
+                            + ", rc.display_symbol, rc.internationalized_name_code, sa.deposit_type_enum ")
                     .append("ORDER BY gp.id , cl.id , sa.id ");
 
             return sql.toString();
@@ -738,7 +739,8 @@ public class CollectionSheetReadPlatformServiceImpl implements CollectionSheetRe
             sb.append("LEFT JOIN m_office off ON off.id = cl.office_id AND off.hierarchy like :officeHierarchy ");
             sb.append("LEFT JOIN m_product_loan pl ON pl.id = ln.product_id ");
             sb.append("LEFT JOIN m_currency rc on rc." + sqlGenerator.escape("code") + " = ln.currency_code ");
-            sb.append("JOIN m_loan_repayment_schedule ls ON ls.loan_id = ln.id AND ls.completed_derived = false AND ls.duedate <= :dueDate ");
+            sb.append(
+                    "JOIN m_loan_repayment_schedule ls ON ls.loan_id = ln.id AND ls.completed_derived = false AND ls.duedate <= :dueDate ");
             sb.append("where ");
             if (checkForOfficeId) {
                 sb.append("off.id = :officeId and ");
@@ -747,16 +749,19 @@ public class CollectionSheetReadPlatformServiceImpl implements CollectionSheetRe
                 sb.append("ln.loan_officer_id = :staffId and ");
             }
             sb.append("(ln.loan_status_id = 300) ");
-            sb.append("and ln.group_id is null GROUP BY cl.display_name, cl.id, ln.id, ln.account_no, ln.loan_status_id, pl.short_name, ln.product_id, ");
+            sb.append(
+                    "and ln.group_id is null GROUP BY cl.display_name, cl.id, ln.id, ln.account_no, ln.loan_status_id, pl.short_name, ln.product_id, ");
             sb.append("ln.currency_code, ln.currency_digits, ln.currency_multiplesof, rc." + sqlGenerator.escape("name")
                     + ", rc.display_symbol, rc.internationalized_name_code, ln.principal_amount, ln.principal_repaid_derived, ");
             sb.append("ln.interest_repaid_derived, ln.fee_charges_repaid_derived ORDER BY cl.id , ln.id ) loandata ");
             sb.append(
                     "LEFT JOIN m_loan_charge lc ON lc.loan_id = loandata.loanId AND lc.is_paid_derived = false AND lc.is_active = true AND ( lc.due_for_collection_as_of_date  <= :dueDate OR lc.charge_time_enum = 1) ");
             sb.append("GROUP BY loandata.clientName, loandata.clientId, loandata.loanId, loandata.accountId, loandata.accountStatusId, ");
-            sb.append("loandata.productShortName, loandata.productId, loandata.currencyCode, loandata.currencyDigits, loandata.inMultiplesOf, ");
+            sb.append(
+                    "loandata.productShortName, loandata.productId, loandata.currencyCode, loandata.currencyDigits, loandata.inMultiplesOf, ");
             sb.append("loandata.currencyName, loandata.currencyDisplaySymbol, loandata.currencyNameCode, loandata.disbursementAmount, ");
-            sb.append("loandata.principalDue, loandata.principalPaid, loandata.interestDue, loandata.interestPaid, loandata.feeDue, loandata.feePaid ");
+            sb.append(
+                    "loandata.principalDue, loandata.principalPaid, loandata.interestDue, loandata.interestPaid, loandata.feeDue, loandata.feePaid ");
             sb.append("ORDER BY loandata.clientId, loandata.loanId ");
 
             sql = sb.toString();
@@ -840,7 +845,8 @@ public class CollectionSheetReadPlatformServiceImpl implements CollectionSheetRe
             if (checkforStaffId) {
                 sb.append("and sa.field_officer_id = :staffId ");
             }
-            sb.append("GROUP BY cl.display_name, cl.id, sa.deposit_type_enum, sa.id, sa.account_no, sa.status_enum, sp.short_name, sp.id, ");
+            sb.append(
+                    "GROUP BY cl.display_name, cl.id, sa.deposit_type_enum, sa.id, sa.account_no, sa.status_enum, sp.short_name, sp.id, ");
             sb.append("sa.currency_code, sa.currency_digits, sa.currency_multiplesof, rc." + sqlGenerator.escape("name")
                     + ", rc.display_symbol, rc.internationalized_name_code ORDER BY cl.id , sa.id ");
 

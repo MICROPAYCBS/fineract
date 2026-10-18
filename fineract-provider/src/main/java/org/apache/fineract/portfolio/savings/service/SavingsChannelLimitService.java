@@ -95,7 +95,8 @@ public class SavingsChannelLimitService {
         }
         final SavingsChannelLimitValues customerValues = customerLimit.map(SavingsAccountChannelLimit::liveValues)
                 .orElse(SavingsChannelLimitValues.none());
-        final SavingsChannelLimitValues effective = SavingsChannelLimitRules.effective(customerValues, channel.limitsFor(command.direction()));
+        final SavingsChannelLimitValues effective = SavingsChannelLimitRules.effective(customerValues,
+                channel.limitsFor(command.direction()));
         final boolean check = !bypass && !effective.isUnlimited();
 
         final BigDecimal amount = command.amount();
@@ -211,7 +212,8 @@ public class SavingsChannelLimitService {
         if (existing.isPresent() && existing.get().applyPendingIfDue(now)) {
             this.limitRepository.save(existing.get());
         }
-        final SavingsChannelLimitValues current = existing.map(SavingsAccountChannelLimit::liveValues).orElse(SavingsChannelLimitValues.none());
+        final SavingsChannelLimitValues current = existing.map(SavingsAccountChannelLimit::liveValues)
+                .orElse(SavingsChannelLimitValues.none());
         final SavingsChannelLimitValues proposed = merge(current, command);
         final List<ApiParameterError> errors = new ArrayList<>();
         final DataValidatorBuilder validator = new DataValidatorBuilder(errors).resource(LIMIT_RESOURCE);
@@ -228,8 +230,8 @@ public class SavingsChannelLimitService {
         }
 
         final Long userId = user == null ? null : user.getId();
-        final SavingsAccountChannelLimit row = existing.orElseGet(
-                () -> SavingsAccountChannelLimit.create(account, channel, direction, userId, now));
+        final SavingsAccountChannelLimit row = existing
+                .orElseGet(() -> SavingsAccountChannelLimit.create(account, channel, direction, userId, now));
         final int coolingHours = this.configurationDomainService.retrieveChannelLimitIncreaseCoolingHours();
         if (selfService) {
             row.applySelfService(proposed, coolingHours, userId, now);
@@ -237,8 +239,8 @@ public class SavingsChannelLimitService {
             row.replaceImmediately(proposed, userId, now);
         }
         this.limitRepository.saveAndFlush(row);
-        return new CommandProcessingResultBuilder().withEntityId(row.getId()).withSavingsId(savingsAccountId).withClientId(account.clientId())
-                .withOfficeId(account.officeId()).withGroupId(account.groupId()).build();
+        return new CommandProcessingResultBuilder().withEntityId(row.getId()).withSavingsId(savingsAccountId)
+                .withClientId(account.clientId()).withOfficeId(account.officeId()).withGroupId(account.groupId()).build();
     }
 
     private SavingsAccountChannelLimitData toData(final SavingsAccount account, final SavingsProductPaymentChannel channel,
@@ -249,7 +251,8 @@ public class SavingsChannelLimitService {
             this.limitRepository.save(customerLimit.get());
         }
         final SavingsChannelLimitValues ceiling = channel.limitsFor(direction);
-        final SavingsChannelLimitValues live = customerLimit.map(SavingsAccountChannelLimit::liveValues).orElse(SavingsChannelLimitValues.none());
+        final SavingsChannelLimitValues live = customerLimit.map(SavingsAccountChannelLimit::liveValues)
+                .orElse(SavingsChannelLimitValues.none());
         final SavingsChannelLimitValues pending = customerLimit.map(SavingsAccountChannelLimit::pendingValues).orElse(null);
         final SavingsChannelLimitValues effective = SavingsChannelLimitRules.effective(live, ceiling);
         final SavingsAccountChannelLimitUsage day = this.usageRepository
@@ -271,7 +274,8 @@ public class SavingsChannelLimitService {
                 .ceilingCountPerDay(ceiling.maxCountPerDay()).ceilingCountPerMonth(ceiling.maxCountPerMonth()).maxPerTxn(live.maxPerTxn())
                 .maxPerDay(live.maxPerDay()).maxPerMonth(live.maxPerMonth()).maxCountPerDay(live.maxCountPerDay())
                 .maxCountPerMonth(live.maxCountPerMonth()).pendingMaxPerTxn(pending == null ? null : pending.maxPerTxn())
-                .pendingMaxPerDay(pending == null ? null : pending.maxPerDay()).pendingMaxPerMonth(pending == null ? null : pending.maxPerMonth())
+                .pendingMaxPerDay(pending == null ? null : pending.maxPerDay())
+                .pendingMaxPerMonth(pending == null ? null : pending.maxPerMonth())
                 .pendingMaxCountPerDay(pending == null ? null : pending.maxCountPerDay())
                 .pendingMaxCountPerMonth(pending == null ? null : pending.maxCountPerMonth())
                 .pendingEffectiveOn(row == null ? null : row.getPendingEffectiveOn()).effectivePerTxn(effective.maxPerTxn())

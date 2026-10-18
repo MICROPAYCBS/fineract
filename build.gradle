@@ -58,8 +58,7 @@ buildscript {
                 'fineract-e2e-tests-runner',
                 'fineract-progressive-loan',
                 'fineract-progressive-loan-embeddable-schedule-generator',
-                'fineract-working-capital-loan',
-                'fineract-workflow'
+                'fineract-working-capital-loan'
             ].contains(it.name)
         }
         fineractPublishProjects = subprojects.findAll{
@@ -89,8 +88,7 @@ buildscript {
                 'fineract-document',
                 'fineract-progressive-loan',
                 'fineract-progressive-loan-embeddable-schedule-generator',
-                'fineract-working-capital-loan',
-                'fineract-workflow'
+                'fineract-working-capital-loan'
             ].contains(it.name)
         }
         npmRepository = 'https://npm.pkg.github.com'
@@ -142,8 +140,7 @@ apply from: "${rootDir}/buildSrc/src/main/groovy/org.apache.fineract.release.gra
 
 description = '''\
 Run as:
-gradle clean bootRun
-gradle quickBootJar'''
+gradle clean bootRun'''
 
 version = '0.0.0-SNAPSHOT'
 
@@ -394,8 +391,6 @@ file("${rootDir}/custom").eachDir { companyDir ->
         }
     }
 }
-
-apply from: "${rootDir}/quick-build.gradle"
 
 configure(project.fineractJavaProjects) {
     // NOTE: order matters!

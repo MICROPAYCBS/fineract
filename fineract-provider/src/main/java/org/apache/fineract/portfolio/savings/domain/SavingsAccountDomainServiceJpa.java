@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -36,28 +35,23 @@ import org.apache.fineract.infrastructure.event.business.domain.savings.transact
 import org.apache.fineract.infrastructure.event.business.domain.savings.transaction.SavingsDepositBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.savings.transaction.SavingsWithdrawalBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
-import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
-import org.apache.fineract.organisation.office.domain.Office;
-import org.apache.fineract.organisation.teller.data.CashierTransactionDataValidator;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountTransactionDTO;
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
-import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitCommand;
-import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitHold;
-import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitService;
-import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = SavingsAccountDomainService.class, ignored = SavingsAccountDomainServiceJpa.class)
 public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainService {
 
     private final PlatformSecurityContext context;
@@ -68,9 +62,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     private final ConfigurationDomainService configurationDomainService;
     private final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository;
     private final BusinessEventNotifierService businessEventNotifierService;
-    private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
-    private final CashierTransactionDataValidator cashierTransactionDataValidator;
-    private final SavingsChannelLimitService savingsChannelLimitService;
 
     @Autowired
     public SavingsAccountDomainServiceJpa(final SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -79,10 +70,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final JournalEntryWritePlatformService journalEntryWritePlatformService,
             final ConfigurationDomainService configurationDomainService, final PlatformSecurityContext context,
             final DepositAccountOnHoldTransactionRepository depositAccountOnHoldTransactionRepository,
-            final BusinessEventNotifierService businessEventNotifierService,
-            final CrossBranchTransactionAccessService crossBranchTransactionAccessService,
-            final CashierTransactionDataValidator cashierTransactionDataValidator,
-            final SavingsChannelLimitService savingsChannelLimitService) {
+            final BusinessEventNotifierService businessEventNotifierService) {
         this.savingsAccountRepository = savingsAccountRepository;
         this.savingsAccountTransactionRepository = savingsAccountTransactionRepository;
         this.applicationCurrencyRepositoryWrapper = applicationCurrencyRepositoryWrapper;
@@ -91,9 +79,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         this.context = context;
         this.depositAccountOnHoldTransactionRepository = depositAccountOnHoldTransactionRepository;
         this.businessEventNotifierService = businessEventNotifierService;
-        this.crossBranchTransactionAccessService = crossBranchTransactionAccessService;
-        this.cashierTransactionDataValidator = cashierTransactionDataValidator;
-        this.savingsChannelLimitService = savingsChannelLimitService;
     }
 
     @Transactional
@@ -101,35 +86,9 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
     public SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill) {
-        return handleWithdrawal(account, fmt, transactionDate, transactionAmount, paymentDetail, transactionBooleanValues,
-                backdatedTxnsAllowedTill, SavingsAccountTransactionType.WITHDRAWAL, null);
-    }
-
-    @Transactional
-    @Override
-    public SavingsAccountTransaction handleSavingsToGl(final SavingsAccount account, final DateTimeFormatter fmt,
-            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final SavingsTransactionBooleanValues transactionBooleanValues, final GLAccount glAccount,
-            final boolean backdatedTxnsAllowedTill) {
-        return handleWithdrawal(account, fmt, transactionDate, transactionAmount, paymentDetail, transactionBooleanValues,
-                backdatedTxnsAllowedTill, SavingsAccountTransactionType.SAVINGS_TO_GL, glAccount);
-    }
-
-    private SavingsAccountTransaction handleWithdrawal(final SavingsAccount account, final DateTimeFormatter fmt,
-            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final SavingsTransactionBooleanValues transactionBooleanValues, final boolean backdatedTxnsAllowedTill,
-            final SavingsAccountTransactionType transactionType, final GLAccount glAccount) {
-        final AppUser currentUser = context.authenticatedUser();
-        if (!transactionBooleanValues.isAccountTransfer() && transactionBooleanValues.isRegularTransaction()) {
-            this.cashierTransactionDataValidator.validateCashOut(currentUser, paymentDetail, account.getCurrency().getCode(),
-                    transactionAmount);
-        }
+        context.authenticatedUser();
         account.validateForAccountBlock();
         account.validateForDebitBlock();
-        final SavingsChannelLimitHold channelLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,
-                transactionDate, transactionAmount, paymentDetail, SavingsChannelLimitDirection.DEBIT,
-                transactionBooleanValues.isAccountTransfer(), transactionBooleanValues.isRegularTransaction(),
-                transactionBooleanValues.isInterestTransfer()));
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
                 .isSavingsInterestPostingAtCurrentPeriodEnd();
         final Long relaxingDaysConfigForPivotDate = this.configurationDomainService.retrieveRelaxingDaysConfigForPivotDate();
@@ -153,11 +112,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
                 paymentDetail, null, accountType);
         UUID refNo = UUID.randomUUID();
         final SavingsAccountTransaction withdrawal = account.withdraw(transactionDTO, transactionBooleanValues.isApplyWithdrawFee(),
-                backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString(), transactionType);
-        if (glAccount != null) {
-            withdrawal.setGlAccount(glAccount);
-        }
-        stampTransactionOffice(withdrawal, account.office());
+                backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo.toString());
         final MathContext mc = MathContext.DECIMAL64;
 
         final LocalDate today = DateUtils.getBusinessLocalDate();
@@ -181,7 +136,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
                 depositAccountOnHoldTransactions, backdatedTxnsAllowedTill, transactionBooleanValues.isForceWithdrawal());
 
         saveTransactionToGenerateTransactionId(withdrawal);
-        this.savingsChannelLimitService.record(channelLimitHold, withdrawal.getId());
         if (backdatedTxnsAllowedTill) {
             // Update transactions separately
             saveUpdatedTransactionsOfSavingsAccount(account.getSavingsAccountTransactionsWithPivotConfig());
@@ -206,30 +160,16 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
             final boolean isAccountTransfer, final boolean isRegularTransaction, final boolean backdatedTxnsAllowedTill) {
         final SavingsAccountTransactionType savingsAccountTransactionType = SavingsAccountTransactionType.DEPOSIT;
         return handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction,
-                savingsAccountTransactionType, null, backdatedTxnsAllowedTill);
-    }
-
-    @Transactional
-    @Override
-    public SavingsAccountTransaction handleGlToSavings(final SavingsAccount account, final DateTimeFormatter fmt,
-            final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
-            final GLAccount glAccount, final boolean backdatedTxnsAllowedTill) {
-        return handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail, false, true,
-                SavingsAccountTransactionType.GL_TO_SAVINGS, glAccount, backdatedTxnsAllowedTill);
+                savingsAccountTransactionType, backdatedTxnsAllowedTill);
     }
 
     private SavingsAccountTransaction handleDeposit(final SavingsAccount account, final DateTimeFormatter fmt,
             final LocalDate transactionDate, final BigDecimal transactionAmount, final PaymentDetail paymentDetail,
             final boolean isAccountTransfer, final boolean isRegularTransaction,
-            final SavingsAccountTransactionType savingsAccountTransactionType, final GLAccount glAccount,
-            final boolean backdatedTxnsAllowedTill) {
-        final AppUser currentUser = context.authenticatedUser();
-        validateCashierForCashTransactionIfEnabled(currentUser, paymentDetail, isAccountTransfer, isRegularTransaction);
+            final SavingsAccountTransactionType savingsAccountTransactionType, final boolean backdatedTxnsAllowedTill) {
+        context.authenticatedUser();
         account.validateForAccountBlock();
         account.validateForCreditBlock();
-        final SavingsChannelLimitHold channelLimitHold = this.savingsChannelLimitService.authorize(new SavingsChannelLimitCommand(account,
-                transactionDate, transactionAmount, paymentDetail, SavingsChannelLimitDirection.CREDIT, isAccountTransfer,
-                isRegularTransaction, false));
 
         // Global configurations
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -255,10 +195,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         UUID refNo = UUID.randomUUID();
         final SavingsAccountTransaction deposit = account.deposit(transactionDTO, savingsAccountTransactionType, backdatedTxnsAllowedTill,
                 relaxingDaysConfigForPivotDate, refNo.toString());
-        if (glAccount != null) {
-            deposit.setGlAccount(glAccount);
-        }
-        stampTransactionOffice(deposit, account.office());
         final LocalDate postInterestOnDate = null;
         final MathContext mc = MathContext.DECIMAL64;
 
@@ -273,7 +209,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         }
 
         saveTransactionToGenerateTransactionId(deposit);
-        this.savingsChannelLimitService.record(channelLimitHold, deposit.getId());
 
         if (backdatedTxnsAllowedTill) {
             // Update transactions separately
@@ -304,7 +239,7 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         final boolean isRegularTransaction = true;
         final SavingsAccountTransactionType savingsAccountTransactionType = SavingsAccountTransactionType.DIVIDEND_PAYOUT;
         return handleDeposit(account, fmt, transactionDate, transactionAmount, paymentDetail, isAccountTransfer, isRegularTransaction,
-                savingsAccountTransactionType, null, backdatedTxnsAllowedTill);
+                savingsAccountTransactionType, backdatedTxnsAllowedTill);
     }
 
     private void updateExistingTransactionsDetails(SavingsAccount account, Set<Long> existingTransactionIds,
@@ -334,10 +269,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         final Map<String, Object> accountingBridgeData = savingsAccount.deriveAccountingBridgeData(savingsAccount.getCurrency().getCode(),
                 existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, backdatedTxnsAllowedTill);
         this.journalEntryWritePlatformService.createJournalEntriesForSavings(accountingBridgeData);
-    }
-
-    private void stampTransactionOffice(final SavingsAccountTransaction transaction, final Office homeOffice) {
-        this.crossBranchTransactionAccessService.resolveTransactionOffice(homeOffice).ifPresent(transaction::setTransactionOffice);
     }
 
     @Transactional
@@ -371,7 +302,6 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
 
         Set<SavingsAccountChargePaidBy> chargePaidBySet = null;
         for (SavingsAccountTransaction savingsAccountTransaction : savingsAccountTransactions) {
-            this.savingsChannelLimitService.release(savingsAccountTransaction.getId());
             reversal = SavingsAccountTransaction.reversal(savingsAccountTransaction);
             chargePaidBySet = savingsAccountTransaction.getSavingsAccountChargesPaid();
             reversal.getSavingsAccountChargesPaid().addAll(chargePaidBySet);
@@ -406,13 +336,5 @@ public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainServi
         postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, false, backdatedTxnsAllowedTill);
 
         return reversal;
-    }
-
-    private void validateCashierForCashTransactionIfEnabled(final AppUser user, final PaymentDetail paymentDetail,
-            final boolean isAccountTransfer, final boolean isRegularTransaction) {
-        if (isAccountTransfer || !isRegularTransaction) {
-            return;
-        }
-        this.cashierTransactionDataValidator.validateActiveCashierRequiredForCashTransaction(user, paymentDetail);
     }
 }

@@ -59,6 +59,7 @@ import org.apache.fineract.integrationtests.common.error.ErrorResponse;
 import org.apache.fineract.integrationtests.common.loans.LoanAccountLockHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
+import org.apache.fineract.integrationtests.common.organisation.CurrencyHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsAccountHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsProductHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsStatusChecker;
@@ -70,6 +71,7 @@ import org.apache.http.HttpStatus;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -78,6 +80,12 @@ import org.slf4j.LoggerFactory;
 public class BatchApiTest extends BaseLoanIntegrationTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(BatchApiTest.class);
+
+    @BeforeAll
+    static void ensureChargeCurrenciesSelected() {
+        // Micropay only exposes charges in the tenant's selected currencies; ChargesHelper fixtures use USD.
+        CurrencyHelper.ensureSelected("USD");
+    }
 
     /**
      * The response specification

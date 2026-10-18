@@ -188,7 +188,8 @@ public class ImagesApiResource {
     @ApiResponse(responseCode = "400", description = "The file is missing or fails the upload checks.")
     @ApiResponse(responseCode = "403", description = "The user lacks permission to create the image.")
     @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
-    public ImageCreateResponse createImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
+    public ImageCreateResponse createImage(
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, @HeaderParam(CONTENT_LENGTH) final Long fileSize,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final InputStream is,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final FormDataContentDisposition fileDetails,
@@ -216,7 +217,8 @@ public class ImagesApiResource {
     @ApiResponse(responseCode = "400", description = "The body is missing or is not a data URL.")
     @ApiResponse(responseCode = "403", description = "The user lacks permission to create the image.")
     @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
-    public ImageCreateResponse createImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
+    public ImageCreateResponse createImage(
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, final InputStream body) {
 
         requireNonNull(body, "Missing input stream");
@@ -242,7 +244,8 @@ public class ImagesApiResource {
     @ApiResponse(responseCode = "400", description = "The file is missing or fails the upload checks.")
     @ApiResponse(responseCode = "403", description = "The user lacks permission to update the image.")
     @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
-    public ImageCreateResponse updateImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
+    public ImageCreateResponse updateImage(
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, @HeaderParam(CONTENT_LENGTH) final Long fileSize,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final InputStream inputStream,
             @FormDataParam(DOCUMENT_API_PARAM_FILE) final FormDataContentDisposition fileDetails,
@@ -257,7 +260,8 @@ public class ImagesApiResource {
     @ApiResponse(responseCode = "400", description = "The body is missing or is not a data URL.")
     @ApiResponse(responseCode = "403", description = "The user lacks permission to update the image.")
     @ApiResponse(responseCode = "404", description = "No client or staff member with this id.")
-    public ImageCreateResponse updateImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
+    public ImageCreateResponse updateImage(
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityName,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId, final InputStream body) {
         return createImage(entityName, entityId, body);
     }
@@ -267,7 +271,8 @@ public class ImagesApiResource {
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ImageDeleteResponse.class)))
     @ApiResponse(responseCode = "403", description = "The user lacks permission to delete the image.")
     @ApiResponse(responseCode = "404", description = "No image, or no client or staff member with this id.")
-    public ImageDeleteResponse deleteImage(@PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
+    public ImageDeleteResponse deleteImage(
+            @PathParam(DOCUMENT_API_PARAM_ENTITY_TYPE) @Parameter(description = "clients or staff", example = "clients") final String entityType,
             @PathParam(DOCUMENT_API_PARAM_ENTITY_ID) final Long entityId) {
 
         final var command = new ImageDeleteCommand();

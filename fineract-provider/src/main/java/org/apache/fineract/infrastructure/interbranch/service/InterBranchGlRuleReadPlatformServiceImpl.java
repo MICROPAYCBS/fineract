@@ -45,10 +45,8 @@ public class InterBranchGlRuleReadPlatformServiceImpl implements InterBranchGlRu
             return " r.id AS id, r.left_office_id AS leftOfficeId, lo.name AS leftOfficeName,"
                     + " r.right_office_id AS rightOfficeId, ro.name AS rightOfficeName,"
                     + " r.gl_account_id AS glAccountId, gl.name AS glAccountName, gl.gl_code AS glAccountCode,"
-                    + " r.currency_code AS currencyCode, r.status AS status"
-                    + " FROM m_inter_branch_gl_rule r"
-                    + " INNER JOIN acc_gl_account gl ON r.gl_account_id = gl.id"
-                    + " LEFT JOIN m_office lo ON r.left_office_id = lo.id"
+                    + " r.currency_code AS currencyCode, r.status AS status" + " FROM m_inter_branch_gl_rule r"
+                    + " INNER JOIN acc_gl_account gl ON r.gl_account_id = gl.id" + " LEFT JOIN m_office lo ON r.left_office_id = lo.id"
                     + " LEFT JOIN m_office ro ON r.right_office_id = ro.id";
         }
 

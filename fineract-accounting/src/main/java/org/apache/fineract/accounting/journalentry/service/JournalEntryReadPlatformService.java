@@ -31,7 +31,15 @@ public interface JournalEntryReadPlatformService {
 
     Page<JournalEntryData> retrieveAll(SearchParameters searchParameters, Long glAccountId, Boolean onlyManualEntries, LocalDate fromDate,
             LocalDate toDate, LocalDate submittedOnDateFrom, LocalDate submittedOnDateTo, String transactionId, Integer entityType,
-            Long departmentId, JournalEntryAssociationParametersData associationParametersData);
+            JournalEntryAssociationParametersData associationParametersData);
+
+    /** Micropay overload with a department filter; the Micropay service module implements it. */
+    default Page<JournalEntryData> retrieveAll(SearchParameters searchParameters, Long glAccountId, Boolean onlyManualEntries,
+            LocalDate fromDate, LocalDate toDate, LocalDate submittedOnDateFrom, LocalDate submittedOnDateTo, String transactionId,
+            Integer entityType, Long departmentId, JournalEntryAssociationParametersData associationParametersData) {
+        return retrieveAll(searchParameters, glAccountId, onlyManualEntries, fromDate, toDate, submittedOnDateFrom, submittedOnDateTo,
+                transactionId, entityType, associationParametersData);
+    }
 
     OfficeOpeningBalancesData retrieveOfficeOpeningBalances(Long officeId, String currencyCode);
 

@@ -1,0 +1,96 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
+// Development entry point for the Micropay distribution.
+//
+//   ./gradlew :custom:micropay:app:boot:devRun
+//
+// Same classpath as bootRun (fineract-provider + every custom/micropay/** module) but with tests and
+// quality checks disabled, mirroring :fineract-provider:devRun.
+
+// Script plugins cannot resolve the Boot plugin classes by name; reuse the type of the existing bootRun task
+// (unwrapping Gradle's generated "_Decorated" subclass).
+def bootRunType = bootRun.class
+while (bootRunType.simpleName.endsWith('_Decorated')) {
+    bootRunType = bootRunType.superclass
+}
+tasks.register('devRun', bootRunType) {
+    description = 'Runs the Micropay application quickly for development by skipping quality checks'
+    group = 'Application'
+
+    classpath = bootRun.classpath
+    mainClass = bootRun.mainClass
+    jvmArgs = bootRun.jvmArgs
+
+    doFirst {
+        println 'Running Micropay (fineract-provider + custom/micropay/**) in development mode - quality checks are disabled'
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    if (!graph.allTasks.any { it.name == 'devRun' && it.project.path == project.path }) {
+        return
+    }
+    rootProject.fineractJavaProjects.each { subproject ->
+        subproject.tasks.matching { task ->
+            task.name in fineractQuickBuildSkippedTaskNames ||
+                    task.name.startsWith('spotless') ||
+                    task.name.startsWith('checkstyle') ||
+                    task.name.startsWith('spotbugs')
+        }.configureEach {
+            enabled = false
+        }
+        subproject.tasks.withType(JavaCompile).configureEach {
+            options.errorprone.enabled = false
+        }
+    }
+}
+
+// Guard: running the upstream provider directly starts Fineract WITHOUT the Micropay modules. Every moved
+// endpoint (customer classes, sectors, job sequences, workflows, GL enquiry, ...) answers 404 and every
+// Micropay service replacement is silently absent. Fail fast unless the caller explicitly asks for
+// upstream-only Fineract with -PupstreamOnly.
+def upstreamOnly = rootProject.hasProperty('upstreamOnly')
+def guardMessage = { String taskPath ->
+    "${taskPath} starts upstream Fineract without the custom/micropay/** modules. " +
+            "Use :custom:micropay:app:boot:bootRun or :custom:micropay:app:boot:devRun instead, " +
+            "or pass -PupstreamOnly to run upstream-only Fineract on purpose."
+}
+project(':fineract-provider').tasks.matching { it.name in ['bootRun', 'devRun'] }.configureEach { guarded ->
+    guarded.doFirst {
+        if (!upstreamOnly) {
+            throw new GradleException(guardMessage(guarded.path))
+        }
+        logger.warn("{}: -PupstreamOnly set, starting upstream-only Fineract (no Micropay modules)", guarded.path)
+    }
+}
+
+// An unqualified `gradlew devRun` / `gradlew bootRun` from the repo root matches the task in BOTH projects and
+// Gradle schedules the provider one first. In that case the caller clearly wants the Micropay server: skip the
+// provider task instead of failing, and let :custom:micropay:app:boot:<task> run.
+gradle.taskGraph.whenReady { graph ->
+    ['bootRun', 'devRun'].each { name ->
+        def bootTask = graph.allTasks.find { it.name == name && it.project.path == project.path }
+        def providerTask = graph.allTasks.find { it.name == name && it.project.path == ':fineract-provider' }
+        if (bootTask != null && providerTask != null && !upstreamOnly) {
+            providerTask.enabled = false
+            logger.lifecycle("{} skipped: {} runs the Micropay distribution instead", providerTask.path, bootTask.path)
+        }
+    }
+}

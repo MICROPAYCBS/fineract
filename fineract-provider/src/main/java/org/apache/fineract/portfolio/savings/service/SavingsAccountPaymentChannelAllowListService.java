@@ -42,10 +42,10 @@ import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannel
 import org.springframework.stereotype.Service;
 
 /**
- * When a savings product has a non-empty active payment-channel catalog, deposits/withdrawals may only use
- * non-premium catalogued channels or premium channels with an ACTIVE account subscription. A channel that is inactive
- * on the product, or blocked on the account, is refused. An inactive payment type is refused even when the catalog is
- * empty. Empty catalog otherwise means all payment types are allowed (legacy behaviour).
+ * When a savings product has a non-empty active payment-channel catalog, deposits/withdrawals may only use non-premium
+ * catalogued channels or premium channels with an ACTIVE account subscription. A channel that is inactive on the
+ * product, or blocked on the account, is refused. An inactive payment type is refused even when the catalog is empty.
+ * Empty catalog otherwise means all payment types are allowed (legacy behaviour).
  */
 @Service
 @RequiredArgsConstructor

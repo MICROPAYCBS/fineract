@@ -784,8 +784,8 @@ public final class LoanProductDataValidator {
             baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING).value(enableAccrualActivityPosting)
                     .ignoreIfNull().validateForBooleanValue();
             if (Boolean.TRUE.equals(enableAccrualActivityPosting)) {
-                baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING).value(enableAccrualActivityPosting)
-                        .failWithCode("should be false for non accrual accounting");
+                baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING)
+                        .value(enableAccrualActivityPosting).failWithCode("should be false for non accrual accounting");
             }
         }
 
@@ -1010,7 +1010,8 @@ public final class LoanProductDataValidator {
                 return; // null = reset to defaults
             }
             if (!overrides.isJsonObject()) {
-                baseDataValidator.reset().parameter(LoanProductConstants.allowAttributeOverridesParamName).failWithCode("must.be.an.object");
+                baseDataValidator.reset().parameter(LoanProductConstants.allowAttributeOverridesParamName)
+                        .failWithCode("must.be.an.object");
                 return;
             }
             final JsonObject object = overrides.getAsJsonObject();

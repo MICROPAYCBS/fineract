@@ -30,5 +30,7 @@ public interface ClientIdentifierWritePlatformService {
 
     CommandProcessingResult deleteClientIdentifier(Long clientId, Long clientIdentifierId, Long commandId);
 
-    void addClientIdentifiers(Client client, JsonCommand command);
+    default void addClientIdentifiers(Client client, JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 }

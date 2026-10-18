@@ -49,8 +49,7 @@ public final class LegalTenderCommandFromApiJsonDeserializer {
     public static final String ACTIVE = "active";
     public static final String RESOURCE = "LegalTender";
 
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
-            Arrays.asList(VALUE, TENDER_TYPE, LABEL, DISPLAY_ORDER, ACTIVE));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(VALUE, TENDER_TYPE, LABEL, DISPLAY_ORDER, ACTIVE));
     private static final List<String> TENDER_TYPES = List.of(LegalTenderType.NOTE.getCode(), LegalTenderType.COIN.getCode());
 
     private final FromJsonHelper fromApiJsonHelper;

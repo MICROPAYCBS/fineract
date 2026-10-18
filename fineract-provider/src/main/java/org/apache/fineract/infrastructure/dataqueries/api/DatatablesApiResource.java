@@ -63,9 +63,6 @@ import org.springframework.stereotype.Component;
 
 @Path("/v1/datatables")
 @Component
-@ApiResponse(responseCode = "400", description = "Invalid column definition or value.")
-@ApiResponse(responseCode = "403", description = "The user lacks permission, or a data-integrity rule was broken.")
-@ApiResponse(responseCode = "404", description = "Unknown datatable or entity.")
 @Tag(name = "Data Tables", description = """
         The datatables API allows you to plug-in your own tables (MySql) that have a relationship to a Apache Fineract \
         core table. For example, you might want to add some extra client fields and record information about each of \

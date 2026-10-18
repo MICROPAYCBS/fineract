@@ -100,8 +100,8 @@ public class SavingsProductPaymentChannelWritePlatformService {
     }
 
     /**
-     * Upsert by charge id so re-saving the same mapping does not INSERT then collide with
-     * {@code uk_spp_channel_charge} (clear+recreate can insert before orphan DELETE).
+     * Upsert by charge id so re-saving the same mapping does not INSERT then collide with {@code uk_spp_channel_charge}
+     * (clear+recreate can insert before orphan DELETE).
      */
     private void syncChannelCharges(final SavingsProductPaymentChannel channel, final List<ChannelChargeLink> chargeLinks) {
         final Map<Long, SavingsProductPaymentChannelCharge> existingByChargeId = channel.getCharges().stream()

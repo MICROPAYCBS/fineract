@@ -24,11 +24,10 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesP
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 
 import jakarta.persistence.PersistenceException;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -40,11 +39,8 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.charge.data.ProductChargeLink;
-import org.apache.fineract.portfolio.charge.service.ProductChargeAmountService;
-import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
+import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.interestratechart.service.InterestRateChartAssembler;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
@@ -53,7 +49,6 @@ import org.apache.fineract.portfolio.savings.domain.DepositProductAssembler;
 import org.apache.fineract.portfolio.savings.domain.FixedDepositProduct;
 import org.apache.fineract.portfolio.savings.domain.FixedDepositProductRepository;
 import org.apache.fineract.portfolio.savings.exception.FixedDepositProductNotFoundException;
-import org.apache.fineract.portfolio.savings.exception.SavingsProductDateException;
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.springframework.dao.DataAccessException;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,8 +63,6 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
     private final DepositProductAssembler depositProductAssembler;
     private final ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService;
     private final InterestRateChartAssembler chartAssembler;
-    private final ProductChargeLinkAssembler productChargeLinkAssembler;
-    private final ProductChargeAmountService productChargeAmountService;
 
     @Transactional
     @Override
@@ -77,14 +70,10 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
 
         try {
             this.fromApiJsonDataValidator.validateForFixedDepositCreate(command.json());
-            validateInputDates(command);
 
             final FixedDepositProduct product = this.depositProductAssembler.assembleFixedDepositProduct(command);
 
             this.fixedDepositProductRepository.saveAndFlush(product);
-            final List<ProductChargeLink> productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command,
-                    product.currency().getCode());
-            this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
 
             // save accounting mappings
             this.accountMappingWritePlatformService.createSavingProductToGLAccountMapping(product.getId(), command,
@@ -109,17 +98,18 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
         try {
             this.context.authenticatedUser();
             this.fromApiJsonDataValidator.validateForFixedDepositUpdate(command.json());
-            validateInputDates(command);
 
             final FixedDepositProduct product = this.fixedDepositProductRepository.findById(productId)
                     .orElseThrow(() -> new FixedDepositProductNotFoundException(productId));
             final Map<String, Object> changes = product.update(command);
 
-            List<ProductChargeLink> productChargeLinks = null;
-            if (command.parameterExists(chargesParamName)) {
-                productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command, product.currency().getCode());
-                product.update(new HashSet<>(ProductChargeLinkAssembler.toCharges(productChargeLinks)));
-                changes.put(chargesParamName, command.arrayOfParameterNamed(chargesParamName));
+            if (changes.containsKey(chargesParamName)) {
+                final Set<Charge> savingsProductCharges = this.depositProductAssembler.assembleListOfSavingsProductCharges(command,
+                        product.currency().getCode());
+                final boolean updated = product.update(savingsProductCharges);
+                if (!updated) {
+                    changes.remove(chargesParamName);
+                }
             }
 
             if (changes.containsKey(taxGroupIdParamName)) {
@@ -144,9 +134,6 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
 
             if (!changes.isEmpty()) {
                 this.fixedDepositProductRepository.saveAndFlush(product);
-            }
-            if (productChargeLinks != null) {
-                this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
             }
 
             return new CommandProcessingResultBuilder() //
@@ -184,46 +171,25 @@ public class FixedDepositProductWritePlatformServiceJpaRepositoryImpl implements
         String msgCode = "error.msg." + SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
         String msg = "Unknown data integrity issue with savings product.";
         String param = null;
-        Object[] msgArgs = new Object[] { dae };
-        final String dbMessage = databaseMessage(realCause, dae);
-        if (isDuplicateName(dbMessage)) {
+        Object[] msgArgs;
+        Throwable checkEx = realCause == null ? dae : realCause;
+        if (checkEx.getMessage().contains("sp_unq_name")) {
             final String name = command.stringValueOfParameterNamed("name");
             msgCode += ".duplicate.name";
             msg = "Savings product with name `" + name + "` already exists";
             param = "name";
-            msgArgs = new Object[] { name };
-        } else if (isDuplicateShortName(dbMessage)) {
+            msgArgs = new Object[] { name, dae };
+        } else if (checkEx.getMessage().contains("sp_unq_short_name")) {
             final String shortName = command.stringValueOfParameterNamed("shortName");
             msgCode += ".duplicate.short.name";
             msg = "Savings product with short name `" + shortName + "` already exists";
             param = "shortName";
-            msgArgs = new Object[] { shortName };
+            msgArgs = new Object[] { shortName, dae };
         } else {
             msgCode += ".unknown.data.integrity.issue";
-            log.error("Error occured.", dae);
+            msgArgs = new Object[] { dae };
         }
+        log.error("Error occured.", dae);
         throw ErrorHandler.getMappable(dae, msgCode, msg, param, msgArgs);
-    }
-
-    private static String databaseMessage(final Throwable realCause, final Exception dae) {
-        final Throwable checkEx = realCause == null ? dae : realCause;
-        return checkEx.getMessage() == null ? "" : checkEx.getMessage();
-    }
-
-    private static boolean isDuplicateName(final String dbMessage) {
-        return dbMessage.contains("sp_unq_name") || dbMessage.contains("m_savings_product_name_key");
-    }
-
-    private static boolean isDuplicateShortName(final String dbMessage) {
-        return dbMessage.contains("sp_unq_short_name") || dbMessage.contains("m_savings_product_short_name_key");
-    }
-
-    private void validateInputDates(final JsonCommand command) {
-        final LocalDate startDate = command.localDateValueOfParameterNamed(SavingsApiConstants.startDateParamName);
-        final LocalDate closeDate = command.localDateValueOfParameterNamed(SavingsApiConstants.closeDateParamName);
-
-        if (closeDate != null && DateUtils.isBefore(closeDate, startDate)) {
-            throw new SavingsProductDateException(startDate.toString(), closeDate.toString());
-        }
     }
 }

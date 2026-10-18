@@ -37,8 +37,8 @@ import org.apache.fineract.portfolio.savings.data.SavingsChannelLimitValues;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitRules;
 
 @Entity
-@Table(name = "m_savings_account_channel_limit", uniqueConstraints = {
-        @UniqueConstraint(columnNames = { "savings_account_id", "product_payment_channel_id", "direction" }, name = "uk_sacl_acct_chan_dir") })
+@Table(name = "m_savings_account_channel_limit", uniqueConstraints = { @UniqueConstraint(columnNames = { "savings_account_id",
+        "product_payment_channel_id", "direction" }, name = "uk_sacl_acct_chan_dir") })
 @Getter
 @Setter
 @NoArgsConstructor

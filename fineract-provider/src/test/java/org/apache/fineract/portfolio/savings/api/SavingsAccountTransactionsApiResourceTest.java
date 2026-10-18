@@ -96,11 +96,13 @@ class SavingsAccountTransactionsApiResourceTest {
                 .thenReturn(resolvedSavingsId);
         when(savingsAccountReadPlatformService.retrieveDepositTransactionTemplate(resolvedSavingsId, DepositAccountType.SAVINGS_DEPOSIT))
                 .thenReturn(templateData);
-        when(paymentTypeReadPlatformService.retrieveActivePaymentTypes()).thenReturn(List.of(org.mockito.Mockito.mock(PaymentTypeData.class)));
+        when(paymentTypeReadPlatformService.retrieveActivePaymentTypes())
+                .thenReturn(List.of(org.mockito.Mockito.mock(PaymentTypeData.class)));
         final SavingsAccountData accountData = org.mockito.Mockito.mock(SavingsAccountData.class);
         when(accountData.getSavingsProductId()).thenReturn(99L);
         when(savingsAccountReadPlatformService.retrieveOne(resolvedSavingsId)).thenReturn(accountData);
-        when(paymentChannelAllowListService.filterPaymentTypeOptions(eq(resolvedSavingsId), eq(99L), any())).thenAnswer(inv -> inv.getArgument(2));
+        when(paymentChannelAllowListService.filterPaymentTypeOptions(eq(resolvedSavingsId), eq(99L), any()))
+                .thenAnswer(inv -> inv.getArgument(2));
         when(apiRequestParameterHelper.process(any())).thenReturn(settings);
         when(toApiJsonSerializer.serialize(eq(settings), any(SavingsAccountTransactionData.class),
                 eq(SavingsApiSetConstants.SAVINGS_TRANSACTION_RESPONSE_DATA_PARAMETERS))).thenReturn("serialized");

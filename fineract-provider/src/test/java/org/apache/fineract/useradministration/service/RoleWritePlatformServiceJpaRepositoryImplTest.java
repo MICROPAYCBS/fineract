@@ -58,8 +58,8 @@ class RoleWritePlatformServiceJpaRepositoryImplTest {
 
     @BeforeEach
     void setUp() {
-        underTest = new RoleWritePlatformServiceJpaRepositoryImpl(context, roleRepository, mock(PermissionRepository.class), roleDataValidator,
-                mock(PermissionsCommandFromApiJsonDeserializer.class));
+        underTest = new RoleWritePlatformServiceJpaRepositoryImpl(context, roleRepository, mock(PermissionRepository.class),
+                roleDataValidator, mock(PermissionsCommandFromApiJsonDeserializer.class));
         command = mock(JsonCommand.class);
         when(command.json()).thenReturn("{\"name\":\"Test\",\"description\":\"A test role\"}");
         when(command.stringValueOfParameterNamed("name")).thenReturn(ROLE_NAME);

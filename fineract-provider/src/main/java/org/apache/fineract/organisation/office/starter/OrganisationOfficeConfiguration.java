@@ -29,7 +29,6 @@ import org.apache.fineract.organisation.office.domain.OfficeTransactionRepositor
 import org.apache.fineract.organisation.office.mapper.OfficeDataMapper;
 import org.apache.fineract.organisation.office.serialization.OfficeCommandFromApiJsonDeserializer;
 import org.apache.fineract.organisation.office.serialization.OfficeTransactionCommandFromApiJsonDeserializer;
-import org.apache.fineract.organisation.office.service.OfficeExtensionWritePlatformService;
 import org.apache.fineract.organisation.office.service.OfficeReadPlatformService;
 import org.apache.fineract.organisation.office.service.OfficeReadPlatformServiceImpl;
 import org.apache.fineract.organisation.office.service.OfficeWritePlatformService;
@@ -57,10 +56,9 @@ public class OrganisationOfficeConfiguration {
             OfficeCommandFromApiJsonDeserializer fromApiJsonDeserializer,
             OfficeTransactionCommandFromApiJsonDeserializer moneyTransferCommandFromApiJsonDeserializer,
             OfficeRepositoryWrapper officeRepositoryWrapper, OfficeTransactionRepository officeTransactionRepository,
-            ApplicationCurrencyRepositoryWrapper applicationCurrencyRepository,
-            OfficeExtensionWritePlatformService officeExtensionWritePlatformService) {
+            ApplicationCurrencyRepositoryWrapper applicationCurrencyRepository) {
         return new OfficeWritePlatformServiceJpaRepositoryImpl(context, fromApiJsonDeserializer,
                 moneyTransferCommandFromApiJsonDeserializer, officeRepositoryWrapper, officeTransactionRepository,
-                applicationCurrencyRepository, officeExtensionWritePlatformService);
+                applicationCurrencyRepository);
     }
 }

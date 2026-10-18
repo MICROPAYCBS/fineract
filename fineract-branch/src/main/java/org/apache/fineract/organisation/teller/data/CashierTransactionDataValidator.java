@@ -99,11 +99,10 @@ public class CashierTransactionDataValidator {
     }
 
     /**
-     * Cash going out of the till for a savings debit: needs an active cashier (if required) and, when prevent-cashier-overdraw is
-     * on, enough net cash in that cashier's till.
+     * Cash going out of the till for a savings debit: needs an active cashier (if required) and, when
+     * prevent-cashier-overdraw is on, enough net cash in that cashier's till.
      */
-    public void validateCashOut(final AppUser user, final PaymentDetail paymentDetail, final String currencyCode,
-            final BigDecimal amount) {
+    public void validateCashOut(final AppUser user, final PaymentDetail paymentDetail, final String currencyCode, final BigDecimal amount) {
         if (!isCashPayment(paymentDetail)) {
             return;
         }

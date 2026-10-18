@@ -29,7 +29,9 @@ public interface ClientWritePlatformService {
 
     CommandProcessingResult activateClient(Long clientId, JsonCommand command);
 
-    CommandProcessingResult submitClient(Long clientId, JsonCommand command);
+    default CommandProcessingResult submitClient(Long clientId, JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
     CommandProcessingResult deleteClient(Long clientId);
 

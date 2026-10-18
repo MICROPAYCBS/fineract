@@ -57,8 +57,8 @@ public class SavingsProductPaymentChannelReadPlatformService {
         final PaymentType paymentType = channel.getPaymentType();
         final PaymentTypeData paymentTypeData = PaymentTypeData.builder().id(paymentType.getId()).name(paymentType.getName())
                 .description(paymentType.getDescription()).isCashPayment(paymentType.getIsCashPayment()).position(paymentType.getPosition())
-                .codeName(paymentType.getCodeName()).isSystemDefined(paymentType.getIsSystemDefined())
-                .isActive(paymentType.getIsActive()).build();
+                .codeName(paymentType.getCodeName()).isSystemDefined(paymentType.getIsSystemDefined()).isActive(paymentType.getIsActive())
+                .build();
         final List<SavingsProductPaymentChannelChargeData> charges = new ArrayList<>();
         for (final SavingsProductPaymentChannelCharge channelCharge : channel.getCharges()) {
             final Charge charge = channelCharge.getCharge();
@@ -69,11 +69,12 @@ public class SavingsProductPaymentChannelReadPlatformService {
         }
         return SavingsProductPaymentChannelData.builder().id(channel.getId()).paymentTypeId(paymentType.getId())
                 .paymentType(paymentTypeData).isPremium(channel.isPremium()).isActive(channel.isActive()).name(channel.getName())
-                .description(channel.getDescription()).maxDebitPerTxn(channel.getMaxDebitPerTxn()).maxDebitPerDay(channel.getMaxDebitPerDay())
-                .maxDebitPerMonth(channel.getMaxDebitPerMonth()).maxDebitCountPerDay(channel.getMaxDebitCountPerDay())
-                .maxDebitCountPerMonth(channel.getMaxDebitCountPerMonth()).maxCreditPerTxn(channel.getMaxCreditPerTxn())
-                .maxCreditPerDay(channel.getMaxCreditPerDay()).maxCreditPerMonth(channel.getMaxCreditPerMonth())
-                .maxCreditCountPerDay(channel.getMaxCreditCountPerDay()).maxCreditCountPerMonth(channel.getMaxCreditCountPerMonth())
-                .isAccountTransferChannel(channel.isAccountTransferChannel()).charges(charges).build();
+                .description(channel.getDescription()).maxDebitPerTxn(channel.getMaxDebitPerTxn())
+                .maxDebitPerDay(channel.getMaxDebitPerDay()).maxDebitPerMonth(channel.getMaxDebitPerMonth())
+                .maxDebitCountPerDay(channel.getMaxDebitCountPerDay()).maxDebitCountPerMonth(channel.getMaxDebitCountPerMonth())
+                .maxCreditPerTxn(channel.getMaxCreditPerTxn()).maxCreditPerDay(channel.getMaxCreditPerDay())
+                .maxCreditPerMonth(channel.getMaxCreditPerMonth()).maxCreditCountPerDay(channel.getMaxCreditCountPerDay())
+                .maxCreditCountPerMonth(channel.getMaxCreditCountPerMonth()).isAccountTransferChannel(channel.isAccountTransferChannel())
+                .charges(charges).build();
     }
 }

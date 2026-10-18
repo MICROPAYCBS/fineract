@@ -70,15 +70,14 @@ public class AccountNumberFormatsApiResource {
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
     private final ToApiJsonSerializer<AccountNumberFormatPreviewData> previewDataSerializer;
-    private static final Set<String> ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(AccountNumberFormatConstants.idParamName, AccountNumberFormatConstants.accountTypeParamName,
-                    AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.accountTypeOptionsParamName,
-                    AccountNumberFormatConstants.prefixTypeOptionsParamName, AccountNumberFormatConstants.prefixCharacterParamName,
-                    AccountNumberFormatConstants.formatPatternParamName, AccountNumberFormatConstants.sequenceScopeParamName,
-                    AccountNumberFormatConstants.checkDigitAlgorithmParamName, AccountNumberFormatConstants.structuredEnabledParamName,
-                    AccountNumberFormatConstants.sequenceScopeOptionsParamName,
-                    AccountNumberFormatConstants.checkDigitAlgorithmOptionsParamName,
-                    AccountNumberFormatConstants.segmentTokenOptionsParamName));
+    private static final Set<String> ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(
+            AccountNumberFormatConstants.idParamName, AccountNumberFormatConstants.accountTypeParamName,
+            AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.accountTypeOptionsParamName,
+            AccountNumberFormatConstants.prefixTypeOptionsParamName, AccountNumberFormatConstants.prefixCharacterParamName,
+            AccountNumberFormatConstants.formatPatternParamName, AccountNumberFormatConstants.sequenceScopeParamName,
+            AccountNumberFormatConstants.checkDigitAlgorithmParamName, AccountNumberFormatConstants.structuredEnabledParamName,
+            AccountNumberFormatConstants.sequenceScopeOptionsParamName, AccountNumberFormatConstants.checkDigitAlgorithmOptionsParamName,
+            AccountNumberFormatConstants.segmentTokenOptionsParamName));
 
     @GET
     @Path("template")

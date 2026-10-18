@@ -23,8 +23,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations.AccountNumberPrefixType;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatConstants;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 

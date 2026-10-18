@@ -21,8 +21,8 @@ package org.apache.fineract.infrastructure.security.api;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
- * Request and response models for the two-factor resources. Dates are epoch milliseconds because
- * {@code ZonedDateTime} is serialised that way.
+ * Request and response models for the two-factor resources. Dates are epoch milliseconds because {@code ZonedDateTime}
+ * is serialised that way.
  */
 final class TwoFactorApiResourceSwagger {
 
@@ -125,8 +125,8 @@ final class TwoFactorApiResourceSwagger {
         public Long otpDeliverySmsProvider;
         @Schema(name = "otp-delivery-sms-text", description = "SMS message template", example = "Your code is {{token}}")
         public String otpDeliverySmsText;
-        @Schema(name = "otp-delivery-method", description = "Default delivery method", example = "email", allowableValues = { "email", "sms",
-                "totp" })
+        @Schema(name = "otp-delivery-method", description = "Default delivery method", example = "email", allowableValues = { "email",
+                "sms", "totp" })
         public String otpDeliveryMethod;
         @Schema(name = "otp-token-live-time", description = "One-time password lifetime in seconds", example = "300")
         public Integer otpTokenLiveTime;
@@ -155,8 +155,8 @@ final class TwoFactorApiResourceSwagger {
         public Long otpDeliverySmsProvider;
         @Schema(name = "otp-delivery-sms-text", description = "SMS message template", example = "Your code is {{token}}")
         public String otpDeliverySmsText;
-        @Schema(name = "otp-delivery-method", description = "Default delivery method", example = "email", allowableValues = { "email", "sms",
-                "totp" })
+        @Schema(name = "otp-delivery-method", description = "Default delivery method", example = "email", allowableValues = { "email",
+                "sms", "totp" })
         public String otpDeliveryMethod;
         @Schema(name = "otp-token-live-time", description = "One-time password lifetime in seconds", example = "300")
         public Integer otpTokenLiveTime;

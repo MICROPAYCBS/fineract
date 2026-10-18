@@ -28,8 +28,7 @@ public final class AccountNumberFormatPatternParser {
 
     private static final Pattern SEGMENT_PATTERN = Pattern.compile("\\{(\\w+):(\\d+)\\}");
 
-    private AccountNumberFormatPatternParser() {
-    }
+    private AccountNumberFormatPatternParser() {}
 
     public static List<FormatSegment> parse(final String formatPattern) {
         final List<FormatSegment> segments = new ArrayList<>();

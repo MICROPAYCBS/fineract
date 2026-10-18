@@ -27,7 +27,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -98,11 +97,9 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                     .append(" journalEntry.type_enum as entryType,journalEntry.amount as amount, journalEntry.transaction_id as transactionId,")
                     .append(" journalEntry.entity_type_enum as entityType, journalEntry.entity_id as entityId, creatingUser.id as createdByUserId, ")
                     .append(" creatingUser.username as createdByUserName, journalEntry.description as comments, ")
-                    .append(" journalEntry.transaction_comment as transactionComments, ")
                     .append(" journalEntry.submitted_on_date as submittedOnDate, journalEntry.reversed as reversed, ")
                     .append(" journalEntry.currency_code as currencyCode, curr.name as currencyName, curr.internationalized_name_code as currencyNameCode, ")
                     .append(" curr.display_symbol as currencyDisplaySymbol, curr.decimal_places as currencyDigits, curr.currency_multiplesof as inMultiplesOf, ")
-                    .append(" journalEntry.department_id as departmentId, dept.department_name as departmentName, ")
                     .append(" eao.external_id as externalAssetOwner ");
             if (associationParametersData.isRunningBalanceRequired()) {
                 sb.append(" ,journalEntry.is_running_balance_calculated as runningBalanceComputed, ")
@@ -120,7 +117,6 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             sb.append(" from acc_gl_journal_entry as journalEntry ")
                     .append(" left join acc_gl_account as glAccount on glAccount.id = journalEntry.account_id")
                     .append(" left join m_office as office on office.id = journalEntry.office_id")
-                    .append(" left join m_department as dept on dept.id = journalEntry.department_id")
                     .append(" left join m_appuser as creatingUser on creatingUser.id = journalEntry.created_by ")
                     .append(" join m_currency curr on curr.code = journalEntry.currency_code ")
                     .append(" left join m_external_asset_owner_journal_entry_mapping eajem on eajem.journal_entry_id = journalEntry.id ")
@@ -164,7 +160,6 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             final LocalDate submittedOnDate = JdbcSupport.getLocalDate(rs, "submittedOnDate");
             final String createdByUserName = rs.getString("createdByUserName");
             final String comments = rs.getString("comments");
-            final String transactionComments = rs.getString("transactionComments");
             final Boolean reversed = rs.getBoolean("reversed");
             final String referenceNumber = rs.getString("referenceNumber");
             BigDecimal officeRunningBalance = null;
@@ -232,29 +227,25 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                 transactionDetailData = new TransactionDetailData(transaction, paymentDetailData, noteData, transactionTypeEnumData);
             }
             final String externalAssetOwner = rs.getString("externalAssetOwner");
-            final Long departmentId = JdbcSupport.getLong(rs, "departmentId");
-            final String departmentName = rs.getString("departmentName");
 
-            final JournalEntryData data = new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glCode, accountType,
-                    transactionDate, entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, submittedOnDate,
+            return new JournalEntryData(id, officeId, officeName, glAccountName, glAccountId, glCode, accountType, transactionDate,
+                    entryType, amount, transactionId, manualEntry, entityType, entityId, createdByUserId, submittedOnDate,
                     createdByUserName, comments, reversed, referenceNumber, officeRunningBalance, organizationRunningBalance,
-                    runningBalanceComputed, transactionDetailData, currency, departmentId, departmentName, externalAssetOwner);
-            data.setTransactionComments(transactionComments);
-            return data;
+                    runningBalanceComputed, transactionDetailData, currency, externalAssetOwner);
         }
     }
 
     @Override
     public Page<JournalEntryData> retrieveAll(final SearchParameters searchParameters, final Long glAccountId,
             final Boolean onlyManualEntries, final LocalDate fromDate, final LocalDate toDate, final LocalDate submittedOnDateFrom,
-            final LocalDate submittedOnDateTo, final String transactionId, final Integer entityType, final Long departmentId,
+            final LocalDate submittedOnDateTo, final String transactionId, final Integer entityType,
             final JournalEntryAssociationParametersData associationParametersData) {
         GLJournalEntryMapper rm = getGlJournalEntryMapper(associationParametersData);
         final StringBuilder sqlBuilder = new StringBuilder(200);
         sqlBuilder.append("select ").append(sqlGenerator.calcFoundRows()).append(" ");
         sqlBuilder.append(rm.schema());
 
-        final Object[] objectArray = new Object[18];
+        final Object[] objectArray = new Object[15];
         int arrayPos = 0;
         String whereClose = " where ";
 
@@ -292,25 +283,9 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
             whereClose = " and ";
         }
 
-        if (searchParameters.hasCreatedByUserId()) {
-            sqlBuilder.append(whereClose).append(" journalEntry.created_by = ?");
-            objectArray[arrayPos] = searchParameters.getCreatedByUserId();
-            arrayPos = arrayPos + 1;
-
-            whereClose = " and ";
-        }
-
         if (glAccountId != null && glAccountId != 0) {
             sqlBuilder.append(whereClose).append(" journalEntry.account_id = ?");
             objectArray[arrayPos] = glAccountId;
-            arrayPos = arrayPos + 1;
-
-            whereClose = " and ";
-        }
-
-        if (departmentId != null && departmentId != 0) {
-            sqlBuilder.append(whereClose).append(" journalEntry.department_id = ?");
-            objectArray[arrayPos] = departmentId;
             arrayPos = arrayPos + 1;
 
             whereClose = " and ";
@@ -390,14 +365,6 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                 sqlBuilder.append(' ').append(searchParameters.getSortOrder());
                 this.columnValidator.validateSqlInjection(sqlBuilder.toString(), searchParameters.getOrderBy());
             }
-
-            // Same-day / equal primary keys: keep insert order via autoincrement id (matches default ORDER BY).
-            if (!alreadyOrdersByJournalEntryId(searchParameters.getOrderBy())) {
-                sqlBuilder.append(", journalEntry.id");
-                if (searchParameters.hasSortOrder()) {
-                    sqlBuilder.append(' ').append(searchParameters.getSortOrder());
-                }
-            }
         } else {
             sqlBuilder.append(" order by journalEntry.entry_date, journalEntry.id");
         }
@@ -413,22 +380,6 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
 
         final Object[] finalObjectArray = Arrays.copyOf(objectArray, arrayPos);
         return this.paginationHelper.fetchPage(this.jdbcTemplate, sqlBuilder.toString(), finalObjectArray, rm);
-    }
-
-    /**
-     * True when {@code orderBy} already includes {@code id} / {@code journalEntry.id} so we do not append a duplicate
-     * secondary key.
-     */
-    private static boolean alreadyOrdersByJournalEntryId(final String orderBy) {
-        if (StringUtils.isBlank(orderBy)) {
-            return false;
-        }
-        final String normalized = orderBy.toLowerCase(Locale.ROOT).replace(" ", "");
-        if (normalized.contains("journalentry.id")) {
-            return true;
-        }
-        return normalized.equals("id") || normalized.startsWith("id,") || normalized.endsWith(",id")
-                || normalized.contains(",id,");
     }
 
     protected GLJournalEntryMapper getGlJournalEntryMapper(JournalEntryAssociationParametersData associationParametersData) {
@@ -459,7 +410,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
         if (contraId == null) {
             throw new GeneralPlatformDomainRuleException(
                     "error.msg.financial.activity.mapping.opening.balance.contra.account.cannot.be.null",
-                    "Opening balances contra account (financial activity mapping 300) is not set", "office-opening-balances-contra-account");
+                    "office-opening-balances-contra-account value can not be null", "office-opening-balances-contra-account");
         }
 
         final JournalEntryAssociationParametersData associationParametersData = new JournalEntryAssociationParametersData();
@@ -467,7 +418,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
         if (!GLAccountType.fromInt(requireNonNull(requireNonNull(contraAccount.getType()).getId()).intValue()).isEquityType()) {
             throw new GeneralPlatformDomainRuleException(
                     "error.msg.configuration.opening.balance.contra.account.value.is.invalid.account.type",
-                    "Opening balances contra account (financial activity mapping 300) is not an equity account", contraId);
+                    "Global configuration 'office-opening-balances-contra-account' value is not an equity type account", contraId);
         }
 
         final OfficeData officeData = this.officeReadPlatformService.retrieveOffice(officeId);
@@ -570,7 +521,7 @@ public class JournalEntryReadPlatformServiceImpl implements JournalEntryReadPlat
                 .orderBy("journalEntry.id").sortOrder("ASC").currencyCode(currencyCode).build();
 
         return retrieveAll(searchParameters, contraId, onlyManualEntries, fromDate, toDate, submittedOnDateFrom, submittedOnDateTo,
-                transactionId, entityType, null, associationParametersData);
+                transactionId, entityType, associationParametersData);
 
     }
 

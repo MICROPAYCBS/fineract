@@ -42,4 +42,10 @@ public class PaymentTypeData implements Serializable {
     private String codeName;
     private Boolean isSystemDefined;
     private Boolean isActive;
+
+    /** Upstream constructor (without the Micropay {@code isActive} flag). */
+    public PaymentTypeData(final Long id, final String name, final String description, final Boolean isCashPayment, final Long position,
+            final String codeName, final Boolean isSystemDefined) {
+        this(id, name, description, isCashPayment, position, codeName, isSystemDefined, null);
+    }
 }

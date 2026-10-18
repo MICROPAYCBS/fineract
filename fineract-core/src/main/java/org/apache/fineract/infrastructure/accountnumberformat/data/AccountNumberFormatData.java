@@ -44,10 +44,15 @@ public class AccountNumberFormatData implements Serializable {
     private Boolean structuredEnabled;
 
     public AccountNumberFormatData(final Long id, final EnumOptionData accountType, final EnumOptionData prefixType,
+            final String prefixCharacter) {
+        this(id, accountType, prefixType, prefixCharacter, null, null, null, null);
+    }
+
+    public AccountNumberFormatData(final Long id, final EnumOptionData accountType, final EnumOptionData prefixType,
             final String prefixCharacter, final String formatPattern, final EnumOptionData sequenceScope,
             final EnumOptionData checkDigitAlgorithm, final Boolean structuredEnabled) {
-        this(id, accountType, prefixType, null, null, prefixCharacter, formatPattern, sequenceScope, checkDigitAlgorithm,
-                structuredEnabled, null, null, null);
+        this(id, accountType, prefixType, null, null, prefixCharacter, formatPattern, sequenceScope, checkDigitAlgorithm, structuredEnabled,
+                null, null, null);
     }
 
     public AccountNumberFormatData(final List<EnumOptionData> accountTypeOptions, Map<String, List<EnumOptionData>> prefixTypeOptions) {

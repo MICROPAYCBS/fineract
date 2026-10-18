@@ -36,8 +36,7 @@ class ClientIdentifierCommandTest {
 
         final PlatformApiDataValidationException empty = assertThrows(PlatformApiDataValidationException.class,
                 () -> new ClientIdentifierCommand(1L, "CM123456", "", null).validateForCreate());
-        assertEquals("validation.msg.clientIdentifier.status.cannot.be.blank",
-                empty.getErrors().get(0).getUserMessageGlobalisationCode());
+        assertEquals("validation.msg.clientIdentifier.status.cannot.be.blank", empty.getErrors().get(0).getUserMessageGlobalisationCode());
 
         final PlatformApiDataValidationException unknown = assertThrows(PlatformApiDataValidationException.class,
                 () -> new ClientIdentifierCommand(1L, "CM123456", "Valid", null).validateForCreate());

@@ -124,7 +124,8 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
     private CommandProcessingResult createGroupingType(final JsonCommand command, final GroupTypes groupingType, final Long centerId) {
         try {
             final String accountNo = command.stringValueOfParameterNamed(GroupingTypesApiConstants.accountNoParamName);
-            final EntityAccountType entityAccountType = groupingType == GroupTypes.CENTER ? EntityAccountType.CENTER : EntityAccountType.GROUP;
+            final EntityAccountType entityAccountType = groupingType == GroupTypes.CENTER ? EntityAccountType.CENTER
+                    : EntityAccountType.GROUP;
             this.accountNumberManualEntryValidator.validateManualAccountNumberIfStructuredModeEnabled(entityAccountType, accountNo);
             final String name = command.stringValueOfParameterNamed(GroupingTypesApiConstants.nameParamName);
             final String externalId = command.stringValueOfParameterNamed(GroupingTypesApiConstants.externalIdParamName);

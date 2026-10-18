@@ -119,13 +119,12 @@ public class AddressData implements Serializable {
     }
 
     private AddressData(final String addressType, final Long clientID, final Long addressId, final Long clientAddressId,
-            final Long addressTypeId,
-            final Boolean is_active, final Boolean is_primary, final String street, final String addressLine1, final String addressLine2,
-            final String addressLine3, final String townVillage, final String city, final String countyDistrict, final Long stateProvinceId,
-            final Long countryId, final String stateName, final String countryName, final String postalCode, final BigDecimal latitude,
-            final BigDecimal longitude, final String createdBy, final LocalDate createdOn, final String updatedBy, final LocalDate updatedOn,
-            final Collection<CodeValueData> countryIdOptions, final Collection<CodeValueData> stateProvinceIdOptions,
-            final Collection<CodeValueData> addressTypeIdOptions) {
+            final Long addressTypeId, final Boolean is_active, final Boolean is_primary, final String street, final String addressLine1,
+            final String addressLine2, final String addressLine3, final String townVillage, final String city, final String countyDistrict,
+            final Long stateProvinceId, final Long countryId, final String stateName, final String countryName, final String postalCode,
+            final BigDecimal latitude, final BigDecimal longitude, final String createdBy, final LocalDate createdOn,
+            final String updatedBy, final LocalDate updatedOn, final Collection<CodeValueData> countryIdOptions,
+            final Collection<CodeValueData> stateProvinceIdOptions, final Collection<CodeValueData> addressTypeIdOptions) {
         this.addressType = addressType;
         this.clientID = clientID;
         this.addressId = addressId;
@@ -156,26 +155,36 @@ public class AddressData implements Serializable {
         this.addressTypeIdOptions = addressTypeIdOptions;
     }
 
-    public static AddressData instance(final String addressType, final Long clientID, final Long addressId, final Long clientAddressId,
-            final Long addressTypeId,
-            final Boolean is_active, final Boolean is_primary, final String street, final String addressLine1, final String addressLine2,
-            final String addressLine3, final String townVillage, final String city, final String countyDistrict, final Long stateProvinceId,
-            final Long countryId, final String stateName, final String countryName, final String postalCode, final BigDecimal latitude,
+    public static AddressData instance(final String addressType, final Long clientID, final Long addressId, final Long addressTypeId,
+            final Boolean is_active, final String street, final String addressLine1, final String addressLine2, final String addressLine3,
+            final String townVillage, final String city, final String countyDistrict, final Long stateProvinceId, final Long countryId,
+            final String stateName, final String countryName, final String postalCode, final BigDecimal latitude,
             final BigDecimal longitude, final String createdBy, final LocalDate createdOn, final String updatedBy,
             final LocalDate updatedOn) {
+        return instance(addressType, clientID, addressId, null, addressTypeId, is_active, null, street, addressLine1, addressLine2,
+                addressLine3, townVillage, city, countyDistrict, stateProvinceId, countryId, stateName, countryName, postalCode, latitude,
+                longitude, createdBy, createdOn, updatedBy, updatedOn);
+    }
 
-        return new AddressData(addressType, clientID, addressId, clientAddressId, addressTypeId, is_active, is_primary, street, addressLine1,
-                addressLine2, addressLine3, townVillage, city, countyDistrict, stateProvinceId, countryId, stateName, countryName,
-                postalCode, latitude, longitude, createdBy, createdOn, updatedBy, updatedOn, null, null, null);
+    public static AddressData instance(final String addressType, final Long clientID, final Long addressId, final Long clientAddressId,
+            final Long addressTypeId, final Boolean is_active, final Boolean is_primary, final String street, final String addressLine1,
+            final String addressLine2, final String addressLine3, final String townVillage, final String city, final String countyDistrict,
+            final Long stateProvinceId, final Long countryId, final String stateName, final String countryName, final String postalCode,
+            final BigDecimal latitude, final BigDecimal longitude, final String createdBy, final LocalDate createdOn,
+            final String updatedBy, final LocalDate updatedOn) {
+
+        return new AddressData(addressType, clientID, addressId, clientAddressId, addressTypeId, is_active, is_primary, street,
+                addressLine1, addressLine2, addressLine3, townVillage, city, countyDistrict, stateProvinceId, countryId, stateName,
+                countryName, postalCode, latitude, longitude, createdBy, createdOn, updatedBy, updatedOn, null, null, null);
     }
 
     public static AddressData instance1(final Long addressId, final String street, final String addressLine1, final String addressLine2,
             final String addressLine3, final String townVillage, final String city, final String countyDistrict, final Long stateProvinceId,
             final Long countryId, final String postalCode, final BigDecimal latitude, final BigDecimal longitude, final String createdBy,
             final LocalDate createdOn, final String updatedBy, final LocalDate updatedOn) {
-        return new AddressData(null, null, addressId, null, null, false, false, street, addressLine1, addressLine2, addressLine3, townVillage,
-                city, countyDistrict, stateProvinceId, countryId, null, null, postalCode, latitude, longitude, createdBy, createdOn,
-                updatedBy, updatedOn, null, null, null);
+        return new AddressData(null, null, addressId, null, null, false, false, street, addressLine1, addressLine2, addressLine3,
+                townVillage, city, countyDistrict, stateProvinceId, countryId, null, null, postalCode, latitude, longitude, createdBy,
+                createdOn, updatedBy, updatedOn, null, null, null);
     }
 
     public static AddressData template(final Collection<CodeValueData> countryIdOptions,

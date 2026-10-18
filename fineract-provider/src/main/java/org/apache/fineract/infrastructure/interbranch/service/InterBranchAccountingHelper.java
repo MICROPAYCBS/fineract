@@ -80,9 +80,8 @@ public class InterBranchAccountingHelper {
         }
     }
 
-    public void postLoanClearingBridge(final Office servicingOffice, final Office homeOffice, final String currencyCode,
-            final Long loanId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount,
-            final boolean reversed) {
+    public void postLoanClearingBridge(final Office servicingOffice, final Office homeOffice, final String currencyCode, final Long loanId,
+            final String transactionId, final LocalDate transactionDate, final BigDecimal amount, final boolean reversed) {
 
         final GLAccount clearingAccount = this.interBranchGlAccountReadService.resolveClearingAccount(servicingOffice.getId(),
                 homeOffice.getId(), currencyCode);
@@ -95,8 +94,8 @@ public class InterBranchAccountingHelper {
         } else {
             this.accountingProcessorHelper.createCreditJournalEntryForLoan(servicingOffice, currencyCode, loanId, transactionId,
                     transactionDate, amount, clearingAccount);
-            this.accountingProcessorHelper.createDebitJournalEntryForLoan(homeOffice, currencyCode, clearingAccount, loanId,
-                    transactionId, transactionDate, amount);
+            this.accountingProcessorHelper.createDebitJournalEntryForLoan(homeOffice, currencyCode, clearingAccount, loanId, transactionId,
+                    transactionDate, amount);
         }
     }
 

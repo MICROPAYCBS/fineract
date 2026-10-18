@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/parts/0241_add_deliberate_loan_npa.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+    <changeSet author="fineract" id="1">
+        <insert tableName="m_code">
+            <column name="code_name" value="LoanNPAReasons"/>
+            <column name="is_system_defined" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+    <changeSet author="fineract" id="2">
+        <addColumn tableName="m_loan">
+            <column name="deliberate_npa" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="npa_reason_cv_id" type="BIGINT"/>
+            <column name="npa_reason_note" type="VARCHAR(500)"/>
+            <column name="deliberate_npa_on_date" type="date"/>
+            <column name="deliberate_npa_by_userid" type="BIGINT"/>
+            <column name="npa_arrears_qualified" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+    <changeSet author="fineract" id="3">
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_loan"/>
+            <column name="code" value="MARKASNPA_LOAN"/>
+            <column name="entity_name" value="LOAN"/>
+            <column name="action_name" value="MARKASNPA"/>
+            <column name="can_maker_checker" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_loan"/>
+            <column name="code" value="MARKASNPA_LOAN_CHECKER"/>
+            <column name="entity_name" value="LOAN"/>
+            <column name="action_name" value="MARKASNPA_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_loan"/>
+            <column name="code" value="UNDOMARKASNPA_LOAN"/>
+            <column name="entity_name" value="LOAN"/>
+            <column name="action_name" value="UNDOMARKASNPA"/>
+            <column name="can_maker_checker" valueBoolean="true"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="transaction_loan"/>
+            <column name="code" value="UNDOMARKASNPA_LOAN_CHECKER"/>
+            <column name="entity_name" value="LOAN"/>
+            <column name="action_name" value="UNDOMARKASNPA_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+    <changeSet author="fineract" id="4">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(1) FROM m_code_value cv
+                JOIN m_code c ON cv.code_id = c.id
+                WHERE c.code_name = 'LoanNPAReasons'
+                AND cv.code_value IN (
+                    'Death of borrower',
+                    'Borrower cannot be traced',
+                    'Fraud',
+                    'Willful default',
+                    'Insolvency or bankruptcy',
+                    'Business ceased',
+                    'Diversion of funds',
+                    'Collateral lost or impaired',
+                    'Litigation',
+                    'Another facility is NPA',
+                    'Regulatory directive',
+                    'Other'
+                )
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Death of borrower"/>
+            <column name="code_description" value="Borrower has died"/>
+            <column name="order_position" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Borrower cannot be traced"/>
+            <column name="code_description" value="Borrower cannot be located"/>
+            <column name="order_position" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Fraud"/>
+            <column name="code_description" value="Fraud has been established"/>
+            <column name="order_position" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Willful default"/>
+            <column name="code_description" value="Borrower can pay but refuses"/>
+            <column name="order_position" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Insolvency or bankruptcy"/>
+            <column name="code_description" value="Borrower is insolvent or bankrupt"/>
+            <column name="order_position" valueNumeric="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Business ceased"/>
+            <column name="code_description" value="Borrower's business has stopped operating"/>
+            <column name="order_position" valueNumeric="6"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Diversion of funds"/>
+            <column name="code_description" value="Loan funds were used for an unauthorized purpose"/>
+            <column name="order_position" valueNumeric="7"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Collateral lost or impaired"/>
+            <column name="code_description" value="Security has been lost or its value has fallen"/>
+            <column name="order_position" valueNumeric="8"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Litigation"/>
+            <column name="code_description" value="Recovery is subject to a court case"/>
+            <column name="order_position" valueNumeric="9"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Another facility is NPA"/>
+            <column name="code_description" value="Another facility of the same borrower is already NPA"/>
+            <column name="order_position" valueNumeric="10"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Regulatory directive"/>
+            <column name="code_description" value="A regulator has directed this classification"/>
+            <column name="order_position" valueNumeric="11"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'LoanNPAReasons')"/>
+            <column name="code_value" value="Other"/>
+            <column name="code_description" value="Another reason, recorded in the note"/>
+            <column name="order_position" valueNumeric="12"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

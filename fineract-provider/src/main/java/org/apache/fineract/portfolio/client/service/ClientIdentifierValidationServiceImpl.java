@@ -62,14 +62,13 @@ public class ClientIdentifierValidationServiceImpl implements ClientIdentifierVa
         try {
             if (!Pattern.compile(regex).matcher(documentKey.trim()).matches()) {
                 final String message = resolveValidationMessage(identityType);
-                final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.identifier.invalid.format", message,
-                        ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY, documentKey);
+                final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.identifier.invalid.format",
+                        message, ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY, documentKey);
                 throw new PlatformApiDataValidationException(List.of(error));
             }
         } catch (final PatternSyntaxException e) {
             final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.identity.type.invalid.regex.config",
-                    "Identity type validation regex is invalid.", ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY,
-                    documentKey);
+                    "Identity type validation regex is invalid.", ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY, documentKey);
             throw new PlatformApiDataValidationException(List.of(error));
         }
     }
@@ -82,10 +81,10 @@ public class ClientIdentifierValidationServiceImpl implements ClientIdentifierVa
         final JsonArray identifiers = this.fromApiJsonHelper.extractJsonArrayNamed(ClientApiConstants.clientIdentifiers,
                 clientCreateElement);
         if (countValidIdentifiersInPayload(identifiers) < 1) {
-            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
-                    "validation.msg.client.identifiers.required",
-                    "At least one client identifier is required when onboarding a person customer.",
-                    ClientApiConstants.clientIdentifiers, identifiers)));
+            throw new PlatformApiDataValidationException(
+                    List.of(ApiParameterError.parameterError("validation.msg.client.identifiers.required",
+                            "At least one client identifier is required when onboarding a person customer.",
+                            ClientApiConstants.clientIdentifiers, identifiers)));
         }
     }
 
@@ -97,10 +96,10 @@ public class ClientIdentifierValidationServiceImpl implements ClientIdentifierVa
         final long identifierCount = this.clientIdentifierRepository.countByClient_IdAndStatus(clientId,
                 ClientIdentifierStatus.ACTIVE.getValue());
         if (identifierCount < 1) {
-            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterError(
-                    "validation.msg.client.identifiers.required",
-                    "At least one client identifier is required when onboarding a person customer.",
-                    ClientApiConstants.clientIdentifiers)));
+            throw new PlatformApiDataValidationException(
+                    List.of(ApiParameterError.parameterError("validation.msg.client.identifiers.required",
+                            "At least one client identifier is required when onboarding a person customer.",
+                            ClientApiConstants.clientIdentifiers)));
         }
     }
 
@@ -118,8 +117,8 @@ public class ClientIdentifierValidationServiceImpl implements ClientIdentifierVa
                 continue;
             }
             final JsonObject identifierObject = identifierElement.getAsJsonObject();
-            final Long documentTypeId = this.fromApiJsonHelper.extractLongNamed(
-                    ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_TYPE_ID, identifierObject);
+            final Long documentTypeId = this.fromApiJsonHelper
+                    .extractLongNamed(ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_TYPE_ID, identifierObject);
             final String documentKey = this.fromApiJsonHelper
                     .extractStringNamed(ClientIdentifierCommandFromApiJsonDeserializer.DOCUMENT_KEY, identifierObject);
             if (documentTypeId != null && documentTypeId > 0 && StringUtils.isNotBlank(documentKey)) {

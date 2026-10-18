@@ -76,9 +76,8 @@ class ClientIdentifierValidationServiceImplTest {
                 }
                 """;
 
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validationService.validateAtLeastOneIdentifierForPersonCreate(new FromJsonHelper().parse(json),
-                        LegalForm.PERSON.getValue()));
+        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class, () -> validationService
+                .validateAtLeastOneIdentifierForPersonCreate(new FromJsonHelper().parse(json), LegalForm.PERSON.getValue()));
 
         assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.clientIdentifiers.equals(e.getParameterName())));
     }

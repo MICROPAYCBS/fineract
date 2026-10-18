@@ -106,8 +106,7 @@ public interface ShareAccountApiConstants {
             id_paramname, clientid_paramname, productid_paramname, submitteddate_paramname, approveddate_paramname, externalid_paramname,
             currency_paramname, digitsafterdecimal_paramname, inmultiplesof_paramname, requestedshares_paramname,
             savingsaccountid_paramname, usesavings_paramname, lockinperiod_paramname, lockperiodfrequencytype_paramname,
-            minimumactiveperiod_paramname, minimumactiveperiodfrequencytype_paramname,
-            allowdividendcalculationforinactiveclients_paramname, charges_paramname, applicationdate_param, purchaseddate_paramname,
-            numberofshares_paramname, purchasedprice_paramname)));
+            minimumactiveperiod_paramname, minimumactiveperiodfrequencytype_paramname, allowdividendcalculationforinactiveclients_paramname,
+            charges_paramname, applicationdate_param, purchaseddate_paramname, numberofshares_paramname, purchasedprice_paramname)));
 
 }

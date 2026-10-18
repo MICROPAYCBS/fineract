@@ -31,7 +31,9 @@ public interface AccountNumberFormatReadPlatformService {
 
     AccountNumberFormatData retrieveTemplate(EntityAccountType entityAccountTypeForTemplate);
 
-    AccountNumberFormatPreviewData previewAccountNumber(Integer accountType, Long officeId, String productShortName,
-            String clientTypeLabel, String formatPattern, Integer sequenceScope, Integer checkDigitAlgorithm);
+    default AccountNumberFormatPreviewData previewAccountNumber(Integer accountType, Long officeId, String productShortName,
+            String clientTypeLabel, String formatPattern, Integer sequenceScope, Integer checkDigitAlgorithm) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
 }

@@ -23,13 +23,11 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collection;
 import java.util.List;
-import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
-import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.infrastructure.security.service.SqlValidator;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.organisation.office.data.OfficeData;
@@ -62,16 +60,12 @@ public class SearchReadServiceImpl implements SearchReadService {
     private final OfficeReadPlatformService officeReadPlatformService;
     private final DatabaseSpecificSQLGenerator sqlGenerator;
     private final SqlValidator sqlValidator;
-    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
 
     @Override
     public List<SearchData> retriveMatchingData(final SearchConditions searchConditions) {
         final String hierarchy = searchConditions.getHierarchy();
 
         final SearchMapper rm = new SearchMapper();
-
-        final boolean includeCrossBranchScope = this.crossBranchClientAccessReadService
-                .isCrossBranchClientAccessEnabledForCurrentUser();
 
         final MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("hierarchy", hierarchy + "%");
@@ -80,26 +74,22 @@ public class SearchReadServiceImpl implements SearchReadService {
         } else {
             params.addValue("search", "%" + searchConditions.getSearchQuery() + "%");
         }
-        return namedParameterJdbcTemplate.query(searchSchema(searchConditions, includeCrossBranchScope), params, rm);
+        return namedParameterJdbcTemplate.query(searchSchema(searchConditions), params, rm);
     }
 
-    public String searchSchema(final SearchConditions searchConditions, final boolean includeCrossBranchScope) {
+    public String searchSchema(final SearchConditions searchConditions) {
 
         final String union = " union ";
-        final Function<String, String> like = sqlGenerator::caseInsensitiveLike;
-        // relaxes the office-hierarchy visibility filter when cross-branch read permission is granted
-        final String crossBranchScope = includeCrossBranchScope ? " or 1=1" : "";
         final String clientMatchSql = """
                 ( (select 'CLIENT' as entityType, c.id as entityId, c.display_name as entityName, \
                 c.external_id as entityExternalId, c.account_no as entityAccountNo, \
                 c.office_id as parentId, o.name as parentName, c.mobile_no as entityMobileNo, \
                 c.status_enum as entityStatusEnum, null as subEntityType, null as parentType \
                 from m_client c join m_office o on o.id = c.office_id \
-                where (o.hierarchy like :hierarchy%s) \
-                and (%s or %s \
-                or %s or %s)) \
-                order by c.id desc)""".formatted(crossBranchScope, like.apply("c.account_no"), like.apply("c.display_name"),
-                like.apply("c.external_id"), like.apply("c.mobile_no"));
+                where o.hierarchy like :hierarchy \
+                and (c.account_no like :search or c.display_name like :search \
+                or c.external_id like :search or c.mobile_no like :search)) \
+                order by c.id desc)""";
 
         final String loanMatchSql = """
                 ( (select 'LOAN' as entityType, l.id as entityId, pl.name as entityName, \
@@ -111,9 +101,9 @@ public class SearchReadServiceImpl implements SearchReadService {
                 left join m_group g ON l.group_id = g.id \
                 left join m_office o on o.id = c.office_id \
                 left join m_product_loan pl on pl.id=l.product_id \
-                where (o.hierarchy IS NULL OR o.hierarchy like :hierarchy%s) \
-                and (%s or %s)) \
-                order by l.id desc)""".formatted(crossBranchScope, like.apply("l.account_no"), like.apply("l.external_id"));
+                where (o.hierarchy IS NULL OR o.hierarchy like :hierarchy) \
+                and (l.account_no like :search or l.external_id like :search)) \
+                order by l.id desc)""";
 
         final String savingMatchSql = """
                 ( (select 'SAVING' as entityType, s.id as entityId, sp.name as entityName, \
@@ -126,9 +116,9 @@ public class SearchReadServiceImpl implements SearchReadService {
                 left join m_group g ON s.group_id = g.id \
                 left join m_office o on o.id = c.office_id \
                 left join m_savings_product sp on sp.id=s.product_id \
-                where (o.hierarchy IS NULL OR o.hierarchy like :hierarchy%s) \
-                and (%s or %s)) \
-                order by s.id desc)""".formatted(crossBranchScope, like.apply("s.account_no"), like.apply("s.external_id"));
+                where (o.hierarchy IS NULL OR o.hierarchy like :hierarchy) \
+                and (s.account_no like :search or s.external_id like :search)) \
+                order by s.id desc)""";
 
         final String shareMatchSql = """
                 ( (select 'SHARE' as entityType, s.id as entityId, sp.name as entityName, \
@@ -138,9 +128,9 @@ public class SearchReadServiceImpl implements SearchReadService {
                 from m_share_account s left join m_client c on s.client_id = c.id \
                 left join m_office o on o.id = c.office_id \
                 left join m_share_product sp on sp.id=s.product_id \
-                where (o.hierarchy IS NULL OR o.hierarchy like :hierarchy%s) \
-                and (%s or %s)) \
-                order by s.id desc)""".formatted(crossBranchScope, like.apply("s.account_no"), like.apply("s.external_id"));
+                where (o.hierarchy IS NULL OR o.hierarchy like :hierarchy) \
+                and (s.account_no like :search or s.external_id like :search)) \
+                order by s.id desc)""";
 
         final String clientIdentifierMatchSql = """
                 ( (select 'CLIENTIDENTIFIER' as entityType, ci.id as entityId, ci.document_key as entityName, \
@@ -149,8 +139,8 @@ public class SearchReadServiceImpl implements SearchReadService {
                 c.status_enum as entityStatusEnum, null as subEntityType, null as parentType \
                 from m_client_identifier ci join m_client c on ci.client_id=c.id \
                 join m_office o on o.id = c.office_id \
-                where (o.hierarchy like :hierarchy%s) and %s) \
-                order by ci.id desc)""".formatted(crossBranchScope, like.apply("ci.document_key"));
+                where o.hierarchy like :hierarchy and ci.document_key like :search) \
+                order by ci.id desc)""";
 
         final String groupMatchSql = """
                 ( (select CASE WHEN g.level_id=1 THEN 'CENTER' ELSE 'GROUP' END as entityType, \
@@ -160,10 +150,9 @@ public class SearchReadServiceImpl implements SearchReadService {
                 g.status_enum as entityStatusEnum, null as subEntityType, null as parentType \
                 from m_group g join m_office o on o.id = g.office_id \
                 where o.hierarchy like :hierarchy \
-                and (%s or %s \
-                or %s)) \
-                order by g.id desc)""".formatted(like.apply("g.account_no"), like.apply("g.display_name"),
-                like.apply("g.external_id"));
+                and (g.account_no like :search or g.display_name like :search \
+                or g.external_id like :search)) \
+                order by g.id desc)""";
 
         final StringBuilder sql = new StringBuilder();
 

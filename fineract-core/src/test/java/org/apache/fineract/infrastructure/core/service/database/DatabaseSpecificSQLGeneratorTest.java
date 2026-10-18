@@ -68,8 +68,7 @@ public class DatabaseSpecificSQLGeneratorTest {
     public void testCaseInsensitiveLikeOnPostgreSQL() {
         Mockito.when(databaseTypeResolver.isPostgreSQL()).thenReturn(true);
         Mockito.when(databaseTypeResolver.isMySQL()).thenReturn(false);
-        Assertions.assertEquals("c.display_name ILIKE :search",
-                databaseSpecificSQLGenerator.caseInsensitiveLike("c.display_name"));
+        Assertions.assertEquals("c.display_name ILIKE :search", databaseSpecificSQLGenerator.caseInsensitiveLike("c.display_name"));
     }
 
     @Test

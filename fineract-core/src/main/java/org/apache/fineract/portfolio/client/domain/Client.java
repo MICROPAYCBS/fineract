@@ -234,6 +234,21 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "client", orphanRemoval = true, fetch = FetchType.LAZY)
     protected Set<ClientIdentifier> identifiers = new HashSet<>();
 
+    /**
+     * Upstream-signature overload: gender arrives as a code value and is stored as its id (see {@link #genderId()}).
+     */
+    public static Client instance(final AppUser currentUser, final ClientStatus status, final Office office, final Group clientParentGroup,
+            final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
+            final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
+            final String emailAddress, final Staff staff, final LocalDate submittedOnDate, final Long savingsProductId,
+            final Long savingsAccountId, final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType,
+            final CodeValue clientClassification, final Integer legalForm, final Boolean isStaff) {
+        return instance(currentUser, status, office, clientParentGroup, accountNo, firstname, middlename, lastname, fullname,
+                activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate, savingsProductId,
+                savingsAccountId, dateOfBirth, gender != null ? gender.getId().intValue() : null, clientType, clientClassification,
+                legalForm, isStaff);
+    }
+
     public static Client instance(final AppUser currentUser, final ClientStatus status, final Office office, final Group clientParentGroup,
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
             final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
@@ -393,8 +408,7 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     public void submit() {
         if (isNotDraft()) {
             final String defaultUserMessage = "Cannot submit client. Client must be in Draft status.";
-            final ApiParameterError error = ApiParameterError.generalError("error.msg.clients.must.be.draft.to.submit",
-                    defaultUserMessage);
+            final ApiParameterError error = ApiParameterError.generalError("error.msg.clients.must.be.draft.to.submit", defaultUserMessage);
 
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             dataValidationErrors.add(error);
@@ -706,6 +720,10 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public void updateClientClassification(CodeValue clientClassification) {
         this.clientClassification = clientClassification;
+    }
+
+    public void updateGender(final CodeValue gender) {
+        updateGender(gender != null ? gender.getId().intValue() : null);
     }
 
     public void updateGender(final Integer genderEnum) {

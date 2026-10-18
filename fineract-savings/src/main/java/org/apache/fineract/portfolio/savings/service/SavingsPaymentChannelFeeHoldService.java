@@ -81,9 +81,8 @@ public class SavingsPaymentChannelFeeHoldService {
         final SavingsProductPaymentChannelHold hold = open.get();
         hold.setEndedOnDate(endedOn);
         this.productHoldRepository.saveAndFlush(hold);
-        final List<SavingsAccountPaymentChannel> subscriptions = activeSubscriptions(
-                () -> this.accountChannelRepository.findByProductPaymentChannelIdAndStatus(channel.getId(),
-                        SavingsPaymentChannelStatus.ACTIVE.getValue()));
+        final List<SavingsAccountPaymentChannel> subscriptions = activeSubscriptions(() -> this.accountChannelRepository
+                .findByProductPaymentChannelIdAndStatus(channel.getId(), SavingsPaymentChannelStatus.ACTIVE.getValue()));
         for (final SavingsAccountPaymentChannel subscription : subscriptions) {
             skipMissedCycles(subscription);
         }
@@ -94,9 +93,8 @@ public class SavingsPaymentChannelFeeHoldService {
         if (paymentTypeId == null) {
             return;
         }
-        final List<SavingsAccountPaymentChannel> subscriptions = activeSubscriptions(
-                () -> this.accountChannelRepository.findByPaymentTypeIdAndStatus(paymentTypeId,
-                        SavingsPaymentChannelStatus.ACTIVE.getValue()));
+        final List<SavingsAccountPaymentChannel> subscriptions = activeSubscriptions(() -> this.accountChannelRepository
+                .findByPaymentTypeIdAndStatus(paymentTypeId, SavingsPaymentChannelStatus.ACTIVE.getValue()));
         for (final SavingsAccountPaymentChannel subscription : subscriptions) {
             skipMissedCycles(subscription);
         }

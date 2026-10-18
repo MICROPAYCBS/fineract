@@ -31,8 +31,7 @@ public final class DatatableColumnValidationData implements Serializable {
     private final String validationExample;
     private final String validationMessage;
 
-    public DatatableColumnValidationData(final String validationRegex, final String validationExample,
-            final String validationMessage) {
+    public DatatableColumnValidationData(final String validationRegex, final String validationExample, final String validationMessage) {
         this.validationRegex = validationRegex;
         this.validationExample = validationExample;
         this.validationMessage = validationMessage;

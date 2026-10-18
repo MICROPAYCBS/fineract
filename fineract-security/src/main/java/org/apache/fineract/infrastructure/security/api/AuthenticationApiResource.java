@@ -135,11 +135,10 @@ public class AuthenticationApiResource {
                     && !principal.hasSpecificPermissionTo(TwoFactorConstants.BYPASS_TWO_FACTOR_PERMISSION);
             Long userId = principal.getId();
             if (this.springSecurityPlatformSecurityContext.doesPasswordHasToBeRenewed(principal)) {
-                authenticatedUserData = this.sessionIdlePolicyReadService.applySessionIdlePolicy(twoFactorAuthResponseHelper.apply(
-                        new AuthenticatedUserData().setUsername(request.username).setUserId(userId)
+                authenticatedUserData = this.sessionIdlePolicyReadService.applySessionIdlePolicy(
+                        twoFactorAuthResponseHelper.apply(new AuthenticatedUserData().setUsername(request.username).setUserId(userId)
                                 .setBase64EncodedAuthenticationKey(new String(base64EncodedAuthenticationKey, StandardCharsets.UTF_8))
-                                .setAuthenticated(true).setShouldRenewPassword(true),
-                        principal, isTwoFactorRequired));
+                                .setAuthenticated(true).setShouldRenewPassword(true), principal, isTwoFactorRequired));
                 throw new PasswordResetRequiredException(authenticatedUserData);
             } else {
 

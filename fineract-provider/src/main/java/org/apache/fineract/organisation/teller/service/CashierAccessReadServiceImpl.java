@@ -40,8 +40,7 @@ public class CashierAccessReadServiceImpl implements CashierAccessReadService {
     @Override
     public boolean canReadAllCashiersForCurrentUser() {
         final AppUser user = this.context.authenticatedUser();
-        return !user.hasNotPermissionForAnyOf("ALL_FUNCTIONS", "ALL_FUNCTIONS_READ",
-                TellerCashierAccessConstants.READ_TELLER_PERMISSION);
+        return !user.hasNotPermissionForAnyOf("ALL_FUNCTIONS", "ALL_FUNCTIONS_READ", TellerCashierAccessConstants.READ_TELLER_PERMISSION);
     }
 
     @Override

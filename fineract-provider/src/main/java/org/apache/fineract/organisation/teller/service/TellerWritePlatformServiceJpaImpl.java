@@ -19,8 +19,6 @@
 package org.apache.fineract.organisation.teller.service;
 
 import jakarta.persistence.PersistenceException;
-import java.math.BigDecimal;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.AllArgsConstructor;
@@ -46,8 +44,6 @@ import org.apache.fineract.organisation.staff.domain.Staff;
 import org.apache.fineract.organisation.staff.domain.StaffRepository;
 import org.apache.fineract.organisation.staff.exception.StaffNotFoundException;
 import org.apache.fineract.organisation.teller.data.CashierTransactionDataValidator;
-import org.apache.fineract.organisation.teller.domain.CashLegalTenderLine;
-import org.apache.fineract.organisation.teller.domain.CashLegalTenderSourceType;
 import org.apache.fineract.organisation.teller.domain.Cashier;
 import org.apache.fineract.organisation.teller.domain.CashierRepository;
 import org.apache.fineract.organisation.teller.domain.CashierTransaction;
@@ -77,8 +73,6 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
     private final JournalEntryRepository glJournalEntryRepository;
     private final FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper;
     private final CashierTransactionDataValidator cashierTransactionDataValidator;
-    private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
-    private final LegalTenderBreakdownWritePlatformService legalTenderBreakdownWritePlatformService;
 
     @Override
     @Transactional
@@ -386,24 +380,10 @@ public class TellerWritePlatformServiceJpaImpl implements TellerWritePlatformSer
                 }
             }
 
-        final String currencyCode = command.stringValueOfParameterNamed("currencyCode");
-        final BigDecimal txnAmount = command.bigDecimalValueOfParameterNamed("txnAmount");
-        final List<CashLegalTenderLine> legalTenderLines = this.legalTenderBreakdownValidator.validateAndBuildLinesRequired(command,
-                currencyCode, txnAmount, CashLegalTenderSourceType.CASHIER_TXN, null);
-
             final CashierTransaction cashierTxn = CashierTransaction.fromJson(cashier, command);
             cashierTxn.setTxnType(txnType.getId());
 
-            // Flush so EclipseLink assigns the IDENTITY id before the breakdown lines copy it.
-            this.cashierTxnRepository.saveAndFlush(cashierTxn);
-            if (cashierTxn.getId() == null) {
-                throw new IllegalStateException("Cashier transaction id not generated; cannot link legal tender lines");
-            }
-
-            for (CashLegalTenderLine line : legalTenderLines) {
-                line.setSourceId(cashierTxn.getId());
-            }
-            this.legalTenderBreakdownWritePlatformService.saveLines(legalTenderLines);
+            this.cashierTxnRepository.save(cashierTxn);
 
             // Pass the journal entries
             FinancialActivityAccount mainVaultFinancialActivityAccount = this.financialActivityAccountRepositoryWrapper

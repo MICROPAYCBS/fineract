@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.infrastructure.codes.data;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,25 +33,13 @@ import lombok.experimental.Accessors;
 @Builder
 @AllArgsConstructor
 @Accessors(chain = true)
-@Schema(description = "Code value")
 public class CodeValueData implements Serializable {
 
-    @Schema(description = "Code value identifier.", example = "1")
     private Long id;
-
-    @Schema(description = "Code value name.", example = "Employment")
     private String name;
-
-    @Schema(description = "Display position.", example = "1")
     private Integer position;
-
-    @Schema(description = "Code value description.", example = "Income from employment")
     private String description;
-
-    @Schema(description = "Whether the code value is active.", example = "true")
     private Boolean active;
-
-    @Schema(description = "Whether the code value is mandatory.", example = "false")
     private Boolean mandatory;
 
     public static CodeValueData instance(final Long id, final String name, final String description, final Integer position,

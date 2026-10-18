@@ -146,8 +146,7 @@ public class GuarantorData implements IGuarantor {
                 guarantorData.addressLine2, guarantorData.city, guarantorData.state, guarantorData.zip, guarantorData.country,
                 guarantorData.mobileNumber, guarantorData.housePhoneNumber, guarantorData.comment, guarantorData.nationalIdNumber,
                 guarantorData.officeName, guarantorData.joinedDate, guarantorData.externalId, guarantorData.status,
-                guarantorData.guarantorFundingDetails,
-                guarantorTypeOptions, allowedClientRelationshipTypes, accountLinkingOptions);
+                guarantorData.guarantorFundingDetails, guarantorTypeOptions, allowedClientRelationshipTypes, accountLinkingOptions);
     }
 
     public static GuarantorData mergeClientData(final ClientData clientData, final GuarantorData guarantorData) {
@@ -162,8 +161,7 @@ public class GuarantorData implements IGuarantor {
         return new GuarantorData(guarantorData.id, guarantorData.loanId, guarantorData.clientRelationshipType, guarantorData.entityId,
                 guarantorData.guarantorType, staffData.getFirstname(), staffData.getLastname(), null, null, null, null, null, null, null,
                 null, null, null, null, staffData.getOfficeName(), null, null, guarantorData.status, guarantorData.guarantorFundingDetails,
-                null,
-                guarantorData.allowedClientRelationshipTypes, guarantorData.accountLinkingOptions);
+                null, guarantorData.allowedClientRelationshipTypes, guarantorData.accountLinkingOptions);
     }
 
     public GuarantorData(final Long id, final Long loanId, final CodeValueData clientRelationshipType, final Long entityId,
@@ -171,8 +169,7 @@ public class GuarantorData implements IGuarantor {
             final String addressLine1, final String addressLine2, final String city, final String state, final String zip,
             final String country, final String mobileNumber, final String housePhoneNumber, final String comment,
             final String nationalIdNumber, final String officeName, final LocalDate joinedDate, final String externalId,
-            final boolean status,
-            Collection<GuarantorFundingData> guarantorFundingDetails, final List<EnumOptionData> guarantorTypeOptions,
+            final boolean status, Collection<GuarantorFundingData> guarantorFundingDetails, final List<EnumOptionData> guarantorTypeOptions,
             final Collection<CodeValueData> allowedClientRelationshipTypes, final Collection<PortfolioAccountData> accountLinkingOptions) {
         this.id = id;
         this.loanId = loanId;

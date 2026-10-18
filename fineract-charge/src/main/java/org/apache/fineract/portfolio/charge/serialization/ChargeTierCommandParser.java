@@ -53,8 +53,7 @@ public class ChargeTierCommandParser {
     private final FromJsonHelper fromApiJsonHelper;
 
     public boolean hasChargeTiers(final JsonElement element) {
-        return this.fromApiJsonHelper.parameterExists(CHARGE_TIERS, element)
-                && element.getAsJsonObject().get(CHARGE_TIERS).isJsonArray()
+        return this.fromApiJsonHelper.parameterExists(CHARGE_TIERS, element) && element.getAsJsonObject().get(CHARGE_TIERS).isJsonArray()
                 && !element.getAsJsonObject().getAsJsonArray(CHARGE_TIERS).isEmpty();
     }
 
@@ -67,8 +66,8 @@ public class ChargeTierCommandParser {
     }
 
     /**
-     * Charge times that already allow percentage calculation (and thus have a defined base for lookup).
-     * Flat calendar fees are excluded.
+     * Charge times that already allow percentage calculation (and thus have a defined base for lookup). Flat calendar
+     * fees are excluded.
      */
     public static boolean supportsChargeTiers(final ChargeAppliesTo appliesTo, final ChargeTimeType chargeTimeType) {
         if (appliesTo == null || chargeTimeType == null || chargeTimeType == ChargeTimeType.INVALID) {
@@ -94,9 +93,12 @@ public class ChargeTierCommandParser {
     /**
      * Validates mutual exclusivity of legacy amount/caps vs tiered mode.
      *
-     * @param useChargeTiers effective mode for this request (create: from payload; update: resolved by caller)
-     * @param requireTiers when true, non-empty chargeTiers are mandatory
-     * @param chargeTimeType charge time for allow-list check; when null, time-type allow-list is skipped (caller must enforce)
+     * @param useChargeTiers
+     *            effective mode for this request (create: from payload; update: resolved by caller)
+     * @param requireTiers
+     *            when true, non-empty chargeTiers are mandatory
+     * @param chargeTimeType
+     *            charge time for allow-list check; when null, time-type allow-list is skipped (caller must enforce)
      */
     public void validateMode(final JsonElement element, final Integer chargeAppliesTo, final Integer chargeTimeType,
             final boolean useChargeTiers, final boolean requireTiers, final DataValidatorBuilder baseDataValidator) {
@@ -218,5 +220,6 @@ public class ChargeTierCommandParser {
         }
     }
 
-    private record ParsedTier(BigDecimal from, BigDecimal to, BigDecimal amount) {}
+    private record ParsedTier(BigDecimal from, BigDecimal to, BigDecimal amount) {
+    }
 }

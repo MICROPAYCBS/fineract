@@ -56,8 +56,8 @@ public class ChargeRequest implements Serializable {
     @Schema(description = "When true, chargeTiers is required and amount, minCap, and maxCap must be omitted", example = "false")
     private Boolean useChargeTiers;
     /**
-     * Lookup amount bands. Must be present on this DTO — create/update re-serialize
-     * {@code ChargeRequest} into the command JSON; omitting this field drops tiers before validation.
+     * Lookup amount bands. Must be present on this DTO — create/update re-serialize {@code ChargeRequest} into the
+     * command JSON; omitting this field drops tiers before validation.
      */
     @Schema(description = "Amount bands. Only the last tier may omit amountRangeTo. Requires locale. Not allowed when useChargeTiers is false.")
     private List<ChargeTierRequest> chargeTiers;

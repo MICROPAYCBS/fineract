@@ -40,8 +40,7 @@ public class AccountNumberFormatEngineImpl implements AccountNumberFormatEngine 
 
         for (final FormatSegment segment : segments) {
             if (segment.isCheckDigit()) {
-                final String checkDigit = CheckDigitCalculator.calculate(context.getCheckDigitAlgorithm(),
-                        bodyBeforeCheckDigit.toString());
+                final String checkDigit = CheckDigitCalculator.calculate(context.getCheckDigitAlgorithm(), bodyBeforeCheckDigit.toString());
                 bodyBeforeCheckDigit.append(CheckDigitCalculator.normalizeSegmentValue(checkDigit, segment.getWidth(), true));
             } else {
                 bodyBeforeCheckDigit.append(resolveSegmentValue(context, segment));

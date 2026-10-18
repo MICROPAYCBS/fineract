@@ -230,10 +230,8 @@ public class SavingsAccountPaymentChannelWritePlatformService {
         block.setUnblockedOnDate(DateUtils.getBusinessLocalDate());
         this.accountChannelBlockRepository.saveAndFlush(block);
 
-        this.accountChannelRepository
-                .findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId, paymentTypeId,
-                        SavingsPaymentChannelStatus.ACTIVE.getValue())
-                .ifPresent(this.feeHoldService::skipMissedCycles);
+        this.accountChannelRepository.findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId, paymentTypeId,
+                SavingsPaymentChannelStatus.ACTIVE.getValue()).ifPresent(this.feeHoldService::skipMissedCycles);
 
         return new CommandProcessingResultBuilder().withEntityId(block.getId()).withSavingsId(savingsAccountId)
                 .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
@@ -260,11 +258,11 @@ public class SavingsAccountPaymentChannelWritePlatformService {
             subscriptionId = subscription.getId();
         }
         return SavingsAccountPaymentChannelData.builder().id(subscriptionId).productPaymentChannelId(productData.getId())
-                .paymentTypeId(productData.getPaymentTypeId())
-                .paymentType(productData.getPaymentType()).isPremium(productData.isPremium()).isActive(productData.isActive())
-                .name(productData.getName()).description(productData.getDescription()).subscriptionStatus(status)
-                .subscribedOnDate(subscribedOn).unsubscribedOnDate(unsubscribedOn).allowedForDeposit(allowedForDeposit).blocked(blocked)
-                .blockedOnDate(blocked ? block.getBlockedOnDate() : null).charges(productData.getCharges()).build();
+                .paymentTypeId(productData.getPaymentTypeId()).paymentType(productData.getPaymentType()).isPremium(productData.isPremium())
+                .isActive(productData.isActive()).name(productData.getName()).description(productData.getDescription())
+                .subscriptionStatus(status).subscribedOnDate(subscribedOn).unsubscribedOnDate(unsubscribedOn)
+                .allowedForDeposit(allowedForDeposit).blocked(blocked).blockedOnDate(blocked ? block.getBlockedOnDate() : null)
+                .charges(productData.getCharges()).build();
     }
 
     private SavingsProductPaymentChannel requireProductChannel(final SavingsAccount account, final Long paymentTypeId) {

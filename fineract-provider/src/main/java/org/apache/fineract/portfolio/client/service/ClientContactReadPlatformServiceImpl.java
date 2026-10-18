@@ -53,8 +53,8 @@ public class ClientContactReadPlatformServiceImpl implements ClientContactReadPl
             final AppUser currentUser = this.context.authenticatedUser();
             final String hierarchySearchString = currentUser.getOffice().getHierarchy() + "%";
             final ClientContactMapper mapper = new ClientContactMapper();
-            return this.jdbcTemplate.queryForObject("SELECT " + mapper.schema() + " AND cc.id = ?", mapper, clientId,
-                    hierarchySearchString, clientContactId);
+            return this.jdbcTemplate.queryForObject("SELECT " + mapper.schema() + " AND cc.id = ?", mapper, clientId, hierarchySearchString,
+                    clientContactId);
         } catch (final EmptyResultDataAccessException e) {
             throw new ClientContactNotFoundException(clientContactId, e);
         }
@@ -66,10 +66,8 @@ public class ClientContactReadPlatformServiceImpl implements ClientContactReadPl
             return " cc.id AS id, cc.client_id AS clientId, cc.contact_type_id AS contactTypeId, ct.type_code AS contactTypeCode,"
                     + " ct.type_name AS contactTypeName, ct.example AS example, ct.validation_regex AS validationRegex,"
                     + " ct.mandatory_ind AS mandatoryInd, cc.contact_value AS contactValue, cc.is_primary AS isPrimary"
-                    + " FROM m_client_contact cc"
-                    + " INNER JOIN m_contact_type ct ON cc.contact_type_id = ct.id"
-                    + " INNER JOIN m_client c ON cc.client_id = c.id"
-                    + " INNER JOIN m_office o ON c.office_id = o.id"
+                    + " FROM m_client_contact cc" + " INNER JOIN m_contact_type ct ON cc.contact_type_id = ct.id"
+                    + " INNER JOIN m_client c ON cc.client_id = c.id" + " INNER JOIN m_office o ON c.office_id = o.id"
                     + " WHERE cc.client_id = ? AND o.hierarchy LIKE ?";
         }
 

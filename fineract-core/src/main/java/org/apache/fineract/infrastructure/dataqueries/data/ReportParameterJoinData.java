@@ -41,4 +41,12 @@ public final class ReportParameterJoinData {
     private final String parameterName;
     private final String parameterLabel;
 
+    public ReportParameterJoinData(final Long reportId, final String reportName, final String reportType, final String reportSubType,
+            final String reportCategory, final String description, final String reportSql, final Boolean coreReport,
+            final Boolean useReport, final Long reportParameterId, final Long parameterId, final String reportParameterName,
+            final String parameterName) {
+        this(reportId, reportName, reportType, reportSubType, reportCategory, description, reportSql, coreReport, useReport,
+                reportParameterId, parameterId, reportParameterName, parameterName, null);
+    }
+
 }

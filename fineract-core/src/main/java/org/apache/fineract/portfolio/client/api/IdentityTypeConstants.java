@@ -22,6 +22,5 @@ public final class IdentityTypeConstants {
 
     public static final String CUSTOMER_IDENTIFIER_CODE_NAME = "Customer Identifier";
 
-    private IdentityTypeConstants() {
-    }
+    private IdentityTypeConstants() {}
 }

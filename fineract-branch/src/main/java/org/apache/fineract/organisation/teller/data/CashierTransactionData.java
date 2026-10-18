@@ -29,7 +29,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
 import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineData;
-import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineRequest;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.teller.domain.CashierTxnType;
 

@@ -36,12 +36,9 @@ import org.apache.fineract.accounting.journalentry.service.JournalEntryWritePlat
 import org.apache.fineract.accounting.producttoaccountmapping.domain.ProductToGLAccountMappingRepository;
 import org.apache.fineract.accounting.rule.domain.AccountingRuleRepository;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
-import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
-import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
-import org.apache.fineract.infrastructure.interbranch.service.InterBranchGlAccountReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.investor.domain.ExternalAssetOwnerRepository;
@@ -52,7 +49,6 @@ import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.organisation.office.service.OfficeReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
-import org.apache.fineract.portfolio.department.service.OfficeDepartmentMappingValidator;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanAmortizationAllocationMappingRepository;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionRepository;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
@@ -94,24 +90,20 @@ public class AccountingJournalEntryConfiguration {
             OfficeRepositoryWrapper officeRepositoryWrapper, AccountingProcessorForLoanFactory accountingProcessorForLoanFactory,
             AccountingProcessorForSavingsFactory accountingProcessorForSavingsFactory,
             AccountingProcessorForSharesFactory accountingProcessorForSharesFactory, AccountingProcessorHelper helper,
-            JournalEntryCommandFromApiJsonDeserializer fromApiJsonDeserializer, FromJsonHelper fromApiJsonHelper,
-            AccountingRuleRepository accountingRuleRepository, GLAccountReadPlatformService glAccountReadPlatformService,
-            OrganisationCurrencyRepositoryWrapper organisationCurrencyRepository, PlatformSecurityContext context,
-            PaymentDetailWritePlatformService paymentDetailWritePlatformService,
+            JournalEntryCommandFromApiJsonDeserializer fromApiJsonDeserializer, AccountingRuleRepository accountingRuleRepository,
+            GLAccountReadPlatformService glAccountReadPlatformService, OrganisationCurrencyRepositoryWrapper organisationCurrencyRepository,
+            PlatformSecurityContext context, PaymentDetailWritePlatformService paymentDetailWritePlatformService,
             FinancialActivityAccountRepositoryWrapper financialActivityAccountRepositoryWrapper,
             CashBasedAccountingProcessorForClientTransactions accountingProcessorForClientTransactions,
             ConfigurationReadPlatformService configurationReadPlatformService, AccountingService accountingService,
             ExternalAssetOwnerRepository externalAssetOwnerRepository,
             LoanAmortizationAllocationMappingRepository loanAmortizationAllocationMappingRepository,
-            LoanTransactionRepository loanTransactionRepository, OfficeDepartmentMappingValidator officeDepartmentMappingValidator,
-            InterBranchGlAccountReadService interBranchGlAccountReadService,
-            CrossBranchTransactionAccessService crossBranchTransactionAccessService) {
+            LoanTransactionRepository loanTransactionRepository) {
         return new JournalEntryWritePlatformServiceJpaRepositoryImpl(glClosureRepository, glAccountRepository, glJournalEntryRepository,
                 officeRepositoryWrapper, accountingProcessorForLoanFactory, accountingProcessorForSavingsFactory,
-                accountingProcessorForSharesFactory, helper, fromApiJsonDeserializer, fromApiJsonHelper, accountingRuleRepository,
+                accountingProcessorForSharesFactory, helper, fromApiJsonDeserializer, accountingRuleRepository,
                 glAccountReadPlatformService, organisationCurrencyRepository, context, paymentDetailWritePlatformService,
                 financialActivityAccountRepositoryWrapper, accountingProcessorForClientTransactions, configurationReadPlatformService,
-                accountingService, externalAssetOwnerRepository, loanAmortizationAllocationMappingRepository, loanTransactionRepository,
-                officeDepartmentMappingValidator, interBranchGlAccountReadService, crossBranchTransactionAccessService);
+                accountingService, externalAssetOwnerRepository, loanAmortizationAllocationMappingRepository, loanTransactionRepository);
     }
 }

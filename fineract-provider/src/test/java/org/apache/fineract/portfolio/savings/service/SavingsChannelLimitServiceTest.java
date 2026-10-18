@@ -160,14 +160,15 @@ class SavingsChannelLimitServiceTest {
         when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
         when(limitRepository.findBySavingsAccountIdAndProductPaymentChannelIdAndDirection(10L, 7L, SavingsChannelLimitDirection.DEBIT))
                 .thenReturn(Optional.empty());
-        final SavingsAccountChannelLimitUsage day = SavingsAccountChannelLimitUsage.start(account, channel, SavingsChannelLimitDirection.DEBIT,
-                SavingsChannelLimitPeriodType.DAY, TXN_DATE);
+        final SavingsAccountChannelLimitUsage day = SavingsAccountChannelLimitUsage.start(account, channel,
+                SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.DAY, TXN_DATE);
         day.add(new BigDecimal("10"), 1);
         when(usageRepository.findForUpdate(10L, 7L, SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.DAY, TXN_DATE))
                 .thenReturn(Optional.of(day));
         when(usageRepository.findForUpdate(10L, 7L, SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.MONTH,
-                LocalDate.of(2026, 1, 1))).thenReturn(Optional.of(SavingsAccountChannelLimitUsage.start(account, channel,
-                        SavingsChannelLimitDirection.DEBIT, SavingsChannelLimitPeriodType.MONTH, LocalDate.of(2026, 1, 1))));
+                LocalDate.of(2026, 1, 1)))
+                .thenReturn(Optional.of(SavingsAccountChannelLimitUsage.start(account, channel, SavingsChannelLimitDirection.DEBIT,
+                        SavingsChannelLimitPeriodType.MONTH, LocalDate.of(2026, 1, 1))));
 
         assertTrue(fails(new BigDecimal("1"), false).contains("exceeds.daily.count"));
     }
@@ -427,8 +428,8 @@ class SavingsChannelLimitServiceTest {
     private SavingsChannelLimitHold authorize(final BigDecimal amount, final boolean transfer) {
         final PaymentDetail paymentDetail = transfer ? null
                 : PaymentDetail.instance(channel.getPaymentType(), null, null, null, null, null);
-        return service.authorize(new SavingsChannelLimitCommand(account, TXN_DATE, amount, paymentDetail, SavingsChannelLimitDirection.DEBIT,
-                transfer, true, false));
+        return service.authorize(new SavingsChannelLimitCommand(account, TXN_DATE, amount, paymentDetail,
+                SavingsChannelLimitDirection.DEBIT, transfer, true, false));
     }
 
     private String fails(final BigDecimal amount, final boolean transfer) {

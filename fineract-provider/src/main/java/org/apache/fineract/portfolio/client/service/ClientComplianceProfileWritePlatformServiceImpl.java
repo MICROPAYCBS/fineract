@@ -104,8 +104,8 @@ public class ClientComplianceProfileWritePlatformServiceImpl implements ClientCo
             profile.setIsPep(value ? "Y" : "N");
         }
         if (json.has(ClientComplianceProfileCommandFromApiJsonDeserializer.PEP_POSITION)) {
-            profile.setPepPosition(StringUtils
-                    .trimToNull(json.get(ClientComplianceProfileCommandFromApiJsonDeserializer.PEP_POSITION).getAsString()));
+            profile.setPepPosition(
+                    StringUtils.trimToNull(json.get(ClientComplianceProfileCommandFromApiJsonDeserializer.PEP_POSITION).getAsString()));
         }
         if (json.has(ClientComplianceProfileCommandFromApiJsonDeserializer.PEP_RELATIVE_NAME)) {
             profile.setPepRelativeName(StringUtils
@@ -151,7 +151,8 @@ public class ClientComplianceProfileWritePlatformServiceImpl implements ClientCo
     }
 
     private void deleteOtherBankAccounts(final Long clientId) {
-        final List<ClientOtherBankAccount> existingAccounts = this.otherBankAccountRepository.findByClient_IdOrderByDisplayOrderAsc(clientId);
+        final List<ClientOtherBankAccount> existingAccounts = this.otherBankAccountRepository
+                .findByClient_IdOrderByDisplayOrderAsc(clientId);
         if (!existingAccounts.isEmpty()) {
             this.otherBankAccountRepository.deleteAll(existingAccounts);
             this.otherBankAccountRepository.flush();
@@ -171,8 +172,10 @@ public class ClientComplianceProfileWritePlatformServiceImpl implements ClientCo
             final String bankName = accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.BANK_NAME)
                     ? StringUtils.trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.BANK_NAME).getAsString())
                     : null;
-            final String accountNumber = accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER) ? StringUtils
-                    .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER).getAsString()) : null;
+            final String accountNumber = accountJson.has(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER)
+                    ? StringUtils
+                            .trimToNull(accountJson.get(ClientComplianceProfileCommandFromApiJsonDeserializer.ACCOUNT_NUMBER).getAsString())
+                    : null;
             if (StringUtils.isBlank(bankName) && StringUtils.isBlank(accountNumber)) {
                 continue;
             }

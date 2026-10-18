@@ -100,15 +100,14 @@ public class ShareAccountDataSerializer {
     private static final Set<String> activateParameters = new HashSet<>(Arrays.asList(ShareAccountApiConstants.locale_paramname,
             ShareAccountApiConstants.dateformat_paramname, ShareAccountApiConstants.activatedate_paramname));
 
-    private static final Set<String> closeParameters = new HashSet<>(
-            Arrays.asList(ShareAccountApiConstants.locale_paramname, ShareAccountApiConstants.dateformat_paramname,
-                    ShareAccountApiConstants.closeddate_paramname, ShareAccountApiConstants.note_paramname,
-                    ShareAccountApiConstants.usesavings_paramname));
+    private static final Set<String> closeParameters = new HashSet<>(Arrays.asList(ShareAccountApiConstants.locale_paramname,
+            ShareAccountApiConstants.dateformat_paramname, ShareAccountApiConstants.closeddate_paramname,
+            ShareAccountApiConstants.note_paramname, ShareAccountApiConstants.usesavings_paramname));
 
-    private static final Set<String> addtionalSharesParameters = new HashSet<>(Arrays.asList(ShareAccountApiConstants.locale_paramname,
-            ShareAccountApiConstants.requesteddate_paramname, ShareAccountApiConstants.requestedshares_paramname,
-            ShareAccountApiConstants.purchasedprice_paramname, ShareAccountApiConstants.dateformat_paramname,
-            ShareAccountApiConstants.usesavings_paramname));
+    private static final Set<String> addtionalSharesParameters = new HashSet<>(
+            Arrays.asList(ShareAccountApiConstants.locale_paramname, ShareAccountApiConstants.requesteddate_paramname,
+                    ShareAccountApiConstants.requestedshares_paramname, ShareAccountApiConstants.purchasedprice_paramname,
+                    ShareAccountApiConstants.dateformat_paramname, ShareAccountApiConstants.usesavings_paramname));
 
     @Autowired
     public ShareAccountDataSerializer(final PlatformSecurityContext platformSecurityContext, final FromJsonHelper fromApiJsonHelper,

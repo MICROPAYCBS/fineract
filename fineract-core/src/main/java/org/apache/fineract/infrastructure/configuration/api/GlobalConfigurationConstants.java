@@ -77,7 +77,6 @@ public final class GlobalConfigurationConstants {
     public static final String ALLOWED_LOAN_STATUSES_OF_DELAYED_SETTLEMENT_FOR_EXTERNAL_ASSET_TRANSFER = "allowed-loan-statuses-of-delayed-settlement-for-external-asset-transfer";
     public static final String MAX_LOGIN_RETRY_ATTEMPTS = "max-login-retry-attempts";
     public static final String ENABLE_ORIGINATOR_CREATION_DURING_LOAN_APPLICATION = "enable-originator-creation-during-loan-application";
-    public static final String ENABLE_APPROVAL_WORKFLOWS = "enable-approval-workflows";
     public static final String ENABLE_INSTANT_DELINQUENCY_CALCULATION = "enable-instant-delinquency-calculation";
     public static final String PASSWORD_REUSE_CHECK_HISTORY_COUNT = "password-reuse-check-history-count";
     public static final String FORCE_WITHDRAWAL_ON_SAVINGS_ACCOUNT = "allow-force-withdrawal-on-savings-account";
@@ -94,18 +93,10 @@ public final class GlobalConfigurationConstants {
     public static final String ENABLE_CROSS_BRANCH_SERVICING = "enable-cross-branch-servicing";
     public static final String SESSION_IDLE_TIMEOUT_MINUTES = "session-idle-timeout-minutes";
     public static final String SESSION_IDLE_WARNING_SECONDS = "session-idle-warning-seconds";
-    public static final String ENFORCE_SINGLE_SESSION = "enforce-single-session";
-    public static final String ORGANISATION_DISPLAY_NAME = "organisation-display-name";
     public static final String PREVENT_CASHIER_OVERDRAW = "prevent-cashier-overdraw";
     public static final String REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS = "require-cashier-for-cash-transactions";
-    public static final String CAPTURE_LEGAL_TENDER_FOR_CASH_TRANSACTIONS = "capture-legal-tender-for-cash-transactions";
     public static final String STRUCTURED_ACCOUNT_NUMBER_FORMATS = "structured-account-number-formats";
-    public static final String ENFORCE_STRUCTURED_GL_CODES = "enforce-structured-gl-codes";
-    public static final String STRUCTURED_GL_CODE_LENGTH = "structured-gl-code-length";
     public static final String ALLOW_DIRECT_LOAN_REPAYMENTS = "allow-direct-loan-repayments";
-    public static final String ENABLE_REQUIRE_DEPARTMENT_ON_MANUAL_JOURNAL_PL_LINES = "enable-require-department-on-manual-journal-pl-lines";
-    public static final String ENABLE_ORGANIZATION_WIDE_AUDIT_VIEW = "enable-organization-wide-audit-view";
-    public static final String GL_BALANCE_SNAPSHOT_DAILY_RETENTION_DAYS = "gl-balance-snapshot-daily-retention-days";
     public static final String CHANNEL_LIMIT_INCREASE_COOLING_HOURS = "channel-limit-increase-cooling-hours";
 
     private GlobalConfigurationConstants() {}

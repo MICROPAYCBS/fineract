@@ -23,8 +23,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface SavingsAccountPaymentChannelBlockRepository extends JpaRepository<SavingsAccountPaymentChannelBlock, Long>,
-        JpaSpecificationExecutor<SavingsAccountPaymentChannelBlock> {
+public interface SavingsAccountPaymentChannelBlockRepository
+        extends JpaRepository<SavingsAccountPaymentChannelBlock, Long>, JpaSpecificationExecutor<SavingsAccountPaymentChannelBlock> {
 
     List<SavingsAccountPaymentChannelBlock> findBySavingsAccount_IdAndUnblockedOnDateIsNull(Long savingsAccountId);
 

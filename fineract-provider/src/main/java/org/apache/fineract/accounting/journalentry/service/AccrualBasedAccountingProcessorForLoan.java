@@ -1868,8 +1868,9 @@ public class AccrualBasedAccountingProcessorForLoan implements AccountingProcess
                     }
 
                 } else {
-                    this.helper.createDebitJournalEntryForLoan(fundSourceOffice, currencyCode, AccrualAccountsForLoan.FUND_SOURCE.getValue(),
-                            loanProductId, paymentTypeId, loanId, transactionId, transactionDate, totalDebitAmount);
+                    this.helper.createDebitJournalEntryForLoan(fundSourceOffice, currencyCode,
+                            AccrualAccountsForLoan.FUND_SOURCE.getValue(), loanProductId, paymentTypeId, loanId, transactionId,
+                            transactionDate, totalDebitAmount);
                 }
             }
 

@@ -48,7 +48,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CAPITALIZEDINCOME;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CAPITALIZEDINCOMEADJUSTMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHANGEPWD;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_RESETTOTP;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHARGEBACK;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHARGEOFF;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CHARGEREFUND;
@@ -60,7 +59,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREATESCHEDULEEXCEPTIONS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREATE_DIVIDEND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREDITBALANCEREFUND;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEACTIVATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEACTIVATEOVERDUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEFINEOPENINGBALANCE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETE;
@@ -68,7 +66,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETESCHEDULEEXCEPTIONS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETE_DIVIDEND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DEPOSIT;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DETACH;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISABLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DISASSOCIATECLIENTS;
@@ -87,12 +84,10 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_FORCE_WITHDRAWAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_FORECLOSURE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GET;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GOODWILLCREDIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_HOLDAMOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INACTIVATE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBSCRIBE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNSUBSCRIBE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATECHANNELLIMIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERESTPAYMENTWAIVER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERMEDIARYSALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INVALIDATE;
@@ -121,15 +116,18 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REMOVELOANOFFICER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REMOVESAVINGSOFFICER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REPAYMENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_RESETTOTP;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVERSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVERSETRANSACTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVOKE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVECOLLECTIONSHEET;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVINGS_TO_GL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SETFRAUD;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SETTLECASHFROMCASHIER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBMIT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBSCRIBE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_TRANSFERCLIENTS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNASSIGNROLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNASSIGNSTAFF;
@@ -139,16 +137,18 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDO;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOAPPROVAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOCHARGEOFF;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDODISBURSAL;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOREJECT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOTRANSACTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOWITHDRAWAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOWRITEOFF;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDO_REAGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDO_REAMORTIZE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNSUBSCRIBE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATECASHIERALLOCATION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATECHANNELLIMIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATEDELINQUENCY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATELOANOFFICER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATEROLE;
@@ -160,7 +160,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WAIVE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WAIVEINTERESTPORTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WITHDRAW;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVINGS_TO_GL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WITHDRAWAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WITHDRAWTRANSFER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_WRITEOFF;
@@ -188,11 +187,11 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_LOANPRODUCT_MAPPING;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITREPORT;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DATATABLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_ACTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_BUCKET;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_RANGE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DEPARTMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DISBURSEMENTDETAIL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EMAIL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EMAIL_CAMPAIGN;
@@ -217,11 +216,11 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_HOLIDAY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INDUSTRY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INLINE_JOB;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTERBRANCHRULE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTEREST_PAUSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOURNALENTRY;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LEGAL_TENDER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LIKELIHOOD;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LOAN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LOANCHARGE;
@@ -250,15 +249,10 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SECTOR;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DEPARTMENT;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LEGAL_TENDER;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOBSEQUENCE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SHAREPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SMSCAMPAIGN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_STANDINGINSTRUCTION;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SUBINDUSTRY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SURVEY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TAXCOMPONENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TAXGROUP;
@@ -268,7 +262,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USERSESSION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WAIVECHARGE;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKFLOW_DEFINITION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOAN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANCHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANPRODUCT;
@@ -465,29 +458,6 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder createCustomerClass() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_CUSTOMERCLASS;
-        this.href = "/customerclasses";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateCustomerClass(final long customerClassId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_CUSTOMERCLASS;
-        this.href = "/customerclasses/" + customerClassId;
-        this.entityId = customerClassId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteCustomerClass(final long customerClassId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_CUSTOMERCLASS;
-        this.href = "/customerclasses/" + customerClassId;
-        this.entityId = customerClassId;
-        return this;
-    }
-
     public CommandWrapperBuilder createClientTitle() {
         this.actionName = ACTION_CREATE;
         this.entityName = ENTITY_CLIENTTITLE;
@@ -531,29 +501,6 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_CONTACTTYPE;
         this.href = "/contacttypes/" + contactTypeId;
         this.entityId = contactTypeId;
-        return this;
-    }
-
-    public CommandWrapperBuilder createSector() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_SECTOR;
-        this.href = "/sectors";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateSector(final long sectorId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_SECTOR;
-        this.href = "/sectors/" + sectorId;
-        this.entityId = sectorId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteSector(final long sectorId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_SECTOR;
-        this.href = "/sectors/" + sectorId;
-        this.entityId = sectorId;
         return this;
     }
 
@@ -603,92 +550,6 @@ public class CommandWrapperBuilder {
         this.transactionId = currencyCode;
         this.entityId = legalTenderId;
         this.href = "/currencies/" + currencyCode + "/legal-tenders/" + legalTenderId;
-        return this;
-    }
-
-    public CommandWrapperBuilder createJobSequence() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_JOBSEQUENCE;
-        this.href = "/jobsequences";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateJobSequence(final long sequenceId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_JOBSEQUENCE;
-        this.href = "/jobsequences/" + sequenceId;
-        this.entityId = sequenceId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteJobSequence(final long sequenceId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_JOBSEQUENCE;
-        this.href = "/jobsequences/" + sequenceId;
-        this.entityId = sequenceId;
-        return this;
-    }
-
-    public CommandWrapperBuilder executeJobSequence(final long sequenceId) {
-        this.actionName = ACTION_EXECUTE;
-        this.entityName = ENTITY_JOBSEQUENCE;
-        this.href = "/jobsequences/" + sequenceId + "?command=execute";
-        this.entityId = sequenceId;
-        return this;
-    }
-
-    public CommandWrapperBuilder cancelJobSequenceRun(final long sequenceId, final long runId) {
-        this.actionName = ACTION_CANCEL;
-        this.entityName = ENTITY_JOBSEQUENCE;
-        this.href = "/jobsequences/" + sequenceId + "/runs/" + runId + "?command=cancel";
-        this.entityId = sequenceId;
-        this.subentityId = runId;
-        return this;
-    }
-
-    public CommandWrapperBuilder createIndustry() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_INDUSTRY;
-        this.href = "/industries";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateIndustry(final long industryId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_INDUSTRY;
-        this.href = "/industries/" + industryId;
-        this.entityId = industryId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteIndustry(final long industryId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_INDUSTRY;
-        this.href = "/industries/" + industryId;
-        this.entityId = industryId;
-        return this;
-    }
-
-    public CommandWrapperBuilder createSubIndustry() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_SUBINDUSTRY;
-        this.href = "/subindustries";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateSubIndustry(final long subIndustryId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_SUBINDUSTRY;
-        this.href = "/subindustries/" + subIndustryId;
-        this.entityId = subIndustryId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteSubIndustry(final long subIndustryId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_SUBINDUSTRY;
-        this.href = "/subindustries/" + subIndustryId;
-        this.entityId = subIndustryId;
         return this;
     }
 
@@ -4160,16 +4021,6 @@ public class CommandWrapperBuilder {
         return this;
     }
 
-    public CommandWrapperBuilder revokeUserSession(final Long userId, final Long sessionId) {
-        this.actionName = ACTION_REVOKE;
-        this.entityName = ENTITY_USERSESSION;
-        this.entityId = userId;
-        this.subentityId = sessionId;
-        this.href = "/users/" + userId + "/sessions/" + sessionId + "/revoke";
-        this.json = "{}";
-        return this;
-    }
-
     public CommandWrapperBuilder updateTwoFactorConfiguration() {
         this.actionName = ACTION_UPDATE;
         this.entityName = ENTITY_TWOFACTOR_CONFIGURATION;
@@ -4455,6 +4306,16 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder revokeUserSession(final Long userId, final Long sessionId) {
+        this.actionName = ACTION_REVOKE;
+        this.entityName = ENTITY_USERSESSION;
+        this.entityId = userId;
+        this.subentityId = sessionId;
+        this.href = "/users/" + userId + "/sessions/" + sessionId + "/revoke";
+        this.json = "{}";
+        return this;
+    }
+
     public CommandWrapperBuilder accrueLoan(final Long loanId) {
         this.actionName = ACTION_ACCRUE;
         this.entityName = ENTITY_LOAN;
@@ -4558,45 +4419,6 @@ public class CommandWrapperBuilder {
         this.loanId = loanId;
         this.subentityId = originatorId;
         this.href = "/loans/" + loanId + "/originators/" + originatorId;
-        return this;
-    }
-
-    public CommandWrapperBuilder createWorkflowDefinition() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_WORKFLOW_DEFINITION;
-        this.href = "/workflow-definitions";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateWorkflowDefinition(final Long definitionId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_WORKFLOW_DEFINITION;
-        this.entityId = definitionId;
-        this.href = "/workflow-definitions/" + definitionId;
-        return this;
-    }
-
-    public CommandWrapperBuilder deleteWorkflowDefinition(final Long definitionId) {
-        this.actionName = ACTION_DELETE;
-        this.entityName = ENTITY_WORKFLOW_DEFINITION;
-        this.entityId = definitionId;
-        this.href = "/workflow-definitions/" + definitionId;
-        return this;
-    }
-
-    public CommandWrapperBuilder activateWorkflowDefinition(final Long definitionId) {
-        this.actionName = ACTION_ACTIVATE;
-        this.entityName = ENTITY_WORKFLOW_DEFINITION;
-        this.entityId = definitionId;
-        this.href = "/workflow-definitions/" + definitionId + "?command=activate";
-        return this;
-    }
-
-    public CommandWrapperBuilder deactivateWorkflowDefinition(final Long definitionId) {
-        this.actionName = ACTION_DEACTIVATE;
-        this.entityName = ENTITY_WORKFLOW_DEFINITION;
-        this.entityId = definitionId;
-        this.href = "/workflow-definitions/" + definitionId + "?command=deactivate";
         return this;
     }
 

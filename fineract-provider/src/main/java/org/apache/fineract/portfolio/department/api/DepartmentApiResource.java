@@ -72,7 +72,8 @@ public class DepartmentApiResource {
             + "Otherwise returns every department.", operationId = "retrieveAllDepartments")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = DepartmentData.class))))
     @ApiResponse(responseCode = "403", description = "The user lacks READ_DEPARTMENT permission.")
-    public List<DepartmentData> retrieveAll(@QueryParam("officeId") @Parameter(description = "When set, return only active departments mapped to this office", example = "1") final Long officeId) {
+    public List<DepartmentData> retrieveAll(
+            @QueryParam("officeId") @Parameter(description = "When set, return only active departments mapped to this office", example = "1") final Long officeId) {
         if (officeId != null) {
             return this.readPlatformService.retrieveActiveMappedToOffice(officeId);
         }
@@ -86,8 +87,7 @@ public class DepartmentApiResource {
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = DepartmentApiResourceSwagger.GetDepartmentTemplateResponse.class)))
     public Map<String, Object> retrieveTemplate() {
         final Map<String, Object> response = new HashMap<>();
-        response.put("activeOptions",
-                List.of(new EnumOptionData(1L, "true", "Active"), new EnumOptionData(0L, "false", "Inactive")));
+        response.put("activeOptions", List.of(new EnumOptionData(1L, "true", "Active"), new EnumOptionData(0L, "false", "Inactive")));
         response.put("officeOptions", this.officeReadPlatformService.retrieveAllOfficesForDropdown());
         return response;
     }

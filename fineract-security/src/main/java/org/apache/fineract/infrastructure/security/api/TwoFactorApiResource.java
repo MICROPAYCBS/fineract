@@ -179,7 +179,8 @@ public class TwoFactorApiResource {
     @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
             @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
     @ApiResponse(responseCode = "403", description = "There is no staged secret, TOTP is already enabled, or the code does not match")
-    public String confirmTotp(@QueryParam("token") @Parameter(description = "Current authenticator code for the staged secret") final String token) {
+    public String confirmTotp(
+            @QueryParam("token") @Parameter(description = "Current authenticator code for the staged secret") final String token) {
         final AppUser user = context.authenticatedUser();
         totpService.confirm(user, token);
         final Map<String, Object> result = new HashMap<>();

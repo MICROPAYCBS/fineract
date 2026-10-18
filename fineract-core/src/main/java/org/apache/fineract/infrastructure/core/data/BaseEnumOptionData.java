@@ -18,7 +18,6 @@
  */
 package org.apache.fineract.infrastructure.core.data;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
@@ -34,12 +33,7 @@ import lombok.Getter;
 @AllArgsConstructor
 public abstract class BaseEnumOptionData<T> implements Serializable {
 
-    @Schema(description = "Enumeration identifier.", example = "1")
     protected T id;
-
-    @Schema(description = "Enumeration code.", example = "gender.male")
     protected final String code;
-
-    @Schema(description = "Enumeration label.", example = "Male")
     protected final String value;
 }

@@ -31,7 +31,8 @@ import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 public record SavingsProductPaymentChannelLink(PaymentType paymentType, boolean premium, boolean active, String name, String description,
         List<ChannelChargeLink> charges, SavingsProductPaymentChannelLimits limits) {
 
-    public record ChannelChargeLink(Charge charge, BigDecimal amount) {}
+    public record ChannelChargeLink(Charge charge, BigDecimal amount) {
+    }
 
     public List<ChannelChargeLink> charges() {
         return charges == null ? Collections.emptyList() : charges;

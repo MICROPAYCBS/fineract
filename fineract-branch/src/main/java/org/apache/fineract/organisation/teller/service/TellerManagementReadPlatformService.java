@@ -62,7 +62,12 @@ public interface TellerManagementReadPlatformService {
     CashierTransactionsWithSummaryData retrieveCashierTransactionsWithSummary(Long cashierId, boolean includeAllTellers, LocalDate fromDate,
             LocalDate toDate, String currencyCode, SearchParameters searchParameters);
 
-    /** Net cash in the till (allocated + cash in - cash out - settled). No permission check: for internal write checks only. */
-    BigDecimal retrieveCashierNetCash(Long cashierId, String currencyCode);
+    /**
+     * Net cash in the till (allocated + cash in - cash out - settled). No permission check: for internal write checks
+     * only.
+     */
+    default BigDecimal retrieveCashierNetCash(Long cashierId, String currencyCode) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
 }

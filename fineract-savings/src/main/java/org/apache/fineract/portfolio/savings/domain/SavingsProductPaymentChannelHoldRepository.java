@@ -23,8 +23,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface SavingsProductPaymentChannelHoldRepository extends JpaRepository<SavingsProductPaymentChannelHold, Long>,
-        JpaSpecificationExecutor<SavingsProductPaymentChannelHold> {
+public interface SavingsProductPaymentChannelHoldRepository
+        extends JpaRepository<SavingsProductPaymentChannelHold, Long>, JpaSpecificationExecutor<SavingsProductPaymentChannelHold> {
 
     Optional<SavingsProductPaymentChannelHold> findByProductPaymentChannel_IdAndEndedOnDateIsNull(Long productPaymentChannelId);
 

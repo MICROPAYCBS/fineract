@@ -180,8 +180,8 @@ public final class ClientDataValidator {
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeMobileNoParamName, element)) {
-            final String alternativeMobileNo = this.fromApiJsonHelper
-                    .extractStringNamed(ClientApiConstants.alternativeMobileNoParamName, element);
+            final String alternativeMobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.alternativeMobileNoParamName,
+                    element);
             baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
                     .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
         }
@@ -260,8 +260,7 @@ public final class ClientDataValidator {
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.genderIdParamName, element)) {
             final Integer genderId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ClientApiConstants.genderIdParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId)
-                    .isOneOfTheseValues(1, 2);
+            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId).isOneOfTheseValues(1, 2);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.clientTypeIdParamName, element)) {
@@ -529,8 +528,8 @@ public final class ClientDataValidator {
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeMobileNoParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
-            final String alternativeMobileNo = this.fromApiJsonHelper
-                    .extractStringNamed(ClientApiConstants.alternativeMobileNoParamName, element);
+            final String alternativeMobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.alternativeMobileNoParamName,
+                    element);
             baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
                     .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
         }
@@ -569,8 +568,7 @@ public final class ClientDataValidator {
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.genderIdParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
             final Integer genderId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ClientApiConstants.genderIdParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId)
-                    .isOneOfTheseValues(1, 2);
+            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId).isOneOfTheseValues(1, 2);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.clientTypeIdParamName, element)) {

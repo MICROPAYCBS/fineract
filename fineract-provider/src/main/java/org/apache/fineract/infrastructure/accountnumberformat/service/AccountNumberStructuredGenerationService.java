@@ -33,11 +33,8 @@ import org.apache.fineract.organisation.office.domain.OfficeExtensionRepository;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
-import org.apache.fineract.portfolio.loanproduct.domain.LoanProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
-import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.shareaccounts.domain.ShareAccount;
-import org.apache.fineract.portfolio.shareproducts.domain.ShareProduct;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.springframework.stereotype.Service;
 
@@ -139,8 +136,8 @@ public class AccountNumberStructuredGenerationService {
 
     public String preview(final EntityAccountType entityAccountType, final Long officeId, final String productShortName,
             final String clientTypeLabel, final AccountNumberFormat accountNumberFormat) {
-        return accountNumberFormatEngine.generate(
-                buildPreviewContext(entityAccountType, officeId, productShortName, clientTypeLabel, accountNumberFormat));
+        return accountNumberFormatEngine
+                .generate(buildPreviewContext(entityAccountType, officeId, productShortName, clientTypeLabel, accountNumberFormat));
     }
 
     private String resolveFormatPattern(final AccountNumberFormat accountNumberFormat, final StructuredAccountNumberRuleDefaults defaults) {

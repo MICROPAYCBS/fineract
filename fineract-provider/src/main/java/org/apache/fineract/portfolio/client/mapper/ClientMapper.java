@@ -186,16 +186,15 @@ public interface ClientMapper {
             final AppUser activatedBy = client.getActivatedBy();
             final AppUser closedBy = client.getClosedBy();
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
-                    activatedBy != null ? activatedBy.getUsername() : null,
-                    activatedBy != null ? activatedBy.getFirstname() : null, activatedBy != null ? activatedBy.getLastname() : null,
-                    client.getClosureDate(), closedBy != null ? closedBy.getUsername() : null,
-                    closedBy != null ? closedBy.getFirstname() : null, closedBy != null ? closedBy.getLastname() : null);
+                    activatedBy != null ? activatedBy.getUsername() : null, activatedBy != null ? activatedBy.getFirstname() : null,
+                    activatedBy != null ? activatedBy.getLastname() : null, client.getClosureDate(),
+                    closedBy != null ? closedBy.getUsername() : null, closedBy != null ? closedBy.getFirstname() : null,
+                    closedBy != null ? closedBy.getLastname() : null);
         } else if (client.isActive()) {
             final AppUser activatedBy = client.getActivatedBy();
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
-                    activatedBy != null ? activatedBy.getUsername() : null,
-                    activatedBy != null ? activatedBy.getFirstname() : null, activatedBy != null ? activatedBy.getLastname() : null,
-                    null, null, null, null);
+                    activatedBy != null ? activatedBy.getUsername() : null, activatedBy != null ? activatedBy.getFirstname() : null,
+                    activatedBy != null ? activatedBy.getLastname() : null, null, null, null, null);
         } else {
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, null, null, null, null, null, null, null, null);
         }

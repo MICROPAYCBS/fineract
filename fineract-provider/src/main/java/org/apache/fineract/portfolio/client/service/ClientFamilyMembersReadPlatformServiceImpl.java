@@ -29,11 +29,13 @@ import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.data.ClientFamilyMembersData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = ClientFamilyMembersReadPlatformService.class, ignored = ClientFamilyMembersReadPlatformServiceImpl.class)
 public class ClientFamilyMembersReadPlatformServiceImpl implements ClientFamilyMembersReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;
@@ -53,8 +55,7 @@ public class ClientFamilyMembersReadPlatformServiceImpl implements ClientFamilyM
 
         public String schema() {
             return "fmb.id AS id, fmb.client_id AS clientId, fmb.firstname AS firstName, fmb.middlename AS middleName,"
-                    + "fmb.lastname AS lastName,fmb.qualification AS qualification,fmb.mobile_number as mobileNumber,"
-                    + "fmb.email_address as emailAddress,fmb.address as address,fmb.age as age,fmb.is_dependent as isDependent,cv.code_value AS relationship,fmb.relationship_cv_id AS relationshipId,"
+                    + "fmb.lastname AS lastName,fmb.qualification AS qualification,fmb.mobile_number as mobileNumber,fmb.age as age,fmb.is_dependent as isDependent,cv.code_value AS relationship,fmb.relationship_cv_id AS relationshipId,"
                     + "c.code_value AS maritalStatus,fmb.marital_status_cv_id AS maritalStatusId,"
                     + "c1.code_value AS gender, fmb.gender_cv_id AS genderId, fmb.date_of_birth AS dateOfBirth, c2.code_value AS profession, fmb.profession_cv_id AS professionId"
                     + " FROM m_family_members fmb" + " LEFT JOIN m_code_value cv ON fmb.relationship_cv_id=cv.id"
@@ -71,8 +72,6 @@ public class ClientFamilyMembersReadPlatformServiceImpl implements ClientFamilyM
             final String lastName = rs.getString("lastName");
             final String qualification = rs.getString("qualification");
             final String mobileNumber = rs.getString("mobileNumber");
-            final String emailAddress = rs.getString("emailAddress");
-            final String address = rs.getString("address");
             final long age = rs.getLong("age");
             final boolean isDependent = rs.getBoolean("isDependent");
             final String relationship = rs.getString("relationship");
@@ -86,8 +85,7 @@ public class ClientFamilyMembersReadPlatformServiceImpl implements ClientFamilyM
             final long professionId = rs.getLong("professionId");
 
             return ClientFamilyMembersData.builder().id(id).clientId(clientId).firstName(firstName).middleName(middleName)
-                    .lastName(lastName).qualification(qualification).mobileNumber(mobileNumber).emailAddress(emailAddress)
-                    .address(address).age(age).isDependent(isDependent)
+                    .lastName(lastName).qualification(qualification).mobileNumber(mobileNumber).age(age).isDependent(isDependent)
                     .relationship(relationship).relationshipId(relationshipId).maritalStatus(maritalStatus).maritalStatusId(maritalStatusId)
                     .gender(gender).genderId(genderId).dateOfBirth(dateOfBirth).profession(profession).professionId(professionId).build();
         }

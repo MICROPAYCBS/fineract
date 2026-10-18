@@ -140,8 +140,7 @@ public class ClientContactWritePlatformServiceImpl implements ClientContactWrite
             final Long contactTypeId = this.fromApiJsonHelper.extractLongNamed(ClientContactCommandFromApiJsonDeserializer.CONTACT_TYPE_ID,
                     json);
             if (contactTypeId != null && !primaryContactTypeIds.add(contactTypeId)) {
-                final ApiParameterError error = ApiParameterError.parameterError(
-                        "validation.msg.client.contact.duplicate.primary.for.type",
+                final ApiParameterError error = ApiParameterError.parameterError("validation.msg.client.contact.duplicate.primary.for.type",
                         "Only one primary contact is allowed per contact type in the contacts array.",
                         ClientContactCommandFromApiJsonDeserializer.PRIMARY, contactTypeId);
                 throw new PlatformApiDataValidationException(List.of(error));

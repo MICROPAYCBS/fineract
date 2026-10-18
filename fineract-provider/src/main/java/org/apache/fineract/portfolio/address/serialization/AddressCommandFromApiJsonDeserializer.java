@@ -115,8 +115,8 @@ public class AddressCommandFromApiJsonDeserializer {
         validateStringFieldLength(element, baseDataValidator, "postalCode", POSTAL_CODE_MAX_LENGTH);
     }
 
-    private void validateStringFieldLength(final JsonElement element, final DataValidatorBuilder baseDataValidator,
-            final String fieldName, final int maxLength) {
+    private void validateStringFieldLength(final JsonElement element, final DataValidatorBuilder baseDataValidator, final String fieldName,
+            final int maxLength) {
         if (this.fromApiJsonHelper.parameterExists(fieldName, element)) {
             final String value = this.fromApiJsonHelper.extractStringNamed(fieldName, element);
             baseDataValidator.reset().parameter(fieldName).value(value).ignoreIfNull().notExceedingLengthOf(maxLength);

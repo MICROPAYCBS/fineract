@@ -50,8 +50,7 @@ public class TwoFactorAuthResponseHelper {
         }
         final String deliveryMethod = config.getDeliveryMethod();
         data.setDeliveryMethod(deliveryMethod);
-        data.setTotpEnrollmentRequired(
-                TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equals(deliveryMethod) && !user.isTotpEnabled());
+        data.setTotpEnrollmentRequired(TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equals(deliveryMethod) && !user.isTotpEnabled());
         return data;
     }
 
@@ -71,8 +70,7 @@ public class TwoFactorAuthResponseHelper {
         }
         final String deliveryMethod = config.getDeliveryMethod();
         data.setDeliveryMethod(deliveryMethod);
-        data.setTotpEnrollmentRequired(
-                TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equals(deliveryMethod) && !user.isTotpEnabled());
+        data.setTotpEnrollmentRequired(TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equals(deliveryMethod) && !user.isTotpEnabled());
         return data;
     }
 }

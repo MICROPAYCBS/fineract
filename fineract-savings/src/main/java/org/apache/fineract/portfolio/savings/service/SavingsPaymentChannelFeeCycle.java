@@ -23,8 +23,8 @@ import java.util.List;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
 
 /**
- * Rolls a monthly or annual channel fee past cycles whose due date fell inside a closed hold. Cycles already due
- * before the hold started are left in place so that outstanding amount stays collectible. No payment is posted.
+ * Rolls a monthly or annual channel fee past cycles whose due date fell inside a closed hold. Cycles already due before
+ * the hold started are left in place so that outstanding amount stays collectible. No payment is posted.
  */
 public final class SavingsPaymentChannelFeeCycle {
 
@@ -32,7 +32,8 @@ public final class SavingsPaymentChannelFeeCycle {
 
     private SavingsPaymentChannelFeeCycle() {}
 
-    public record HoldWindow(LocalDate start, LocalDate end) {}
+    public record HoldWindow(LocalDate start, LocalDate end) {
+    }
 
     public static boolean fellDuringHold(final LocalDate dueDate, final LocalDate holdStart, final LocalDate holdEnd) {
         return dueDate != null && holdStart != null && holdEnd != null && !dueDate.isBefore(holdStart) && dueDate.isBefore(holdEnd);

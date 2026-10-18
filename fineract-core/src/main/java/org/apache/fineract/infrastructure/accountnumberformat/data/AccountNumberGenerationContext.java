@@ -21,9 +21,9 @@ package org.apache.fineract.infrastructure.accountnumberformat.data;
 import java.io.Serializable;
 import lombok.Builder;
 import lombok.Getter;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
 import org.apache.fineract.organisation.office.domain.Office;
 
 @Getter

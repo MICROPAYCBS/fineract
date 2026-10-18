@@ -192,6 +192,20 @@ public class JournalEntryData {
         this.transactionDetails = null;
     }
 
+    /** Upstream constructor (without the Micropay department columns). */
+    public JournalEntryData(final Long id, final Long officeId, final String officeName, final String glAccountName, final Long glAccountId,
+            final String glAccountCode, final EnumOptionData glAccountClassification, final LocalDate transactionDate,
+            final EnumOptionData entryType, final BigDecimal amount, final String transactionId, final Boolean manualEntry,
+            final EnumOptionData entityType, final Long entityId, final Long createdByUserId, final LocalDate submittedOnDate,
+            final String createdByUserName, final String comments, final Boolean reversed, final String referenceNumber,
+            final BigDecimal officeRunningBalance, final BigDecimal organizationRunningBalance, final Boolean runningBalanceComputed,
+            final TransactionDetailData transactionDetailData, final CurrencyData currency, final String externalAssetOwner) {
+        this(id, officeId, officeName, glAccountName, glAccountId, glAccountCode, glAccountClassification, transactionDate, entryType,
+                amount, transactionId, manualEntry, entityType, entityId, createdByUserId, submittedOnDate, createdByUserName, comments,
+                reversed, referenceNumber, officeRunningBalance, organizationRunningBalance, runningBalanceComputed, transactionDetailData,
+                currency, null, null, externalAssetOwner);
+    }
+
     public JournalEntryData(final Long id, final Long officeId, final String officeName, final String glAccountName, final Long glAccountId,
             final String glAccountCode, final EnumOptionData glAccountClassification, final LocalDate transactionDate,
             final EnumOptionData entryType, final BigDecimal amount, final String transactionId, final Boolean manualEntry,

@@ -21,7 +21,6 @@ package org.apache.fineract.portfolio.client.service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,44 +49,38 @@ public class ClientIncomeSourcesReadPlatformServiceImpl implements ClientIncomeS
                     + " cis.income_source_type_id AS incomeSourceTypeId, ist.code_value AS incomeSourceType,"
                     + " cis.source_of_funds_id AS sourceOfFundsId, sof.code_value AS sourceOfFunds,"
                     + " cis.employer_business_name AS employerBusinessName, cis.employer_address AS employerAddress,"
-                    + " cis.occupation AS occupation,"
-                    + " cis.sub_industry_id AS subIndustryId, si.sub_industry_name AS subIndustryName,"
+                    + " cis.occupation AS occupation," + " cis.sub_industry_id AS subIndustryId, si.sub_industry_name AS subIndustryName,"
                     + " cis.monthly_income AS monthlyIncome, cis.income_currency_code AS incomeCurrencyCode,"
                     + " cis.income_frequency_id AS incomeFrequencyId, ifreq.code_value AS incomeFrequency,"
-                    + " cis.start_date AS startDate, cis.end_date AS endDate,"
-                    + " cis.is_primary_source AS isPrimarySourceFlag,"
+                    + " cis.start_date AS startDate, cis.end_date AS endDate," + " cis.is_primary_source AS isPrimarySourceFlag,"
                     + " cis.verification_status_id AS verificationStatusId, vstat.code_value AS verificationStatus,"
                     + " cis.verified_by AS verifiedBy, vu.username AS verifiedByUsername, cis.verified_on_utc AS verifiedOnUtc,"
                     + " cis.supporting_document AS supportingDocument, cis.remarks AS remarks, cis.status AS status"
-                    + " FROM m_client_income_source cis"
-                    + " LEFT JOIN m_code_value ist ON cis.income_source_type_id = ist.id"
+                    + " FROM m_client_income_source cis" + " LEFT JOIN m_code_value ist ON cis.income_source_type_id = ist.id"
                     + " LEFT JOIN m_code_value sof ON cis.source_of_funds_id = sof.id"
                     + " LEFT JOIN m_code_value ifreq ON cis.income_frequency_id = ifreq.id"
                     + " LEFT JOIN m_code_value vstat ON cis.verification_status_id = vstat.id"
-                    + " LEFT JOIN m_sub_industry si ON cis.sub_industry_id = si.id"
-                    + " LEFT JOIN m_appuser vu ON cis.verified_by = vu.id";
+                    + " LEFT JOIN m_sub_industry si ON cis.sub_industry_id = si.id" + " LEFT JOIN m_appuser vu ON cis.verified_by = vu.id";
         }
 
         @Override
         public ClientIncomeSourceData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
             final String primaryFlag = rs.getString("isPrimarySourceFlag");
             return ClientIncomeSourceData.builder().id(rs.getLong("id")).clientId(rs.getLong("clientId"))
-                    .incomeSourceTypeId(JdbcSupport.getLong(rs, "incomeSourceTypeId"))
-                    .incomeSourceType(rs.getString("incomeSourceType"))
+                    .incomeSourceTypeId(JdbcSupport.getLong(rs, "incomeSourceTypeId")).incomeSourceType(rs.getString("incomeSourceType"))
                     .sourceOfFundsId(JdbcSupport.getLong(rs, "sourceOfFundsId")).sourceOfFunds(rs.getString("sourceOfFunds"))
                     .employerBusinessName(rs.getString("employerBusinessName")).employerAddress(rs.getString("employerAddress"))
-                    .occupation(rs.getString("occupation"))
-                    .subIndustryId(JdbcSupport.getLong(rs, "subIndustryId")).subIndustryName(rs.getString("subIndustryName"))
-                    .monthlyIncome(rs.getBigDecimal("monthlyIncome")).incomeCurrencyCode(rs.getString("incomeCurrencyCode"))
-                    .incomeFrequencyId(JdbcSupport.getLong(rs, "incomeFrequencyId"))
+                    .occupation(rs.getString("occupation")).subIndustryId(JdbcSupport.getLong(rs, "subIndustryId"))
+                    .subIndustryName(rs.getString("subIndustryName")).monthlyIncome(rs.getBigDecimal("monthlyIncome"))
+                    .incomeCurrencyCode(rs.getString("incomeCurrencyCode")).incomeFrequencyId(JdbcSupport.getLong(rs, "incomeFrequencyId"))
                     .incomeFrequency(rs.getString("incomeFrequency")).startDate(JdbcSupport.getLocalDate(rs, "startDate"))
                     .endDate(JdbcSupport.getLocalDate(rs, "endDate")).isPrimarySource("Y".equalsIgnoreCase(primaryFlag))
                     .verificationStatusId(JdbcSupport.getLong(rs, "verificationStatusId"))
                     .verificationStatus(rs.getString("verificationStatus")).verifiedBy(JdbcSupport.getLong(rs, "verifiedBy"))
                     .verifiedByUsername(rs.getString("verifiedByUsername"))
                     .verifiedOnUtc(rs.getObject("verifiedOnUtc", OffsetDateTime.class))
-                    .supportingDocument(rs.getString("supportingDocument")).remarks(rs.getString("remarks"))
-                    .status(rs.getString("status")).build();
+                    .supportingDocument(rs.getString("supportingDocument")).remarks(rs.getString("remarks")).status(rs.getString("status"))
+                    .build();
         }
     }
 
@@ -117,8 +110,7 @@ public class ClientIncomeSourcesReadPlatformServiceImpl implements ClientIncomeS
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode("IncomeFrequency"));
         final List<CodeValueData> verificationStatusOptions = new ArrayList<>(
                 this.codeValueReadPlatformService.retrieveCodeValuesByCode("IncomeVerificationStatus"));
-        return ClientIncomeSourceData.builder().incomeSourceTypeOptions(incomeSourceTypeOptions)
-                .sourceOfFundsOptions(sourceOfFundsOptions).incomeFrequencyOptions(incomeFrequencyOptions)
-                .verificationStatusOptions(verificationStatusOptions).build();
+        return ClientIncomeSourceData.builder().incomeSourceTypeOptions(incomeSourceTypeOptions).sourceOfFundsOptions(sourceOfFundsOptions)
+                .incomeFrequencyOptions(incomeFrequencyOptions).verificationStatusOptions(verificationStatusOptions).build();
     }
 }

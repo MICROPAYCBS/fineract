@@ -85,8 +85,8 @@ public class UpdateNpaTasklet implements Tasklet {
                 + "inner join m_product_loan mpl on mpl.id = loan2.product_id and mpl.overdue_days_for_npa is not null "
                 + "WHERE ((loan2.loan_status_id = 300 and mpl.account_moves_out_of_npa_only_on_arrears_completion = false)"
                 + " or (mpl.account_moves_out_of_npa_only_on_arrears_completion = true and laa.overdue_since_date_derived is null))"
-                + " and not (loan2.deliberate_npa = true and loan2.npa_arrears_qualified = false)"
-                + " and loan2.id not in " + overdueLoanIdsSql() + ") sl";
+                + " and not (loan2.deliberate_npa = true and loan2.npa_arrears_qualified = false)" + " and loan2.id not in "
+                + overdueLoanIdsSql() + ") sl";
         final String wherePart = " where loan.id = sl.id ";
         final StringBuilder sql = new StringBuilder("update m_loan loan ");
         if (databaseTypeResolver.isMySQL()) {

@@ -95,8 +95,8 @@ public class InterBranchGlRuleWritePlatformServiceImpl implements InterBranchGlR
 
     private InterBranchGlRule mapFromJson(final InterBranchGlRule rule, final JsonObject json, final boolean create) {
         if (create || json.has(InterBranchGlRuleCommandFromApiJsonDeserializer.LEFT_OFFICE_ID)) {
-            final Long leftOfficeId = this.fromApiJsonHelper.extractLongNamed(InterBranchGlRuleCommandFromApiJsonDeserializer.LEFT_OFFICE_ID,
-                    json);
+            final Long leftOfficeId = this.fromApiJsonHelper
+                    .extractLongNamed(InterBranchGlRuleCommandFromApiJsonDeserializer.LEFT_OFFICE_ID, json);
             rule.setLeftOffice(resolveOffice(leftOfficeId));
         }
         if (create || json.has(InterBranchGlRuleCommandFromApiJsonDeserializer.RIGHT_OFFICE_ID)) {
@@ -111,8 +111,8 @@ public class InterBranchGlRuleWritePlatformServiceImpl implements InterBranchGlR
             rule.setGlAccount(glAccount);
         }
         if (json.has(InterBranchGlRuleCommandFromApiJsonDeserializer.CURRENCY_CODE)) {
-            rule.setCurrencyCode(this.fromApiJsonHelper.extractStringNamed(InterBranchGlRuleCommandFromApiJsonDeserializer.CURRENCY_CODE,
-                    json));
+            rule.setCurrencyCode(
+                    this.fromApiJsonHelper.extractStringNamed(InterBranchGlRuleCommandFromApiJsonDeserializer.CURRENCY_CODE, json));
         }
         if (create || json.has(InterBranchGlRuleCommandFromApiJsonDeserializer.STATUS)) {
             final String status = this.fromApiJsonHelper.extractStringNamed(InterBranchGlRuleCommandFromApiJsonDeserializer.STATUS, json);

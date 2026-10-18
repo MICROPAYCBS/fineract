@@ -70,9 +70,9 @@ class ClientDeleteAssociatedDataValidatorTest {
 
     @BeforeEach
     void setUp() {
-        validator = new ClientDeleteAssociatedDataValidator(clientFamilyMembersRepository, clientAddressRepository,
-                clientContactRepository, clientIncomeSourceRepository, clientComplianceProfileRepository,
-                clientOtherBankAccountRepository, clientIdentifierRepository);
+        validator = new ClientDeleteAssociatedDataValidator(clientFamilyMembersRepository, clientAddressRepository, clientContactRepository,
+                clientIncomeSourceRepository, clientComplianceProfileRepository, clientOtherBankAccountRepository,
+                clientIdentifierRepository);
         stubNoAssociatedData();
     }
 

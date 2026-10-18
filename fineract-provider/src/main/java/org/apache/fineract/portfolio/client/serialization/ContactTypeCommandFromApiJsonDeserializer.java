@@ -51,8 +51,8 @@ public final class ContactTypeCommandFromApiJsonDeserializer {
     public static final String STATUS = "status";
     public static final String RESOURCE = "ContactType";
 
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(TYPE_CODE, TYPE_NAME, EXAMPLE, VALIDATION_REGEX,
-            MANDATORY, DISPLAY_ORDER, STATUS));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
+            Arrays.asList(TYPE_CODE, TYPE_NAME, EXAMPLE, VALIDATION_REGEX, MANDATORY, DISPLAY_ORDER, STATUS));
     private static final List<String> STATUSES = List.of("ACTIVE", "INACTIVE");
 
     private final FromJsonHelper fromApiJsonHelper;

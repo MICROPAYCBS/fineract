@@ -29,8 +29,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.portfolio.floatingrates.domain.FloatingRate;
 import org.apache.fineract.portfolio.loanaccount.loanschedule.domain.AprCalculator;
@@ -526,66 +526,64 @@ public class LoanProductUpdateUtil {
         }
         final List<Long> variationIds = fetchVariationIds(loanProduct, paramType);
         final JsonArray variationArray = command.arrayOfParameterNamed(variationParameterName);
-            if (variationArray != null && variationArray.size() > 0) {
-                int i = 0;
-                do {
-                    final JsonObject jsonObject = variationArray.get(i).getAsJsonObject();
-                    BigDecimal defaultValue = null;
-                    BigDecimal minValue = null;
-                    BigDecimal maxValue = null;
-                    Integer cycleNumber = null;
-                    Integer valueUsageCondition = null;
-                    Long id = null;
-                    if (jsonObject.has(LoanProductConstants.DEFAULT_VALUE_PARAMETER_NAME)
-                            && jsonObject.get(LoanProductConstants.DEFAULT_VALUE_PARAMETER_NAME).isJsonPrimitive()) {
-                        defaultValue = jsonObject.getAsJsonPrimitive(LoanProductConstants.DEFAULT_VALUE_PARAMETER_NAME).getAsBigDecimal();
+        if (variationArray != null && variationArray.size() > 0) {
+            int i = 0;
+            do {
+                final JsonObject jsonObject = variationArray.get(i).getAsJsonObject();
+                BigDecimal defaultValue = null;
+                BigDecimal minValue = null;
+                BigDecimal maxValue = null;
+                Integer cycleNumber = null;
+                Integer valueUsageCondition = null;
+                Long id = null;
+                if (jsonObject.has(LoanProductConstants.DEFAULT_VALUE_PARAMETER_NAME)
+                        && jsonObject.get(LoanProductConstants.DEFAULT_VALUE_PARAMETER_NAME).isJsonPrimitive()) {
+                    defaultValue = jsonObject.getAsJsonPrimitive(LoanProductConstants.DEFAULT_VALUE_PARAMETER_NAME).getAsBigDecimal();
+                }
+                if (jsonObject.has(LoanProductConstants.MIN_VALUE_PARAMETER_NAME)
+                        && jsonObject.get(LoanProductConstants.MIN_VALUE_PARAMETER_NAME).isJsonPrimitive()
+                        && StringUtils.isNotBlank(jsonObject.get(LoanProductConstants.MIN_VALUE_PARAMETER_NAME).getAsString())) {
+                    minValue = jsonObject.getAsJsonPrimitive(LoanProductConstants.MIN_VALUE_PARAMETER_NAME).getAsBigDecimal();
+                }
+                if (jsonObject.has(LoanProductConstants.MAX_VALUE_PARAMETER_NAME)
+                        && jsonObject.get(LoanProductConstants.MAX_VALUE_PARAMETER_NAME).isJsonPrimitive()
+                        && StringUtils.isNotBlank(jsonObject.get(LoanProductConstants.MAX_VALUE_PARAMETER_NAME).getAsString())) {
+                    maxValue = jsonObject.getAsJsonPrimitive(LoanProductConstants.MAX_VALUE_PARAMETER_NAME).getAsBigDecimal();
+                }
+                if (jsonObject.has(LoanProductConstants.BORROWER_CYCLE_NUMBER_PARAM_NAME)
+                        && jsonObject.get(LoanProductConstants.BORROWER_CYCLE_NUMBER_PARAM_NAME).isJsonPrimitive()) {
+                    cycleNumber = jsonObject.getAsJsonPrimitive(LoanProductConstants.BORROWER_CYCLE_NUMBER_PARAM_NAME).getAsInt();
+                }
+                if (jsonObject.has(LoanProductConstants.VALUE_CONDITION_TYPE_PARAM_NAME)
+                        && jsonObject.get(LoanProductConstants.VALUE_CONDITION_TYPE_PARAM_NAME).isJsonPrimitive()) {
+                    valueUsageCondition = jsonObject.getAsJsonPrimitive(LoanProductConstants.VALUE_CONDITION_TYPE_PARAM_NAME).getAsInt();
+                }
+                if (jsonObject.has(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME)
+                        && jsonObject.get(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME).isJsonPrimitive()
+                        && StringUtils.isNotBlank(jsonObject.get(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME).getAsString())) {
+                    id = jsonObject.getAsJsonPrimitive(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME).getAsLong();
+                }
+                LoanProductBorrowerCycleVariations borrowerCycleVariations = new LoanProductBorrowerCycleVariations(cycleNumber, paramType,
+                        valueUsageCondition, minValue, maxValue, defaultValue);
+                if (id == null) {
+                    borrowerCycleVariations.updateLoanProduct(loanProduct);
+                    loanProduct.getBorrowerCycleVariations().add(borrowerCycleVariations);
+                    actualChanges.put("borrowerCycleParamType", paramType);
+                } else {
+                    variationIds.remove(id);
+                    LoanProductBorrowerCycleVariations existingCycleVariation = fetchLoanProductBorrowerCycleVariationById(loanProduct, id);
+                    if (existingCycleVariation == null) {
+                        throw new PlatformApiDataValidationException("validation.msg.loanproduct.borrowerCycle.id.not.found",
+                                "Borrower cycle variation " + id + " does not belong to this product.", variationParameterName, id);
                     }
-                    if (jsonObject.has(LoanProductConstants.MIN_VALUE_PARAMETER_NAME)
-                            && jsonObject.get(LoanProductConstants.MIN_VALUE_PARAMETER_NAME).isJsonPrimitive()
-                            && StringUtils.isNotBlank(jsonObject.get(LoanProductConstants.MIN_VALUE_PARAMETER_NAME).getAsString())) {
-                        minValue = jsonObject.getAsJsonPrimitive(LoanProductConstants.MIN_VALUE_PARAMETER_NAME).getAsBigDecimal();
+                    if (!existingCycleVariation.equals(borrowerCycleVariations)) {
+                        existingCycleVariation.copy(borrowerCycleVariations);
+                        actualChanges.put("borrowerCycleId", id);
                     }
-                    if (jsonObject.has(LoanProductConstants.MAX_VALUE_PARAMETER_NAME)
-                            && jsonObject.get(LoanProductConstants.MAX_VALUE_PARAMETER_NAME).isJsonPrimitive()
-                            && StringUtils.isNotBlank(jsonObject.get(LoanProductConstants.MAX_VALUE_PARAMETER_NAME).getAsString())) {
-                        maxValue = jsonObject.getAsJsonPrimitive(LoanProductConstants.MAX_VALUE_PARAMETER_NAME).getAsBigDecimal();
-                    }
-                    if (jsonObject.has(LoanProductConstants.BORROWER_CYCLE_NUMBER_PARAM_NAME)
-                            && jsonObject.get(LoanProductConstants.BORROWER_CYCLE_NUMBER_PARAM_NAME).isJsonPrimitive()) {
-                        cycleNumber = jsonObject.getAsJsonPrimitive(LoanProductConstants.BORROWER_CYCLE_NUMBER_PARAM_NAME).getAsInt();
-                    }
-                    if (jsonObject.has(LoanProductConstants.VALUE_CONDITION_TYPE_PARAM_NAME)
-                            && jsonObject.get(LoanProductConstants.VALUE_CONDITION_TYPE_PARAM_NAME).isJsonPrimitive()) {
-                        valueUsageCondition = jsonObject.getAsJsonPrimitive(LoanProductConstants.VALUE_CONDITION_TYPE_PARAM_NAME)
-                                .getAsInt();
-                    }
-                    if (jsonObject.has(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME)
-                            && jsonObject.get(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME).isJsonPrimitive() && StringUtils
-                                    .isNotBlank(jsonObject.get(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME).getAsString())) {
-                        id = jsonObject.getAsJsonPrimitive(LoanProductConstants.BORROWER_CYCLE_ID_PARAMETER_NAME).getAsLong();
-                    }
-                    LoanProductBorrowerCycleVariations borrowerCycleVariations = new LoanProductBorrowerCycleVariations(cycleNumber,
-                            paramType, valueUsageCondition, minValue, maxValue, defaultValue);
-                    if (id == null) {
-                        borrowerCycleVariations.updateLoanProduct(loanProduct);
-                        loanProduct.getBorrowerCycleVariations().add(borrowerCycleVariations);
-                        actualChanges.put("borrowerCycleParamType", paramType);
-                    } else {
-                        variationIds.remove(id);
-                        LoanProductBorrowerCycleVariations existingCycleVariation = fetchLoanProductBorrowerCycleVariationById(loanProduct,
-                                id);
-                        if (existingCycleVariation == null) {
-                            throw new PlatformApiDataValidationException("validation.msg.loanproduct.borrowerCycle.id.not.found",
-                                    "Borrower cycle variation " + id + " does not belong to this product.", variationParameterName, id);
-                        }
-                        if (!existingCycleVariation.equals(borrowerCycleVariations)) {
-                            existingCycleVariation.copy(borrowerCycleVariations);
-                            actualChanges.put("borrowerCycleId", id);
-                        }
-                    }
-                    i++;
-                } while (i < variationArray.size());
-            }
+                }
+                i++;
+            } while (i < variationArray.size());
+        }
         for (Long id : variationIds) {
             loanProduct.getBorrowerCycleVariations().remove(fetchLoanProductBorrowerCycleVariationById(loanProduct, id));
             actualChanges.put(variationParameterName, command.jsonFragment(variationParameterName));

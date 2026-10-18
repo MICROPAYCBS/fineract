@@ -158,7 +158,8 @@ public class SavingsProductPaymentChannelAssembler {
             final SavingsChannelLimitValues debit = readLimits(jsonObject, locale, baseDataValidator, prefix + "maxDebit", "maxDebit");
             final SavingsChannelLimitValues credit = readLimits(jsonObject, locale, baseDataValidator, prefix + "maxCredit", "maxCredit");
             final boolean accountTransferChannel = jsonObject.has("isAccountTransferChannel")
-                    && !jsonObject.get("isAccountTransferChannel").isJsonNull() && jsonObject.get("isAccountTransferChannel").getAsBoolean();
+                    && !jsonObject.get("isAccountTransferChannel").isJsonNull()
+                    && jsonObject.get("isAccountTransferChannel").getAsBoolean();
             if (isActive && accountTransferChannel) {
                 activeTransferChannels++;
             }

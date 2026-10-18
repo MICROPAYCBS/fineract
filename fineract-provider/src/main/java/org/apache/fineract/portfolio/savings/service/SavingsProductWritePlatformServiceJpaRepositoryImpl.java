@@ -21,15 +21,13 @@ package org.apache.fineract.portfolio.savings.service;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.accountingRuleParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.paymentChannelsParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 
 import jakarta.persistence.PersistenceException;
-import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -41,21 +39,16 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import org.apache.fineract.portfolio.charge.data.ProductChargeLink;
-import org.apache.fineract.portfolio.charge.service.ProductChargeAmountService;
-import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
+import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
 import org.apache.fineract.portfolio.savings.data.SavingsProductDataValidator;
-import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelLink;
 import org.apache.fineract.portfolio.savings.domain.SavingsProduct;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductAssembler;
 import org.apache.fineract.portfolio.savings.domain.SavingsProductRepository;
-import org.apache.fineract.portfolio.savings.exception.SavingsProductDateException;
 import org.apache.fineract.portfolio.savings.exception.SavingsProductNotFoundException;
 import org.apache.fineract.portfolio.tax.domain.TaxGroup;
 import org.springframework.dao.DataAccessException;
@@ -71,10 +64,6 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
     private final SavingsProductAssembler savingsProductAssembler;
     private final ProductToGLAccountMappingWritePlatformService accountMappingWritePlatformService;
     private final FineractEntityAccessUtil fineractEntityAccessUtil;
-    private final ProductChargeLinkAssembler productChargeLinkAssembler;
-    private final ProductChargeAmountService productChargeAmountService;
-    private final SavingsProductPaymentChannelAssembler savingsProductPaymentChannelAssembler;
-    private final SavingsProductPaymentChannelWritePlatformService savingsProductPaymentChannelWritePlatformService;
 
     /*
      * Guaranteed to throw an exception no matter what the data integrity issue is.
@@ -83,38 +72,26 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
         String msgCode = "error.msg." + SavingsApiConstants.SAVINGS_PRODUCT_RESOURCE_NAME;
         String msg = "Unknown data integrity issue with savings product.";
         String param = null;
-        Object[] msgArgs = new Object[] { dae };
-        final String dbMessage = databaseMessage(realCause, dae);
-        if (isDuplicateName(dbMessage)) {
+        Object[] msgArgs;
+        Throwable checkEx = realCause == null ? dae : realCause;
+        if (checkEx.getMessage().contains("sp_unq_name")) {
             final String name = command.stringValueOfParameterNamed("name");
             msgCode += ".duplicate.name";
             msg = "Savings product with name `" + name + "` already exists";
             param = "name";
-            msgArgs = new Object[] { name };
-        } else if (isDuplicateShortName(dbMessage)) {
+            msgArgs = new Object[] { name, dae };
+        } else if (checkEx.getMessage().contains("sp_unq_short_name")) {
             final String shortName = command.stringValueOfParameterNamed("shortName");
             msgCode += ".duplicate.short.name";
             msg = "Savings product with short name `" + shortName + "` already exists";
             param = "shortName";
-            msgArgs = new Object[] { shortName };
+            msgArgs = new Object[] { shortName, dae };
         } else {
             msgCode += ".unknown.data.integrity.issue";
-            log.error("Error occured.", dae);
+            msgArgs = new Object[] { dae };
         }
+        log.error("Error occured.", dae);
         throw ErrorHandler.getMappable(dae, msgCode, msg, param, msgArgs);
-    }
-
-    private static String databaseMessage(final Throwable realCause, final Exception dae) {
-        final Throwable checkEx = realCause == null ? dae : realCause;
-        return checkEx.getMessage() == null ? "" : checkEx.getMessage();
-    }
-
-    private static boolean isDuplicateName(final String dbMessage) {
-        return dbMessage.contains("sp_unq_name") || dbMessage.contains("m_savings_product_name_key");
-    }
-
-    private static boolean isDuplicateShortName(final String dbMessage) {
-        return dbMessage.contains("sp_unq_short_name") || dbMessage.contains("m_savings_product_short_name_key");
     }
 
     @Transactional
@@ -123,20 +100,10 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
 
         try {
             this.fromApiJsonDataValidator.validateForCreate(command.json());
-            validateInputDates(command);
 
             final SavingsProduct product = this.savingsProductAssembler.assemble(command);
 
             this.savingProductRepository.saveAndFlush(product);
-            final List<ProductChargeLink> productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command,
-                    product.currency().getCode());
-            this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
-
-            if (command.parameterExists(paymentChannelsParamName)) {
-                final List<SavingsProductPaymentChannelLink> channelLinks = this.savingsProductPaymentChannelAssembler.assemble(command,
-                        product.currency().getCode());
-                this.savingsProductPaymentChannelWritePlatformService.syncProductChannels(product, channelLinks);
-            }
 
             // save accounting mappings
             this.accountMappingWritePlatformService.createSavingProductToGLAccountMapping(product.getId(), command,
@@ -170,15 +137,16 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
                     .orElseThrow(() -> new SavingsProductNotFoundException(productId));
 
             this.fromApiJsonDataValidator.validateForUpdate(command.json(), product);
-            validateInputDates(command);
 
             final Map<String, Object> changes = product.update(command);
 
-            List<ProductChargeLink> productChargeLinks = null;
-            if (command.parameterExists(chargesParamName)) {
-                productChargeLinks = this.productChargeLinkAssembler.assembleSavingsProductCharges(command, product.currency().getCode());
-                product.update(new HashSet<>(ProductChargeLinkAssembler.toCharges(productChargeLinks)));
-                changes.put(chargesParamName, command.arrayOfParameterNamed(chargesParamName));
+            if (changes.containsKey(chargesParamName)) {
+                final Set<Charge> savingsProductCharges = this.savingsProductAssembler.assembleListOfSavingsProductCharges(command,
+                        product.currency().getCode());
+                final boolean updated = product.update(savingsProductCharges);
+                if (!updated) {
+                    changes.remove(chargesParamName);
+                }
             }
 
             if (changes.containsKey(taxGroupIdParamName)) {
@@ -203,16 +171,6 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
 
             if (!changes.isEmpty()) {
                 this.savingProductRepository.saveAndFlush(product);
-            }
-            if (productChargeLinks != null) {
-                this.productChargeAmountService.syncSavingsProductChargeAmounts(product.getId(), productChargeLinks);
-            }
-
-            if (command.parameterExists(paymentChannelsParamName)) {
-                final List<SavingsProductPaymentChannelLink> channelLinks = this.savingsProductPaymentChannelAssembler.assemble(command,
-                        product.currency().getCode());
-                this.savingsProductPaymentChannelWritePlatformService.syncProductChannels(product, channelLinks);
-                changes.put(paymentChannelsParamName, command.arrayOfParameterNamed(paymentChannelsParamName));
             }
 
             return new CommandProcessingResultBuilder() //
@@ -241,15 +199,6 @@ public class SavingsProductWritePlatformServiceJpaRepositoryImpl implements Savi
         return new CommandProcessingResultBuilder() //
                 .withEntityId(product.getId()) //
                 .build();
-    }
-
-    private void validateInputDates(final JsonCommand command) {
-        final LocalDate startDate = command.localDateValueOfParameterNamed(SavingsApiConstants.startDateParamName);
-        final LocalDate closeDate = command.localDateValueOfParameterNamed(SavingsApiConstants.closeDateParamName);
-
-        if (closeDate != null && DateUtils.isBefore(closeDate, startDate)) {
-            throw new SavingsProductDateException(startDate.toString(), closeDate.toString());
-        }
     }
 
 }

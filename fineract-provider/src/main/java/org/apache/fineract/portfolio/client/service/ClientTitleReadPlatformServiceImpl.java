@@ -48,9 +48,9 @@ public class ClientTitleReadPlatformServiceImpl implements ClientTitleReadPlatfo
 
         @Override
         public ClientTitleData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
-            return ClientTitleData.builder().id(rs.getLong("id")).titleCode(rs.getString("titleCode"))
-                    .titleName(rs.getString("titleName")).genderId(JdbcSupport.getInteger(rs, "genderId"))
-                    .displayOrder(JdbcSupport.getInteger(rs, "displayOrder")).status(rs.getString("status")).build();
+            return ClientTitleData.builder().id(rs.getLong("id")).titleCode(rs.getString("titleCode")).titleName(rs.getString("titleName"))
+                    .genderId(JdbcSupport.getInteger(rs, "genderId")).displayOrder(JdbcSupport.getInteger(rs, "displayOrder"))
+                    .status(rs.getString("status")).build();
         }
     }
 

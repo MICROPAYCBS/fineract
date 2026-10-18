@@ -50,9 +50,9 @@ import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
-import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.charge.exception.SavingsAccountChargeWithoutMandatoryFieldException;
 import org.apache.fineract.portfolio.charge.service.ChargeTierCalculator;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -790,14 +790,14 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
         SavingsAccountCharge that = (SavingsAccountCharge) o;
         return (penaltyCharge == that.penaltyCharge) && (paid == that.paid) && (waived == that.waived) && (status == that.status)
                 && (recurrenceEnded == that.recurrenceEnded) && Objects.equals(savingsAccount, that.savingsAccount)
-                && Objects.equals(charge, that.charge)
-                && Objects.equals(chargeTime, that.chargeTime) && DateUtils.isEqual(dueDate, that.dueDate)
-                && Objects.equals(feeOnMonth, that.feeOnMonth) && Objects.equals(feeOnDay, that.feeOnDay)
-                && Objects.equals(feeInterval, that.feeInterval) && Objects.equals(chargeCalculation, that.chargeCalculation)
-                && Objects.equals(percentage, that.percentage) && Objects.equals(amountPercentageAppliedTo, that.amountPercentageAppliedTo)
-                && Objects.equals(amount, that.amount) && Objects.equals(amountPaid, that.amountPaid)
-                && Objects.equals(amountWaived, that.amountWaived) && Objects.equals(amountWrittenOff, that.amountWrittenOff)
-                && Objects.equals(amountOutstanding, that.amountOutstanding) && DateUtils.isEqual(inactivationDate, that.inactivationDate)
+                && Objects.equals(charge, that.charge) && Objects.equals(chargeTime, that.chargeTime)
+                && DateUtils.isEqual(dueDate, that.dueDate) && Objects.equals(feeOnMonth, that.feeOnMonth)
+                && Objects.equals(feeOnDay, that.feeOnDay) && Objects.equals(feeInterval, that.feeInterval)
+                && Objects.equals(chargeCalculation, that.chargeCalculation) && Objects.equals(percentage, that.percentage)
+                && Objects.equals(amountPercentageAppliedTo, that.amountPercentageAppliedTo) && Objects.equals(amount, that.amount)
+                && Objects.equals(amountPaid, that.amountPaid) && Objects.equals(amountWaived, that.amountWaived)
+                && Objects.equals(amountWrittenOff, that.amountWrittenOff) && Objects.equals(amountOutstanding, that.amountOutstanding)
+                && DateUtils.isEqual(inactivationDate, that.inactivationDate)
                 && Objects.equals(channelPaymentTypeId, that.channelPaymentTypeId);
     }
 

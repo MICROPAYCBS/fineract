@@ -49,10 +49,10 @@ public class ContactTypeReadPlatformServiceImpl implements ContactTypeReadPlatfo
 
         @Override
         public ContactTypeData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
-            return ContactTypeData.builder().id(rs.getLong("id")).typeCode(rs.getString("typeCode"))
-                    .typeName(rs.getString("typeName")).example(rs.getString("example"))
-                    .validationRegex(rs.getString("validationRegex")).mandatory("Y".equalsIgnoreCase(rs.getString("mandatoryInd")))
-                    .displayOrder(JdbcSupport.getInteger(rs, "displayOrder")).status(rs.getString("status")).build();
+            return ContactTypeData.builder().id(rs.getLong("id")).typeCode(rs.getString("typeCode")).typeName(rs.getString("typeName"))
+                    .example(rs.getString("example")).validationRegex(rs.getString("validationRegex"))
+                    .mandatory("Y".equalsIgnoreCase(rs.getString("mandatoryInd"))).displayOrder(JdbcSupport.getInteger(rs, "displayOrder"))
+                    .status(rs.getString("status")).build();
         }
     }
 

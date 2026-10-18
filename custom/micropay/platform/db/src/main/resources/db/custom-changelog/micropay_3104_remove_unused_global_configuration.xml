@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MICROPAY CBS: remove global configuration entries that no backend code reads.
+  organisation-display-name stays (the web app reads it). loan-arrears-delinquency-display-data stays
+  (the Angular client still reads it).
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/micropay/parts/3104_remove_unused_global_configuration.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="micropay" id="3104-remove-unused-global-configuration">
+        <delete tableName="c_configuration">
+            <where>LOWER(name) IN ('amazon-s3', 'daily-tpt-limit', 'enable-payment-hub-integration',
+                'office-opening-balances-contra-account')</where>
+        </delete>
+    </changeSet>
+
+</databaseChangeLog>

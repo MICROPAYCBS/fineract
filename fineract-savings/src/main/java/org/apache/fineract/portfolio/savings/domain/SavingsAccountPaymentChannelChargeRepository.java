@@ -22,8 +22,8 @@ import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface SavingsAccountPaymentChannelChargeRepository extends JpaRepository<SavingsAccountPaymentChannelCharge, Long>,
-        JpaSpecificationExecutor<SavingsAccountPaymentChannelCharge> {
+public interface SavingsAccountPaymentChannelChargeRepository
+        extends JpaRepository<SavingsAccountPaymentChannelCharge, Long>, JpaSpecificationExecutor<SavingsAccountPaymentChannelCharge> {
 
     List<SavingsAccountPaymentChannelCharge> findBySavingsAccountCharge_Id(Long savingsAccountChargeId);
 }

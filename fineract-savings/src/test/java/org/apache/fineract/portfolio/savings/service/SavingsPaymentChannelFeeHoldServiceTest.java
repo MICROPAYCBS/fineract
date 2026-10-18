@@ -60,8 +60,8 @@ class SavingsPaymentChannelFeeHoldServiceTest {
 
     @Test
     void missingAccountChannelTableBecomesUsefulError() {
-        final JpaSystemException missingTable = new JpaSystemException(new PersistenceException(
-                "ERROR: relation \"m_savings_account_payment_channel\" does not exist"));
+        final JpaSystemException missingTable = new JpaSystemException(
+                new PersistenceException("ERROR: relation \"m_savings_account_payment_channel\" does not exist"));
         when(this.accountChannelRepository.findByPaymentTypeIdAndStatus(7L, SavingsPaymentChannelStatus.ACTIVE.getValue()))
                 .thenThrow(missingTable);
 

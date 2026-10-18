@@ -18,8 +18,6 @@
  */
 package org.apache.fineract.infrastructure.jobs.domain;
 
-import java.util.List;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -30,8 +28,5 @@ public interface ScheduledJobRunHistoryRepository
 
     @Query("select max(sjrh.version) from ScheduledJobRunHistory sjrh where sjrh.scheduledJobDetail.jobKey = :jobKey")
     Long findMaxVersionByJobKey(@Param("jobKey") String jobKey);
-
-    @Query("select h from ScheduledJobRunHistory h where h.scheduledJobDetail.id = :jobId order by h.version desc")
-    List<ScheduledJobRunHistory> findLatestByJobId(@Param("jobId") Long jobId, Pageable pageable);
 
 }

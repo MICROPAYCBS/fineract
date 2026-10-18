@@ -21,7 +21,6 @@ package org.apache.fineract.infrastructure.accountnumberformat.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatPatternParser.FormatSegment;
 import org.junit.jupiter.api.Test;
 

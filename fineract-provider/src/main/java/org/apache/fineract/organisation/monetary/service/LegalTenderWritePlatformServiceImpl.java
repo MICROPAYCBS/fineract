@@ -55,8 +55,8 @@ public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlat
         if (this.legalTenderRepository.existsByCurrencyCodeAndValueAndTenderType(legalTender.getCurrencyCode(), legalTender.getValue(),
                 legalTender.getTenderType())) {
             throw new PlatformDataIntegrityException("error.msg.legal.tender.duplicate",
-                    "Legal tender with the same value and type already exists for this currency.", LegalTenderCommandFromApiJsonDeserializer.VALUE,
-                    legalTender.getValue());
+                    "Legal tender with the same value and type already exists for this currency.",
+                    LegalTenderCommandFromApiJsonDeserializer.VALUE, legalTender.getValue());
         }
         this.legalTenderRepository.saveAndFlush(legalTender);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(legalTender.getId()).build();
@@ -71,11 +71,11 @@ public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlat
         final CurrencyLegalTender legalTender = findWithNotFoundDetection(currencyCode, legalTenderId);
         final JsonObject json = command.parsedJson().getAsJsonObject();
         mapFromJson(legalTender, currencyCode, json, false);
-        if (this.legalTenderRepository.existsByCurrencyCodeAndValueAndTenderTypeAndIdNot(legalTender.getCurrencyCode(), legalTender.getValue(),
-                legalTender.getTenderType(), legalTenderId)) {
+        if (this.legalTenderRepository.existsByCurrencyCodeAndValueAndTenderTypeAndIdNot(legalTender.getCurrencyCode(),
+                legalTender.getValue(), legalTender.getTenderType(), legalTenderId)) {
             throw new PlatformDataIntegrityException("error.msg.legal.tender.duplicate",
-                    "Legal tender with the same value and type already exists for this currency.", LegalTenderCommandFromApiJsonDeserializer.VALUE,
-                    legalTender.getValue());
+                    "Legal tender with the same value and type already exists for this currency.",
+                    LegalTenderCommandFromApiJsonDeserializer.VALUE, legalTender.getValue());
         }
         this.legalTenderRepository.saveAndFlush(legalTender);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(legalTender.getId()).build();
@@ -107,12 +107,13 @@ public class LegalTenderWritePlatformServiceImpl implements LegalTenderWritePlat
             final boolean create) {
         legalTender.setCurrencyCode(currencyCode);
         if (create || json.has(LegalTenderCommandFromApiJsonDeserializer.VALUE)) {
-            final BigDecimal value = this.fromApiJsonHelper.extractBigDecimalWithLocaleNamed(LegalTenderCommandFromApiJsonDeserializer.VALUE,
-                    json);
+            final BigDecimal value = this.fromApiJsonHelper
+                    .extractBigDecimalWithLocaleNamed(LegalTenderCommandFromApiJsonDeserializer.VALUE, json);
             legalTender.setValue(value);
         }
         if (create || json.has(LegalTenderCommandFromApiJsonDeserializer.TENDER_TYPE)) {
-            final String tenderType = this.fromApiJsonHelper.extractStringNamed(LegalTenderCommandFromApiJsonDeserializer.TENDER_TYPE, json);
+            final String tenderType = this.fromApiJsonHelper.extractStringNamed(LegalTenderCommandFromApiJsonDeserializer.TENDER_TYPE,
+                    json);
             legalTender.setLegalTenderTypeEnum(LegalTenderMapper.parseTenderType(tenderType));
         }
         if (create || json.has(LegalTenderCommandFromApiJsonDeserializer.LABEL)) {

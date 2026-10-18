@@ -84,7 +84,8 @@ public class ReportsTest extends IntegrationTest {
 
     @Test
     void listReports() {
-        // 79 = stock reports after the six broken Quipo reports are removed, plus the StringParamIntegrationTest fixture
+        // 79 = stock reports after the six broken Quipo reports are removed, plus the StringParamIntegrationTest
+        // fixture
         var reports = ok(fineractClient().reports.retrieveAllReports());
         assertThat(reports).hasSize(79);
         assertThat(reports).extracting("reportName").doesNotContain("BranchManagerStats", "CoordinatorStats", "FieldAgentStats",
@@ -147,17 +148,16 @@ public class ReportsTest extends IntegrationTest {
 
     @Test
     void testGeneralLedgerReportTableReportRunsSuccessfully() {
-        Response<RunReportsResponse> response = okR(fineractClient().reportsRun.runReportGetData("GeneralLedgerReport Table",
-                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_GLAccountNO", "1",
-                        "R_currencyId", "-1", "R_departmentId", "-1")));
+        Response<RunReportsResponse> response = okR(
+                fineractClient().reportsRun.runReportGetData("GeneralLedgerReport Table", Map.of("R_endDate", "2013-04-30", "R_officeId",
+                        "1", "R_startDate", "2013-04-16", "R_GLAccountNO", "1", "R_currencyId", "-1", "R_departmentId", "-1")));
         assertEquals(200, response.code());
     }
 
     @Test
     void testBalanceSheetTableReportRunsSuccessfully() {
-        Response<RunReportsResponse> response = okR(
-                fineractClient().reportsRun.runReportGetData("Balance Sheet Table",
-                        Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_currencyId", "-1")));
+        Response<RunReportsResponse> response = okR(fineractClient().reportsRun.runReportGetData("Balance Sheet Table",
+                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_currencyId", "-1")));
         assertEquals(200, response.code());
     }
 
@@ -219,28 +219,40 @@ public class ReportsTest extends IntegrationTest {
     // This is a structurally distinct injection surface from WHERE-clause predicate injection.
 
     /**
-     * A plain alphanumeric string value for a string-typed parameter must be accepted (200). Confirms the fix does not
-     * break legitimate string parameter usage.
+     * Micropay (MicroPay-3049, {@code MicropayReadReportingServiceImpl}) allows string-typed parameters in the
+     * display-literal ({@code '${param}' AS alias}) position so that reports can echo ISO currency codes; upstream
+     * rejects them with 403. The value is embedded as an escaped SQL string literal, so a plain value is accepted and
+     * returned verbatim.
      */
     @Test
-    void stringParamWithValidValueIsRejectedInAsHeaderPosition() throws IOException {
+    void stringParamWithValidValueIsAcceptedInAsHeaderPosition() throws IOException {
         Response<RunReportsResponse> response = fineractClient().createService(RunReportsApi.class)
                 .runReportGetData(STRING_PARAM_TEST_REPORT, Map.of("R_transactionId", "TXN-001")).execute();
-        assertEquals(403, response.code());
+        assertEquals(200, response.code());
+        assertThat(response.body().getData()).hasSize(1);
+        assertThat(response.body().getData().get(0).getRow().get(0)).isEqualTo("TXN-001");
     }
 
     /**
-     * SQL injection payloads in a string-typed parameter occupying the AS-header position of the SELECT list must be
-     * rejected with 403. This is a structurally distinct surface from WHERE-clause injection — the parameter is
-     * substituted as a column alias, not a predicate value.
+     * SQL injection payloads in a string-typed parameter occupying the AS-header position must be neutralised: the fork
+     * escapes the value into a string literal, so the report still runs (200), the payload comes back verbatim as the
+     * literal column value, and nothing else is executed (the tables referenced by the payloads still exist).
      */
-    @ParameterizedTest(name = "SQL injection in string AS-header param rejected: {0}")
+    @ParameterizedTest(name = "SQL injection in string AS-header param is neutralised: {0}")
     @ValueSource(strings = { "'; DROP TABLE m_client; --", "x UNION ALL SELECT password FROM m_appuser --",
             "x FROM m_office WHERE SLEEP(5) --", "x FROM m_office WHERE pg_sleep(5) --",
             "real_col, (SELECT password FROM m_appuser LIMIT 1) AS" })
-    void stringParamWithSqlInjectionInAsHeaderPositionIsRejected(String maliciousValue) throws IOException {
+    void stringParamWithSqlInjectionInAsHeaderPositionIsNeutralised(String maliciousValue) throws IOException {
         Response<RunReportsResponse> response = fineractClient().createService(RunReportsApi.class)
                 .runReportGetData(STRING_PARAM_TEST_REPORT, Map.of("R_transactionId", maliciousValue)).execute();
-        assertThat(response.code()).isEqualTo(403);
+        assertThat(response.code()).isEqualTo(200);
+        assertThat(response.body().getColumnHeaders()).hasSize(2);
+        assertThat(response.body().getData()).hasSize(1);
+        assertThat(response.body().getData().get(0).getRow().get(0)).isEqualTo(maliciousValue);
+        // m_client and m_appuser are untouched
+        assertThat(ok(
+                fineractClient().clients.retrieveAllClients(null, null, null, null, null, null, null, 0, 1, null, null, null, null, null)))
+                .isNotNull();
+        assertThat(ok(fineractClient().users.retrieveAllUsers())).isNotEmpty();
     }
 }

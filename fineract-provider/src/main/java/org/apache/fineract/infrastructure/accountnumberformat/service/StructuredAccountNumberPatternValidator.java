@@ -61,8 +61,8 @@ public final class StructuredAccountNumberPatternValidator {
         final int totalWidth = segments.stream().mapToInt(FormatSegment::getWidth).sum();
         final int maxWidth = maxWidth(type);
         if (totalWidth > maxWidth) {
-            errors.add(patternError("too.long", "Total width is " + totalWidth + "; the maximum for " + type.name() + " is " + maxWidth + ".",
-                    pattern));
+            errors.add(patternError("too.long",
+                    "Total width is " + totalWidth + "; the maximum for " + type.name() + " is " + maxWidth + ".", pattern));
         }
         final boolean printsOffice = segments.stream().anyMatch(segment -> "officeCode".equals(segment.getToken()));
         final boolean printsProduct = segments.stream().anyMatch(segment -> "productCode".equals(segment.getToken()));
@@ -71,7 +71,8 @@ public final class StructuredAccountNumberPatternValidator {
         }
         if (scope == AccountNumberSequenceScope.OFFICE_PRODUCT) {
             if (!isProductType(type)) {
-                errors.add(scopeError("not.allowed", "A counter per office and product is only for loan, savings and share accounts.", scope));
+                errors.add(
+                        scopeError("not.allowed", "A counter per office and product is only for loan, savings and share accounts.", scope));
             } else if (!printsProduct) {
                 errors.add(scopeError("needs.product.code", "A counter per office and product needs a productCode segment in the pattern.",
                         scope));

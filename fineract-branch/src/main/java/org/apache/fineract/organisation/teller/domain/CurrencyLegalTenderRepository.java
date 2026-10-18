@@ -32,8 +32,7 @@ public interface CurrencyLegalTenderRepository extends JpaRepository<CurrencyLeg
 
     Optional<CurrencyLegalTender> findByIdAndCurrencyCode(Long id, String currencyCode);
 
-    boolean existsByCurrencyCodeAndValueAndTenderTypeAndIdNot(String currencyCode, java.math.BigDecimal value, Integer tenderType,
-            Long id);
+    boolean existsByCurrencyCodeAndValueAndTenderTypeAndIdNot(String currencyCode, java.math.BigDecimal value, Integer tenderType, Long id);
 
     boolean existsByCurrencyCodeAndValueAndTenderType(String currencyCode, java.math.BigDecimal value, Integer tenderType);
 

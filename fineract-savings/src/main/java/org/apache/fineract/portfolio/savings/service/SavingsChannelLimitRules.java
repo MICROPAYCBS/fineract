@@ -123,8 +123,7 @@ public final class SavingsChannelLimitRules {
         }
     }
 
-    public static void validateOrdering(final SavingsChannelLimitValues values, final DataValidatorBuilder validator,
-            final String prefix) {
+    public static void validateOrdering(final SavingsChannelLimitValues values, final DataValidatorBuilder validator, final String prefix) {
         if (values == null) {
             return;
         }

@@ -31,12 +31,20 @@ import org.apache.fineract.integrationtests.common.CommonConstants;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.charges.ChargesHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
+import org.apache.fineract.integrationtests.common.organisation.CurrencyHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsAccountHelper;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 @Slf4j
 public class TieredChargesTest extends BaseLoanIntegrationTest {
+
+    @BeforeAll
+    static void ensureChargeCurrenciesSelected() {
+        // Micropay only exposes charges in the tenant's selected currencies; the fixtures below use USD and EUR.
+        CurrencyHelper.ensureSelected("USD", "EUR");
+    }
 
     @Test
     public void createAndReadLoanTieredCharge() {
@@ -56,8 +64,7 @@ public class TieredChargesTest extends BaseLoanIntegrationTest {
 
     @Test
     public void createAndReadSavingsTieredCharge() {
-        final Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec,
-                ChargesHelper.getSavingsWithdrawalTieredFlatJSON());
+        final Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec, ChargesHelper.getSavingsWithdrawalTieredFlatJSON());
         Assertions.assertNotNull(chargeId);
 
         final HashMap charge = ChargesHelper.getChargeById(requestSpec, responseSpec, chargeId);
@@ -76,12 +83,16 @@ public class TieredChargesTest extends BaseLoanIntegrationTest {
                     "\"currencyCode\":\"EUR\"");
             Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec, chargePayload);
 
-            final PostLoanProductsResponse loanProductsResponse = loanProductHelper.createLoanProduct(create4IProgressive());
+            // create4IProgressive() caps principal at 10000; the open-ended tier starts at 100000
+            final PostLoanProductsResponse loanProductsResponse = loanProductHelper
+                    .createLoanProduct(create4IProgressive().principal(150000.0).maxPrincipal(200000.0));
             PostLoansResponse postLoansResponse = loanTransactionHelper.applyLoan(applyLP2ProgressiveLoanRequest(clientId,
                     loanProductsResponse.getResourceId(), "01 June 2024", 150000.0, 10.0, 4, null));
             Long loanId = postLoansResponse.getLoanId();
 
-            String addChargePayload = LoanTransactionHelper.getDisbursementChargesForLoanAsJSON(chargeId.toString(), "0");
+            // amount must be > 0 to pass validation; for tiered charges LoanChargeService resolves the real amount from
+            // the tiers
+            String addChargePayload = LoanTransactionHelper.getDisbursementChargesForLoanAsJSON(chargeId.toString(), "1");
             loanTransactionHelper.addChargeForLoan(loanId.intValue(), addChargePayload, responseSpec);
 
             loanTransactionHelper.approveLoan(loanId, approveLoanRequest(150000.0, "01 June 2024"));
@@ -103,18 +114,18 @@ public class TieredChargesTest extends BaseLoanIntegrationTest {
         final Integer savingsId = SavingsAccountHelper.openSavingsAccount(requestSpec, responseSpec, clientId, "200000");
         Assertions.assertNotNull(savingsId);
 
-        final Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec,
-                ChargesHelper.getSavingsWithdrawalTieredFlatJSON());
+        final Integer chargeId = ChargesHelper.createCharges(requestSpec, responseSpec, ChargesHelper.getSavingsWithdrawalTieredFlatJSON());
         Assertions.assertNotNull(chargeId);
 
-        savingsHelper.addChargesForSavings(savingsId, chargeId, false, BigDecimal.ZERO);
+        // The savings charge validator requires amount > 0 even for tiered charges; the value is a placeholder because
+        // SavingsAccountCharge resolves the effective fee from the tiers at withdrawal time.
+        savingsHelper.addChargesForSavings(savingsId, chargeId, false, BigDecimal.ONE);
 
         savingsHelper.withdrawalFromSavingsAccount(savingsId, "150000", SavingsAccountHelper.TRANSACTION_DATE,
                 CommonConstants.RESPONSE_RESOURCE_ID);
 
-        // Opening 200000 − withdraw 150000 − tier fee 100 = 49800
+        // Opening 200000 − withdraw 150000 − open-ended tier fee 100 = 49900
         final HashMap summary = savingsHelper.getSavingsSummary(savingsId);
-        Assertions.assertEquals(Float.parseFloat("49800"), summary.get("accountBalance"),
-                "Verifying balance after tiered withdrawal fee");
+        Assertions.assertEquals(Float.parseFloat("49900"), summary.get("accountBalance"), "Verifying balance after tiered withdrawal fee");
     }
 }

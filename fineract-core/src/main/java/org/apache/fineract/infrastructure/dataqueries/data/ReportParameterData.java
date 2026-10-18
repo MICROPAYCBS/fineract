@@ -36,6 +36,10 @@ public final class ReportParameterData {
     @SuppressWarnings("unused")
     private final String displayLabel;
 
+    public ReportParameterData(final Long id, final Long parameterId, final String reportParameterName, final String parameterName) {
+        this(id, parameterId, reportParameterName, parameterName, null);
+    }
+
     public ReportParameterData(final Long id, final Long parameterId, final String reportParameterName, final String parameterName,
             final String parameterLabel) {
         this.id = id;

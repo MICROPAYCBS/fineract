@@ -114,7 +114,8 @@ public class CashBasedAccountingProcessorForShares implements AccountingProcesso
                 amountForJE = amount.subtract(chargeAmount);
             }
             if (transactionDTO.isUseSavings()) {
-                // Pair with savings account-transfer withdrawal (Cr LIABILITY_TRANSFER): Dr LIABILITY_TRANSFER, Cr EQUITY
+                // Pair with savings account-transfer withdrawal (Cr LIABILITY_TRANSFER): Dr LIABILITY_TRANSFER, Cr
+                // EQUITY
                 this.helper.createJournalEntriesForShares(office, currencyCode, FinancialActivity.LIABILITY_TRANSFER.getValue(),
                         CashAccountsForShares.SHARES_EQUITY.getValue(), shareProductId, paymentTypeId, shareAccountId, transactionId,
                         transactionDate, amountForJE);

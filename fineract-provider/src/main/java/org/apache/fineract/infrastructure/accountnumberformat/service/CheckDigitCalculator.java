@@ -23,8 +23,7 @@ import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitA
 
 public final class CheckDigitCalculator {
 
-    private CheckDigitCalculator() {
-    }
+    private CheckDigitCalculator() {}
 
     public static String calculate(final CheckDigitAlgorithm algorithm, final String body) {
         if (algorithm == null || algorithm == CheckDigitAlgorithm.NONE) {

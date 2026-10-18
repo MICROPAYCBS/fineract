@@ -216,7 +216,8 @@ public final class BatchHelper {
 
         final String body = "{ \"officeId\": 1, \"legalFormId\":1, \"firstname\": \"Petra\", \"lastname\": \"Yton\"," + "\"externalId\": \""
                 + extId
-                + "\",  \"dateFormat\": \"dd MMMM yyyy\", \"locale\": \"en\",\"active\": false, \"submittedOnDate\": \"04 March 2009\"}";
+                + "\",  \"dateFormat\": \"dd MMMM yyyy\", \"locale\": \"en\",\"active\": false, \"submittedOnDate\": \"04 March 2009\","
+                + micropayClientIdentifiersJson() + "}";
 
         br.setBody(body);
 
@@ -249,11 +250,21 @@ public final class BatchHelper {
 
         final String body = "{ \"officeId\": 1, \"legalFormId\":1, \"firstname\": \"Petra\", \"lastname\": \"Yton\"," + "\"externalId\": \""
                 + externalId + "\",  \"dateFormat\": \"dd MMMM yyyy\", \"locale\": \"en\","
-                + "\"active\": true, \"activationDate\": \"04 March 2010\", \"submittedOnDate\": \"04 March 2010\"}";
+                + "\"active\": true, \"activationDate\": \"04 March 2010\", \"submittedOnDate\": \"04 March 2010\","
+                + micropayClientIdentifiersJson() + "}";
 
         br.setBody(body);
 
         return br;
+    }
+
+    /**
+     * Micropay requires at least one identifier for a person client; see
+     * {@link ClientHelper#defaultClientIdentifier()}.
+     */
+    private static String micropayClientIdentifiersJson() {
+        return "\"clientIdentifiers\": [{ \"documentTypeId\": " + ClientHelper.defaultIdentifierDocumentTypeId() + ", \"documentKey\": \""
+                + ClientHelper.randomIdentifierKey() + "\", \"status\": \"Active\", \"description\": \"integration-test identifier\" }]";
     }
 
     /**

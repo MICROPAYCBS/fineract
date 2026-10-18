@@ -49,7 +49,6 @@ import org.apache.fineract.organisation.teller.data.TellerJournalData;
 import org.apache.fineract.organisation.teller.data.TellerTransactionData;
 import org.apache.fineract.organisation.teller.domain.CashierTxnType;
 import org.apache.fineract.organisation.teller.domain.TellerStatus;
-import org.apache.fineract.organisation.teller.exception.CashierNotFoundException;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -68,8 +67,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
     private final DatabaseSpecificSQLGenerator sqlGenerator;
     private final PaginationHelper paginationHelper;
     private final SqlValidator sqlValidator;
-    private final CashierAccessReadService cashierAccessReadService;
-    private final CashierLegalTenderReadPlatformService cashierLegalTenderReadPlatformService;
 
     private static final class TellerMapper implements RowMapper<TellerData> {
 
@@ -120,7 +117,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Override
     public TellerData findTeller(final Long tellerId) {
-        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
 
         try {
             final TellerMapper tm = new TellerMapper();
@@ -144,31 +140,20 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Override
     public Collection<CashierData> retrieveCashiersForTellers(final Long tellerId) {
-        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
-
         final CashierMapper cm = new CashierMapper();
-        final Long staffIdFilter = this.cashierAccessReadService.selfReadStaffIdFilterOrNull();
-        if (staffIdFilter != null) {
-            final String sql = "select " + cm.schema() + " where c.teller_id = ? and c.staff_id = ?";
-            return this.jdbcTemplate.query(sql, cm, tellerId, staffIdFilter); // NOSONAR
-        }
-        final String sql = "select " + cm.schema() + " where c.teller_id = ?";
+        String sql = "select " + cm.schema() + " where teller_id = ?";
         return this.jdbcTemplate.query(sql, cm, tellerId); // NOSONAR
     }
 
     @Override
     public CashierData findCashier(Long cashierId) {
-        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
-
         try {
             final CashierMapper cm = new CashierMapper();
             final String sql = "select " + cm.schema() + " where c.id = ?";
 
-            final CashierData cashierData = this.jdbcTemplate.queryForObject(sql, cm, new Object[] { cashierId }); // NOSONAR
-            this.cashierAccessReadService.validateCanReadCashier(cashierData.getStaffId(), cashierId);
-            return cashierData;
+            return this.jdbcTemplate.queryForObject(sql, cm, new Object[] { cashierId }); // NOSONAR
         } catch (final EmptyResultDataAccessException e) {
-            throw new CashierNotFoundException(cashierId);
+            throw new StaffNotFoundException(cashierId, e);
         }
     }
 
@@ -204,8 +189,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Cacheable(value = "tellers", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier().concat(#root.target.context.authenticatedUser().getOffice().getHierarchy()+'of')")
     public Collection<TellerData> retrieveAllTellers(final boolean includeAllTellers) {
-        this.cashierAccessReadService.validateCanAccessTellerOrCashierRead();
-
         final AppUser currentUser = this.context.authenticatedUser();
         final String hierarchy = currentUser.getOffice().getHierarchy();
         String hierarchySearchString = null;
@@ -222,8 +205,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
 
     @Override
     public CashierData retrieveCashierTemplate(Long officeId, Long tellerId, boolean staffInSelectedOfficeOnly) {
-        this.cashierAccessReadService.validateCanAccessCashierAdminRead();
-
         final Long defaultOfficeId = defaultToUsersOfficeIfNull(officeId);
 
         final OfficeData officeData = this.officeReadPlatformService.retrieveOffice(defaultOfficeId);
@@ -289,30 +270,8 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
     public CashierTransactionsWithSummaryData retrieveCashierTransactionsWithSummary(final Long cashierId, final boolean includeAllTellers,
             final LocalDate fromDate, final LocalDate toDate, final String currencyCode, final SearchParameters searchParameters) {
 
-        findCashier(cashierId);
-
         sqlValidator.validate(searchParameters.getOrderBy());
         sqlValidator.validate(searchParameters.getSortOrder());
-        final CashierTotals totals = loadCashierTotals(cashierId, currencyCode);
-
-        final Page<CashierTransactionData> cashierTransactions = retrieveCashierTransactions(cashierId, includeAllTellers, fromDate, toDate,
-                currencyCode, searchParameters);
-
-        CashierTransactionData cashierTxnTemplate = retrieveCashierTxnTemplate(cashierId);
-
-        CashierTransactionsWithSummaryData txnsWithSummary = CashierTransactionsWithSummaryData.instance(cashierTransactions, totals.alloc(),
-                totals.cashIn(), totals.cashOut(), totals.settle(), cashierTxnTemplate.getOfficeName(), cashierTxnTemplate.getTellerId(),
-                cashierTxnTemplate.getTellerName(), cashierTxnTemplate.getCashierId(), cashierTxnTemplate.getCashierName());
-        return txnsWithSummary;
-    }
-
-    @Override
-    public BigDecimal retrieveCashierNetCash(final Long cashierId, final String currencyCode) {
-        final CashierTotals totals = loadCashierTotals(cashierId, currencyCode);
-        return totals.alloc().add(totals.cashIn()).subtract(totals.cashOut()).subtract(totals.settle());
-    }
-
-    private CashierTotals loadCashierTotals(final Long cashierId, final String currencyCode) {
         final String nextDay = sqlGenerator.incrementDateByOneDay("c.end_date");
 
         final CashierTransactionSummaryMapper ctsm = new CashierTransactionSummaryMapper();
@@ -340,16 +299,21 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
                 }
             }
         }
-        return new CashierTotals(allocAmount, cashInAmount, cashOutAmount, settleAmount);
-    }
 
-    private record CashierTotals(BigDecimal alloc, BigDecimal cashIn, BigDecimal cashOut, BigDecimal settle) {}
+        final Page<CashierTransactionData> cashierTransactions = retrieveCashierTransactions(cashierId, includeAllTellers, fromDate, toDate,
+                currencyCode, searchParameters);
+
+        CashierTransactionData cashierTxnTemplate = retrieveCashierTxnTemplate(cashierId);
+
+        CashierTransactionsWithSummaryData txnsWithSummary = CashierTransactionsWithSummaryData.instance(cashierTransactions, allocAmount,
+                cashInAmount, cashOutAmount, settleAmount, cashierTxnTemplate.getOfficeName(), cashierTxnTemplate.getTellerId(),
+                cashierTxnTemplate.getTellerName(), cashierTxnTemplate.getCashierId(), cashierTxnTemplate.getCashierName());
+        return txnsWithSummary;
+    }
 
     @Override
     public Page<CashierTransactionData> retrieveCashierTransactions(final Long cashierId, final boolean includeAllTellers,
             final LocalDate fromDate, final LocalDate toDate, final String currencyCode, final SearchParameters searchParameters) {
-
-        findCashier(cashierId);
 
         sqlValidator.validate(searchParameters.getOrderBy());
         sqlValidator.validate(searchParameters.getSortOrder());
@@ -362,15 +326,15 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
                 + ctm.savingsTxnSchema() + " where sav_txn.is_reversed = false and c.id = ? and sav.currency_code = ? "
                 + "and sav_txn.transaction_date between c.start_date and " + nextDay
                 + " and renum.enum_value in ('deposit','withdrawal fee', 'Pay Charge', 'withdrawal', 'Annual Fee', 'Waive Charge', 'Interest Posting', 'Overdraft Interest') "
-                + " and payType.is_cash_payment = true AND acnttrans.id IS NULL ) "
+                + " and (sav_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) AND acnttrans.id IS NULL ) "
                 + " union (select " + ctm.loansTxnSchema() + " where loan_txn.is_reversed = false and c.id = ? and loan.currency_code = ? "
                 + "and loan_txn.transaction_date between c.start_date and " + nextDay
                 + " and renum.enum_value IN ('REPAYMENT_AT_DISBURSEMENT','REPAYMENT', 'RECOVERY_REPAYMENT','DISBURSEMENT', 'CHARGE_PAYMENT', 'WAIVE_CHARGES', 'WAIVE_INTEREST', 'WRITEOFF') "
-                + " and payType.is_cash_payment = true " + " AND acnttrans.id IS NULL ) "
+                + " and (loan_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) " + " AND acnttrans.id IS NULL ) "
                 + " union (select " + ctm.clientTxnSchema()
                 + " where cli_txn.is_reversed = false and c.id = ? and cli_txn.currency_code = ? " + "and cli_txn.transaction_date "
                 + " between c.start_date and  " + nextDay + " and renum.enum_value IN ('PAY_CHARGE', 'WAIVE_CHARGE') "
-                + " and payType.is_cash_payment = true ) " + " order by created_date ";
+                + " and (cli_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) ) " + " order by created_date ";
 
         if (searchParameters.hasLimit()) {
             sql += " ";
@@ -387,9 +351,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
         // });
         Object[] params = new Object[] { cashierId, currencyCode, cashierId, currencyCode, cashierId, currencyCode, cashierId,
                 currencyCode, };
-        final Page<CashierTransactionData> page = this.paginationHelper.fetchPage(this.jdbcTemplate, sql, params, ctm);
-        this.cashierLegalTenderReadPlatformService.enrichTransactionsWithLegalTenderLines(page.getPageItems());
-        return page;
+        return this.paginationHelper.fetchPage(this.jdbcTemplate, sql, params, ctm);
     }
 
     private static final class CashierMapper implements RowMapper<CashierData> {
@@ -440,7 +402,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(" txn.txn_type AS txn_type, ");
             sqlBuilder.append(" txn.txn_amount AS txn_amount, txn.txn_date AS txn_date, txn.txn_note as txn_note, ");
             sqlBuilder.append(" txn.entity_type AS entity_type, txn.entity_id AS entity_id, txn.created_date AS created_date, ");
-            sqlBuilder.append(" txn.currency_code AS currency_code, ");
             sqlBuilder.append(
                     " o.id AS office_id, o.name AS office_name, t.id AS teller_id, t.name AS teller_name, s.display_name AS cashier_name ");
             sqlBuilder.append(" FROM m_cashier_transactions AS txn ");
@@ -470,7 +431,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(
                     " concat (renum.enum_value, ', Sav:', sav.id, '-', sav.account_no, ',Client:', cl.id, '-',cl.display_name) as txn_note, ");
             sqlBuilder.append(" 'savings' as entity_type, sav.id as entity_id, sav_txn.created_date as created_date, ");
-            sqlBuilder.append(" sav.currency_code as currency_code, ");
             sqlBuilder.append(
                     " o.id as office_id, o.name as office_name, null as teller_id, null as teller_name, staff.display_name as cashier_name ");
             sqlBuilder.append(" from m_savings_account_transaction sav_txn ");
@@ -509,7 +469,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(
                     " concat (renum.enum_value, ', Loan:', loan.id, '-', loan.account_no, ',Client:', cl.id, '-',cl.display_name) as txn_note, ");
             sqlBuilder.append(" 'loans' as entity_type, loan.id as entity_id, loan_txn.created_date as created_date, ");
-            sqlBuilder.append(" loan.currency_code as currency_code, ");
             sqlBuilder.append(
                     " o.id as office_id, o.name as office_name, null as teller_id, null as teller_name, staff.display_name as cashier_name ");
             sqlBuilder.append(" from m_loan_transaction loan_txn ");
@@ -547,7 +506,6 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append(
                     " concat (renum.enum_value, ', Client:', cl.id, '-', cl.account_no, ',Client:', cl.id, '-',cl.display_name) as txn_note, ");
             sqlBuilder.append(" 'client' as entity_type, cl.id as entity_id, cli_txn.created_date as created_date, ");
-            sqlBuilder.append(" cli_txn.currency_code as currency_code, ");
             sqlBuilder.append(
                     " o.id as office_id, o.name as office_name, null as teller_id, null as teller_name, staff.display_name as cashier_name ");
             sqlBuilder.append(" from m_client_transaction cli_txn ");
@@ -592,10 +550,9 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             final Long tellerId = rs.getLong("teller_id");
             final String tellerName = rs.getString("teller_name");
             final String cashierName = rs.getString("cashier_name");
-            final String currencyCode = rs.getString("currency_code");
 
             return CashierTransactionData.instance(id, cashierId, txnType, txnAmount, txnDate, txnNote, entityType, entityId, createdDate,
-                    officeId, officeName, tellerId, tellerName, cashierName, null, null, null).setCurrencyCode(currencyCode);
+                    officeId, officeName, tellerId, tellerName, cashierName, null, null, null);
         }
     }
 
@@ -655,7 +612,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append("    where sav_txn.is_reversed = false and c.id = ? ");
             sqlBuilder.append(" and sav.currency_code = ? ");
             sqlBuilder.append("    and sav_txn.transaction_date between c.start_date and c.end_date ");
-            sqlBuilder.append("    and payType.is_cash_payment = true ");
+            sqlBuilder.append("    and (sav_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) ");
             sqlBuilder.append("    AND acnttrans.id IS NULL  ");
             sqlBuilder.append("    ) ");
             sqlBuilder.append("    UNION ");
@@ -693,7 +650,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append("    where loan_txn.is_reversed = false and c.id = ? ");
             sqlBuilder.append(" and loan.currency_code = ? ");
             sqlBuilder.append("    and loan_txn.transaction_date between c.start_date and " + nextDay);
-            sqlBuilder.append("    and payType.is_cash_payment = true ");
+            sqlBuilder.append("    and (loan_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true) ");
             sqlBuilder.append("    AND acnttrans.id IS NULL  ");
             sqlBuilder.append("    ) ");
             sqlBuilder.append("    UNION ");
@@ -726,7 +683,7 @@ public class TellerManagementReadPlatformServiceImpl implements TellerManagement
             sqlBuilder.append("    where cli_txn.is_reversed = false AND c.id = ?    ");
             sqlBuilder.append(" and cli_txn.currency_code = ? ");
             sqlBuilder.append("    and cli_txn.transaction_date between c.start_date and " + nextDay);
-            sqlBuilder.append(" and payType.is_cash_payment = true  ");
+            sqlBuilder.append(" and (cli_txn.payment_detail_id IS NULL OR payType.is_cash_payment = true)  ");
             sqlBuilder.append("    ) ");
             sqlBuilder.append("    ) txns ");
             sqlBuilder.append("    group by cash_txn_type ");

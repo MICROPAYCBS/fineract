@@ -42,7 +42,6 @@ import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
-import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.portfolio.client.data.ClientCollateralManagementData;
@@ -53,15 +52,13 @@ import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientStatus;
-import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.mapper.ClientMapper;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagement;
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
-import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
-import org.apache.fineract.portfolio.customerclass.service.CustomerClassReadPlatformService;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -69,6 +66,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = ClientReadPlatformService.class, ignored = ClientReadPlatformServiceImpl.class)
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClientReadPlatformServiceImpl implements ClientReadPlatformService {
@@ -88,8 +86,6 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
     private final ClientCollateralManagementRepositoryWrapper clientCollateralManagementRepositoryWrapper;
     private final ClientRepositoryWrapper clientRepositoryWrapper;
     private final ClientMapper clientMapper;
-    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
-    private final CustomerClassReadPlatformService customerClassReadPlatformService;
 
     @Override
     public Page<ClientData> retrieveAll(final SearchParameters searchParameters) {
@@ -107,11 +103,15 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         final String userOfficeHierarchy = this.context.officeHierarchy();
         final String underHierarchySearchString = userOfficeHierarchy + "%";
 
-        List<Object> paramList = new ArrayList<>();
+        // if (searchParameters.isScopedByOfficeHierarchy()) {
+        // this.context.validateAccessRights(searchParameters.getHierarchy());
+        // underHierarchySearchString = searchParameters.getHierarchy() + "%";
+        // }
+        List<Object> paramList = new ArrayList<>(Arrays.asList(underHierarchySearchString, underHierarchySearchString));
         final StringBuilder sqlBuilder = new StringBuilder(200);
         sqlBuilder.append("select " + sqlGenerator.calcFoundRows() + " ");
         sqlBuilder.append(this.clientToDataMapper.schema());
-        appendClientVisibilityWhereClause(sqlBuilder, paramList, underHierarchySearchString);
+        sqlBuilder.append(" where (o.hierarchy like ? or transferToOffice.hierarchy like ?) ");
 
         if (searchParameters != null) {
 
@@ -209,18 +209,6 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         return extraCriteria;
     }
 
-    private void appendClientVisibilityWhereClause(final StringBuilder sqlBuilder, final List<Object> paramList,
-            final String underHierarchySearchString) {
-        paramList.add(underHierarchySearchString);
-        paramList.add(underHierarchySearchString);
-        sqlBuilder.append(" where (o.hierarchy like ? or transferToOffice.hierarchy like ?");
-
-        if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
-            sqlBuilder.append(" or 1=1");
-        }
-        sqlBuilder.append(") ");
-    }
-
     @Override
     public ClientData retrieveOne(final Long clientId) {
         try {
@@ -250,20 +238,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final Collection<GroupGeneralData> parentGroups = this.jdbcTemplate.query(clientGroupsSql, this.clientGroupsMapper, // NOSONAR
                     clientId);
 
-            final ClientData mergedClientData = ClientData.setParentGroups(clientData, parentGroups, clientCollateralManagementDataSet);
-            enrichCustomerClass(client, mergedClientData);
-            return mergedClientData;
+            return ClientData.setParentGroups(clientData, parentGroups, clientCollateralManagementDataSet);
 
         } catch (final EmptyResultDataAccessException e) {
             throw new ClientNotFoundException(clientId, e);
-        }
-    }
-
-    private void enrichCustomerClass(final Client client, final ClientData clientData) {
-        final Long customerClassId = client.getCustomerClassId();
-        clientData.setCustomerClassId(customerClassId);
-        if (customerClassId != null) {
-            clientData.setCustomerClass(this.customerClassReadPlatformService.retrieveOne(customerClassId));
         }
     }
 
@@ -330,23 +308,9 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("c.mobile_no as mobileNo, ");
             sqlBuilder.append("c.is_staff as isStaff, ");
             sqlBuilder.append("c.email_address as emailAddress, ");
-            sqlBuilder.append("c.tax_identification_number as taxIdentificationNumber, ");
-            sqlBuilder.append("c.alternative_mobile_no as alternativeMobileNo, ");
-            sqlBuilder.append("c.alternative_email_address as alternativeEmailAddress, ");
-            sqlBuilder.append("c.sub_industry_id as subIndustryId, ");
-            sqlBuilder.append("c.customer_class_id as customerClassId, ");
-            sqlBuilder.append("cc.class_code as customerClassCode, ");
-            sqlBuilder.append("cc.class_name as customerClassName, ");
-            sqlBuilder.append("c.title_id as titleId, ");
-            sqlBuilder.append("ct.title_name as titleValue, ");
-            sqlBuilder.append("c.nationality_country_id as nationalityCountryId, ");
-            sqlBuilder.append("cvNationality.code_value as nationalityValue, ");
-            sqlBuilder.append("c.customer_risk_profile_cv_id as customerRiskProfileId, ");
-            sqlBuilder.append("cvCustomerRiskProfile.code_value as customerRiskProfileValue, ");
-            sqlBuilder.append("c.marital_status_cv_id as maritalStatusId, ");
-            sqlBuilder.append("cvMaritalStatus.code_value as maritalStatusValue, ");
             sqlBuilder.append("c.date_of_birth as dateOfBirth, ");
-            sqlBuilder.append("c.gender_enum as genderId, ");
+            sqlBuilder.append("c.gender_cv_id as genderId, ");
+            sqlBuilder.append("cv.code_value as genderValue, ");
             sqlBuilder.append("c.client_type_cv_id as clienttypeId, ");
             sqlBuilder.append("cvclienttype.code_value as clienttypeValue, ");
             sqlBuilder.append("c.client_classification_cv_id as classificationId, ");
@@ -390,16 +354,12 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             sqlBuilder.append("left join m_appuser sbu on sbu.id = c.created_by ");
             sqlBuilder.append("left join m_appuser acu on acu.id = c.activatedon_userid ");
             sqlBuilder.append("left join m_appuser clu on clu.id = c.closedon_userid ");
-            sqlBuilder.append("left join m_client_title ct on ct.id = c.title_id ");
-            sqlBuilder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
-            sqlBuilder.append("left join m_code_value cvCustomerRiskProfile on cvCustomerRiskProfile.id = c.customer_risk_profile_cv_id ");
-            sqlBuilder.append("left join m_code_value cvMaritalStatus on cvMaritalStatus.id = c.marital_status_cv_id ");
+            sqlBuilder.append("left join m_code_value cv on cv.id = c.gender_cv_id ");
             sqlBuilder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
             sqlBuilder.append("left join m_code_value cvclassification on cvclassification.id = c.client_classification_cv_id ");
             sqlBuilder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
             sqlBuilder.append("left join m_code_value cvConstitution on cvConstitution.id = cnp.constitution_cv_id ");
             sqlBuilder.append("left join m_code_value cvMainBusinessLine on cvMainBusinessLine.id = cnp.main_business_line_cv_id ");
-            sqlBuilder.append("left join m_customer_class cc on cc.id = c.customer_class_id ");
 
             this.schema = sqlBuilder.toString();
         }
@@ -438,25 +398,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final String mobileNo = rs.getString("mobileNo");
             final boolean isStaff = rs.getBoolean("isStaff");
             final String emailAddress = rs.getString("emailAddress");
-            final String taxIdentificationNumber = rs.getString("taxIdentificationNumber");
-            final String alternativeMobileNo = rs.getString("alternativeMobileNo");
-            final String alternativeEmailAddress = rs.getString("alternativeEmailAddress");
-            final Long subIndustryId = JdbcSupport.getLong(rs, "subIndustryId");
             final LocalDate dateOfBirth = JdbcSupport.getLocalDate(rs, "dateOfBirth");
             final Long genderId = JdbcSupport.getLong(rs, "genderId");
-            final CodeValueData gender = toGenderCodeValueData(genderId);
-            final Long titleId = JdbcSupport.getLong(rs, "titleId");
-            final String titleValue = rs.getString("titleValue");
-            final CodeValueData title = CodeValueData.instance(titleId, titleValue);
-            final Long nationalityCountryId = JdbcSupport.getLong(rs, "nationalityCountryId");
-            final String nationalityValue = rs.getString("nationalityValue");
-            final CodeValueData nationality = CodeValueData.instance(nationalityCountryId, nationalityValue);
-            final Long customerRiskProfileId = JdbcSupport.getLong(rs, "customerRiskProfileId");
-            final String customerRiskProfileValue = rs.getString("customerRiskProfileValue");
-            final CodeValueData customerRiskProfile = CodeValueData.instance(customerRiskProfileId, customerRiskProfileValue);
-            final Long maritalStatusId = JdbcSupport.getLong(rs, "maritalStatusId");
-            final String maritalStatusValue = rs.getString("maritalStatusValue");
-            final CodeValueData maritalStatus = CodeValueData.instance(maritalStatusId, maritalStatusValue);
+            final String genderValue = rs.getString("genderValue");
+            final CodeValueData gender = CodeValueData.instance(genderId, genderValue);
 
             final Long clienttypeId = JdbcSupport.getLong(rs, "clienttypeId");
             final String clienttypeValue = rs.getString("clienttypeValue");
@@ -513,22 +458,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
                     submittedByLastname, activationDate, activatedByUsername, activatedByFirstname, activatedByLastname, closedOnDate,
                     closedByUsername, closedByFirstname, closedByLastname);
 
-            final ClientData clientData = ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId,
-                    transferToOfficeName, id, firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress,
-                    taxIdentificationNumber, alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender,
+            return ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id,
+                    firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, dateOfBirth, gender,
                     activationDate, imageId, staffId, staffName, timeline, savingsProductId, savingsProductName, savingsAccountId,
                     clienttype, classification, legalForm, clientNonPerson, isStaff);
-            clientData.setTitle(title);
-            clientData.setNationality(nationality);
-            clientData.setCustomerRiskProfile(customerRiskProfile);
-            clientData.setMaritalStatus(maritalStatus);
-            clientData.setCustomerClassId(JdbcSupport.getLong(rs, "customerClassId"));
-            final Long customerClassId = clientData.getCustomerClassId();
-            if (customerClassId != null) {
-                clientData.setCustomerClass(CustomerClassData.builder().id(customerClassId)
-                        .classCode(rs.getString("customerClassCode")).className(rs.getString("customerClassName")).build());
-            }
-            return clientData;
 
         }
     }
@@ -658,23 +591,9 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("c.mobile_no as mobileNo, ");
             builder.append("c.is_staff as isStaff, ");
             builder.append("c.email_address as emailAddress, ");
-            builder.append("c.tax_identification_number as taxIdentificationNumber, ");
-            builder.append("c.alternative_mobile_no as alternativeMobileNo, ");
-            builder.append("c.alternative_email_address as alternativeEmailAddress, ");
-            builder.append("c.sub_industry_id as subIndustryId, ");
-            builder.append("c.customer_class_id as customerClassId, ");
-            builder.append("cc.class_code as customerClassCode, ");
-            builder.append("cc.class_name as customerClassName, ");
-            builder.append("c.title_id as titleId, ");
-            builder.append("ct.title_name as titleValue, ");
-            builder.append("c.nationality_country_id as nationalityCountryId, ");
-            builder.append("cvNationality.code_value as nationalityValue, ");
-            builder.append("c.customer_risk_profile_cv_id as customerRiskProfileId, ");
-            builder.append("cvCustomerRiskProfile.code_value as customerRiskProfileValue, ");
-            builder.append("c.marital_status_cv_id as maritalStatusId, ");
-            builder.append("cvMaritalStatus.code_value as maritalStatusValue, ");
             builder.append("c.date_of_birth as dateOfBirth, ");
-            builder.append("c.gender_enum as genderId, ");
+            builder.append("c.gender_cv_id as genderId, ");
+            builder.append("cv.code_value as genderValue, ");
             builder.append("c.client_type_cv_id as clienttypeId, ");
             builder.append("cvclienttype.code_value as clienttypeValue, ");
             builder.append("c.client_classification_cv_id as classificationId, ");
@@ -717,16 +636,12 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             builder.append("left join m_appuser sbu on sbu.id = c.created_by ");
             builder.append("left join m_appuser acu on acu.id = c.activatedon_userid ");
             builder.append("left join m_appuser clu on clu.id = c.closedon_userid ");
-            builder.append("left join m_client_title ct on ct.id = c.title_id ");
-            builder.append("left join m_code_value cvNationality on cvNationality.id = c.nationality_country_id ");
-            builder.append("left join m_code_value cvCustomerRiskProfile on cvCustomerRiskProfile.id = c.customer_risk_profile_cv_id ");
-            builder.append("left join m_code_value cvMaritalStatus on cvMaritalStatus.id = c.marital_status_cv_id ");
+            builder.append("left join m_code_value cv on cv.id = c.gender_cv_id ");
             builder.append("left join m_code_value cvclienttype on cvclienttype.id = c.client_type_cv_id ");
             builder.append("left join m_code_value cvclassification on cvclassification.id = c.client_classification_cv_id ");
             builder.append("left join m_code_value cvSubStatus on cvSubStatus.id = c.sub_status ");
             builder.append("left join m_code_value cvConstitution on cvConstitution.id = cnp.constitution_cv_id ");
             builder.append("left join m_code_value cvMainBusinessLine on cvMainBusinessLine.id = cnp.main_business_line_cv_id ");
-            builder.append("left join m_customer_class cc on cc.id = c.customer_class_id ");
 
             this.schema = builder.toString();
         }
@@ -765,25 +680,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
             final String mobileNo = rs.getString("mobileNo");
             final boolean isStaff = rs.getBoolean("isStaff");
             final String emailAddress = rs.getString("emailAddress");
-            final String taxIdentificationNumber = rs.getString("taxIdentificationNumber");
-            final String alternativeMobileNo = rs.getString("alternativeMobileNo");
-            final String alternativeEmailAddress = rs.getString("alternativeEmailAddress");
-            final Long subIndustryId = JdbcSupport.getLong(rs, "subIndustryId");
             final LocalDate dateOfBirth = JdbcSupport.getLocalDate(rs, "dateOfBirth");
             final Long genderId = JdbcSupport.getLong(rs, "genderId");
-            final CodeValueData gender = toGenderCodeValueData(genderId);
-            final Long titleId = JdbcSupport.getLong(rs, "titleId");
-            final String titleValue = rs.getString("titleValue");
-            final CodeValueData title = CodeValueData.instance(titleId, titleValue);
-            final Long nationalityCountryId = JdbcSupport.getLong(rs, "nationalityCountryId");
-            final String nationalityValue = rs.getString("nationalityValue");
-            final CodeValueData nationality = CodeValueData.instance(nationalityCountryId, nationalityValue);
-            final Long customerRiskProfileId = JdbcSupport.getLong(rs, "customerRiskProfileId");
-            final String customerRiskProfileValue = rs.getString("customerRiskProfileValue");
-            final CodeValueData customerRiskProfile = CodeValueData.instance(customerRiskProfileId, customerRiskProfileValue);
-            final Long maritalStatusId = JdbcSupport.getLong(rs, "maritalStatusId");
-            final String maritalStatusValue = rs.getString("maritalStatusValue");
-            final CodeValueData maritalStatus = CodeValueData.instance(maritalStatusId, maritalStatusValue);
+            final String genderValue = rs.getString("genderValue");
+            final CodeValueData gender = CodeValueData.instance(genderId, genderValue);
 
             final Long clienttypeId = JdbcSupport.getLong(rs, "clienttypeId");
             final String clienttypeValue = rs.getString("clienttypeValue");
@@ -839,22 +739,10 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
                     submittedByLastname, activationDate, activatedByUsername, activatedByFirstname, activatedByLastname, closedOnDate,
                     closedByUsername, closedByFirstname, closedByLastname);
 
-            final ClientData clientData = ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId,
-                    transferToOfficeName, id, firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress,
-                    taxIdentificationNumber, alternativeMobileNo, alternativeEmailAddress, subIndustryId, dateOfBirth, gender,
+            return ClientData.instance(accountNo, status, subStatus, officeId, officeName, transferToOfficeId, transferToOfficeName, id,
+                    firstname, middlename, lastname, fullname, displayName, externalId, mobileNo, emailAddress, dateOfBirth, gender,
                     activationDate, imageId, staffId, staffName, timeline, savingsProductId, savingsProductName, savingsAccountId,
                     clienttype, classification, legalForm, clientNonPerson, isStaff);
-            clientData.setTitle(title);
-            clientData.setNationality(nationality);
-            clientData.setCustomerRiskProfile(customerRiskProfile);
-            clientData.setMaritalStatus(maritalStatus);
-            clientData.setCustomerClassId(JdbcSupport.getLong(rs, "customerClassId"));
-            final Long customerClassId = clientData.getCustomerClassId();
-            if (customerClassId != null) {
-                clientData.setCustomerClass(CustomerClassData.builder().id(customerClassId)
-                        .classCode(rs.getString("customerClassCode")).className(rs.getString("customerClassName")).build());
-            }
-            return clientData;
 
         }
     }
@@ -880,16 +768,5 @@ public class ClientReadPlatformServiceImpl implements ClientReadPlatformService 
         } catch (final EmptyResultDataAccessException e) {
             return null;
         }
-    }
-
-    private static CodeValueData toGenderCodeValueData(final Long genderId) {
-        if (genderId == null) {
-            return null;
-        }
-        final Gender gender = Gender.fromInt(genderId.intValue());
-        if (gender == null) {
-            return null;
-        }
-        return CodeValueData.instance(gender.getValue().longValue(), gender.getLabel());
     }
 }

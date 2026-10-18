@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.HttpMethod;
 import java.util.stream.Stream;
 import org.apache.fineract.batch.command.internal.ActivateClientCommandStrategy;
-import org.apache.fineract.batch.command.internal.SubmitClientCommandStrategy;
 import org.apache.fineract.batch.command.internal.AdjustChargeByChargeExternalIdCommandStrategy;
 import org.apache.fineract.batch.command.internal.AdjustChargeCommandStrategy;
 import org.apache.fineract.batch.command.internal.AdjustLoanTransactionByExternalIdCommandStrategy;
@@ -77,6 +76,7 @@ import org.apache.fineract.batch.command.internal.PaySavingsAccountChargeCommand
 import org.apache.fineract.batch.command.internal.RejectLoanRescheduleCommandStrategy;
 import org.apache.fineract.batch.command.internal.StateTransitionWorkingCapitalLoanByExternalIdCommandStrategy;
 import org.apache.fineract.batch.command.internal.StateTransitionWorkingCapitalLoanCommandStrategy;
+import org.apache.fineract.batch.command.internal.SubmitClientCommandStrategy;
 import org.apache.fineract.batch.command.internal.UnknownCommandStrategy;
 import org.apache.fineract.batch.command.internal.UpdateClientCommandStrategy;
 import org.apache.fineract.batch.command.internal.UpdateDatatableEntryOneToManyCommandStrategy;

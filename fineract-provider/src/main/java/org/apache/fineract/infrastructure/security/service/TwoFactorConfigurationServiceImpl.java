@@ -38,12 +38,14 @@ import org.apache.fineract.infrastructure.security.domain.TwoFactorConfiguration
 import org.apache.fineract.infrastructure.security.domain.TwoFactorConfigurationRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = TwoFactorConfigurationService.class, ignored = TwoFactorConfigurationServiceImpl.class)
 @ConditionalOnProperty("fineract.security.2fa.enabled")
 public class TwoFactorConfigurationServiceImpl implements TwoFactorConfigurationService {
 
@@ -74,18 +76,7 @@ public class TwoFactorConfigurationServiceImpl implements TwoFactorConfiguration
     public Map<String, Object> update(JsonCommand command) {
         Map<String, Object> actualChanges = new HashMap<>();
 
-        if (command.parameterExists(TwoFactorConfigurationConstants.DELIVERY_METHOD)) {
-            final String newMethod = command.stringValueOfParameterNamed(TwoFactorConfigurationConstants.DELIVERY_METHOD).trim()
-                    .toLowerCase();
-            applyDeliveryMethod(newMethod, actualChanges);
-        }
-
         for (final String parameterName : TwoFactorConfigurationConstants.BOOLEAN_PARAMETERS) {
-            if (TwoFactorConfigurationConstants.ENABLE_EMAIL_DELIVERY.equals(parameterName)
-                    || TwoFactorConfigurationConstants.ENABLE_SMS_DELIVERY.equals(parameterName)) {
-                // Delivery enable flags are derived from otp-delivery-method; ignore direct updates.
-                continue;
-            }
             TwoFactorConfiguration configuration = configurationRepository.findByName(parameterName);
             if (configuration == null) {
                 continue;
@@ -100,9 +91,6 @@ public class TwoFactorConfigurationServiceImpl implements TwoFactorConfiguration
         }
 
         for (final String parameterName : TwoFactorConfigurationConstants.STRING_PARAMETERS) {
-            if (TwoFactorConfigurationConstants.DELIVERY_METHOD.equals(parameterName)) {
-                continue;
-            }
             TwoFactorConfiguration configuration = configurationRepository.findByName(parameterName);
             if (configuration == null) {
                 continue;
@@ -137,41 +125,10 @@ public class TwoFactorConfigurationServiceImpl implements TwoFactorConfiguration
         return actualChanges;
     }
 
-    private void applyDeliveryMethod(final String deliveryMethod, final Map<String, Object> actualChanges) {
-        TwoFactorConfiguration methodConfig = configurationRepository.findByName(TwoFactorConfigurationConstants.DELIVERY_METHOD);
-        if (methodConfig == null) {
-            methodConfig = new TwoFactorConfiguration();
-            methodConfig.setName(TwoFactorConfigurationConstants.DELIVERY_METHOD);
-        }
-        if (!deliveryMethod.equalsIgnoreCase(methodConfig.getValue())) {
-            actualChanges.put(TwoFactorConfigurationConstants.DELIVERY_METHOD, deliveryMethod);
-            methodConfig.setValue(deliveryMethod);
-            configurationRepository.save(methodConfig);
-        }
-
-        final boolean emailEnabled = TwoFactorConstants.EMAIL_DELIVERY_METHOD_NAME.equals(deliveryMethod);
-        final boolean smsEnabled = TwoFactorConstants.SMS_DELIVERY_METHOD_NAME.equals(deliveryMethod);
-        syncBooleanConfig(TwoFactorConfigurationConstants.ENABLE_EMAIL_DELIVERY, emailEnabled, actualChanges);
-        syncBooleanConfig(TwoFactorConfigurationConstants.ENABLE_SMS_DELIVERY, smsEnabled, actualChanges);
-    }
-
-    private void syncBooleanConfig(final String name, final boolean value, final Map<String, Object> actualChanges) {
-        TwoFactorConfiguration configuration = configurationRepository.findByName(name);
-        if (configuration == null) {
-            return;
-        }
-        final Boolean current = BooleanUtils.toBooleanObject(configuration.getValue());
-        if (current == null || current.booleanValue() != value) {
-            actualChanges.put(name, value);
-            configuration.setValue(String.valueOf(value));
-            configurationRepository.save(configuration);
-        }
-    }
-
     @Override
     @Cacheable(value = "tfConfig", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier()+'|smsEnabled'")
     public boolean isSMSEnabled() {
-        return TwoFactorConstants.SMS_DELIVERY_METHOD_NAME.equals(getDeliveryMethod());
+        return getBooleanConfig(TwoFactorConfigurationConstants.ENABLE_SMS_DELIVERY, false);
     }
 
     @Override
@@ -193,20 +150,7 @@ public class TwoFactorConfigurationServiceImpl implements TwoFactorConfiguration
     @Override
     @Cacheable(value = "tfConfig", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier()+'|emailEnabled'")
     public boolean isEmailEnabled() {
-        return TwoFactorConstants.EMAIL_DELIVERY_METHOD_NAME.equals(getDeliveryMethod());
-    }
-
-    @Override
-    @Cacheable(value = "tfConfig", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier()+'|totpEnabled'")
-    public boolean isTotpDeliveryEnabled() {
-        return TwoFactorConstants.TOTP_DELIVERY_METHOD_NAME.equals(getDeliveryMethod());
-    }
-
-    @Override
-    @Cacheable(value = "tfConfig", key = "T(org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil).getTenant().getTenantIdentifier()+'|deliveryMethod'")
-    public String getDeliveryMethod() {
-        return getStringConfig(TwoFactorConfigurationConstants.DELIVERY_METHOD, TwoFactorConstants.EMAIL_DELIVERY_METHOD_NAME)
-                .trim().toLowerCase();
+        return getBooleanConfig(TwoFactorConfigurationConstants.ENABLE_EMAIL_DELIVERY, false);
     }
 
     @Override
@@ -290,10 +234,11 @@ public class TwoFactorConfigurationServiceImpl implements TwoFactorConfiguration
 
     private String getStringConfig(final String name, final String defaultValue) {
         final TwoFactorConfiguration configuration = configurationRepository.findByName(name);
-        if (configuration == null || configuration.getValue() == null) {
+        String value = configuration.getValue();
+        if (value == null) {
             return defaultValue;
         }
-        return configuration.getValue();
+        return value;
     }
 
     private Integer getIntegerConfig(final String name, final Integer defaultValue) {

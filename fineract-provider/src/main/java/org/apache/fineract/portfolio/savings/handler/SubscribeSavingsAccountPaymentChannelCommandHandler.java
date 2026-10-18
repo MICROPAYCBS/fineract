@@ -34,7 +34,8 @@ public class SubscribeSavingsAccountPaymentChannelCommandHandler implements NewC
     private final SavingsAccountPaymentChannelWritePlatformService writePlatformService;
 
     @Autowired
-    public SubscribeSavingsAccountPaymentChannelCommandHandler(final SavingsAccountPaymentChannelWritePlatformService writePlatformService) {
+    public SubscribeSavingsAccountPaymentChannelCommandHandler(
+            final SavingsAccountPaymentChannelWritePlatformService writePlatformService) {
         this.writePlatformService = writePlatformService;
     }
 

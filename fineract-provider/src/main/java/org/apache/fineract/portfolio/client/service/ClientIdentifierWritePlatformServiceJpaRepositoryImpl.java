@@ -23,15 +23,12 @@ import java.util.Map;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
+import org.apache.fineract.infrastructure.codes.exception.CodeValueNotFoundException;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import org.apache.fineract.portfolio.client.api.ClientApiConstants;
-import org.apache.fineract.portfolio.client.api.IdentityTypeConstants;
 import org.apache.fineract.portfolio.client.command.ClientIdentifierCommand;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
@@ -43,12 +40,14 @@ import org.apache.fineract.portfolio.client.serialization.ClientIdentifierComman
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = ClientIdentifierWritePlatformService.class, ignored = ClientIdentifierWritePlatformServiceJpaRepositoryImpl.class)
 public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements ClientIdentifierWritePlatformService {
 
     private static final Logger LOG = LoggerFactory.getLogger(ClientIdentifierWritePlatformServiceJpaRepositoryImpl.class);
@@ -58,20 +57,17 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
     private final ClientIdentifierRepository clientIdentifierRepository;
     private final CodeValueRepositoryWrapper codeValueRepository;
     private final ClientIdentifierCommandFromApiJsonDeserializer clientIdentifierCommandFromApiJsonDeserializer;
-    private final ClientIdentifierValidationService clientIdentifierValidationService;
 
     @Autowired
     public ClientIdentifierWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
             final ClientRepositoryWrapper clientRepository, final ClientIdentifierRepository clientIdentifierRepository,
             final CodeValueRepositoryWrapper codeValueRepository,
-            final ClientIdentifierCommandFromApiJsonDeserializer clientIdentifierCommandFromApiJsonDeserializer,
-            final ClientIdentifierValidationService clientIdentifierValidationService) {
+            final ClientIdentifierCommandFromApiJsonDeserializer clientIdentifierCommandFromApiJsonDeserializer) {
         this.context = context;
         this.clientRepository = clientRepository;
         this.clientIdentifierRepository = clientIdentifierRepository;
         this.codeValueRepository = codeValueRepository;
         this.clientIdentifierCommandFromApiJsonDeserializer = clientIdentifierCommandFromApiJsonDeserializer;
-        this.clientIdentifierValidationService = clientIdentifierValidationService;
     }
 
     @Transactional
@@ -89,12 +85,10 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
         try {
             final Client client = this.clientRepository.findOneWithNotFoundDetection(clientId);
 
-            final CodeValue documentType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                    IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME, clientIdentifierCommand.getDocumentTypeId());
+            final CodeValue documentType = this.codeValueRepository
+                    .findOneWithNotFoundDetection(clientIdentifierCommand.getDocumentTypeId());
             documentTypeId = documentType.getId();
             documentTypeLabel = documentType.getLabel();
-
-            this.clientIdentifierValidationService.validateDocumentKey(documentTypeId, documentKey);
 
             final ClientIdentifier clientIdentifier = ClientIdentifier.fromJson(client, documentType, command);
 
@@ -138,8 +132,10 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
             final Map<String, Object> changes = clientIdentifierForUpdate.update(command);
 
             if (changes.containsKey("documentTypeId")) {
-                documentType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                        IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME, documentTypeId);
+                documentType = this.codeValueRepository.findOneWithNotFoundDetection(documentTypeId);
+                if (documentType == null) {
+                    throw new CodeValueNotFoundException(documentTypeId);
+                }
 
                 documentTypeId = documentType.getId();
                 documentTypeLabel = documentType.getLabel();
@@ -158,9 +154,6 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
             }
 
             if (!changes.isEmpty()) {
-                if (documentKey != null) {
-                    this.clientIdentifierValidationService.validateDocumentKey(documentTypeId, documentKey);
-                }
                 this.clientIdentifierRepository.saveAndFlush(clientIdentifierForUpdate);
             }
 
@@ -214,28 +207,5 @@ public class ClientIdentifierWritePlatformServiceJpaRepositoryImpl implements Cl
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {
         LOG.error("Error occured.", dve);
-    }
-
-    @Transactional
-    @Override
-    public void addClientIdentifiers(final Client client, final JsonCommand command) {
-        this.context.authenticatedUser();
-        final JsonArray identifiers = command.arrayOfParameterNamed(ClientApiConstants.clientIdentifiers);
-        if (identifiers == null) {
-            return;
-        }
-        for (JsonElement element : identifiers) {
-            final ClientIdentifierCommand clientIdentifierCommand = this.clientIdentifierCommandFromApiJsonDeserializer
-                    .commandFromApiJson(element.toString());
-            clientIdentifierCommand.validateForCreate();
-            final CodeValue documentType = this.codeValueRepository.findOneByCodeNameAndIdWithNotFoundDetection(
-                    IdentityTypeConstants.CUSTOMER_IDENTIFIER_CODE_NAME, clientIdentifierCommand.getDocumentTypeId());
-            this.clientIdentifierValidationService.validateDocumentKey(documentType.getId(),
-                    clientIdentifierCommand.getDocumentKey());
-            final ClientIdentifier clientIdentifier = ClientIdentifier.create(client, documentType,
-                    clientIdentifierCommand.getDocumentKey(), clientIdentifierCommand.getStatus(),
-                    clientIdentifierCommand.getDescription());
-            this.clientIdentifierRepository.saveAndFlush(clientIdentifier);
-        }
     }
 }

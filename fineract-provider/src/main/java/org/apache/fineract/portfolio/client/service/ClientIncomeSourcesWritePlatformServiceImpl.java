@@ -134,15 +134,16 @@ public class ClientIncomeSourcesWritePlatformServiceImpl implements ClientIncome
     private void patchFromCommand(final ClientIncomeSource incomeSource, final JsonObject json) {
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.INCOME_SOURCE_TYPE_ID)
                 && !json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.INCOME_SOURCE_TYPE_ID).isJsonNull()) {
-            incomeSource.setIncomeSourceTypeId(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.INCOME_SOURCE_TYPE_ID).getAsLong());
+            incomeSource
+                    .setIncomeSourceTypeId(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.INCOME_SOURCE_TYPE_ID).getAsLong());
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.SOURCE_OF_FUNDS_ID)
                 && !json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.SOURCE_OF_FUNDS_ID).isJsonNull()) {
             incomeSource.setSourceOfFundsId(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.SOURCE_OF_FUNDS_ID).getAsLong());
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_BUSINESS_NAME)) {
-            incomeSource.setEmployerBusinessName(
-                    StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_BUSINESS_NAME).getAsString()));
+            incomeSource.setEmployerBusinessName(StringUtils
+                    .trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_BUSINESS_NAME).getAsString()));
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.EMPLOYER_ADDRESS)) {
             incomeSource.setEmployerAddress(
@@ -181,15 +182,16 @@ public class ClientIncomeSourcesWritePlatformServiceImpl implements ClientIncome
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.VERIFICATION_STATUS_ID)
                 && !json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.VERIFICATION_STATUS_ID).isJsonNull()) {
-            incomeSource.setVerificationStatusId(
-                    json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.VERIFICATION_STATUS_ID).getAsLong());
+            incomeSource
+                    .setVerificationStatusId(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.VERIFICATION_STATUS_ID).getAsLong());
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.SUPPORTING_DOCUMENT)) {
             incomeSource.setSupportingDocument(
                     StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.SUPPORTING_DOCUMENT).getAsString()));
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.REMARKS)) {
-            incomeSource.setRemarks(StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.REMARKS).getAsString()));
+            incomeSource
+                    .setRemarks(StringUtils.trimToNull(json.get(ClientIncomeSourceCommandFromApiJsonDeserializer.REMARKS).getAsString()));
         }
         if (json.has(ClientIncomeSourceCommandFromApiJsonDeserializer.STATUS)) {
             incomeSource.setStatus(StringUtils.defaultIfBlank(

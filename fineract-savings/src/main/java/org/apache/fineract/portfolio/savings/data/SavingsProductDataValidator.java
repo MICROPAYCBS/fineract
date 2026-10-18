@@ -94,8 +94,7 @@ public class SavingsProductDataValidator {
             interestCalculationTypeParamName, interestCalculationDaysInYearTypeParamName, minRequiredOpeningBalanceParamName,
             lockinPeriodFrequencyParamName, lockinPeriodFrequencyTypeParamName, SavingsApiConstants.withdrawalFeeAmountParamName,
             SavingsApiConstants.withdrawalFeeTypeParamName, withdrawalFeeForTransfersParamName, feeAmountParamName, feeOnMonthDayParamName,
-            SavingsApiConstants.accountingRuleParamName, SavingsApiConstants.chargesParamName,
-            SavingsApiConstants.paymentChannelsParamName,
+            SavingsApiConstants.accountingRuleParamName, SavingsApiConstants.chargesParamName, SavingsApiConstants.paymentChannelsParamName,
             SavingProductAccountingParams.INCOME_FROM_FEES.getValue(), SavingProductAccountingParams.INCOME_FROM_PENALTIES.getValue(),
             SavingProductAccountingParams.INTEREST_ON_SAVINGS.getValue(), SavingProductAccountingParams.PENALTIES_RECEIVABLE.getValue(),
             SavingProductAccountingParams.PAYMENT_CHANNEL_FUND_SOURCE_MAPPING.getValue(),
@@ -110,9 +109,8 @@ public class SavingsProductDataValidator {
             allowOverdraftParamName, overdraftLimitParamName, nominalAnnualInterestRateOverdraftParamName,
             minOverdraftForInterestCalculationParamName, SavingsApiConstants.minRequiredBalanceParamName,
             SavingsApiConstants.enforceMinRequiredBalanceParamName, SavingsApiConstants.maxAllowedLienLimitParamName,
-            SavingsApiConstants.lienAllowedParamName, minBalanceForInterestCalculationParamName, withHoldTaxParamName,
-            taxGroupIdParamName, SavingsApiConstants.startDateParamName, SavingsApiConstants.closeDateParamName,
-            SavingsApiConstants.dateFormatParamName));
+            SavingsApiConstants.lienAllowedParamName, minBalanceForInterestCalculationParamName, withHoldTaxParamName, taxGroupIdParamName,
+            SavingsApiConstants.startDateParamName, SavingsApiConstants.closeDateParamName, SavingsApiConstants.dateFormatParamName));
 
     public void validateForCreate(final String json) {
 

@@ -38,7 +38,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.client.feign.util.FeignCalls;
@@ -61,6 +63,7 @@ import org.apache.fineract.client.models.PostClientsClientIdIdentifiersResponse;
 import org.apache.fineract.client.models.PostClientsClientIdRequest;
 import org.apache.fineract.client.models.PostClientsClientIdResponse;
 import org.apache.fineract.client.models.PostClientsClientIdTransactionsTransactionIdResponse;
+import org.apache.fineract.client.models.PostClientsIdentifier;
 import org.apache.fineract.client.models.PostClientsRequest;
 import org.apache.fineract.client.models.PostClientsResponse;
 import org.apache.fineract.client.models.PutClientsClientIdRequest;
@@ -110,12 +113,99 @@ public class ClientHelper {
     public static Integer createClient(final RequestSpecification requestSpec, final ResponseSpecification responseSpec,
             PostClientsRequest request) {
         log.info("---------------------------------CREATING A CLIENT---------------------------------------------");
-        String requestBody = GSON.toJson(request);
+        String requestBody = GSON.toJson(withDefaultIdentifierIfPerson(request));
         return Utils.performServerPost(requestSpec, responseSpec, CREATE_CLIENT_URL, requestBody, "clientId");
     }
 
     public static PostClientsResponse createClient(final PostClientsRequest request) {
-        return Calls.ok(FineractClientHelper.getFineractClient().clients.createClient(request));
+        return Calls.ok(FineractClientHelper.getFineractClient().clients.createClient(withDefaultIdentifierIfPerson(request)));
+    }
+
+    // --- Micropay: person clients need at least one identifier -------------------------------------------------------
+    // ClientDataValidator / ClientIdentifierValidationService reject a person client without an identifier, and the
+    // Micropay client service validates it again on activation. The helpers therefore attach one identifier of an
+    // ACTIVE identity type (GET /identitytypes, a Micropay resource) whose validation regex accepts a 9-character
+    // upper-case alphanumeric key, so that every upstream test that creates a person client keeps working.
+
+    private static final String IDENTITY_TYPES_URL = "/fineract-provider/api/v1/identitytypes?" + Utils.TENANT_IDENTIFIER;
+    private static final String IDENTIFIER_PROBE = "AB1234CD5";
+    private static volatile Long defaultIdentifierDocumentTypeId;
+    private static volatile Pattern defaultIdentifierPattern;
+
+    public static Long defaultIdentifierDocumentTypeId() {
+        ensureDefaultIdentityType();
+        return defaultIdentifierDocumentTypeId;
+    }
+
+    public static String randomIdentifierKey() {
+        ensureDefaultIdentityType();
+        for (int attempt = 0; attempt < 100; attempt++) {
+            final String candidate = Utils.uniqueRandomStringGenerator("", 9).toUpperCase();
+            if (defaultIdentifierPattern == null || defaultIdentifierPattern.matcher(candidate).matches()) {
+                return candidate;
+            }
+        }
+        throw new IllegalStateException("Could not generate an identifier key matching " + defaultIdentifierPattern);
+    }
+
+    public static PostClientsIdentifier defaultClientIdentifier() {
+        return new PostClientsIdentifier().documentTypeId(defaultIdentifierDocumentTypeId()).documentKey(randomIdentifierKey())
+                .status("Active").description("integration-test identifier");
+    }
+
+    public static HashMap<String, Object> defaultClientIdentifierAsMap() {
+        final HashMap<String, Object> identifier = new HashMap<>();
+        identifier.put("documentTypeId", defaultIdentifierDocumentTypeId());
+        identifier.put("documentKey", randomIdentifierKey());
+        identifier.put("status", "Active");
+        identifier.put("description", "integration-test identifier");
+        return identifier;
+    }
+
+    public static PostClientsRequest withDefaultIdentifierIfPerson(final PostClientsRequest request) {
+        if (request != null && LEGALFORM_ID_PERSON.equals(request.getLegalFormId())
+                && (request.getClientIdentifiers() == null || request.getClientIdentifiers().isEmpty())) {
+            request.clientIdentifiers(new ArrayList<>(List.of(defaultClientIdentifier())));
+        }
+        return request;
+    }
+
+    private static synchronized void ensureDefaultIdentityType() {
+        if (defaultIdentifierDocumentTypeId != null) {
+            return;
+        }
+        final RequestSpecification requestSpec = new RequestSpecBuilder().setContentType(ContentType.JSON)
+                .addHeader("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey()).build();
+        final String response = Utils.performServerGet(requestSpec, new ResponseSpecBuilder().expectStatusCode(200).build(),
+                IDENTITY_TYPES_URL, null);
+        final List<Map<String, Object>> identityTypes = GSON.fromJson(response, new TypeToken<List<Map<String, Object>>>() {}.getType());
+        Map<String, Object> chosen = null;
+        Pattern chosenPattern = null;
+        for (final Map<String, Object> identityType : identityTypes) {
+            if (!"ACTIVE".equalsIgnoreCase(String.valueOf(identityType.get("status")))) {
+                continue;
+            }
+            final Object regex = identityType.get("validationRegex");
+            if (regex == null || String.valueOf(regex).isBlank()) {
+                chosen = identityType;
+                chosenPattern = null;
+                break;
+            }
+            final Pattern pattern = Pattern.compile(String.valueOf(regex));
+            if (pattern.matcher(IDENTIFIER_PROBE).matches()) {
+                chosen = identityType;
+                chosenPattern = pattern;
+                break;
+            }
+        }
+        if (chosen == null) {
+            throw new IllegalStateException("No ACTIVE identity type accepts a 9-character alphanumeric key; seed one via /identitytypes "
+                    + "(found: " + identityTypes + ")");
+        }
+        defaultIdentifierPattern = chosenPattern;
+        defaultIdentifierDocumentTypeId = ((Number) chosen.get("codeValueId")).longValue();
+        log.info("Default client identifier type for integration tests: {} (codeValueId {})", chosen.get("codeValueName"),
+                defaultIdentifierDocumentTypeId);
     }
 
     public static PostClientsResponse addClientAsPerson(final String officeId, final Long legalFormId, final String externalId) {
@@ -481,6 +571,9 @@ public class ClientHelper {
         }
         map.put("dateFormat", Utils.DATE_FORMAT);
         map.put("locale", "en");
+        if (LEGALFORM_ID_PERSON.equals(legalFormId)) {
+            map.put("clientIdentifiers", new ArrayList<>(List.of(defaultClientIdentifierAsMap())));
+        }
         return map;
     }
 
@@ -557,6 +650,7 @@ public class ClientHelper {
         map.put("active", "true");
         map.put("activationDate", dateOfJoining);
         map.put("legalFormId", 1);
+        map.put("clientIdentifiers", new ArrayList<>(List.of(defaultClientIdentifierAsMap())));
 
         log.info("map :  {}", map);
         return GSON.toJson(map);
@@ -577,6 +671,7 @@ public class ClientHelper {
         map.put("active", "true");
         map.put("activationDate", dateOfJoining);
         map.put("legalFormId", 1);
+        map.put("clientIdentifiers", new ArrayList<>(List.of(defaultClientIdentifierAsMap())));
         if (datatables != null) {
             map.put("datatables", Arrays.asList(datatables));
         }

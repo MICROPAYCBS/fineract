@@ -54,8 +54,8 @@ public class ClientContactValidationServiceImpl implements ClientContactValidati
             if (!Pattern.compile(regex).matcher(value.trim()).matches()) {
                 final String message = StringUtils.defaultIfBlank(contactType.getExample(),
                         "Contact value does not match the required format for type `" + contactType.getTypeName() + "`.");
-                final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.contact.invalid.format", message,
-                        ClientContactCommandFromApiJsonDeserializer.CONTACT_VALUE, value);
+                final ApiParameterError error = ApiParameterError.parameterErrorWithValue("validation.msg.client.contact.invalid.format",
+                        message, ClientContactCommandFromApiJsonDeserializer.CONTACT_VALUE, value);
                 throw new PlatformApiDataValidationException(List.of(error));
             }
         } catch (final PatternSyntaxException e) {

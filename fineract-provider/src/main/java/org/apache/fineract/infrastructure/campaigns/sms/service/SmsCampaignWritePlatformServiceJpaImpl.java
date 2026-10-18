@@ -78,12 +78,14 @@ import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.exception.InvalidLoanTypeException;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = SmsCampaignWritePlatformService.class, ignored = SmsCampaignWritePlatformServiceJpaImpl.class)
 @Slf4j
 @RequiredArgsConstructor
 public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWritePlatformService {
@@ -211,8 +213,7 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
             HashMap<String, String> queryParamForRunReport = new ObjectMapper().readValue(smsCampaign.getParamValue(),
                     new TypeReference<>() {});
 
-            List<Map<String, Object>> runReportObject = getRunReportByServiceImpl(campaignParams.get("reportName"),
-                    queryParamForRunReport);
+            List<Map<String, Object>> runReportObject = getRunReportByServiceImpl(campaignParams.get("reportName"), queryParamForRunReport);
 
             if (runReportObject != null) {
                 for (Map<String, Object> entry : runReportObject) {

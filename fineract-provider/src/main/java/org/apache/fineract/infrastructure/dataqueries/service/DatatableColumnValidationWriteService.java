@@ -98,14 +98,12 @@ public class DatatableColumnValidationWriteService {
         if (StringUtils.isBlank(columnName) || StringUtils.isBlank(newColumnName) || columnName.equals(newColumnName)) {
             return;
         }
-        jdbcTemplate.update(
-                "UPDATE x_table_column_validation SET column_name = ? WHERE registered_table_name = ? AND column_name = ?",
+        jdbcTemplate.update("UPDATE x_table_column_validation SET column_name = ? WHERE registered_table_name = ? AND column_name = ?",
                 newColumnName, registeredTableName, columnName);
     }
 
     @Transactional
-    public void syncColumnValidations(final String registeredTableName,
-            final List<DatatableColumnValidationEntry> columnValidations) {
+    public void syncColumnValidations(final String registeredTableName, final List<DatatableColumnValidationEntry> columnValidations) {
         if (columnValidations == null) {
             return;
         }

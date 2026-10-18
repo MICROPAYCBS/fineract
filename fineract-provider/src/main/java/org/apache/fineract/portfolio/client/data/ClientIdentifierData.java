@@ -24,7 +24,6 @@ import java.util.Collection;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.apache.fineract.infrastructure.codes.data.CodeValueData;
-import org.apache.fineract.portfolio.client.data.IdentityTypeData;
 
 /**
  * Immutable data object represent client identity data.

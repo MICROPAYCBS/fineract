@@ -786,14 +786,15 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
             final BigDecimal feeTaxTotal = loanCommonAccountingHelper.sumTaxAmounts(feeTaxPayments);
             if (feeTaxTotal.compareTo(BigDecimal.ZERO) > 0) {
                 final BigDecimal netFees = feesAmount.subtract(feeTaxTotal);
-                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode, CashAccountsForLoan.INCOME_FROM_FEES.getValue(),
-                        loanProductId, loanId, transactionId, transactionDate, netFees,
+                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
+                        CashAccountsForLoan.INCOME_FROM_FEES.getValue(), loanProductId, loanId, transactionId, transactionDate, netFees,
                         loanCommonAccountingHelper.computeNetChargePayments(loanTransactionDTO.getFeePayments(), feeTaxPayments));
-                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId, transactionDate,
-                        feeTaxPayments);
+                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId,
+                        transactionDate, feeTaxPayments);
             } else {
-                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode, CashAccountsForLoan.INCOME_FROM_FEES.getValue(),
-                        loanProductId, loanId, transactionId, transactionDate, feesAmount, loanTransactionDTO.getFeePayments());
+                this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
+                        CashAccountsForLoan.INCOME_FROM_FEES.getValue(), loanProductId, loanId, transactionId, transactionDate, feesAmount,
+                        loanTransactionDTO.getFeePayments());
             }
             if (loanTransactionDTO.getTransactionType().isGoodwillCredit()) {
                 loanCommonAccountingHelper.populateDebitAccountEntry(loanProductId, feesAmount,
@@ -811,8 +812,8 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
                         CashAccountsForLoan.INCOME_FROM_PENALTIES.getValue(), loanProductId, loanId, transactionId, transactionDate,
                         netPenalties,
                         loanCommonAccountingHelper.computeNetChargePayments(loanTransactionDTO.getPenaltyPayments(), penaltyTaxPayments));
-                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId, transactionDate,
-                        penaltyTaxPayments);
+                loanCommonAccountingHelper.createTaxLiabilityCreditEntries(creditOffice, currencyCode, loanId, transactionId,
+                        transactionDate, penaltyTaxPayments);
             } else {
                 this.helper.createCreditJournalEntryForLoanCharges(creditOffice, currencyCode,
                         CashAccountsForLoan.INCOME_FROM_PENALTIES.getValue(), loanProductId, loanId, transactionId, transactionDate,
@@ -827,8 +828,8 @@ public class CashBasedAccountingProcessorForLoan implements AccountingProcessorF
 
         if (overPaymentAmount != null && overPaymentAmount.compareTo(BigDecimal.ZERO) > 0) {
             totalDebitAmount = totalDebitAmount.add(overPaymentAmount);
-            this.helper.createCreditJournalEntryForLoan(creditOffice, currencyCode, CashAccountsForLoan.OVERPAYMENT, loanProductId, paymentTypeId,
-                    loanId, transactionId, transactionDate, overPaymentAmount);
+            this.helper.createCreditJournalEntryForLoan(creditOffice, currencyCode, CashAccountsForLoan.OVERPAYMENT, loanProductId,
+                    paymentTypeId, loanId, transactionId, transactionDate, overPaymentAmount);
             if (loanTransactionDTO.getTransactionType().isGoodwillCredit()) {
                 loanCommonAccountingHelper.populateDebitAccountEntry(loanProductId, overPaymentAmount,
                         CashAccountsForLoan.GOODWILL_CREDIT.getValue(), debitAccountMapForGoodwillCredit, paymentTypeId);

@@ -40,8 +40,8 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.data.AuditData;
 import org.apache.fineract.commands.data.AuditSearchData;
-import org.apache.fineract.commands.domain.CommandProcessingResultType;
 import org.apache.fineract.commands.data.request.AuditRequest;
+import org.apache.fineract.commands.domain.CommandProcessingResultType;
 import org.apache.fineract.commands.service.AuditReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
@@ -107,7 +107,8 @@ public class AuditsApiResource {
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = AuditData.class)))
     @ApiResponse(responseCode = "403", description = "The user lacks READ_AUDIT permission.")
     @ApiResponse(responseCode = "404", description = "No audit entry with this id.")
-    public AuditData retrieveAuditEntry(@PathParam("auditId") @Parameter(description = "Audit entry id", example = "20") final Long auditId) {
+    public AuditData retrieveAuditEntry(
+            @PathParam("auditId") @Parameter(description = "Audit entry id", example = "20") final Long auditId) {
         context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         return auditReadPlatformService.retrieveAuditEntry(auditId);
 
@@ -168,8 +169,7 @@ public class AuditsApiResource {
             });
         }
         extraCriteria.addNonNullCriteria("aud.status = ", resolveProcessingResult("status", auditRequest.getStatus()));
-        extraCriteria.addNonNullCriteria("aud.status = ",
-                resolveProcessingResult("processingResult", auditRequest.getProcessingResult()));
+        extraCriteria.addNonNullCriteria("aud.status = ", resolveProcessingResult("processingResult", auditRequest.getProcessingResult()));
         extraCriteria.addNonNullCriteria("aud.office_id = ", auditRequest.getOfficeId());
         extraCriteria.addNonNullCriteria("aud.group_id = ", auditRequest.getGroupId());
         extraCriteria.addNonNullCriteria("aud.client_id = ", auditRequest.getClientId());

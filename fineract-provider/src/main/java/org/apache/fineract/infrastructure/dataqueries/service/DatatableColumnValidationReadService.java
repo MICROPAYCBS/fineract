@@ -66,8 +66,7 @@ public class DatatableColumnValidationReadService {
                 final String validationRegex = rs.getString("validation_regex");
                 final String validationExample = rs.getString("validation_example");
                 final String validationMessage = rs.getString("validation_message");
-                validations.put(columnName,
-                        new DatatableColumnValidationData(validationRegex, validationExample, validationMessage));
+                validations.put(columnName, new DatatableColumnValidationData(validationRegex, validationExample, validationMessage));
             }, registeredTableName);
         } catch (final DataAccessException e) {
             log.debug("Datatable column validation metadata unavailable for {}: {}", registeredTableName, e.getMessage());

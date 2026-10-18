@@ -47,7 +47,6 @@ import org.apache.fineract.infrastructure.core.config.FineractProperties;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
-import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.core.service.database.JdbcJavaType;
 import org.apache.fineract.infrastructure.dataqueries.data.GenericResultsetData;
@@ -68,12 +67,14 @@ import org.openpdf.text.Document;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfWriter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = ReadReportingService.class, ignored = ReadReportingServiceImpl.class)
 @Slf4j
 @RequiredArgsConstructor
 public class ReadReportingServiceImpl implements ReadReportingService {
@@ -180,8 +181,8 @@ public class ReadReportingServiceImpl implements ReadReportingService {
                 matcher.appendReplacement(preparedSql, "?");
                 paramValues.add(castParamValue(queryParams.get(paramName), paramFormatTypes.get(paramName)));
             } else {
-                throw new PlatformDataIntegrityException("error.msg.report.missing.parameter",
-                        "Report '" + name + "' requires parameter '" + paramName + "' which was not provided");
+                matcher.appendReplacement(preparedSql, Matcher.quoteReplacement(matcher.group(0)));
+                log.warn("Report '{}' contains placeholder '{}' with no matching parameter", name, paramName);
             }
         }
         matcher.appendTail(preparedSql);
@@ -224,20 +225,20 @@ public class ReadReportingServiceImpl implements ReadReportingService {
         sql = Pattern.compile(Pattern.quote("CURRENT_DATE"), Pattern.CASE_INSENSITIVE).matcher(sql)
                 .replaceAll(Matcher.quoteReplacement(sqlGenerator.currentBusinessDate()));
 
-        // Step 2.5a — display-literal substitution for `'${param}' AS alias` columns.
-        // Allowed for date/number and text/string (e.g. ISO currency codes after MicroPay 3049).
-        // Values are embedded as SQL string literals (with quotes escaped), not bind variables.
+        // Step 2.5a — display-literal substitution for date/number params only
+        // Substitute as plain string to preserve varchar return type expected by callers
         for (Map.Entry<String, String> entry : queryParams.entrySet()) {
             String paramName = entry.getKey().startsWith("${") ? entry.getKey().substring(2, entry.getKey().length() - 1) : entry.getKey();
             String formatType = paramFormatTypes.get(paramName);
             String displayPattern = "'\\$\\{" + Pattern.quote(paramName) + "\\}'(\\s+AS\\s+)";
             if (sql.matches("(?s).*" + displayPattern + ".*")) {
-                if (!isAllowedDisplayLiteralFormatType(formatType)) {
+                if (formatType == null || (!formatType.equalsIgnoreCase("number") && !formatType.equalsIgnoreCase("integer")
+                        && !formatType.equalsIgnoreCase("date"))) {
                     throw new InputValidationException("Parameter '%s' of type '%s' cannot be used in display-literal position"
                             .formatted(paramName, formatType != null ? formatType : "unregistered"));
                 }
-                final String literalValue = escapeSqlStringLiteral(entry.getValue());
-                sql = sql.replaceAll(displayPattern, "'" + Matcher.quoteReplacement(literalValue) + "'$1");
+                // Substitute as string literal — preserves varchar return type
+                sql = sql.replaceAll(displayPattern, "'" + Matcher.quoteReplacement(entry.getValue()) + "'$1");
             }
         }
 
@@ -256,50 +257,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             normalisedParams.put(key, entry.getValue());
         }
 
-        // Step 4 — apply stretchy parameter defaults for registered params omitted from the request
-        for (Map.Entry<String, String> entry : this.reportParameterTypeResolver.loadParamDefaults(name).entrySet()) {
-            final String defaultValue = usableDefault(entry.getValue(), paramFormatTypes.get(entry.getKey()));
-            if (defaultValue != null) {
-                normalisedParams.putIfAbsent(entry.getKey(), defaultValue);
-            }
-        }
-
         return buildPreparedQuery(name, normalisedParams, sql, paramFormatTypes);
-    }
-
-    /**
-     * Turns a stored stretchy_parameter default into a value that can be bound. "today" on a date parameter becomes the
-     * business date; empty and "n/a" mean "no default", so the request fails with error.msg.report.missing.parameter
-     * instead of binding a value that cannot match.
-     */
-    static String usableDefault(final String storedDefault, final String formatType) {
-        if (storedDefault == null) {
-            return null;
-        }
-        final String value = storedDefault.trim();
-        if (value.isEmpty() || "n/a".equalsIgnoreCase(value)) {
-            return null;
-        }
-        if ("today".equalsIgnoreCase(value) && "date".equalsIgnoreCase(formatType)) {
-            return DateUtils.getBusinessLocalDate().toString(); // yyyy-MM-dd
-        }
-        return value;
-    }
-
-    private static boolean isAllowedDisplayLiteralFormatType(final String formatType) {
-        if (formatType == null) {
-            return false;
-        }
-        return formatType.equalsIgnoreCase("number") || formatType.equalsIgnoreCase("integer") || formatType.equalsIgnoreCase("date")
-                || formatType.equalsIgnoreCase("text") || formatType.equalsIgnoreCase("string");
-    }
-
-    /** Escapes single quotes so display-literal substitution cannot break out of the SQL string. */
-    private static String escapeSqlStringLiteral(final String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("'", "''");
     }
 
     private String getSql(final String name, final String type) {
@@ -497,7 +455,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
                     reportParameters = new ArrayList<>();
                 }
                 reportParameters.add(new ReportParameterData(rpJoin.getReportParameterId(), rpJoin.getParameterId(),
-                        rpJoin.getReportParameterName(), rpJoin.getParameterName(), rpJoin.getParameterLabel()));
+                        rpJoin.getReportParameterName(), rpJoin.getParameterName()));
 
             } else {
                 if (firstReport) {
@@ -524,7 +482,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
                     // report has at least one parameter
                     reportParameters = new ArrayList<>();
                     reportParameters.add(new ReportParameterData(rpJoin.getReportParameterId(), rpJoin.getParameterId(),
-                            rpJoin.getReportParameterName(), rpJoin.getParameterName(), rpJoin.getParameterLabel()));
+                            rpJoin.getReportParameterName(), rpJoin.getParameterName()));
                 } else {
                     reportParameters = null;
                 }
@@ -552,7 +510,7 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
             String sql = "select r.id as reportId, r.report_name as reportName, r.report_type as reportType, "
                     + " r.report_subtype as reportSubType, r.report_category as reportCategory, r.description, r.core_report as coreReport, r.use_report as useReport, "
-                    + " rp.id as reportParameterId, rp.parameter_id as parameterId, rp.report_parameter_name as reportParameterName, p.parameter_name as parameterName, p.parameter_label as parameterLabel";
+                    + " rp.id as reportParameterId, rp.parameter_id as parameterId, rp.report_parameter_name as reportParameterName, p.parameter_name as parameterName";
 
             if (reportId != null) {
                 sql += ", r.report_sql as reportSql ";
@@ -601,17 +559,16 @@ public class ReadReportingServiceImpl implements ReadReportingService {
             final Long parameterId = JdbcSupport.getLong(rs, "parameterId");
             final String reportParameterName = rs.getString("reportParameterName");
             final String parameterName = rs.getString("parameterName");
-            final String parameterLabel = rs.getString("parameterLabel");
 
             return new ReportParameterJoinData(reportId, reportName, reportType, reportSubType, reportCategory, description, reportSql,
-                    coreReport, useReport, reportParameterId, parameterId, reportParameterName, parameterName, parameterLabel);
+                    coreReport, useReport, reportParameterId, parameterId, reportParameterName, parameterName);
         }
     }
 
     private static final class ReportParameterMapper implements RowMapper<ReportParameterData> {
 
         public String schema() {
-            return "select p.id as id, p.parameter_name as parameterName, p.parameter_label as parameterLabel from stretchy_parameter p where coalesce(p.special,'') != 'Y' order by p.id";
+            return "select p.id as id, p.parameter_name as parameterName from stretchy_parameter p where coalesce(p.special,'') != 'Y' order by p.id";
         }
 
         @Override
@@ -619,9 +576,8 @@ public class ReadReportingServiceImpl implements ReadReportingService {
 
             final Long id = rs.getLong("id");
             final String parameterName = rs.getString("parameterName");
-            final String parameterLabel = rs.getString("parameterLabel");
 
-            return new ReportParameterData(id, null, null, parameterName, parameterLabel);
+            return new ReportParameterData(id, null, null, parameterName);
         }
     }
 

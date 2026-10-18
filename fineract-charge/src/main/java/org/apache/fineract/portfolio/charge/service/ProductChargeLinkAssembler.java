@@ -95,13 +95,11 @@ public class ProductChargeLinkAssembler {
             }
 
             BigDecimal amount = null;
-            if (this.fromApiJsonHelper.parameterExists("amount", jsonObject)
-                    && !jsonObject.get("amount").isJsonNull()) {
+            if (this.fromApiJsonHelper.parameterExists("amount", jsonObject) && !jsonObject.get("amount").isJsonNull()) {
                 amount = this.fromApiJsonHelper.extractBigDecimalNamed("amount", jsonObject, locale);
                 baseDataValidator.reset().parameter("charges[" + i + "].amount").value(amount).notNull().positiveAmount();
                 if (charge.isTiered()) {
-                    baseDataValidator.reset().parameter("charges[" + i + "].amount")
-                            .failWithCode("not.supported.when.charge.uses.tiers");
+                    baseDataValidator.reset().parameter("charges[" + i + "].amount").failWithCode("not.supported.when.charge.uses.tiers");
                 }
             }
             links.add(new ProductChargeLink(charge, amount));

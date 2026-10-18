@@ -37,9 +37,13 @@ public interface SavingsAccountWritePlatformService {
 
     CommandProcessingResult withdrawal(Long savingsId, JsonCommand command);
 
-    CommandProcessingResult glToSavings(Long savingsId, JsonCommand command);
+    default CommandProcessingResult glToSavings(Long savingsId, JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
-    CommandProcessingResult savingsToGl(Long savingsId, JsonCommand command);
+    default CommandProcessingResult savingsToGl(Long savingsId, JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
     CommandProcessingResult applyAnnualFee(Long savingsAccountChargeId, Long accountId);
 

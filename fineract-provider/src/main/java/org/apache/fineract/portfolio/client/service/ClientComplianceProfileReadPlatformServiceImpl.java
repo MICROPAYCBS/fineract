@@ -43,16 +43,11 @@ public class ClientComplianceProfileReadPlatformServiceImpl implements ClientCom
     private static final class ClientComplianceProfileMapper implements RowMapper<ClientComplianceProfileData> {
 
         public String schema() {
-            return " ccp.id AS id, ccp.client_id AS clientId,"
-                    + " ccp.has_other_bank_accounts AS hasOtherBankAccountsFlag,"
-                    + " ccp.is_pep AS isPepFlag, ccp.pep_position AS pepPosition,"
-                    + " ccp.pep_relative_name AS pepRelativeName,"
-                    + " ccp.us_citizen_or_resident AS usCitizenOrResidentFlag,"
-                    + " ccp.fatca_registered AS fatcaRegisteredFlag,"
-                    + " ccp.fatca_registration_no AS fatcaRegistrationNo,"
-                    + " ccp.dpf_alternative_bank_name AS dpfAlternativeBankName,"
-                    + " ccp.dpf_alternative_account_number AS dpfAlternativeAccountNumber"
-                    + " FROM m_client_compliance_profile ccp";
+            return " ccp.id AS id, ccp.client_id AS clientId," + " ccp.has_other_bank_accounts AS hasOtherBankAccountsFlag,"
+                    + " ccp.is_pep AS isPepFlag, ccp.pep_position AS pepPosition," + " ccp.pep_relative_name AS pepRelativeName,"
+                    + " ccp.us_citizen_or_resident AS usCitizenOrResidentFlag," + " ccp.fatca_registered AS fatcaRegisteredFlag,"
+                    + " ccp.fatca_registration_no AS fatcaRegistrationNo," + " ccp.dpf_alternative_bank_name AS dpfAlternativeBankName,"
+                    + " ccp.dpf_alternative_account_number AS dpfAlternativeAccountNumber" + " FROM m_client_compliance_profile ccp";
         }
 
         @Override
@@ -63,8 +58,7 @@ public class ClientComplianceProfileReadPlatformServiceImpl implements ClientCom
                     .pepRelativeName(rs.getString("pepRelativeName"))
                     .usCitizenOrResident("Y".equalsIgnoreCase(rs.getString("usCitizenOrResidentFlag")))
                     .fatcaRegistered("Y".equalsIgnoreCase(rs.getString("fatcaRegisteredFlag")))
-                    .fatcaRegistrationNo(rs.getString("fatcaRegistrationNo"))
-                    .dpfAlternativeBankName(rs.getString("dpfAlternativeBankName"))
+                    .fatcaRegistrationNo(rs.getString("fatcaRegistrationNo")).dpfAlternativeBankName(rs.getString("dpfAlternativeBankName"))
                     .dpfAlternativeAccountNumber(rs.getString("dpfAlternativeAccountNumber")).build();
         }
     }
@@ -80,8 +74,8 @@ public class ClientComplianceProfileReadPlatformServiceImpl implements ClientCom
         @Override
         public ClientOtherBankAccountData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
             return ClientOtherBankAccountData.builder().id(rs.getLong("id")).clientId(rs.getLong("clientId"))
-                    .bankName(rs.getString("bankName")).branchName(rs.getString("branchName"))
-                    .accountNumber(rs.getString("accountNumber")).displayOrder(JdbcSupport.getInteger(rs, "displayOrder")).build();
+                    .bankName(rs.getString("bankName")).branchName(rs.getString("branchName")).accountNumber(rs.getString("accountNumber"))
+                    .displayOrder(JdbcSupport.getInteger(rs, "displayOrder")).build();
         }
     }
 
@@ -103,10 +97,10 @@ public class ClientComplianceProfileReadPlatformServiceImpl implements ClientCom
         final List<ClientOtherBankAccountData> otherBankAccounts = this.jdbcTemplate.query(bankAccountsSql, bankAccountMapper, clientId);
 
         return ClientComplianceProfileData.builder().id(profile.getId()).clientId(profile.getClientId())
-                .hasOtherBankAccounts(profile.getHasOtherBankAccounts()).isPep(profile.getIsPep())
-                .pepPosition(profile.getPepPosition()).pepRelativeName(profile.getPepRelativeName())
-                .usCitizenOrResident(profile.getUsCitizenOrResident()).fatcaRegistered(profile.getFatcaRegistered())
-                .fatcaRegistrationNo(profile.getFatcaRegistrationNo()).dpfAlternativeBankName(profile.getDpfAlternativeBankName())
+                .hasOtherBankAccounts(profile.getHasOtherBankAccounts()).isPep(profile.getIsPep()).pepPosition(profile.getPepPosition())
+                .pepRelativeName(profile.getPepRelativeName()).usCitizenOrResident(profile.getUsCitizenOrResident())
+                .fatcaRegistered(profile.getFatcaRegistered()).fatcaRegistrationNo(profile.getFatcaRegistrationNo())
+                .dpfAlternativeBankName(profile.getDpfAlternativeBankName())
                 .dpfAlternativeAccountNumber(profile.getDpfAlternativeAccountNumber()).otherBankAccounts(otherBankAccounts).build();
     }
 }

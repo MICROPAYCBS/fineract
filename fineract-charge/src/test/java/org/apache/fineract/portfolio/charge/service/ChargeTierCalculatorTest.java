@@ -87,8 +87,7 @@ class ChargeTierCalculatorTest {
         tiers.add(ChargeTier.create(charge, new BigDecimal("10"), new BigDecimal("20"), new BigDecimal("5")));
         when(charge.getChargeTiers()).thenReturn(tiers);
 
-        assertThrows(ChargeTierNotFoundException.class,
-                () -> ChargeTierCalculator.resolveTierAmountOrPercentage(charge, BigDecimal.ONE));
+        assertThrows(ChargeTierNotFoundException.class, () -> ChargeTierCalculator.resolveTierAmountOrPercentage(charge, BigDecimal.ONE));
     }
 
     @Test

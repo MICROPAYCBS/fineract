@@ -21,7 +21,6 @@ package org.apache.fineract.infrastructure.configuration.domain;
 import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.infrastructure.cache.domain.CacheType;
-import org.apache.fineract.organisation.monetary.domain.LegalTenderCaptureMode;
 
 public interface ConfigurationDomainService {
 
@@ -137,17 +136,9 @@ public interface ConfigurationDomainService {
 
     boolean isRequireCashierForCashTransactionsEnabled();
 
-    LegalTenderCaptureMode retrieveLegalTenderCaptureModeForCashTransactions();
-
     boolean isStructuredAccountNumberFormatsEnabled();
 
-    boolean isStructuredGlCodesEnforced();
-
-    int retrieveStructuredGlCodeLength();
-
     boolean isAllowDirectLoanRepaymentsEnabled();
-
-    boolean isOrganizationWideAuditViewEnabled();
 
     Integer retrieveSessionIdleTimeoutMinutes();
 
@@ -157,8 +148,6 @@ public interface ConfigurationDomainService {
      * Maximum number of concurrent two-factor sessions allowed per user, or {@code null} when single-session
      * enforcement is disabled (unlimited sessions).
      */
-    Integer retrieveMaxActiveSessions();
-
     boolean isCOBBulkEventEnabled();
 
     Long retrieveExternalEventBatchSize();
@@ -200,8 +189,6 @@ public interface ConfigurationDomainService {
     boolean isAllowCashAndNonCashAccrual();
 
     boolean isBlockTransactionsOnClosedOverpaidLoansEnabled();
-
-    Integer getGlBalanceSnapshotDailyRetentionDays();
 
     int retrieveChannelLimitIncreaseCoolingHours();
 }
