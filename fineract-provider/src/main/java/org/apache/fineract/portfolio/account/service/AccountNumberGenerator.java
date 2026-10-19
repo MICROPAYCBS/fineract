@@ -33,7 +33,6 @@ import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNum
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -67,7 +66,6 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     private static final String SHARE_PRODUCT_SHORT_NAME = "sharesProductShortName";
     private static final String PREFIX_SHORT_NAME = "prefixShortName";
     private final ConfigurationReadPlatformService configurationReadPlatformService;
-    private final ConfigurationDomainService configurationDomainService;
     private final AccountNumberStructuredGenerationService accountNumberStructuredGenerationService;
     private final ClientRepository clientRepository;
     private final LoanRepository loanRepository;
@@ -155,8 +153,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     private boolean useStructuredGeneration(final AccountNumberFormat accountNumberFormat) {
-        return configurationDomainService.isStructuredAccountNumberFormatsEnabled() && accountNumberFormat != null
-                && Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled());
+        final GlobalConfigurationPropertyData structuredFormats = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("structured-account-number-formats");
+        return structuredFormats.isEnabled() && accountNumberFormat != null && Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled());
     }
 
     private String generateAccountNumber(Map<String, String> propertyMap, AccountNumberFormat accountNumberFormat) {

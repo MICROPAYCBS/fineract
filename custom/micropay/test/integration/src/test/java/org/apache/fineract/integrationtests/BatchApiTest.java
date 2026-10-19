@@ -59,7 +59,7 @@ import org.apache.fineract.integrationtests.common.error.ErrorResponse;
 import org.apache.fineract.integrationtests.common.loans.LoanAccountLockHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanProductTestBuilder;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
-import org.apache.fineract.integrationtests.common.organisation.CurrencyHelper;
+import com.micropay.fineract.integrationtests.MicropayCurrencyHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsAccountHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsProductHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsStatusChecker;
@@ -84,7 +84,7 @@ public class BatchApiTest extends BaseLoanIntegrationTest {
     @BeforeAll
     static void ensureChargeCurrenciesSelected() {
         // Micropay only exposes charges in the tenant's selected currencies; ChargesHelper fixtures use USD.
-        CurrencyHelper.ensureSelected("USD");
+        MicropayCurrencyHelper.ensureSelected("USD");
     }
 
     /**

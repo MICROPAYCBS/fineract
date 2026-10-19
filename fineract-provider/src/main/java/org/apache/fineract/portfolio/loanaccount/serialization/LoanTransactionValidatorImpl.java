@@ -38,6 +38,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepository;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -113,6 +114,7 @@ public class LoanTransactionValidatorImpl implements LoanTransactionValidator {
     private final LoanDisbursementValidator loanDisbursementValidator;
     private final CodeValueRepository codeValueRepository;
     private final ConfigurationDomainService configurationDomainService;
+    private final ConfigurationReadPlatformService configurationReadPlatformService;
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
         if (!dataValidationErrors.isEmpty()) {
@@ -1175,7 +1177,7 @@ public class LoanTransactionValidatorImpl implements LoanTransactionValidator {
     @Override
     public void validateDirectLoanRepaymentPermitted(final LoanTransactionType repaymentTransactionType,
             final boolean isRecoveryRepayment) {
-        if (this.configurationDomainService.isAllowDirectLoanRepaymentsEnabled()) {
+        if (this.configurationReadPlatformService.retrieveGlobalConfiguration("allow-direct-loan-repayments").isEnabled()) {
             return;
         }
         if (repaymentTransactionType.isRepayment() || repaymentTransactionType.isDownPayment() || isRecoveryRepayment) {

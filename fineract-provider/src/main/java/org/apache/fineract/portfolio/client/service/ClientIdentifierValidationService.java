@@ -20,6 +20,10 @@ package org.apache.fineract.portfolio.client.service;
 
 import com.google.gson.JsonElement;
 
+/**
+ * Extension point for identity-type and "person must have an identifier" rules. The default
+ * {@link NoOpClientIdentifierValidationService} accepts every identifier; a custom module may supply stricter checks.
+ */
 public interface ClientIdentifierValidationService {
 
     void validateDocumentKey(Long documentTypeId, String documentKey);

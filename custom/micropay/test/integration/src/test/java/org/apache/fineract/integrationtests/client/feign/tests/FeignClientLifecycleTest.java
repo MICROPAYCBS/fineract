@@ -35,7 +35,7 @@ import org.apache.fineract.client.models.PostCodeValueDataResponse;
 import org.apache.fineract.client.models.PostCodeValuesDataRequest;
 import org.apache.fineract.client.models.PutClientsClientIdResponse;
 import org.apache.fineract.integrationtests.client.FeignIntegrationTest;
-import org.apache.fineract.integrationtests.client.feign.helpers.FeignClientHelper;
+import com.micropay.fineract.integrationtests.MicropayFeignClientHelper;
 import org.apache.fineract.integrationtests.client.feign.modules.ClientRequestBuilders;
 import org.apache.fineract.integrationtests.common.FineractFeignClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
@@ -55,13 +55,13 @@ public class FeignClientLifecycleTest extends FeignIntegrationTest {
     private static final String STATUS_REJECTED = "clientStatusType.rejected";
     private static final String STATUS_WITHDRAWN = "clientStatusType.withdraw";
 
-    private static FeignClientHelper clientHelper;
+    private static MicropayFeignClientHelper clientHelper;
     private static FineractFeignClient fineractClient;
 
     @BeforeAll
     public static void setup() {
         fineractClient = FineractFeignClientHelper.getFineractFeignClient();
-        clientHelper = new FeignClientHelper(fineractClient);
+        clientHelper = new MicropayFeignClientHelper(fineractClient);
     }
 
     private Long resolveOrCreateCodeValue(String codeName) {

@@ -18,9 +18,11 @@
  */
 package org.apache.fineract.infrastructure.interbranch.service;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = CrossBranchClientAccessReadService.class, ignored = DisabledCrossBranchClientAccessReadService.class)
 public class DisabledCrossBranchClientAccessReadService implements CrossBranchClientAccessReadService {
 
     @Override

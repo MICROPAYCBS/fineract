@@ -130,24 +130,6 @@ public interface ConfigurationDomainService {
 
     boolean isAddressEnabled();
 
-    boolean isCrossBranchServicingEnabled();
-
-    boolean isPreventCashierOverdrawEnabled();
-
-    boolean isRequireCashierForCashTransactionsEnabled();
-
-    boolean isStructuredAccountNumberFormatsEnabled();
-
-    boolean isAllowDirectLoanRepaymentsEnabled();
-
-    Integer retrieveSessionIdleTimeoutMinutes();
-
-    Integer retrieveSessionIdleWarningSeconds();
-
-    /**
-     * Maximum number of concurrent two-factor sessions allowed per user, or {@code null} when single-session
-     * enforcement is disabled (unlimited sessions).
-     */
     boolean isCOBBulkEventEnabled();
 
     Long retrieveExternalEventBatchSize();
@@ -189,6 +171,4 @@ public interface ConfigurationDomainService {
     boolean isAllowCashAndNonCashAccrual();
 
     boolean isBlockTransactionsOnClosedOverpaidLoansEnabled();
-
-    int retrieveChannelLimitIncreaseCoolingHours();
 }

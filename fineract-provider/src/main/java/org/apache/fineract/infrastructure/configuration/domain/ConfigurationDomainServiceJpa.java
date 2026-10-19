@@ -471,67 +471,6 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     }
 
     @Override
-    public boolean isCrossBranchServicingEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.ENABLE_CROSS_BRANCH_SERVICING);
-        return property.isEnabled();
-    }
-
-    @Override
-    public boolean isPreventCashierOverdrawEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.PREVENT_CASHIER_OVERDRAW);
-        return property.isEnabled();
-    }
-
-    @Override
-    public boolean isRequireCashierForCashTransactionsEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS);
-        return property.isEnabled();
-    }
-
-    @Override
-    public boolean isStructuredAccountNumberFormatsEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.STRUCTURED_ACCOUNT_NUMBER_FORMATS);
-        return property.isEnabled();
-    }
-
-    @Override
-    public boolean isAllowDirectLoanRepaymentsEnabled() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.ALLOW_DIRECT_LOAN_REPAYMENTS);
-        return property.isEnabled();
-    }
-
-    @Override
-    public Integer retrieveSessionIdleTimeoutMinutes() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.SESSION_IDLE_TIMEOUT_MINUTES);
-        if (!property.isEnabled()) {
-            return 0; // switched off: no idle logout
-        }
-        if (property.getValue() == null || property.getValue() < 0) {
-            return 15;
-        }
-        return property.getValue().intValue();
-    }
-
-    @Override
-    public Integer retrieveSessionIdleWarningSeconds() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.SESSION_IDLE_WARNING_SECONDS);
-        if (!property.isEnabled()) {
-            return 0; // switched off: log out without a warning
-        }
-        if (property.getValue() == null || property.getValue() < 0) {
-            return 60;
-        }
-        return property.getValue().intValue();
-    }
-
-    @Override
     public boolean isCOBBulkEventEnabled() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
                 GlobalConfigurationConstants.ENABLE_COB_BULK_EVENT);
@@ -674,15 +613,5 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
     public Long getOfficeId() {
         final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(GlobalConfigurationConstants.OFFICE_ID);
         return property.getValue();
-    }
-
-    @Override
-    public int retrieveChannelLimitIncreaseCoolingHours() {
-        final GlobalConfigurationPropertyData property = getGlobalConfigurationPropertyData(
-                GlobalConfigurationConstants.CHANNEL_LIMIT_INCREASE_COOLING_HOURS);
-        if (!property.isEnabled() || property.getValue() == null) {
-            return 0;
-        }
-        return Math.max(0, property.getValue().intValue());
     }
 }

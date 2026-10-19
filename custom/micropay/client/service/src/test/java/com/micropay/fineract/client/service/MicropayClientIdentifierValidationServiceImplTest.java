@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.client.service;
+package com.micropay.fineract.client.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -37,7 +37,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class ClientIdentifierValidationServiceImplTest {
+class MicropayClientIdentifierValidationServiceImplTest {
 
     @Mock
     private IdentityTypeRepository identityTypeRepository;
@@ -45,11 +45,11 @@ class ClientIdentifierValidationServiceImplTest {
     @Mock
     private ClientIdentifierRepository clientIdentifierRepository;
 
-    private ClientIdentifierValidationServiceImpl validationService;
+    private MicropayClientIdentifierValidationServiceImpl validationService;
 
     @BeforeEach
     void setUp() {
-        validationService = new ClientIdentifierValidationServiceImpl(identityTypeRepository, clientIdentifierRepository,
+        validationService = new MicropayClientIdentifierValidationServiceImpl(identityTypeRepository, clientIdentifierRepository,
                 new FromJsonHelper());
     }
 

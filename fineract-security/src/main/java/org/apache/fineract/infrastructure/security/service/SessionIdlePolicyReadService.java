@@ -19,7 +19,8 @@
 package org.apache.fineract.infrastructure.security.service;
 
 import lombok.RequiredArgsConstructor;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.security.data.AuthenticatedOauthUserData;
 import org.apache.fineract.infrastructure.security.data.AuthenticatedUserData;
 import org.springframework.stereotype.Service;
@@ -28,15 +29,39 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class SessionIdlePolicyReadService {
 
-    private final ConfigurationDomainService configurationDomainService;
+    private final ConfigurationReadPlatformService configurationReadPlatformService;
 
     public AuthenticatedUserData applySessionIdlePolicy(final AuthenticatedUserData authenticatedUserData) {
-        return authenticatedUserData.setSessionIdleTimeoutMinutes(this.configurationDomainService.retrieveSessionIdleTimeoutMinutes())
-                .setSessionIdleWarningSeconds(this.configurationDomainService.retrieveSessionIdleWarningSeconds());
+        return authenticatedUserData.setSessionIdleTimeoutMinutes(retrieveSessionIdleTimeoutMinutes())
+                .setSessionIdleWarningSeconds(retrieveSessionIdleWarningSeconds());
     }
 
     public AuthenticatedOauthUserData applySessionIdlePolicy(final AuthenticatedOauthUserData authenticatedUserData) {
-        return authenticatedUserData.setSessionIdleTimeoutMinutes(this.configurationDomainService.retrieveSessionIdleTimeoutMinutes())
-                .setSessionIdleWarningSeconds(this.configurationDomainService.retrieveSessionIdleWarningSeconds());
+        return authenticatedUserData.setSessionIdleTimeoutMinutes(retrieveSessionIdleTimeoutMinutes())
+                .setSessionIdleWarningSeconds(retrieveSessionIdleWarningSeconds());
+    }
+
+    private Integer retrieveSessionIdleTimeoutMinutes() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("session-idle-timeout-minutes");
+        if (!property.isEnabled()) {
+            return 0;
+        }
+        if (property.getValue() == null || property.getValue() < 0) {
+            return 15;
+        }
+        return property.getValue().intValue();
+    }
+
+    private Integer retrieveSessionIdleWarningSeconds() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("session-idle-warning-seconds");
+        if (!property.isEnabled()) {
+            return 0;
+        }
+        if (property.getValue() == null || property.getValue() < 0) {
+            return 60;
+        }
+        return property.getValue().intValue();
     }
 }

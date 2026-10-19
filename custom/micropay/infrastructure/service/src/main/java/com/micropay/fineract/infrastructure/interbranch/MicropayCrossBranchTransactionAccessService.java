@@ -16,12 +16,13 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.infrastructure.interbranch.service;
+package com.micropay.fineract.infrastructure.interbranch;
 
+import com.micropay.fineract.platform.configuration.MicropayConfigurationService;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.interbranch.api.CrossBranchServicingConstants;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
 import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.organisation.office.domain.Office;
@@ -32,14 +33,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class CrossBranchTransactionAccessServiceImpl implements CrossBranchTransactionAccessService {
+public class MicropayCrossBranchTransactionAccessService implements CrossBranchTransactionAccessService {
 
-    private final ConfigurationDomainService configurationDomainService;
+    private final MicropayConfigurationService micropayConfigurationService;
     private final PlatformSecurityContext context;
 
     @Override
     public boolean isCrossBranchTransactionEnabledForCurrentUser() {
-        if (!this.configurationDomainService.isCrossBranchServicingEnabled()) {
+        if (!this.micropayConfigurationService.isCrossBranchServicingEnabled()) {
             return false;
         }
         final AppUser user = this.context.getAuthenticatedUserIfPresent();

@@ -16,7 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.fineract.portfolio.client.service;
+package com.micropay.fineract.client.service;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -36,11 +36,12 @@ import org.apache.fineract.portfolio.client.domain.IdentityType;
 import org.apache.fineract.portfolio.client.domain.IdentityTypeRepository;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.apache.fineract.portfolio.client.serialization.ClientIdentifierCommandFromApiJsonDeserializer;
+import org.apache.fineract.portfolio.client.service.ClientIdentifierValidationService;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class ClientIdentifierValidationServiceImpl implements ClientIdentifierValidationService {
+public class MicropayClientIdentifierValidationServiceImpl implements ClientIdentifierValidationService {
 
     private final IdentityTypeRepository identityTypeRepository;
     private final ClientIdentifierRepository clientIdentifierRepository;

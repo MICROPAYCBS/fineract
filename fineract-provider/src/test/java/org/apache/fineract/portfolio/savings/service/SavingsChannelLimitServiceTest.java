@@ -36,7 +36,8 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
@@ -73,7 +74,7 @@ class SavingsChannelLimitServiceTest {
     @Mock
     private PlatformSecurityContext context;
     @Mock
-    private ConfigurationDomainService configurationDomainService;
+    private ConfigurationReadPlatformService configurationReadPlatformService;
     @Mock
     private SavingsAccountRepositoryWrapper savingsAccountRepository;
     @Mock
@@ -97,8 +98,8 @@ class SavingsChannelLimitServiceTest {
     @BeforeEach
     void setUp() {
         lenient().when(usageRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        service = new SavingsChannelLimitService(context, configurationDomainService, savingsAccountRepository, productChannelRepository,
-                limitRepository, usageRepository, consumptionRepository, selfServiceUserClientMappingRepository);
+        service = new SavingsChannelLimitService(context, configurationReadPlatformService, savingsAccountRepository,
+                productChannelRepository, limitRepository, usageRepository, consumptionRepository, selfServiceUserClientMappingRepository);
         account = org.mockito.Mockito.mock(SavingsAccount.class);
         final PaymentType paymentType = new PaymentType();
         paymentType.setId(3L);
@@ -280,7 +281,8 @@ class SavingsChannelLimitServiceTest {
         stubAccount();
         when(user.getId()).thenReturn(4L);
         when(context.authenticatedUser()).thenReturn(user);
-        when(configurationDomainService.retrieveChannelLimitIncreaseCoolingHours()).thenReturn(24);
+        when(configurationReadPlatformService.retrieveGlobalConfiguration("channel-limit-increase-cooling-hours"))
+                .thenReturn(new GlobalConfigurationPropertyData().setEnabled(true).setValue(24L));
         when(savingsAccountRepository.findOneWithNotFoundDetection(10L)).thenReturn(account);
         channel.setMaxDebitPerDay(new BigDecimal("1000"));
         when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));
@@ -312,7 +314,8 @@ class SavingsChannelLimitServiceTest {
         stubAccount();
         when(user.getId()).thenReturn(4L);
         when(context.authenticatedUser()).thenReturn(user);
-        when(configurationDomainService.retrieveChannelLimitIncreaseCoolingHours()).thenReturn(24);
+        when(configurationReadPlatformService.retrieveGlobalConfiguration("channel-limit-increase-cooling-hours"))
+                .thenReturn(new GlobalConfigurationPropertyData().setEnabled(true).setValue(24L));
         when(savingsAccountRepository.findOneWithNotFoundDetection(10L)).thenReturn(account);
         channel.setMaxDebitPerDay(new BigDecimal("1000"));
         when(productChannelRepository.findByProductIdAndPaymentTypeId(1L, 3L)).thenReturn(Optional.of(channel));

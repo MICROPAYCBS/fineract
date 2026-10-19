@@ -22,7 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.when;
 
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,26 +36,31 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class LoanTransactionValidatorDirectRepaymentTest {
 
     @Mock
-    private ConfigurationDomainService configurationDomainService;
+    private ConfigurationReadPlatformService configurationReadPlatformService;
 
     private LoanTransactionValidatorImpl validator;
 
     @BeforeEach
     void setUp() {
-        validator = new LoanTransactionValidatorImpl(null, null, null, null, null, null, null, null, null, null, null,
-                configurationDomainService);
+        validator = new LoanTransactionValidatorImpl(null, null, null, null, null, null, null, null, null, null, null, null,
+                configurationReadPlatformService);
+    }
+
+    private void allowDirectLoanRepayments(final boolean enabled) {
+        final GlobalConfigurationPropertyData property = new GlobalConfigurationPropertyData().setEnabled(enabled);
+        when(configurationReadPlatformService.retrieveGlobalConfiguration("allow-direct-loan-repayments")).thenReturn(property);
     }
 
     @Test
     void validateDirectLoanRepaymentPermitted_whenEnabled_allowsRepayment() {
-        when(configurationDomainService.isAllowDirectLoanRepaymentsEnabled()).thenReturn(true);
+        allowDirectLoanRepayments(true);
 
         assertDoesNotThrow(() -> validator.validateDirectLoanRepaymentPermitted(LoanTransactionType.REPAYMENT, false));
     }
 
     @Test
     void validateDirectLoanRepaymentPermitted_whenDisabled_blocksRepayment() {
-        when(configurationDomainService.isAllowDirectLoanRepaymentsEnabled()).thenReturn(false);
+        allowDirectLoanRepayments(false);
 
         assertThrows(GeneralPlatformDomainRuleException.class,
                 () -> validator.validateDirectLoanRepaymentPermitted(LoanTransactionType.REPAYMENT, false));
@@ -62,7 +68,7 @@ class LoanTransactionValidatorDirectRepaymentTest {
 
     @Test
     void validateDirectLoanRepaymentPermitted_whenDisabled_blocksRecoveryRepayment() {
-        when(configurationDomainService.isAllowDirectLoanRepaymentsEnabled()).thenReturn(false);
+        allowDirectLoanRepayments(false);
 
         assertThrows(GeneralPlatformDomainRuleException.class,
                 () -> validator.validateDirectLoanRepaymentPermitted(LoanTransactionType.REPAYMENT, true));
@@ -70,7 +76,7 @@ class LoanTransactionValidatorDirectRepaymentTest {
 
     @Test
     void validateDirectLoanRepaymentPermitted_whenDisabled_blocksDownPayment() {
-        when(configurationDomainService.isAllowDirectLoanRepaymentsEnabled()).thenReturn(false);
+        allowDirectLoanRepayments(false);
 
         assertThrows(GeneralPlatformDomainRuleException.class,
                 () -> validator.validateDirectLoanRepaymentPermitted(LoanTransactionType.DOWN_PAYMENT, false));
@@ -78,7 +84,7 @@ class LoanTransactionValidatorDirectRepaymentTest {
 
     @Test
     void validateDirectLoanRepaymentPermitted_whenDisabled_allowsChargeRefund() {
-        when(configurationDomainService.isAllowDirectLoanRepaymentsEnabled()).thenReturn(false);
+        allowDirectLoanRepayments(false);
 
         assertDoesNotThrow(() -> validator.validateDirectLoanRepaymentPermitted(LoanTransactionType.CHARGE_REFUND, false));
     }

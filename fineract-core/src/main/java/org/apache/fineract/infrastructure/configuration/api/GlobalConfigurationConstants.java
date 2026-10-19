@@ -90,14 +90,6 @@ public final class GlobalConfigurationConstants {
     public static final String RETAINED_EARNING_GL_ACCOUNT = "retained-gl-account";
     public static final String RETAINED_EARNING_USED_BY_REPORT_NAME = "retained-earning-used-by-report-name";
     public static final String OFFICE_ID = "office-id";
-    public static final String ENABLE_CROSS_BRANCH_SERVICING = "enable-cross-branch-servicing";
-    public static final String SESSION_IDLE_TIMEOUT_MINUTES = "session-idle-timeout-minutes";
-    public static final String SESSION_IDLE_WARNING_SECONDS = "session-idle-warning-seconds";
-    public static final String PREVENT_CASHIER_OVERDRAW = "prevent-cashier-overdraw";
-    public static final String REQUIRE_CASHIER_FOR_CASH_TRANSACTIONS = "require-cashier-for-cash-transactions";
-    public static final String STRUCTURED_ACCOUNT_NUMBER_FORMATS = "structured-account-number-formats";
-    public static final String ALLOW_DIRECT_LOAN_REPAYMENTS = "allow-direct-loan-repayments";
-    public static final String CHANNEL_LIMIT_INCREASE_COOLING_HOURS = "channel-limit-increase-cooling-hours";
 
     private GlobalConfigurationConstants() {}
 }

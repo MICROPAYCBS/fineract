@@ -18,43 +18,14 @@
  */
 package org.apache.fineract.infrastructure.accountnumberformat.service;
 
-import java.util.List;
-import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepository;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
-import org.apache.fineract.infrastructure.accountnumberformat.domain.StructuredAccountNumberRuleDefaults;
-import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatPatternParser.FormatSegment;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
-import org.apache.fineract.infrastructure.core.data.ApiParameterError;
-import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
-import org.springframework.stereotype.Service;
 
-@Service
-@RequiredArgsConstructor
-public class AccountNumberManualEntryValidator {
+/**
+ * Extension point invoked by the account assemblers when a caller supplies an account number by hand. The default
+ * {@link NoOpAccountNumberManualEntryValidator} accepts everything; a custom module may supply a stricter
+ * implementation (for example to enforce a structured account-number format).
+ */
+public interface AccountNumberManualEntryValidator {
 
-    private final ConfigurationDomainService configurationDomainService;
-    private final AccountNumberFormatRepository accountNumberFormatRepository;
-
-    public void validateManualAccountNumberIfStructuredModeEnabled(final EntityAccountType entityAccountType, final String accountNumber) {
-        if (StringUtils.isBlank(accountNumber) || !configurationDomainService.isStructuredAccountNumberFormatsEnabled()) {
-            return;
-        }
-        final AccountNumberFormat accountNumberFormat = accountNumberFormatRepository
-                .findOneByAccountTypeEnum(entityAccountType.getValue());
-        if (accountNumberFormat == null || !Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled())) {
-            return;
-        }
-        final StructuredAccountNumberRuleDefaults defaults = StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType);
-        final String formatPattern = StringUtils.isNotBlank(accountNumberFormat.getFormatPattern()) ? accountNumberFormat.getFormatPattern()
-                : defaults.getFormatPattern();
-        final int expectedLength = AccountNumberFormatPatternParser.parse(formatPattern).stream().mapToInt(FormatSegment::getWidth).sum();
-        if (accountNumber.length() != expectedLength) {
-            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterErrorWithValue(
-                    "validation.msg.account.number.manual.invalid.length",
-                    "Manual account number length must be " + expectedLength + " for structured format.", "accountNo", accountNumber)));
-        }
-    }
+    void validateManualAccountNumberIfStructuredModeEnabled(EntityAccountType entityAccountType, String accountNumber);
 }

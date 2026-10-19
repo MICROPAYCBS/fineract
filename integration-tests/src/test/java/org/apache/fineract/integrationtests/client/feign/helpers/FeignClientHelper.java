@@ -24,7 +24,6 @@ import static org.apache.fineract.client.feign.util.FeignCalls.ok;
 import java.util.Collections;
 import org.apache.fineract.client.feign.FineractFeignClient;
 import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
-import org.apache.fineract.client.models.ClientIdentifierData;
 import org.apache.fineract.client.models.ClientTextSearch;
 import org.apache.fineract.client.models.DeleteClientsClientIdResponse;
 import org.apache.fineract.client.models.GetClientsClientIdAccountsResponse;
@@ -39,13 +38,11 @@ import org.apache.fineract.client.models.PutClientsClientIdRequest;
 import org.apache.fineract.client.models.PutClientsClientIdResponse;
 import org.apache.fineract.integrationtests.client.feign.modules.ClientRequestBuilders;
 import org.apache.fineract.integrationtests.client.feign.modules.LoanTestData;
-import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 
 public class FeignClientHelper {
 
     private static final String ACTIVATE_COMMAND = "activate";
-    private static final String SUBMIT_COMMAND = "submit";
     private static final String CLOSE_COMMAND = "close";
     private static final String REJECT_COMMAND = "reject";
     private static final String REACTIVATE_COMMAND = "reactivate";
@@ -81,8 +78,7 @@ public class FeignClientHelper {
     }
 
     public PostClientsResponse createClient(PostClientsRequest request) {
-        // Micropay: person clients need at least one identifier
-        return ok(() -> fineractClient.clients().createClient(ClientHelper.withDefaultIdentifierIfPerson(request)));
+        return ok(() -> fineractClient.clients().createClient(request));
     }
 
     public PostClientsResponse createClientPending() {
@@ -94,25 +90,7 @@ public class FeignClientHelper {
     }
 
     public PostClientsResponse createClientPending(PostClientsRequest request) {
-        PostClientsResponse draft = ok(() -> fineractClient.clients().createClient(request));
-        submitClient(draft.getClientId());
-        return draft;
-    }
-
-    public PostClientsResponse createClientDraft() {
-        return createClientDraft(Utils.dateFormatter.format(Utils.getLocalDateOfTenant()));
-    }
-
-    public PostClientsResponse createClientDraft(String submittedOnDate) {
-        return ok(() -> fineractClient.clients().createClient(ClientRequestBuilders.createPendingClient(submittedOnDate)));
-    }
-
-    public PostClientsClientIdResponse submitClient(Long clientId) {
-        return ok(() -> fineractClient.clients().handleCommandClient(clientId, new PostClientsClientIdRequest(), SUBMIT_COMMAND));
-    }
-
-    public CallFailedRuntimeException activateClientExpectingError(Long clientId, PostClientsClientIdRequest request) {
-        return fail(() -> fineractClient.clients().handleCommandClient(clientId, request, ACTIVATE_COMMAND));
+        return ok(() -> fineractClient.clients().createClient(request));
     }
 
     public GetClientsClientIdResponse getClient(Long clientId) {
@@ -168,12 +146,6 @@ public class FeignClientHelper {
     }
 
     public DeleteClientsClientIdResponse deleteClient(Long clientId) {
-        // Micropay refuses to delete a client that still has identifiers
-        // (error.msg.client.cannot.be.deleted.has.identifiers),
-        // and every person client created through these helpers has one, so remove them first.
-        for (ClientIdentifierData identifier : ok(() -> fineractClient.clientIdentifier().retrieveAllClientIdentifiers(clientId))) {
-            ok(() -> fineractClient.clientIdentifier().deleteClientIdentifier(clientId, identifier.getId()));
-        }
         return ok(() -> fineractClient.clients().deleteClient(clientId));
     }
 }

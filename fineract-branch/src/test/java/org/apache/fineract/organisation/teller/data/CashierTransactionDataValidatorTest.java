@@ -33,7 +33,8 @@ import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
@@ -61,7 +62,7 @@ class CashierTransactionDataValidatorTest {
     private NamedParameterJdbcTemplate jdbcTemplate;
 
     @Mock
-    private ConfigurationDomainService configurationDomainService;
+    private ConfigurationReadPlatformService configurationReadPlatformService;
 
     private CashierTransactionDataValidator validator;
 
@@ -69,7 +70,14 @@ class CashierTransactionDataValidatorTest {
     void setUp() {
         ThreadLocalContextUtil.setTenant(new FineractPlatformTenant(1L, "default", "Default", "UTC", null));
         this.validator = new CashierTransactionDataValidator(this.tellerManagementReadPlatformService, this.jdbcTemplate,
-                this.configurationDomainService);
+                this.configurationReadPlatformService);
+    }
+
+    private void stubCashierFlags(final boolean requireCashier, final boolean preventOverdraw) {
+        when(this.configurationReadPlatformService.retrieveGlobalConfiguration("require-cashier-for-cash-transactions"))
+                .thenReturn(new GlobalConfigurationPropertyData().setEnabled(requireCashier));
+        when(this.configurationReadPlatformService.retrieveGlobalConfiguration("prevent-cashier-overdraw"))
+                .thenReturn(new GlobalConfigurationPropertyData().setEnabled(preventOverdraw));
     }
 
     @AfterEach
@@ -79,7 +87,7 @@ class CashierTransactionDataValidatorTest {
 
     @Test
     void settleUsesNetCashAndRefusesAnAmountAboveTheTill() {
-        when(this.configurationDomainService.isPreventCashierOverdrawEnabled()).thenReturn(true);
+        stubCashierFlags(false, true);
         when(this.tellerManagementReadPlatformService.retrieveCashierNetCash(1L, "USD")).thenReturn(new BigDecimal("50"));
 
         assertThrows(CashierInsufficientAmountException.class,
@@ -91,8 +99,7 @@ class CashierTransactionDataValidatorTest {
 
     @Test
     void cashOutRefusesAmountAboveTill() {
-        when(this.configurationDomainService.isRequireCashierForCashTransactionsEnabled()).thenReturn(false);
-        when(this.configurationDomainService.isPreventCashierOverdrawEnabled()).thenReturn(true);
+        stubCashierFlags(false, true);
         when(this.jdbcTemplate.queryForObject(anyString(), anyMap(), eq(Long.class))).thenReturn(9L);
         when(this.tellerManagementReadPlatformService.retrieveCashierNetCash(9L, "USD")).thenReturn(new BigDecimal("50"));
 
@@ -107,16 +114,14 @@ class CashierTransactionDataValidatorTest {
     void cashOutIgnoresNonCashPayments() {
         this.validator.validateCashOut(mock(AppUser.class), nonCashPayment(), "USD", new BigDecimal("100"));
 
-        verify(this.configurationDomainService, never()).isPreventCashierOverdrawEnabled();
-        verify(this.configurationDomainService, never()).isRequireCashierForCashTransactionsEnabled();
+        verify(this.configurationReadPlatformService, never()).retrieveGlobalConfiguration(anyString());
         verify(this.tellerManagementReadPlatformService, never()).retrieveCashierNetCash(any(), any());
         verify(this.jdbcTemplate, never()).queryForObject(anyString(), anyMap(), eq(Long.class));
     }
 
     @Test
     void cashOutSkipsNetCashWhenOverdrawIsOff() {
-        when(this.configurationDomainService.isRequireCashierForCashTransactionsEnabled()).thenReturn(false);
-        when(this.configurationDomainService.isPreventCashierOverdrawEnabled()).thenReturn(false);
+        stubCashierFlags(false, false);
 
         this.validator.validateCashOut(mock(AppUser.class), cashPayment(), "USD", new BigDecimal("100"));
 
@@ -125,8 +130,7 @@ class CashierTransactionDataValidatorTest {
 
     @Test
     void cashOutPassesWhenUserHasNoStaffAndCashierIsNotRequired() {
-        when(this.configurationDomainService.isRequireCashierForCashTransactionsEnabled()).thenReturn(false);
-        when(this.configurationDomainService.isPreventCashierOverdrawEnabled()).thenReturn(true);
+        stubCashierFlags(false, true);
 
         this.validator.validateCashOut(mock(AppUser.class), cashPayment(), "USD", new BigDecimal("100"));
 

@@ -18,11 +18,9 @@
  */
 package org.apache.fineract.integrationtests.client.feign.modules;
 
-import java.util.List;
 import org.apache.fineract.client.models.PostClientsClientIdRequest;
 import org.apache.fineract.client.models.PostClientsRequest;
 import org.apache.fineract.client.models.PutClientsClientIdRequest;
-import org.apache.fineract.integrationtests.common.ClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 
 public final class ClientRequestBuilders {
@@ -39,9 +37,7 @@ public final class ClientRequestBuilders {
                 .active(false)//
                 .submittedOnDate(submittedOnDate)//
                 .dateFormat(LoanTestData.DATETIME_PATTERN)//
-                .locale(LoanTestData.LOCALE)//
-                .clientIdentifiers(List.of(ClientHelper.defaultClientIdentifier())); // Micropay: person clients need an
-                                                                                     // identifier
+                .locale(LoanTestData.LOCALE);
     }
 
     public static PostClientsClientIdRequest activateClient(String activationDate) {

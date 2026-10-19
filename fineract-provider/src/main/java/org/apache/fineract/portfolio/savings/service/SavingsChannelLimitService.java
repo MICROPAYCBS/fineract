@@ -25,7 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -65,7 +66,7 @@ public class SavingsChannelLimitService {
     private static final String TRANSACTION_RESOURCE = "savingsaccount.transaction";
 
     private final PlatformSecurityContext context;
-    private final ConfigurationDomainService configurationDomainService;
+    private final ConfigurationReadPlatformService configurationReadPlatformService;
     private final SavingsAccountRepositoryWrapper savingsAccountRepository;
     private final SavingsProductPaymentChannelRepository productChannelRepository;
     private final SavingsAccountChannelLimitRepository limitRepository;
@@ -232,7 +233,7 @@ public class SavingsChannelLimitService {
         final Long userId = user == null ? null : user.getId();
         final SavingsAccountChannelLimit row = existing
                 .orElseGet(() -> SavingsAccountChannelLimit.create(account, channel, direction, userId, now));
-        final int coolingHours = this.configurationDomainService.retrieveChannelLimitIncreaseCoolingHours();
+        final int coolingHours = retrieveChannelLimitIncreaseCoolingHours();
         if (selfService) {
             row.applySelfService(proposed, coolingHours, userId, now);
         } else {
@@ -355,6 +356,15 @@ public class SavingsChannelLimitService {
         final DataValidatorBuilder validator = new DataValidatorBuilder(errors).resource(TRANSACTION_RESOURCE);
         validator.reset().parameter(parameter).value(value).failWithCode(code);
         return new PlatformApiDataValidationException(errors);
+    }
+
+    private int retrieveChannelLimitIncreaseCoolingHours() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("channel-limit-increase-cooling-hours");
+        if (!property.isEnabled() || property.getValue() == null) {
+            return 0;
+        }
+        return Math.max(0, property.getValue().intValue());
     }
 
     private static PlatformApiDataValidationException validationException(final String parameter, final Object value, final String code) {

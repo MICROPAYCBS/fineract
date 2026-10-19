@@ -90,6 +90,19 @@ email/address, `AddressData.instance(...)` 23-arg, `ClientData.instance(...)` 31
   (used by `workflow/service`).
 - `fineract-core/.../infrastructure/core/monitoring/ServerExceptionReporter` + the call in
   `DefaultExceptionMapper` / `PlatformInternalServerExceptionMapper` (used by `monitoring/sentry`).
+- `fineract-core/.../accountnumberformat/service/AccountNumberManualEntryValidator` +
+  `NoOpAccountNumberManualEntryValidator` (used by `infrastructure/service`
+  `MicropayAccountNumberManualEntryValidator`). Injected into `LoanAssemblerImpl`,
+  `LoanAccountConfiguration`, `GroupingTypesWritePlatformServiceJpaRepositoryImpl`,
+  `GroupConfiguration`, `SavingsAccountAssembler`, `WorkingCapitalLoanAssemblerImpl`.
+- `fineract-core/.../interbranch/service/CrossBranchTransactionAccessService` +
+  `NoOpCrossBranchTransactionAccessService` (used by `infrastructure/service`
+  `MicropayCrossBranchTransactionAccessService`). Injected into
+  `ClientChargeWritePlatformServiceImpl`, `LoanAccountDomainServiceJpa`,
+  `ClientRepositoryWrapper`.
+- `fineract-provider/.../client/service/ClientIdentifierValidationService` +
+  `NoOpClientIdentifierValidationService` (used by `client/service`
+  `MicropayClientIdentifierValidationServiceImpl`). Injected into `ClientDataValidator`.
 - `CommandSourceService` (+5) maker-checker hook, `CommandStrategyProvider` (+2) batch strategy.
 
 ### 1.5 Interface injection in API resources
@@ -111,8 +124,12 @@ email/address, `AddressData.instance(...)` 23-arg, `ClientData.instance(...)` 31
 | savings/service | `SavingsAccountWritePlatformServiceJpaRepositoryImpl`, `SavingsAccountReadPlatformServiceImpl`, `SavingsAccountDomainServiceJpa`, `SavingsProductWritePlatformServiceJpaRepositoryImpl`, `SavingsProductReadPlatformServiceImpl`, `DepositProductReadPlatformServiceImpl`, `FixedDepositProductWritePlatformServiceJpaRepositoryImpl`, `RecurringDepositProductWritePlatformServiceJpaRepositoryImpl`, `ShareAccountWritePlatformServiceJpaRepositoryImpl` |
 | security/service | `AppUserReadPlatformServiceImpl`, `AppUserWritePlatformServiceJpaRepositoryImpl`, `AuditReadPlatformServiceImpl`, `TwoFactorServiceImpl`, `TwoFactorConfigurationServiceImpl` |
 
-Re-sync procedure after an upstream merge: `git diff <old-upstream>..<new-upstream> -- <upstream impl>`
-and apply the hunks to the `Micropay…` twin.
+Re-sync procedure after an upstream merge: run
+`.\custom\micropay\tools\Show-TwinDrift.ps1 -From <prev-step> -To <step>`
+then `git diff <old-upstream>:<upstream path> <new-upstream>:<upstream path>`
+and apply the hunks to the `Micropay…` twin. The JournalEntry write impl was renamed
+upstream to `JournalEntryWritePlatformServiceImpl`; the script diffs the old path at
+merge-base against the new path.
 
 ## 3. Residual in-place changes (true Category C)
 
@@ -286,11 +303,12 @@ default `true`) if an upstream implementation is still the active bean. The 404 
 
 ### 6.3 Fork integration tests
 
-The nine fork-owned classes in `integration-tests` (they exercise moved endpoints, twins and
-fork rules): `TieredChargesTest`, `StructuredGlAccountCodeIntegrationTest`,
+The nine fork-owned classes live in `:custom:micropay:test:integration` (they exercise moved
+endpoints, twins and fork rules): `TieredChargesTest`, `StructuredGlAccountCodeIntegrationTest`,
 `OrganizationWideAuditViewIntegrationTest`, `CrossBranchClientVisibilityIntegrationTest`,
 `CashierSelfReadIntegrationTest`, `HookIntegrationTest`, `BatchApiTest`, `ReportsTest`,
-`FeignClientLifecycleTest`.
+`FeignClientLifecycleTest`. Identifier and currency helpers used by those tests are
+`MicropayClientHelper`, `MicropayCurrencyHelper` and `MicropayFeignClientHelper`.
 
 ```powershell
 # 1. server from the boot jar (a Gradle bootRun would hold the build lock the test task needs)
@@ -300,7 +318,7 @@ java -Dspring.profiles.active=test -Dfineract.events.external.enabled=true `
 # 2. tests against it (-PcargoDisabled: do not let Gradle start the upstream war)
 $flags = ((Get-Content gradle.properties | Where-Object { $_ -match '^org.gradle.jvmargs' }) -replace '^org.gradle.jvmargs=','' -split '\s+' | Where-Object { $_ -like '--add-*' }) -join ' '
 $jvm = "-Xmx3g -XX:MaxMetaspaceSize=768m $flags"     # 12g default does not fit next to the server on a 16 GB laptop
-.\gradlew.bat :integration-tests:test -PcargoDisabled --max-workers=1 --no-parallel "-Dorg.gradle.jvmargs=$jvm" `
+.\gradlew.bat :custom:micropay:test:integration:test -PcargoDisabled --max-workers=1 --no-parallel "-Dorg.gradle.jvmargs=$jvm" `
    -x spotlessCheck -x checkstyleTest -x spotbugsTest `
    -x :fineract-client:buildJavaSdk -x :fineract-client:buildTypescriptAngularSdk -x :fineract-client:buildAsciidoc -x :fineract-client-feign:buildJavaSdk `
    --tests '*.TieredChargesTest' --tests '*.StructuredGlAccountCodeIntegrationTest' --tests '*.OrganizationWideAuditViewIntegrationTest' `

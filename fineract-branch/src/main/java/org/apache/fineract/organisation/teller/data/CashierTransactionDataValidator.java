@@ -24,7 +24,8 @@ import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
@@ -48,18 +49,18 @@ public class CashierTransactionDataValidator {
 
     private final TellerManagementReadPlatformService tellerManagementReadPlatformService;
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private final ConfigurationDomainService configurationDomainService;
+    private final ConfigurationReadPlatformService configurationReadPlatformService;
 
     @Autowired
     public CashierTransactionDataValidator(final TellerManagementReadPlatformService tellerManagementReadPlatformService,
-            final NamedParameterJdbcTemplate jdbcTemplate, final ConfigurationDomainService configurationDomainService) {
+            final NamedParameterJdbcTemplate jdbcTemplate, final ConfigurationReadPlatformService configurationReadPlatformService) {
         this.tellerManagementReadPlatformService = tellerManagementReadPlatformService;
         this.jdbcTemplate = jdbcTemplate;
-        this.configurationDomainService = configurationDomainService;
+        this.configurationReadPlatformService = configurationReadPlatformService;
     }
 
     public void validateSettleCashAndCashOutTransactions(final Long cashierId, String currencyCode, final BigDecimal transactionAmount) {
-        if (!this.configurationDomainService.isPreventCashierOverdrawEnabled()) {
+        if (!isPreventCashierOverdrawEnabled()) {
             return;
         }
         final BigDecimal netCash = this.tellerManagementReadPlatformService.retrieveCashierNetCash(cashierId, currencyCode);
@@ -75,7 +76,7 @@ public class CashierTransactionDataValidator {
     }
 
     public void validateActiveCashierRequired(final AppUser user) {
-        if (!this.configurationDomainService.isRequireCashierForCashTransactionsEnabled()) {
+        if (!isRequireCashierForCashTransactionsEnabled()) {
             return;
         }
         findActiveCashierId(user);
@@ -91,7 +92,7 @@ public class CashierTransactionDataValidator {
     public void validateOnLoanDisbursal(AppUser user, String currencyCode, BigDecimal transactionAmount) {
         validateActiveCashierRequired(user);
 
-        if (!this.configurationDomainService.isPreventCashierOverdrawEnabled()) {
+        if (!isPreventCashierOverdrawEnabled()) {
             return;
         }
         findActiveCashierIdOptional(user)
@@ -107,7 +108,7 @@ public class CashierTransactionDataValidator {
             return;
         }
         validateActiveCashierRequired(user);
-        if (!this.configurationDomainService.isPreventCashierOverdrawEnabled()) {
+        if (!isPreventCashierOverdrawEnabled()) {
             return;
         }
         findActiveCashierIdOptional(user).ifPresent(cashierId -> validateSettleCashAndCashOutTransactions(cashierId, currencyCode, amount));
@@ -180,5 +181,17 @@ public class CashierTransactionDataValidator {
 
     private boolean isCashPayment(final PaymentDetail paymentDetail) {
         return CashPaymentHelper.isCashPayment(paymentDetail);
+    }
+
+    private boolean isPreventCashierOverdrawEnabled() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("prevent-cashier-overdraw");
+        return property.isEnabled();
+    }
+
+    private boolean isRequireCashierForCashTransactionsEnabled() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("require-cashier-for-cash-transactions");
+        return property.isEnabled();
     }
 }

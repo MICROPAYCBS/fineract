@@ -30,10 +30,8 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
-import org.apache.fineract.portfolio.client.domain.ClientIdentifierRepository;
-import org.apache.fineract.portfolio.client.domain.IdentityTypeRepository;
 import org.apache.fineract.portfolio.client.service.ClientIdentifierValidationService;
-import org.apache.fineract.portfolio.client.service.ClientIdentifierValidationServiceImpl;
+import org.apache.fineract.portfolio.client.service.NoOpClientIdentifierValidationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,12 +47,6 @@ class ClientDataValidatorTest {
     @Mock
     private ConfigurationReadPlatformService configurationReadPlatformService;
 
-    @Mock
-    private IdentityTypeRepository identityTypeRepository;
-
-    @Mock
-    private ClientIdentifierRepository clientIdentifierRepository;
-
     private ClientDataValidator validator;
 
     @BeforeEach
@@ -62,8 +54,7 @@ class ClientDataValidatorTest {
         FromJsonHelper fromApiJsonHelper = new FromJsonHelper();
         when(configurationReadPlatformService.retrieveGlobalConfiguration(anyString()))
                 .thenReturn(new GlobalConfigurationPropertyData().setEnabled(false));
-        final ClientIdentifierValidationService clientIdentifierValidationService = new ClientIdentifierValidationServiceImpl(
-                identityTypeRepository, clientIdentifierRepository, fromApiJsonHelper);
+        final ClientIdentifierValidationService clientIdentifierValidationService = new NoOpClientIdentifierValidationService();
         validator = new ClientDataValidator(fromApiJsonHelper, configurationReadPlatformService, clientIdentifierValidationService);
     }
 
@@ -99,29 +90,6 @@ class ClientDataValidatorTest {
                         .anyMatch(e -> e.getDefaultUserMessage().contains("Invalid dateFormat")
                                 || "validation.msg.invalid.dateFormat.format".equals(e.getDeveloperMessage())),
                 "Expected dateFormat error to mention invalid dateFormat or use validation.msg.invalid.dateFormat.format");
-    }
-
-    @Test
-    void validateForCreate_withContactsArray_doesNotThrowUnsupportedParameter() {
-        String json = """
-                {
-                  "officeId": 1,
-                  "firstname": "John",
-                  "lastname": "Doe",
-                  "active": false,
-                  "legalFormId": 1,
-                  "locale": "en",
-                  "dateFormat": "dd MMMM yyyy",
-                  "contacts": [
-                    { "contactTypeId": 1, "contactValue": "+256700000001", "primary": true }
-                  ],
-                  "clientIdentifiers": [
-                    { "documentTypeId": 1, "documentKey": "CM123456", "status": "Active" }
-                  ]
-                }
-                """;
-
-        assertDoesNotThrow(() -> validator.validateForCreate(json));
     }
 
     @Test
@@ -170,84 +138,6 @@ class ClientDataValidatorTest {
     }
 
     @Test
-    void validateForCreate_withInvalidMobileNumber_throwsPlatformApiDataValidationException() {
-        String json = """
-                {
-                  "officeId": 1,
-                  "firstname": "John",
-                  "lastname": "Doe",
-                  "active": false,
-                  "legalFormId": 1,
-                  "locale": "en",
-                  "dateFormat": "dd MMMM yyyy",
-                  "mobileNo": "phone123",
-                  "clientIdentifiers": [
-                    { "documentTypeId": 1, "documentKey": "CM123456", "status": "Active" }
-                  ]
-                }
-                """;
-
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validator.validateForCreate(json));
-
-        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.mobileNoParamName.equals(e.getParameterName())));
-    }
-
-    @Test
-    void validateForCreate_withValidMobileNumber_doesNotThrow() {
-        String json = """
-                {
-                  "officeId": 1,
-                  "firstname": "John",
-                  "lastname": "Doe",
-                  "active": false,
-                  "legalFormId": 1,
-                  "locale": "en",
-                  "dateFormat": "dd MMMM yyyy",
-                  "mobileNo": "+919876543210",
-                  "clientIdentifiers": [
-                    { "documentTypeId": 1, "documentKey": "CM123456", "status": "Active" }
-                  ]
-                }
-                """;
-
-        assertDoesNotThrow(() -> validator.validateForCreate(json));
-    }
-
-    @Test
-    void validateForUpdate_withInvalidMobileNumber_throwsPlatformApiDataValidationException() {
-        String json = """
-                {
-                  "firstname": "Jane",
-                  "lastname": "Doe",
-                  "locale": "en",
-                  "dateFormat": "yyyy-MM-dd",
-                  "mobileNo": "phone123"
-                }
-                """;
-
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validator.validateForUpdate(json));
-
-        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.mobileNoParamName.equals(e.getParameterName())));
-    }
-
-    @Test
-    void validateForUpdate_withValidMobileNumber_doesNotThrow() {
-        String json = """
-                {
-                  "firstname": "Jane",
-                  "lastname": "Doe",
-                  "locale": "en",
-                  "dateFormat": "yyyy-MM-dd",
-                  "mobileNo": "+14155552671"
-                }
-                """;
-
-        assertDoesNotThrow(() -> validator.validateForUpdate(json));
-    }
-
-    @Test
     void validateForUpdate_withLegalFormId_throwsUnsupportedParameterException() {
         String json = """
                 {
@@ -262,42 +152,5 @@ class ClientDataValidatorTest {
         UnsupportedParameterException ex = assertThrows(UnsupportedParameterException.class, () -> validator.validateForUpdate(json));
 
         assertTrue(ex.getUnsupportedParameters().contains(ClientApiConstants.legalFormIdParamName));
-    }
-
-    @Test
-    void validateForCreate_personWithoutIdentifiers_throwsPlatformApiDataValidationException() {
-        String json = """
-                {
-                  "officeId": 1,
-                  "firstname": "John",
-                  "lastname": "Doe",
-                  "active": false,
-                  "legalFormId": 1,
-                  "locale": "en",
-                  "dateFormat": "dd MMMM yyyy"
-                }
-                """;
-
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validator.validateForCreate(json));
-
-        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.clientIdentifiers.equals(e.getParameterName())));
-    }
-
-    @Test
-    void validateForUpdate_withOnlyMicropayFields_doesNotThrow() {
-        assertDoesNotThrow(() -> validator.validateForUpdate("{\"titleId\": 3}"));
-        assertDoesNotThrow(() -> validator.validateForUpdate("{\"subIndustryId\": 7}"));
-        assertDoesNotThrow(() -> validator.validateForUpdate("{\"customerClassId\": null}"));
-        assertDoesNotThrow(() -> validator.validateForUpdate("{\"emailAddress\": \"a@b.co\"}"));
-        assertDoesNotThrow(() -> validator.validateForUpdate("{\"isStaff\": false}"));
-    }
-
-    @Test
-    void validateForUpdate_withNonPositiveMaritalStatusId_throws() {
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validator.validateForUpdate("{\"maritalStatusId\": 0}"));
-
-        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.maritalStatusIdParamName.equals(e.getParameterName())));
     }
 }

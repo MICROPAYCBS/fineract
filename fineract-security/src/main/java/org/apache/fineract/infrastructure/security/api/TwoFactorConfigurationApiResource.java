@@ -18,13 +18,6 @@
  */
 package org.apache.fineract.infrastructure.security.api;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.PUT;
@@ -47,7 +40,6 @@ import org.springframework.stereotype.Component;
 @Produces({ MediaType.APPLICATION_JSON })
 @Component
 @ConditionalOnProperty("fineract.security.2fa.enabled")
-@Tag(name = "Two Factor", description = "Read and update tenant two-factor delivery and token lifetime settings. Requires the TWOFACTOR_CONFIGURATION permission.")
 @RequiredArgsConstructor
 public class TwoFactorConfigurationApiResource {
 
@@ -59,10 +51,6 @@ public class TwoFactorConfigurationApiResource {
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
 
     @GET
-    @Operation(summary = "Retrieve two-factor configuration", description = "Returns the tenant two-factor settings. Keys use the stored configuration names, such as otp-delivery-email-enable and access-token-live-time.")
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.GetTwoFactorConfigurationResponse.class)))
-    @ApiResponse(responseCode = "401", description = "The caller is not authenticated")
-    @ApiResponse(responseCode = "403", description = "The caller does not have read permission on TWOFACTOR_CONFIGURATION")
     public String retrieveAll() {
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSIONS);
         Map<String, Object> configurationMap = configurationService.retrieveAll();
@@ -71,13 +59,7 @@ public class TwoFactorConfigurationApiResource {
 
     @PUT
     @Consumes({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update two-factor configuration", description = "Updates one or more two-factor settings. otp-delivery-method must be email, sms, or totp. Boolean keys are otp-delivery-email-enable and otp-delivery-sms-enable. Number keys are otp-delivery-sms-provider, otp-token-live-time, otp-token-length, access-token-live-time, and access-token-live-time-extended.")
-    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PutTwoFactorConfigurationRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PutTwoFactorConfigurationResponse.class)))
-    @ApiResponse(responseCode = "400", description = "A key is unknown or a value has the wrong type")
-    @ApiResponse(responseCode = "401", description = "The caller is not authenticated")
-    @ApiResponse(responseCode = "403", description = "The caller may not update TWOFACTOR_CONFIGURATION")
-    public String updateConfiguration(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
+    public String updateConfiguration(final String apiRequestBodyAsJson) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateTwoFactorConfiguration().withJson(apiRequestBodyAsJson)
                 .build();
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);

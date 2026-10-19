@@ -31,7 +31,7 @@ import org.apache.fineract.integrationtests.common.CommonConstants;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.charges.ChargesHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
-import org.apache.fineract.integrationtests.common.organisation.CurrencyHelper;
+import com.micropay.fineract.integrationtests.MicropayCurrencyHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsAccountHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -43,7 +43,7 @@ public class TieredChargesTest extends BaseLoanIntegrationTest {
     @BeforeAll
     static void ensureChargeCurrenciesSelected() {
         // Micropay only exposes charges in the tenant's selected currencies; the fixtures below use USD and EUR.
-        CurrencyHelper.ensureSelected("USD", "EUR");
+        MicropayCurrencyHelper.ensureSelected("USD", "EUR");
     }
 
     @Test

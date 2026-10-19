@@ -29,7 +29,6 @@ import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNum
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
-import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.account.service.AccountNumberGenerator;
@@ -50,7 +49,6 @@ import org.junit.jupiter.api.Test;
 public class AccountNumberGeneratorTest {
 
     private ConfigurationReadPlatformService configService;
-    private ConfigurationDomainService configurationDomainService;
     private AccountNumberStructuredGenerationService structuredGenerationService;
     private ClientRepository clientRepo;
     private LoanRepository loanRepo;
@@ -61,17 +59,18 @@ public class AccountNumberGeneratorTest {
     @BeforeEach
     public void setup() {
         configService = mock(ConfigurationReadPlatformService.class);
-        configurationDomainService = mock(ConfigurationDomainService.class);
         structuredGenerationService = mock(AccountNumberStructuredGenerationService.class);
         clientRepo = mock(ClientRepository.class);
         loanRepo = mock(LoanRepository.class);
         savingsRepo = mock(SavingsAccountRepository.class);
         final WorkingCapitalLoanRepository workingCapitalLoanRepo = mock(WorkingCapitalLoanRepository.class);
 
-        generator = new AccountNumberGenerator(configService, configurationDomainService, structuredGenerationService, clientRepo, loanRepo,
-                savingsRepo, workingCapitalLoanRepo);
+        generator = new AccountNumberGenerator(configService, structuredGenerationService, clientRepo, loanRepo, savingsRepo,
+                workingCapitalLoanRepo);
 
-        when(configurationDomainService.isStructuredAccountNumberFormatsEnabled()).thenReturn(false);
+        GlobalConfigurationPropertyData structuredFormats = mock(GlobalConfigurationPropertyData.class);
+        when(structuredFormats.isEnabled()).thenReturn(false);
+        when(configService.retrieveGlobalConfiguration("structured-account-number-formats")).thenReturn(structuredFormats);
 
         GlobalConfigurationPropertyData accountLengthConfig = mock(GlobalConfigurationPropertyData.class);
         when(accountLengthConfig.getValue()).thenReturn(Long.valueOf("9"));

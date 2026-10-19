@@ -216,8 +216,7 @@ public final class BatchHelper {
 
         final String body = "{ \"officeId\": 1, \"legalFormId\":1, \"firstname\": \"Petra\", \"lastname\": \"Yton\"," + "\"externalId\": \""
                 + extId
-                + "\",  \"dateFormat\": \"dd MMMM yyyy\", \"locale\": \"en\",\"active\": false, \"submittedOnDate\": \"04 March 2009\","
-                + micropayClientIdentifiersJson() + "}";
+                + "\",  \"dateFormat\": \"dd MMMM yyyy\", \"locale\": \"en\",\"active\": false, \"submittedOnDate\": \"04 March 2009\"}";
 
         br.setBody(body);
 
@@ -250,21 +249,11 @@ public final class BatchHelper {
 
         final String body = "{ \"officeId\": 1, \"legalFormId\":1, \"firstname\": \"Petra\", \"lastname\": \"Yton\"," + "\"externalId\": \""
                 + externalId + "\",  \"dateFormat\": \"dd MMMM yyyy\", \"locale\": \"en\","
-                + "\"active\": true, \"activationDate\": \"04 March 2010\", \"submittedOnDate\": \"04 March 2010\","
-                + micropayClientIdentifiersJson() + "}";
+                + "\"active\": true, \"activationDate\": \"04 March 2010\", \"submittedOnDate\": \"04 March 2010\"}";
 
         br.setBody(body);
 
         return br;
-    }
-
-    /**
-     * Micropay requires at least one identifier for a person client; see
-     * {@link ClientHelper#defaultClientIdentifier()}.
-     */
-    private static String micropayClientIdentifiersJson() {
-        return "\"clientIdentifiers\": [{ \"documentTypeId\": " + ClientHelper.defaultIdentifierDocumentTypeId() + ", \"documentKey\": \""
-                + ClientHelper.randomIdentifierKey() + "\", \"status\": \"Active\", \"description\": \"integration-test identifier\" }]";
     }
 
     /**
@@ -653,27 +642,6 @@ public final class BatchHelper {
             final String loanExternalId, final String chargeExternalId) {
         return getChargeById(requestId, reference,
                 String.format("v1/loans/external-id/%s/charges/external-id/%s", loanExternalId, chargeExternalId));
-    }
-
-    /**
-     * Creates and returns a {@link org.apache.fineract.batch.command.internal.SubmitClientCommandStrategy} Request with
-     * given requestId and reference.
-     *
-     * @param requestId
-     * @param reference
-     * @return BatchRequest
-     */
-    public static BatchRequest submitClientRequest(final Long requestId, final Long reference) {
-
-        final BatchRequest br = new BatchRequest();
-
-        br.setRequestId(requestId);
-        br.setRelativeUrl("v1/clients/$.clientId?command=submit");
-        br.setReference(reference);
-        br.setMethod("POST");
-        br.setBody("{}");
-
-        return br;
     }
 
     /**

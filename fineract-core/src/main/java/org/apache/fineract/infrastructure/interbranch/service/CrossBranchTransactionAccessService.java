@@ -21,6 +21,11 @@ package org.apache.fineract.infrastructure.interbranch.service;
 import java.util.Optional;
 import org.apache.fineract.organisation.office.domain.Office;
 
+/**
+ * Extension point for posting a transaction at a servicing office other than the account home office. The default
+ * {@link NoOpCrossBranchTransactionAccessService} never enables cross-branch posting; a custom module may supply the
+ * real matrix check.
+ */
 public interface CrossBranchTransactionAccessService {
 
     boolean isCrossBranchTransactionEnabledForCurrentUser();

@@ -20,7 +20,6 @@ package org.apache.fineract.integrationtests.common.organisation;
 
 import static org.apache.fineract.client.feign.util.FeignCalls.ok;
 
-import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.client.models.CurrencyData;
@@ -46,24 +45,5 @@ public final class CurrencyHelper {
         log.info("--------------------------------- UPDATE CURRENCY OPTIONS -------------------------------");
         return ok(() -> FineractFeignClientHelper.getFineractFeignClient().currency()
                 .updateCurrencies(new CurrencyUpdateRequest().currencies(currencies))).getCurrencies();
-    }
-
-    /**
-     * Makes sure the given currency codes are part of the tenant's selected (organisation) currencies, keeping whatever
-     * is already selected. Micropay's charge read model joins {@code m_organisation_currency}, so charges created in a
-     * currency the tenant has not selected are invisible to the read API.
-     */
-    public static void ensureSelected(final String... currencyCodes) {
-        final List<String> selected = new ArrayList<>(getSelectedCurrencies().stream().map(CurrencyData::getCode).toList());
-        boolean changed = false;
-        for (String code : currencyCodes) {
-            if (!selected.contains(code)) {
-                selected.add(code);
-                changed = true;
-            }
-        }
-        if (changed) {
-            updateCurrencies(selected);
-        }
     }
 }
