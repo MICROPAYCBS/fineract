@@ -21,8 +21,6 @@
 //
 //   ./gradlew :custom:micropay:app:boot:createNewTenant -PtenantIdentifier=demo
 //
-import groovy.sql.Sql
-
 configurations {
     driver
 }
@@ -30,18 +28,18 @@ dependencies {
     driver 'org.mariadb.jdbc:mariadb-java-client'
     driver 'org.postgresql:postgresql'
     driver 'com.mysql:mysql-connector-j'
+    driver 'org.apache.groovy:groovy-sql:4.0.32'
 }
 
-URLClassLoader driverLoader = GroovyObject.class.classLoader
-configurations.driver.each { File file ->
-    driverLoader.addURL(file.toURL())
-}
 tasks.register('createNewTenant') {
     group = 'Database'
     description = 'Creates empty tenant DB fineract_<id> and registers it in fineract_tenants. Requires -PtenantIdentifier=<id>. Restart Fineract afterwards so Liquibase migrates the schema.'
     dependsOn ':fineract-core:classes'
 
     doLast {
+        def driverUrls = configurations.driver.collect { it.toURI().toURL() } as URL[]
+        def driverLoader = new URLClassLoader(driverUrls, ClassLoader.systemClassLoader)
+        def sqlType = Class.forName('groovy.sql.Sql', true, driverLoader)
         if (!project.hasProperty('tenantIdentifier') || !tenantIdentifier?.toString()?.trim()) {
             throw new GradleException('Missing required property -PtenantIdentifier=<id> (e.g. -PtenantIdentifier=demo)')
         }
@@ -120,9 +118,11 @@ tasks.register('createNewTenant') {
                 break
         }
 
+        Class.forName(driverClass, true, driverLoader)
+        def sqlNewInstance = sqlType.getMethod('newInstance', String, String, String, String)
         def tenantsSql
         try {
-            tenantsSql = Sql.newInstance(tenantsJdbcUrl, tenantsUser.toString(), tenantsPassword.toString(), driverClass)
+            tenantsSql = sqlNewInstance.invoke(null, tenantsJdbcUrl, tenantsUser.toString(), tenantsPassword.toString(), driverClass)
         } catch (Exception e) {
             throw new GradleException("Cannot connect to fineract_tenants at ${tenantsJdbcUrl}: ${e.message}", e)
         }
@@ -209,7 +209,7 @@ tasks.register('createNewTenant') {
 
             def adminSql
             try {
-                adminSql = Sql.newInstance(adminBaseUrl, adminUser.toString(), adminPassword.toString(), driverClass)
+                adminSql = sqlNewInstance.invoke(null, adminBaseUrl, adminUser.toString(), adminPassword.toString(), driverClass)
             } catch (Exception e) {
                 throw new GradleException("Cannot connect to database server at ${adminBaseUrl}: ${e.message}", e)
             }
@@ -261,8 +261,7 @@ User '${adminUser}' cannot CREATE DATABASE. Options:
             def connectionParams = asJdbcString(defaultConn?.schema_connection_parameters)
 
             try {
-                tenantsSql.withTransaction {
-                    def connectionParamsList = [
+                def connectionParamsList = [
                         asJdbcString(host),
                         asJdbcString(schemaName),
                         asJdbcString(port),
@@ -334,7 +333,6 @@ User '${adminUser}' cannot CREATE DATABASE. Options:
                                 connectionId,
                                 connectionId
                             ])
-                }
             } catch (GradleException ge) {
                 throw ge
             } catch (Exception e) {
@@ -351,7 +349,7 @@ User '${adminUser}' cannot CREATE DATABASE. Options:
         logger.lifecycle("  connection id: ${connectionId}")
         logger.lifecycle("  timezone     : ${timezoneId}")
         logger.lifecycle('')
-        logger.lifecycle('NEXT STEP: Restart Fineract (e.g. ./gradlew :fineract-provider:bootRun or devRun)')
+        logger.lifecycle('NEXT STEP: Restart Fineract (e.g. ./gradlew :custom:micropay:app:boot:devRun)')
         logger.lifecycle("so TenantDatabaseUpgradeService can Liquibase-migrate '${schemaName}'.")
         logger.lifecycle("Then call APIs with header: Fineract-Platform-TenantId: ${identifier}")
     }

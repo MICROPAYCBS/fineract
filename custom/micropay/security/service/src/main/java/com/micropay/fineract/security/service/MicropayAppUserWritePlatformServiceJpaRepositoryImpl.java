@@ -203,6 +203,10 @@ public class MicropayAppUserWritePlatformServiceJpaRepositoryImpl implements App
                             .orElseThrow(() -> new StaffNotFoundException(staffId));
                 }
                 userToUpdate.changeStaff(linkedStaff);
+            } else if (changes.containsKey("officeId") && userToUpdate.getStaffId() != null) {
+                final Long staffId = userToUpdate.getStaffId();
+                this.staffRepository.findByOffice(staffId, userToUpdate.getOffice().getId())
+                        .orElseThrow(() -> new StaffNotFoundException(staffId));
             }
 
             if (changes.containsKey("roles")) {
@@ -333,7 +337,7 @@ public class MicropayAppUserWritePlatformServiceJpaRepositoryImpl implements App
             final String defaultMessage = "User with username " + username + " already exists.";
             return new PlatformDataIntegrityException("error.msg.user.duplicate.username", defaultMessage, "username", username);
         }
-        log.error("handleDataIntegrityIssues: Neither duplicate username nor existing user; unknown error occured", dve);
+        log.error("handleDataIntegrityIssues: Neither duplicate username nor existing user; unknown error occurred", dve);
         return ErrorHandler.getMappable(dve, "error.msg.unknown.data.integrity.issue", "Unknown data integrity issue with resource.");
     }
 }

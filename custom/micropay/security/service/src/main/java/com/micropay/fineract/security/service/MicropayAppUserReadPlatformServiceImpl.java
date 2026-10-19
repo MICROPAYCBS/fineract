@@ -20,6 +20,7 @@ package com.micropay.fineract.security.service;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Set;
@@ -29,7 +30,6 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.organisation.office.data.OfficeData;
 import org.apache.fineract.organisation.office.service.OfficeReadPlatformService;
 import org.apache.fineract.organisation.staff.data.StaffData;
-import org.apache.fineract.organisation.staff.service.StaffReadService;
 import org.apache.fineract.useradministration.data.AppUserData;
 import org.apache.fineract.useradministration.data.RoleData;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -52,7 +52,6 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
     private final OfficeReadPlatformService officeReadPlatformService;
     private final RoleReadPlatformService roleReadPlatformService;
     private final AppUserRepository appUserRepository;
-    private final StaffReadService staffReadPlatformService;
 
     /*
      * used for caching in spring expression language.
@@ -69,7 +68,7 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
         final String hierarchy = currentUser.getOffice().getHierarchy();
         final String hierarchySearchString = hierarchy + "%";
 
-        final AppUserMapper mapper = new AppUserMapper(this.roleReadPlatformService, this.staffReadPlatformService);
+        final AppUserMapper mapper = new AppUserMapper(this.roleReadPlatformService);
         final String sql = "select " + mapper.schema();
 
         return this.jdbcTemplate.query(sql, mapper, new Object[] { hierarchySearchString }); // NOSONAR
@@ -106,10 +105,14 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
     @Override
     public AppUserData retrieveUser(final Long userId) {
 
-        this.context.authenticatedUser();
+        final String callerHierarchy = this.context.authenticatedUser().getOffice().getHierarchy();
 
         final AppUser user = this.appUserRepository.findById(userId).orElseThrow(() -> new UserNotFoundException(userId));
         if (user.isDeleted()) {
+            throw new UserNotFoundException(userId);
+        }
+        final String userHierarchy = user.getOffice().getHierarchy();
+        if (userHierarchy == null || callerHierarchy == null || !userHierarchy.startsWith(callerHierarchy)) {
             throw new UserNotFoundException(userId);
         }
 
@@ -125,7 +128,10 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
 
         final StaffData linkedStaff;
         if (user.getStaff() != null) {
-            linkedStaff = this.staffReadPlatformService.retrieveStaff(user.getStaffId());
+            final String sql = "select " + LinkedStaffMapper.SCHEMA
+                    + " from m_staff s join m_office so on so.id = s.office_id where s.id = ?";
+            linkedStaff = this.jdbcTemplate.query(sql, (rs, rowNum) -> LinkedStaffMapper.map(rs), user.getStaffId()).stream().findFirst()
+                    .orElse(null);
         } else {
             linkedStaff = null;
         }
@@ -141,11 +147,9 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
     private static final class AppUserMapper implements RowMapper<AppUserData> {
 
         private final RoleReadPlatformService roleReadPlatformService;
-        private final StaffReadService staffReadPlatformService;
 
-        AppUserMapper(final RoleReadPlatformService roleReadPlatformService, final StaffReadService staffReadPlatformService) {
+        AppUserMapper(final RoleReadPlatformService roleReadPlatformService) {
             this.roleReadPlatformService = roleReadPlatformService;
-            this.staffReadPlatformService = staffReadPlatformService;
         }
 
         @Override
@@ -158,17 +162,11 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
             final String email = rs.getString("email");
             final Long officeId = JdbcSupport.getLong(rs, "officeId");
             final String officeName = rs.getString("officeName");
-            final Long staffId = JdbcSupport.getLong(rs, "staffId");
             final Boolean passwordNeverExpire = rs.getBoolean("passwordNeverExpires");
             final Boolean totpEnabled = rs.getBoolean("totpEnabled");
             final Collection<RoleData> selectedRoles = this.roleReadPlatformService.retrieveAppUserRoles(id);
 
-            final StaffData linkedStaff;
-            if (staffId != null) {
-                linkedStaff = this.staffReadPlatformService.retrieveStaff(staffId);
-            } else {
-                linkedStaff = null;
-            }
+            final StaffData linkedStaff = LinkedStaffMapper.map(rs);
             final AppUserData user = AppUserData.instance(id, username, email, officeId, officeName, firstname, lastname, null,
                     selectedRoles, linkedStaff, passwordNeverExpire);
             user.setTotpEnabled(totpEnabled);
@@ -177,10 +175,34 @@ public class MicropayAppUserReadPlatformServiceImpl implements AppUserReadPlatfo
 
         public String schema() {
             return " u.id as id, u.username as username, u.firstname as firstname, u.lastname as lastname, u.email as email, u.password_never_expires as passwordNeverExpires, "
-                    + " u.totp_enabled as totpEnabled, u.office_id as officeId, o.name as officeName, u.staff_id as staffId from m_appuser u "
-                    + " join m_office o on o.id = u.office_id where o.hierarchy like ? and u.is_deleted=false order by u.username";
+                    + " u.totp_enabled as totpEnabled, u.office_id as officeId, o.name as officeName, " + LinkedStaffMapper.SCHEMA
+                    + " from m_appuser u "
+                    + " join m_office o on o.id = u.office_id left join m_staff s on s.id = u.staff_id left join m_office so on so.id = s.office_id"
+                    + " where o.hierarchy like ? and u.is_deleted=false order by u.username";
         }
 
+    }
+
+    private static final class LinkedStaffMapper {
+
+        static final String SCHEMA = "s.id as staffId, s.office_id as staffOfficeId, so.name as staffOfficeName, s.firstname as staffFirstname,"
+                + " s.lastname as staffLastname, s.display_name as staffDisplayName, s.is_loan_officer as staffIsLoanOfficer,"
+                + " s.external_id as staffExternalId, s.mobile_no as staffMobileNo, s.is_active as staffIsActive, s.joining_date as staffJoiningDate";
+
+        private LinkedStaffMapper() {}
+
+        static StaffData map(final ResultSet rs) throws SQLException {
+            final Long staffId = JdbcSupport.getLong(rs, "staffId");
+            if (staffId == null) {
+                return null;
+            }
+            final LocalDate joiningDate = JdbcSupport.getLocalDate(rs, "staffJoiningDate");
+            return StaffData.builder().id(staffId).firstname(rs.getString("staffFirstname")).lastname(rs.getString("staffLastname"))
+                    .displayName(rs.getString("staffDisplayName")).officeId(rs.getLong("staffOfficeId"))
+                    .officeName(rs.getString("staffOfficeName")).isLoanOfficer(rs.getBoolean("staffIsLoanOfficer"))
+                    .externalId(rs.getString("staffExternalId")).mobileNo(rs.getString("staffMobileNo"))
+                    .isActive(rs.getBoolean("staffIsActive")).joiningDate(joiningDate).build();
+        }
     }
 
     private static final class AppUserLookupMapper implements RowMapper<AppUserData> {

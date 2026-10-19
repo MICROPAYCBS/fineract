@@ -17,14 +17,15 @@
  * under the License.
  */
 evaluationDependsOn(':integration-tests')
+def integrationTestsProject = rootProject.project(':integration-tests')
 
 dependencies {
     testImplementation project(path: ':fineract-client', configuration: 'runtimeElements')
     testImplementation(project(path: ':fineract-client-feign', configuration: 'runtimeElements')) {
         exclude group: 'org.apache.fineract', module: 'fineract-client'
     }
-    testImplementation files(project(':integration-tests').sourceSets.test.output)
-    testImplementation project(':integration-tests').sourceSets.test.runtimeClasspath
+    testImplementation files(integrationTestsProject.sourceSets.test.output)
+    testImplementation integrationTestsProject.sourceSets.test.runtimeClasspath
     testImplementation ('io.rest-assured:rest-assured') {
         exclude group: 'commons-logging'
         exclude group: 'org.apache.sling'

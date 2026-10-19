@@ -465,7 +465,7 @@ public class SmsCampaignWritePlatformServiceJpaImpl implements SmsCampaignWriteP
         return stringWriter.toString();
     }
 
-    private List<HashMap<String, Object>> getRunReportByServiceImpl(final String reportName, final Map<String, String> queryParams) {
+    private List<Map<String, Object>> getRunReportByServiceImpl(final String reportName, final Map<String, String> queryParams) {
         final String reportType = "report";
 
         List<HashMap<String, Object>> resultList = new ArrayList<>();

@@ -205,7 +205,7 @@ public class MicropayClientWritePlatformServiceJpaRepositoryImpl implements Clie
         if (associatedDataType != null) {
             return new ClientCannotBeDeletedHasAssociatedDataException(clientId, associatedDataType);
         }
-        log.error("Error occured.", realCause);
+        log.error("Error occurred.", realCause);
         return ErrorHandler.getMappable(dve, "error.msg.client.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource.");
     }
@@ -965,7 +965,7 @@ public class MicropayClientWritePlatformServiceJpaRepositoryImpl implements Clie
     }
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {
-        log.error("Error occured.", dve);
+        log.error("Error occurred.", dve);
     }
 
     @Transactional

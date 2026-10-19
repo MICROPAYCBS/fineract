@@ -18,8 +18,8 @@
  */
 package org.apache.fineract.organisation.office.domain;
 
-import org.eclipse.persistence.config.DescriptorCustomizer;
 import org.eclipse.persistence.descriptors.ClassDescriptor;
+import org.eclipse.persistence.descriptors.DescriptorCustomizer;
 
 /**
  * office_id is an assigned primary key (same as m_office.id), not database-generated.

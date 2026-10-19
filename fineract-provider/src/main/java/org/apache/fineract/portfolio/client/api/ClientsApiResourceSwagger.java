@@ -869,31 +869,33 @@ final class ClientsApiResourceSwagger {
         public LocalDate proposedTransferDate;
     }
 
+    @Schema(description = "GetObligeeData")
+    public static final class GetObligeeData {
+
+        private GetObligeeData() {}
+
+        @Schema(example = "John")
+        public String firstName;
+        @Schema(example = "Doe")
+        public String lastName;
+        @Schema(example = "John Doe")
+        public String displayName;
+        @Schema(example = "00000002")
+        public String accountNumber;
+        @Schema(example = "12000.00")
+        public Double loanAmount;
+        @Schema(example = "100.00")
+        public Double guaranteeAmount;
+        @Schema(example = "10000.00")
+        public Double amountReleased;
+        @Schema(example = "1000.00")
+        public Double amountTransferred;
+    }
+
     @Schema(description = "GetClientObligeeDetailsResponse")
     public static final class GetClientObligeeDetailsResponse {
 
-        static final class GetObligeeData {
-
-            private GetObligeeData() {}
-
-            @Schema(example = "John")
-            public String firstName;
-            @Schema(example = "Doe")
-            public String lastName;
-            @Schema(example = "John Doe")
-            public String displayName;
-            @Schema(example = "00000002")
-            public String accountNumber;
-            @Schema(example = "12000.00")
-            public Double loanAmount;
-            @Schema(example = "100.00")
-            public Double guaranteeAmount;
-            @Schema(example = "10000.00")
-            public Double amountReleased;
-            @Schema(example = "1000.00")
-            public Double amountTransferred;
-
-        }
+        private GetClientObligeeDetailsResponse() {}
 
         public Set<GetObligeeData> obligees;
     }

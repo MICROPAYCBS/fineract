@@ -104,7 +104,7 @@ public class MicropaySavingsProductWritePlatformServiceJpaRepositoryImpl impleme
             msgArgs = new Object[] { shortName };
         } else {
             msgCode += ".unknown.data.integrity.issue";
-            log.error("Error occured.", dae);
+            log.error("Error occurred.", dae);
         }
         throw ErrorHandler.getMappable(dae, msgCode, msg, param, msgArgs);
     }

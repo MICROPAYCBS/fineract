@@ -24,6 +24,6 @@ dependencies {
     compileOnly('com.github.spotbugs:spotbugs-annotations')
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('jakarta.ws.rs:jakarta.ws.rs-api')
-    implementation('io.sentry:sentry-spring-boot-starter-jakarta')
+    implementation('io.sentry:sentry-spring-boot-4')
     implementation('io.sentry:sentry-logback')
 }

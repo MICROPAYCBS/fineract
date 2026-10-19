@@ -5,35 +5,35 @@ directories** after the Category A moves and Category B replacements. These file
 merge-conflict surface when pulling `upstream/develop`; everything else lives under
 `custom/micropay/` and merges cleanly.
 
-Baseline: pre-JDK-25 `3c97339d9c` (`ea0743dc1^1`, merged on `merge/upstream`).
-Prior step: Apache Fineract 1.15.0 = `f188505b8b`. Prior merge-base with
-`origin/develop` was `0655191138f1dca52e63882a34c7671d0b40887c`.
+Baseline: `origin/develop` `71681f2d88` (JDK 25 / Boot 4.1, merged on `merge/upstream`).
+Prior steps: pre-JDK-25 `3c97339d9c`, Apache Fineract 1.15.0 `f188505b8b`. Prior
+merge-base with `origin/develop` was `0655191138f1dca52e63882a34c7671d0b40887c`.
 
 Regenerate the raw numbers at any time (PowerShell, from the repo root):
 
 ```powershell
-$mb = '3c97339d9c'
+$mb = '71681f2d88'
 git diff $mb --name-status -M | Where-Object { $_ -notmatch "`tcustom/" }   # A/M/D per file
 git diff $mb --numstat     | Where-Object { $_ -notmatch "`tcustom/" }      # +/- per file
 ```
 
 ## Headline numbers
 
-| | Before (plan, Oct 2026) | After pre-JDK-25 merge |
+| | Before (plan, Oct 2026) | After JDK 25 / Boot 4.1 merge |
 | --- | ---: | ---: |
-| Upstream files modified | 369 | 286 |
+| Upstream files modified | 369 | 285 |
 | Fork-added files under upstream dirs | 841 | 385 (of which 39 are `docs/**` and 3 `scripts/**`) |
-| Liquibase changelogs under `fineract-provider` | 220 | 0 (all in `custom/micropay/platform/db`, `workflow/starter`) |
+| Liquibase changelogs under `fineract-provider` | 220 | 1 (`0217_force_withdrawal_configs.xml` validCheckSum only; all other Micropay changelogs live in `custom/micropay/platform/db`, `workflow/starter`) |
 | `CommandWrapperBuilder` additions | +63 methods | +41 methods (callers still in upstream API resources, see below) |
 | `GlobalConfigurationConstants` / `ConfigurationDomainService` additions | +17 keys / +14 methods | 0 (Micropay keys live in `MicropayGlobalConfigurationConstants` / `MicropayConfigurationService`) |
 | Service impls modified in place | 75 | 22 carry a one-line seam annotation; behaviour changes left in place are the bug fixes in §4 |
 
-Modified files by module: `fineract-provider` 325 (includes fork-added files under that tree),
+Modified files by module: `fineract-provider` 324 (includes fork-added files under that tree),
 `fineract-core` 115, `fineract-savings` 59, `fineract-security` 35, `fineract-loan` 19,
 `fineract-branch` 18, `fineract-charge` 18, `fineract-accounting` 17, `fineract-document` 5,
 `integration-tests` 3, `fineract-report` 3, `fineract-working-capital-loan` 2, one each in
-`fineract-war`, `fineract-progressive-loan`, `kubernetes`, `.gitignore`, `.gitattributes`,
-`.cursor`.
+`fineract-war`, `fineract-progressive-loan`, `fineract-avro-schemas`, `kubernetes`,
+`.gitignore`, `.gitattributes`, `.cursor`, `buildSrc`, `config`, `README.md`.
 
 ## 1. Seams added to upstream (small, upstream-PR candidates)
 
@@ -148,10 +148,17 @@ re-synced `ClientWritePlatformServiceJpaRepositoryImpl`, `ClientIdentifierReadPl
 `SavingsAccountWritePlatformServiceJpaRepositoryImpl`, `SavingsAccountDomainServiceJpa`,
 `JournalEntryWritePlatformServiceJpaRepositoryImpl` (DTO package move +
 `createJournalEntriesForLoanTransaction(AccountingBridgeDataDTO, boolean)`; upstream of
-`JournalEntryWritePlatformServiceImpl`). `SearchReadServiceImpl` still needs the transaction-search
-SQL/columns (+174). The JournalEntry write impl was renamed upstream to
-`JournalEntryWritePlatformServiceImpl` after 1.15.0; the script diffs the old path at
-merge-base against the new path.
+`JournalEntryWritePlatformServiceImpl`). Step 3 (`origin/develop` / JDK 25) re-synced
+`ReadReportingServiceImpl` (untyped integer bind), `AppUserWritePlatformServiceJpaRepositoryImpl`
+(office/staff check), `SearchReadServiceImpl` (transaction-search SQL/columns),
+`ChargeReadPlatformServiceImpl` (WC loan charge-time filter),
+`ChargeWritePlatformServiceJpaRepositoryImpl` (exists SQL),
+`ClientFamilyMembersWritePlatformServiceImpl` (`relationshipId`),
+`LoanReadPlatformServiceImpl` (`overpaidOnDate` on the timeline),
+`GenericDataServiceImpl` (`jspecify` `@NonNull`), `TwoFactorConfigurationServiceImpl`
+(`Reader.of`), plus the "Error occurred" log-message twins. The JournalEntry write impl
+was renamed upstream to `JournalEntryWritePlatformServiceImpl` after 1.15.0; the script
+diffs the old path at merge-base against the new path.
 
 ## 3. Residual in-place changes (true Category C)
 
@@ -213,7 +220,9 @@ collection sheet, financial activity account), bulk-import handlers (+4/-3 total
 
 ### 3.6 Build, config, docs
 
-- `buildSrc` (+3: Sentry dependency versions in the BOM, consumed only by `monitoring/sentry`), `fineract-security/dependencies.gradle` (+4: `com.eatthepath:java-otp` for TOTP).
+- `buildSrc` (+3: Sentry dependency versions in the BOM, consumed only by `monitoring/sentry`;
+  Boot 4 uses `io.sentry:sentry-spring-boot-4:8.46.0`), `fineract-security/dependencies.gradle`
+  (+4: `com.eatthepath:java-otp:0.4.0` for TOTP).
 - `config/docker/env`, `fineract-war/setenv.sh`, `kubernetes/fineract-server-deployment.yml`: default tenant timezone `Africa/Kampala`, Sentry env placeholders.
 - `README.md` (+14, "Create an additional tenant" section; it still names `:fineract-provider:createNewTenant`, the task now lives at `:custom:micropay:app:boot:createNewTenant`), `.gitignore` (+3), `.gitattributes` (new).
 - `fineract-provider/src/main/resources/db/changelog/tenant/parts/0217_force_withdrawal_configs.xml`: one `validCheckSum` line, needed by databases migrated before the custom changelog existed. Keep.
@@ -266,12 +275,26 @@ annotations in §1.1, `ApprovalWorkflowHook`, `ServerExceptionReporter`.
 
 ## 6. Verification
 
-Run after every upstream merge, module move or twin change. Compile verification for the 1.15.0
-step was last run on **2026-10-19**: `:custom:micropay:app:boot:bootJar` succeeded
-(`micropay-fineract-boot-1.16.0-SNAPSHOT.jar`). Runtime smoke / fork ITs / web-app e2e still
-need a live PostgreSQL tenant after the remaining merge steps. The previous full runtime pass
-was **2026-10-17** against the boot jar (PostgreSQL tenant `default`,
-`-Dspring.profiles.active=test`).
+Run after every upstream merge, module move or twin change. Step 3 (`origin/develop` / JDK 25 /
+Boot 4.1) was last verified on **2026-10-19**:
+
+- `:custom:micropay:app:boot:bootJar` succeeded (`micropay-fineract-boot-1.16.0-SNAPSHOT.jar`).
+  Swagger `resolve` must run on JDK 25 (class file 69); Gradle on JDK 21 fails that task.
+- Liquibase finished on tenant `default` (existing) and on a freshly created `mergeverify`
+  tenant (`:custom:micropay:app:boot:createNewTenant -PtenantIdentifier=mergeverify`).
+  Fresh-tenant changeset `3065-widen-account-no-columns` no longer ALTERs `m_wc_loan` before
+  that table exists.
+- `MicropayReplacementReport` passed: 10 auto-configurations, 43 twins, no missing replacements.
+- `Invoke-ApiSmoke.ps1 -Baseline`: 226 endpoints, **PASS 206 / WARN 0 / FAIL 0 / SKIP 20**.
+  Baseline diffs were empty-list → 200 (tenant now has more seed data) plus
+  `/accountnumberformats/preview` 403 → 200; no 5xx or new 404s.
+- The nine fork ITs did not compile in this environment: `:fineract-client:buildJavaSdk` fails
+  with OpenAPI Generator `UTF16 String size is 1080885715` on the Boot 4 spec, and the custom
+  test module depends on `:integration-tests` Feign helpers that need those generated types.
+- Web-app e2e was not run (`localhost:3000` was down).
+
+The previous full IT/e2e pass was **2026-10-17** against the boot jar (PostgreSQL tenant
+`default`, `-Dspring.profiles.active=test`).
 
 ### 6.1 Start the right server
 

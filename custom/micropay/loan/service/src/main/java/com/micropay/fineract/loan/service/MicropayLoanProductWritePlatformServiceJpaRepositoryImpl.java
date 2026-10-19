@@ -21,6 +21,7 @@ package com.micropay.fineract.loan.service;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import jakarta.persistence.PersistenceException;
+import java.text.MessageFormat;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +38,9 @@ import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.dataqueries.data.EntityTables;
+import org.apache.fineract.infrastructure.dataqueries.data.StatusEnum;
+import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
 import org.apache.fineract.infrastructure.entityaccess.domain.FineractEntityAccessType;
 import org.apache.fineract.infrastructure.entityaccess.service.FineractEntityAccessUtil;
 import org.apache.fineract.infrastructure.event.business.domain.loan.product.LoanProductCreateBusinessEvent;
@@ -46,8 +50,10 @@ import org.apache.fineract.portfolio.charge.data.ProductChargeLink;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.service.ProductChargeAmountService;
 import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
+import org.apache.fineract.portfolio.delinquency.api.DelinquencyApiConstants;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucketRepository;
+import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucketType;
 import org.apache.fineract.portfolio.delinquency.exception.DelinquencyBucketNotFoundException;
 import org.apache.fineract.portfolio.floatingrates.domain.FloatingRate;
 import org.apache.fineract.portfolio.floatingrates.domain.FloatingRateRepositoryWrapper;
@@ -124,6 +130,7 @@ public class MicropayLoanProductWritePlatformServiceJpaRepositoryImpl implements
     private final CreditAllocationsJsonParser creditAllocationsJsonParser;
     private final LoanProductAssembler loanProductAssembler;
     private final LoanProductUpdateUtil loanProductUpdateUtil;
+    private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final ProductChargeLinkAssembler productChargeLinkAssembler;
     private final ProductChargeAmountService productChargeAmountService;
     private final LoanProductPaymentAllocationRuleMerger loanProductPaymentAllocationRuleMerger = new LoanProductPaymentAllocationRuleMerger();
@@ -181,6 +188,14 @@ public class MicropayLoanProductWritePlatformServiceJpaRepositoryImpl implements
             fineractEntityAccessUtil.checkConfigurationAndAddProductResrictionsForUserOffice(
                     FineractEntityAccessType.OFFICE_ACCESS_TO_LOAN_PRODUCTS, loanProduct.getId());
 
+            if (command.parameterExists(LoanProductDataValidator.DATATABLES)) {
+                this.entityDatatableChecksWritePlatformService.saveDatatables(StatusEnum.CREATE.getValue(),
+                        EntityTables.LOAN_PRODUCT.getName(), loanProduct.getId(), null,
+                        command.arrayOfParameterNamed(LoanProductDataValidator.DATATABLES));
+            }
+            this.entityDatatableChecksWritePlatformService.runTheCheck(loanProduct.getId(), EntityTables.LOAN_PRODUCT.getName(),
+                    StatusEnum.CREATE.getValue(), EntityTables.LOAN_PRODUCT.getForeignKeyColumnNameOnDatatable(), null);
+
             businessEventNotifierService.notifyPostBusinessEvent(new LoanProductCreateBusinessEvent(loanProduct));
 
             return new CommandProcessingResultBuilder() //
@@ -212,6 +227,13 @@ public class MicropayLoanProductWritePlatformServiceJpaRepositoryImpl implements
         if (delinquencyBucketId != null) {
             delinquencyBucket = delinquencyBucketRepository.findById(delinquencyBucketId)
                     .orElseThrow(() -> DelinquencyBucketNotFoundException.notFound(delinquencyBucketId));
+            if (!DelinquencyBucketType.REGULAR.equals(delinquencyBucket.getBucketType())) {
+                final String expectedType = DelinquencyBucketType.REGULAR.name();
+                throw new PlatformApiDataValidationException(List.of(
+                        ApiParameterError.parameterError(DelinquencyApiConstants.LOAN_PRODUCT_DELINQUENCY_BUCKET_ID_MUST_BE_OF_TYPE_CODE,
+                                MessageFormat.format(DelinquencyApiConstants.DELINQUENCY_BUCKET_ID_MUST_BE_OF_TYPE_MESSAGE, expectedType),
+                                LoanProductConstants.DELINQUENCY_BUCKET_PARAM_NAME, new Object[] { expectedType })));
+            }
         }
         return delinquencyBucket;
     }

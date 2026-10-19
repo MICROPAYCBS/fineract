@@ -51,7 +51,7 @@ dependencies {
     implementation('org.apache.commons:commons-lang3')
     implementation('io.swagger.core.v3:swagger-annotations-jakarta')
     implementation('org.mapstruct:mapstruct')
-    implementation('io.github.resilience4j:resilience4j-spring-boot3')
+    implementation('io.github.resilience4j:resilience4j-spring-boot4')
     implementation('jakarta.validation:jakarta.validation-api')
     implementation('org.springframework.boot:spring-boot-starter-validation')
     implementation('org.apache.commons:commons-csv')

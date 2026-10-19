@@ -215,7 +215,7 @@ public class MicropayClientIdentifierWritePlatformServiceJpaRepositoryImpl imple
     }
 
     private void logAsErrorUnexpectedDataIntegrityException(final Exception dve) {
-        LOG.error("Error occured.", dve);
+        LOG.error("Error occurred.", dve);
     }
 
     @Transactional

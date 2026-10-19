@@ -194,7 +194,7 @@ public final class ClientDataValidator {
             final String alternativeMobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.alternativeMobileNoParamName,
                     element);
             baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
-                    .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
+                    .matchesRegularExpression(phoneNumberValidationService.getRegex()).notExceedingLengthOf(50);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeEmailAddressParamName, element)) {
@@ -544,7 +544,7 @@ public final class ClientDataValidator {
             final String alternativeMobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.alternativeMobileNoParamName,
                     element);
             baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
-                    .matchesRegularExpression(MOBILE_NUMBER_REGEX).notExceedingLengthOf(50);
+                    .matchesRegularExpression(phoneNumberValidationService.getRegex()).notExceedingLengthOf(50);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeEmailAddressParamName, element)) {

@@ -4,11 +4,18 @@
                    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
 
     <changeSet id="3065-widen-account-no-columns" author="micropay">
+        <validCheckSum>9:7a07d2fa19706b0f732ba11e8426a5d5</validCheckSum>
         <modifyDataType tableName="m_client" columnName="account_no" newDataType="VARCHAR(34)"/>
         <modifyDataType tableName="m_loan" columnName="account_no" newDataType="VARCHAR(34)"/>
         <modifyDataType tableName="m_savings_account" columnName="account_no" newDataType="VARCHAR(34)"/>
         <modifyDataType tableName="m_group" columnName="account_no" newDataType="VARCHAR(34)"/>
         <modifyDataType tableName="m_share_account" columnName="account_no" newDataType="VARCHAR(34)"/>
+    </changeSet>
+
+    <changeSet id="3065-widen-wc-loan-account-no" author="micropay">
+        <preConditions onFail="CONTINUE">
+            <tableExists tableName="m_wc_loan"/>
+        </preConditions>
         <modifyDataType tableName="m_wc_loan" columnName="account_no" newDataType="VARCHAR(34)"/>
     </changeSet>
 

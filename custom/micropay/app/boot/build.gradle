@@ -30,6 +30,16 @@ group = 'com.micropay.fineract.app'
 //   ./gradlew :custom:micropay:app:boot:quickBootJar     # same, skipping tests and quality checks
 //   ./gradlew :custom:micropay:app:boot:createNewTenant -PtenantIdentifier=demo
 
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        // Gradle 9 no longer bundles groovy-sql; tenant-tasks.gradle needs it.
+        classpath 'org.apache.groovy:groovy-sql:4.0.32'
+    }
+}
+
 apply plugin: 'org.springframework.boot'
 
 base {
