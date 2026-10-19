@@ -32,7 +32,6 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withdraw
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.micropay.fineract.platform.configuration.MicropayConfigurationService;
-import io.github.resilience4j.retry.annotation.Retry;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
@@ -140,9 +139,11 @@ import org.apache.fineract.portfolio.savings.exception.SavingsAccountTransaction
 import org.apache.fineract.portfolio.savings.exception.SavingsOfficerAssignmentException;
 import org.apache.fineract.portfolio.savings.exception.SavingsOfficerUnassignmentException;
 import org.apache.fineract.portfolio.savings.exception.TransactionUpdateNotAllowedException;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountActivationService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPostingService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountPaymentChannelAllowListService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountPostInterestService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitCommand;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitHold;
@@ -190,6 +191,8 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
     private final BusinessEventNotifierService businessEventNotifierService;
     private final GSIMRepositoy gsimRepository;
     private final SavingsAccountInterestPostingService savingsAccountInterestPostingService;
+    private final SavingsAccountPostInterestService savingsAccountPostInterestService;
+    private final SavingsAccountActivationService savingsAccountActivationService;
     private final ExternalIdFactory externalIdFactory;
     private final ErrorHandler errorHandler;
     private final LegalTenderBreakdownValidator legalTenderBreakdownValidator;
@@ -282,7 +285,8 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
             updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
         }
 
-        account.processAccountUponActivation(isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth);
+        savingsAccountActivationService.processAccountUponActivation(account, isSavingsInterestPostingAtCurrentPeriodEnd,
+                financialYearBeginningMonth);
         List<DepositAccountOnHoldTransaction> depositAccountOnHoldTransactions = null;
         if (account.getOnHoldFunds().compareTo(BigDecimal.ZERO) > 0) {
             depositAccountOnHoldTransactions = this.depositAccountOnHoldTransactionRepository
@@ -760,8 +764,9 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
                 postInterestOnDate = transactionDate;
             }
             boolean postReversals = false;
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                    postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill,
+                    postReversals);
             updateManualInterestPostingExternalId(account, externalId, transactionDate, backdatedTxnsAllowedTill);
 
             if (!backdatedTxnsAllowedTill) {
@@ -805,9 +810,7 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         }
     }
 
-    @Transactional
     @Override
-    @Retry(name = "postInterest", fallbackMethod = "fallbackPostInterest")
     public SavingsAccountData postInterest(SavingsAccountData savingsAccountData, final boolean postInterestAs,
             final LocalDate transactionDate, final boolean backdatedTxnsAllowedTill) {
 
@@ -973,8 +976,8 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         checkClientOrGroupActive(account);
         if (savingsAccountTransaction.isPostInterestCalculationRequired()
                 && account.isBeforeLastPostingPeriod(savingsAccountTransaction.getTransactionDate(), false)) {
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                    postInterestOnDate, false, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, false, postReversals);
         } else {
             account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
                     financialYearBeginningMonth, postInterestOnDate, false, postReversals);
@@ -1090,8 +1093,8 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         boolean postReversals = false;
         if (account.isBeforeLastPostingPeriod(transactionDate, false)
                 || account.isBeforeLastPostingPeriod(savingsAccountTransaction.getTransactionDate(), false)) {
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                    postInterestOnDate, false, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, false, postReversals);
         } else {
             account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
                     financialYearBeginningMonth, postInterestOnDate, false, postReversals);
@@ -1519,8 +1522,9 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         boolean postReversals = false;
         if (account.isBeforeLastPostingPeriod(savingsAccountCharge.getDueDate(), backdatedTxnsAllowedTill)) {
             final LocalDate today = DateUtils.getBusinessLocalDate();
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                    postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill,
+                    postReversals);
         } else {
             final LocalDate today = DateUtils.getBusinessLocalDate();
             account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
@@ -1655,15 +1659,6 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         }
     }
 
-    @SuppressWarnings("unused")
-    public SavingsAccountData fallbackPostInterest(SavingsAccountData savingsAccountData, boolean postInterestAs, LocalDate transactionDate,
-            boolean backdatedTxnsAllowedTill, Throwable t) {
-        // NOTE: allow caller to catch the exceptions
-        // NOTE: wrap throwable only if really necessary
-        throw ErrorHandler.getMappable(t, null, null, "savings.postinterest");
-    }
-
-    @Transactional
     private SavingsAccountTransaction payCharge(final SavingsAccountCharge savingsAccountCharge, final LocalDate transactionDate,
             final BigDecimal amountPaid, final DateTimeFormatter formatter, final boolean backdatedTxnsAllowedTill) {
         final boolean isSavingsInterestPostingAtCurrentPeriodEnd = this.configurationDomainService
@@ -1691,8 +1686,9 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         boolean postReversals = false;
         if (account.isBeforeLastPostingPeriod(transactionDate, backdatedTxnsAllowedTill)) {
             final LocalDate today = DateUtils.getBusinessLocalDate();
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                    postInterestOnDate, isInterestTransfer, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, isInterestTransfer,
+                    postReversals);
         } else {
             final LocalDate today = DateUtils.getBusinessLocalDate();
             account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,

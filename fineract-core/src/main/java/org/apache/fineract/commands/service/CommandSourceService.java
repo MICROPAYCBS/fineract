@@ -119,13 +119,13 @@ public class CommandSourceService {
             CommandSource commandSource, AppUser user, boolean isApprovedByChecker,
             BiConsumer<CommandSource, CommandProcessingResult> resultUpdater) {
         final CommandProcessingResult result = handler.processCommand(command);
-        validateMakerChecker(commandSource, user, isApprovedByChecker, result);
+        validateMakerChecker(commandSource, user, isApprovedByChecker, result, command);
         resultUpdater.accept(commandSource, result);
         return new CommandExecutionResult(result, saveResult(commandSource));
     }
 
     private void validateMakerChecker(CommandSource commandSource, AppUser user, boolean isApprovedByChecker,
-            CommandProcessingResult result) {
+            CommandProcessingResult result, JsonCommand command) {
         String permission = commandSource.getPermissionCode();
         boolean isMakerChecker = configurationDomainService.isMakerCheckerEnabledForTask(permission);
         if (isMakerChecker || result.isRollbackTransaction()) {

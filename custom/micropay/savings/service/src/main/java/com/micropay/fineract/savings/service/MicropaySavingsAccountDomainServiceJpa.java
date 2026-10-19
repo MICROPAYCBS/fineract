@@ -57,6 +57,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRep
 import org.apache.fineract.portfolio.savings.domain.SavingsChannelLimitDirection;
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountPostInterestService;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitCommand;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitHold;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitService;
@@ -79,6 +80,7 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
     private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
     private final CashierTransactionDataValidator cashierTransactionDataValidator;
     private final SavingsChannelLimitService savingsChannelLimitService;
+    private final SavingsAccountPostInterestService savingsAccountPostInterestService;
 
     @Autowired
     public MicropaySavingsAccountDomainServiceJpa(final SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -90,7 +92,8 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
             final BusinessEventNotifierService businessEventNotifierService,
             final CrossBranchTransactionAccessService crossBranchTransactionAccessService,
             final CashierTransactionDataValidator cashierTransactionDataValidator,
-            final SavingsChannelLimitService savingsChannelLimitService) {
+            final SavingsChannelLimitService savingsChannelLimitService,
+            final SavingsAccountPostInterestService savingsAccountPostInterestService) {
         this.savingsAccountRepository = savingsAccountRepository;
         this.savingsAccountTransactionRepository = savingsAccountTransactionRepository;
         this.applicationCurrencyRepositoryWrapper = applicationCurrencyRepositoryWrapper;
@@ -102,6 +105,7 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
         this.crossBranchTransactionAccessService = crossBranchTransactionAccessService;
         this.cashierTransactionDataValidator = cashierTransactionDataValidator;
         this.savingsChannelLimitService = savingsChannelLimitService;
+        this.savingsAccountPostInterestService = savingsAccountPostInterestService;
     }
 
     @Transactional
@@ -171,8 +175,9 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
         final LocalDate today = DateUtils.getBusinessLocalDate();
 
         if (account.isBeforeLastPostingPeriod(transactionDate, backdatedTxnsAllowedTill)) {
-            account.postInterest(mc, today, transactionBooleanValues.isInterestTransfer(), isSavingsInterestPostingAtCurrentPeriodEnd,
-                    financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, transactionBooleanValues.isInterestTransfer(),
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill,
+                    postReversals);
         } else {
             account.calculateInterestUsing(mc, today, transactionBooleanValues.isInterestTransfer(),
                     isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill,
@@ -273,8 +278,9 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
         final LocalDate today = DateUtils.getBusinessLocalDate();
         boolean postReversals = this.configurationDomainService.isReversalTransactionAllowed();
         if (account.isBeforeLastPostingPeriod(transactionDate, backdatedTxnsAllowedTill)) {
-            account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                    postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
+            savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                    isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill,
+                    postReversals);
         } else {
             account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
                     financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
@@ -397,8 +403,9 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
             if (savingsAccountTransaction.isPostInterestCalculationRequired()
                     && account.isBeforeLastPostingPeriod(savingsAccountTransaction.getTransactionDate(), backdatedTxnsAllowedTill)) {
 
-                account.postInterest(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth,
-                        postInterestOnDate, backdatedTxnsAllowedTill, postReversals);
+                savingsAccountPostInterestService.postInterest(account, mc, today, isInterestTransfer,
+                        isSavingsInterestPostingAtCurrentPeriodEnd, financialYearBeginningMonth, postInterestOnDate,
+                        backdatedTxnsAllowedTill, postReversals);
             } else {
                 account.calculateInterestUsing(mc, today, isInterestTransfer, isSavingsInterestPostingAtCurrentPeriodEnd,
                         financialYearBeginningMonth, postInterestOnDate, backdatedTxnsAllowedTill, postReversals);

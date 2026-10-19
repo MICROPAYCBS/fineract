@@ -83,8 +83,10 @@ import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrap
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransaction;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountTransactionRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountTransactionNotFoundException;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountActivationService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountInterestPostingService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountPostInterestService;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.junit.jupiter.api.AfterEach;
@@ -154,6 +156,10 @@ class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImplTest {
     private GSIMRepositoy gsimRepository;
     @Mock
     private SavingsAccountInterestPostingService savingsAccountInterestPostingService;
+    @Mock
+    private SavingsAccountPostInterestService savingsAccountPostInterestService;
+    @Mock
+    private SavingsAccountActivationService savingsAccountActivationService;
     @Mock
     private ExternalIdFactory externalIdFactory;
     @Mock
@@ -394,7 +400,8 @@ class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImplTest {
         Mockito.doAnswer(invocation -> {
             transactions.add(postingTransaction);
             return null;
-        }).when(account).postInterest(any(), any(), anyBoolean(), anyBoolean(), any(), any(), anyBoolean(), anyBoolean());
+        }).when(savingsAccountPostInterestService).postInterest(any(), any(), any(), anyBoolean(), anyBoolean(), any(), any(),
+                anyBoolean(), anyBoolean());
 
         service.postInterest(command);
 

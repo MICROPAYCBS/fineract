@@ -24,7 +24,7 @@ dependencies {
         exclude group: 'org.apache.fineract', module: 'fineract-client'
     }
     testImplementation files(project(':integration-tests').sourceSets.test.output)
-    testImplementation project(':integration-tests').configurations.testRuntimeClasspath
+    testImplementation project(':integration-tests').sourceSets.test.runtimeClasspath
     testImplementation ('io.rest-assured:rest-assured') {
         exclude group: 'commons-logging'
         exclude group: 'org.apache.sling'

@@ -20,7 +20,7 @@ param(
     [string] $To
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 $pairs = @(
     @{ Twin = 'JournalEntryWritePlatformServiceJpaRepositoryImpl'; FromPath = 'fineract-provider/src/main/java/org/apache/fineract/accounting/journalentry/service/JournalEntryWritePlatformServiceJpaRepositoryImpl.java'; ToPath = 'fineract-provider/src/main/java/org/apache/fineract/accounting/journalentry/service/JournalEntryWritePlatformServiceImpl.java' }
@@ -89,8 +89,17 @@ foreach ($pair in $pairs) {
         Write-Output "$($pair.Twin) : NOT FOUND at $From"
         continue
     }
-    $fromExists = git cat-file -e "${From}:${fromPath}" 2>$null; $fromOk = $LASTEXITCODE -eq 0
-    $toExists = git cat-file -e "${To}:${toPath}" 2>$null; $toOk = $LASTEXITCODE -eq 0
+    git cat-file -e "${From}:${fromPath}" 2>$null
+    $fromOk = $LASTEXITCODE -eq 0
+    git cat-file -e "${To}:${toPath}" 2>$null
+    $toOk = $LASTEXITCODE -eq 0
+    if (-not $toOk -and $fromPath -and $fromPath -ne $toPath) {
+        git cat-file -e "${To}:${fromPath}" 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            $toPath = $fromPath
+            $toOk = $true
+        }
+    }
     if (-not $fromOk -and -not $toOk) {
         Write-Output "$($pair.Twin) : missing on both sides"
         continue

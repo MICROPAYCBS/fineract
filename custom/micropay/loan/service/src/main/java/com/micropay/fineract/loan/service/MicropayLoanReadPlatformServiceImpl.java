@@ -1081,7 +1081,7 @@ public class MicropayLoanReadPlatformServiceImpl implements LoanReadPlatformServ
                     approvedByFirstname, approvedByLastname, expectedDisbursementDate, actualDisbursementDate, disbursedByUsername,
                     disbursedByFirstname, disbursedByLastname, closedOnDate, closedByUsername, closedByFirstname, closedByLastname,
                     actualMaturityDate, expectedMaturityDate, writtenOffOnDate, closedByUsername, closedByFirstname, closedByLastname,
-                    chargedOffOnDate, chargedOffByUsername, chargedOffByFirstname, chargedOffByLastname, null);
+                    chargedOffOnDate, chargedOffByUsername, chargedOffByFirstname, chargedOffByLastname);
 
             final BigDecimal principal = rs.getBigDecimal("principal");
             final BigDecimal approvedPrincipal = rs.getBigDecimal("approvedPrincipal");

@@ -5,33 +5,34 @@ directories** after the Category A moves and Category B replacements. These file
 merge-conflict surface when pulling `upstream/develop`; everything else lives under
 `custom/micropay/` and merges cleanly.
 
-Baseline: merge-base with `origin/develop` = `0655191138f1dca52e63882a34c7671d0b40887c`.
+Baseline: Apache Fineract 1.15.0 = `f188505b8b` (merged on `merge/upstream`). Prior
+merge-base with `origin/develop` was `0655191138f1dca52e63882a34c7671d0b40887c`.
 
 Regenerate the raw numbers at any time (PowerShell, from the repo root):
 
 ```powershell
-$mb = '0655191138f1dca52e63882a34c7671d0b40887c'
+$mb = 'f188505b8b'
 git diff $mb --name-status -M | Where-Object { $_ -notmatch "`tcustom/" }   # A/M/D per file
 git diff $mb --numstat     | Where-Object { $_ -notmatch "`tcustom/" }      # +/- per file
 ```
 
 ## Headline numbers
 
-| | Before (plan, Oct 2026) | Now |
+| | Before (plan, Oct 2026) | After 1.15.0 merge |
 | --- | ---: | ---: |
-| Upstream files modified | 369 | 311 |
-| Fork-added files under upstream dirs | 841 | 388 (of which 38 are `docs/**` and 3 `scripts/**`) |
+| Upstream files modified | 369 | 288 |
+| Fork-added files under upstream dirs | 841 | 385 (of which 39 are `docs/**` and 3 `scripts/**`) |
 | Liquibase changelogs under `fineract-provider` | 220 | 0 (all in `custom/micropay/platform/db`, `workflow/starter`) |
 | `CommandWrapperBuilder` additions | +63 methods | +41 methods (callers still in upstream API resources, see below) |
-| `GlobalConfigurationConstants` / `ConfigurationDomainService` additions | +17 keys / +14 methods | +8 keys / +8 methods (callers in upstream validators/generators) |
+| `GlobalConfigurationConstants` / `ConfigurationDomainService` additions | +17 keys / +14 methods | 0 (Micropay keys live in `MicropayGlobalConfigurationConstants` / `MicropayConfigurationService`) |
 | Service impls modified in place | 75 | 22 carry a one-line seam annotation; behaviour changes left in place are the bug fixes in §4 |
 
-Modified files by module: `fineract-provider` 143, `fineract-core` 53, `fineract-savings` 21,
-`fineract-loan` 19, `fineract-security` 17, `fineract-accounting` 12, `integration-tests` 11,
-`fineract-branch` 7, `fineract-charge` 6, `fineract-working-capital-loan` 4, `fineract-document` 4,
-`fineract-report` 3, `fineract-progressive-loan` 2, one each in `fineract-war`, `fineract-investor`,
-`fineract-loan-origination`, `fineract-avro-schemas`, `buildSrc`, `config`, `kubernetes`,
-`README.md`, `.gitignore`.
+Modified files by module: `fineract-provider` 331 (includes fork-added files under that tree),
+`fineract-core` 117, `fineract-savings` 59, `fineract-security` 35, `fineract-loan` 20,
+`fineract-branch` 18, `fineract-charge` 18, `fineract-accounting` 10, `fineract-document` 5,
+`integration-tests` 3, `fineract-report` 3, `fineract-working-capital-loan` 2, one each in
+`fineract-war`, `fineract-progressive-loan`, `kubernetes`, `.gitignore`, `.gitattributes`,
+`.cursor`.
 
 ## 1. Seams added to upstream (small, upstream-PR candidates)
 
@@ -104,6 +105,8 @@ email/address, `AddressData.instance(...)` 23-arg, `ClientData.instance(...)` 31
   `NoOpClientIdentifierValidationService` (used by `client/service`
   `MicropayClientIdentifierValidationServiceImpl`). Injected into `ClientDataValidator`.
 - `CommandSourceService` (+5) maker-checker hook, `CommandStrategyProvider` (+2) batch strategy.
+  After 1.15.0, `CommandSourceService` threads `JsonCommand` into `validateMakerChecker` so the
+  hook still receives the command extracted from `processCommandAndSaveResult`.
 
 ### 1.5 Interface injection in API resources
 
@@ -127,9 +130,14 @@ email/address, `AddressData.instance(...)` 23-arg, `ClientData.instance(...)` 31
 Re-sync procedure after an upstream merge: run
 `.\custom\micropay\tools\Show-TwinDrift.ps1 -From <prev-step> -To <step>`
 then `git diff <old-upstream>:<upstream path> <new-upstream>:<upstream path>`
-and apply the hunks to the `Micropay…` twin. The JournalEntry write impl was renamed
-upstream to `JournalEntryWritePlatformServiceImpl`; the script diffs the old path at
-merge-base against the new path.
+and apply the hunks to the `Micropay…` twin. Compare the **step commits**
+(`f188505b8b`, not `HEAD`) so fork seams such as `@ConditionalOnMissingBean` are not
+counted as drift. Step 1 (1.15.0) re-synced `ClientReadPlatformServiceImpl`,
+`ClientFamilyMembersReadPlatformServiceImpl`, `LoanReadPlatformServiceImpl`,
+`OfficeReadPlatformServiceImpl`, `SavingsAccountWritePlatformServiceJpaRepositoryImpl`,
+`SavingsAccountDomainServiceJpa`, `AuditReadPlatformServiceImpl`. The JournalEntry write
+impl was renamed upstream to `JournalEntryWritePlatformServiceImpl` after 1.15.0; the
+script diffs the old path at merge-base against the new path.
 
 ## 3. Residual in-place changes (true Category C)
 
@@ -141,7 +149,10 @@ Grouped by why they cannot move. Counts are files (modified / fork-added under u
 - `Loan` (deliberate NPA, structured account number), `LoanProduct`, `Guarantor` (national id), `LoanTransaction`/`LoanAccountData`.
 - `SavingsAccount`, `SavingsAccountCharge`, `SavingsAccountTransaction` (GL account), `SavingsProduct` (validity dates, channel links, charge override), `SavingsAccountTransactionType` (GL posting), `AccountTransferDetails`.
 - `Charge` (+ `ChargeTier` entity), `JournalEntry` (line narration, department, transaction comment), `PaymentType` (+ `PaymentTypeHold`), `AppUser` (TOTP), `TFAccessToken` (sessions, ip/user-agent), `AccountNumberFormat` (+ `AccountNumberSequence`), `ScheduledJobDetail` (description), `Office` (branch profile), `Group`, `ShareAccount`/`ShareAccountTransaction`, `FineractEntityType`/`FineractEntityAccessType` (departments), `SelfServiceUserClientMapping`.
-- `persistence.xml` in 11 modules (+1 `<class>` line each: `ChargeTier`, `AccountNumberSequence`, …).
+- `persistence.xml` is generated by `static-weaving.gradle` from 1.15.0 (FINERACT-2421). Checked-in
+  module files (11 upstream + 4 custom) were deleted. Generated
+  `build/tmp/compileJava/static-weaving/META-INF/persistence.xml` lists `ChargeTier`,
+  `AccountNumberSequence`, and the workflow / glbalance / refdata / sequence entities.
 - Alternative for the `Client` cluster (documented in the plan, not done): a Micropay-owned 1:1 satellite entity with its own read service. This is a redesign.
 
 ### 3.2 Response DTOs and API resources of existing endpoints (cannot move: frontend contract)
@@ -193,9 +204,8 @@ collection sheet, financial activity account), bulk-import handlers (+4/-3 total
 - `README.md` (+14, "Create an additional tenant" section; it still names `:fineract-provider:createNewTenant`, the task now lives at `:custom:micropay:app:boot:createNewTenant`), `.gitignore` (+3), `.gitattributes` (new).
 - `fineract-provider/src/main/resources/db/changelog/tenant/parts/0217_force_withdrawal_configs.xml`: one `validCheckSum` line, needed by databases migrated before the custom changelog existed. Keep.
 - `docs/**` (38 files) and `scripts/**` (3): non-conflicting, could move under `custom/micropay/docs` at any time.
-- `integration-tests` (14 modified, 6 added): fork tests against the extended endpoints, plus the
-  shared-helper adjustments listed in §6.3 (`ClientHelper`, `BatchHelper`, `FeignClientHelper`,
-  `CurrencyHelper`, `JournalEntryHelper`, `GlobalConfigurationHelper`, `MicropayConfigurationNames`).
+- `integration-tests` (3 modified): upstream helpers restored to merge-base. The nine fork-owned
+  HTTP tests and their helpers live in `:custom:micropay:test:integration` (see §6.3).
 
 ## 4. Genuine bug fixes kept in place (upstream PR candidates)
 
@@ -242,9 +252,12 @@ annotations in §1.1, `ApprovalWorkflowHook`, `ServerExceptionReporter`.
 
 ## 6. Verification
 
-Run after every upstream merge, module move or twin change. Everything below was last run on
-**2026-10-17** against the boot jar (`:custom:micropay:app:boot:bootJar`, PostgreSQL tenant
-`default`, `-Dspring.profiles.active=test`), with the results recorded here.
+Run after every upstream merge, module move or twin change. Compile verification for the 1.15.0
+step was last run on **2026-10-19**: `:custom:micropay:app:boot:bootJar` succeeded
+(`micropay-fineract-boot-1.16.0-SNAPSHOT.jar`). Runtime smoke / fork ITs / web-app e2e still
+need a live PostgreSQL tenant after the remaining merge steps. The previous full runtime pass
+was **2026-10-17** against the boot jar (PostgreSQL tenant `default`,
+`-Dspring.profiles.active=test`).
 
 ### 6.1 Start the right server
 

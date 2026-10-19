@@ -145,7 +145,8 @@ public class CommandSourceServiceTest {
         when(maker.isCheckerSuperUser()).thenReturn(false);
 
         assertThrows(RollbackTransactionNotApprovedException.class,
-                () -> underTest.processCommand(handler, jsonCommand, commandSource, maker, false));
+                () -> underTest.processCommandAndSaveResult(handler, jsonCommand, commandSource, maker, false, (cs, result) -> {
+                }));
 
         final ArgumentCaptor<CommandProcessingResult> resultCaptor = ArgumentCaptor.forClass(CommandProcessingResult.class);
         verify(commandSource).updateForAudit(resultCaptor.capture());

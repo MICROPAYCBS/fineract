@@ -32,6 +32,8 @@ public interface ConfigurationDomainService {
 
     boolean isSameMakerCheckerEnabled();
 
+    boolean isAmazonS3Enabled();
+
     boolean isRescheduleFutureRepaymentsEnabled();
 
     boolean isRescheduleRepaymentsOnHolidaysEnabled();
@@ -53,6 +55,8 @@ public interface ConfigurationDomainService {
     Long retrievePasswordLiveTime();
 
     Long retrieveGraceOnPenaltyPostingPeriod();
+
+    Long retrieveOpeningBalancesContraAccount();
 
     boolean isSavingsInterestPostingAtCurrentPeriodEnd();
 
@@ -85,6 +89,10 @@ public interface ConfigurationDomainService {
     Long retreivePeriodInNumberOfDaysForSkipMeetingDate();
 
     boolean isChangeEmiIfRepaymentDateSameAsDisbursementDateEnabled();
+
+    boolean isDailyTPTLimitEnabled();
+
+    Long getDailyTPTLimit();
 
     void removeGlobalConfigurationPropertyDataFromCache(String propertyName);
 

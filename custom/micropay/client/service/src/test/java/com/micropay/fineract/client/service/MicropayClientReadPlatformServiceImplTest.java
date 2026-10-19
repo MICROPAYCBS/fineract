@@ -40,6 +40,7 @@ import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
+import org.apache.fineract.infrastructure.security.service.InputValidator;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.portfolio.client.data.ClientData;
@@ -81,6 +82,8 @@ class MicropayClientReadPlatformServiceImplTest {
     private ClientRepositoryWrapper clientRepositoryWrapper;
     @Mock
     private ClientMapper clientMapper;
+    @Mock
+    private InputValidator inputValidator;
     @Mock
     private CrossBranchClientAccessReadService crossBranchClientAccessReadService;
     @Mock
