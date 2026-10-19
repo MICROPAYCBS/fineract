@@ -68,8 +68,10 @@ Module tests: `./gradlew :custom:micropay:<category>:<module>:test`.
 `:fineract-provider:bootRun` and `:fineract-provider:devRun` fail fast on purpose (`custom/micropay/app/boot/dev-run.gradle`):
 their classpath contains none of the Micropay modules, so every moved endpoint answers 404 and the
 Micropay service replacements are silently absent. Pass `-PupstreamOnly` to run upstream-only Fineract
-deliberately. A bare `./gradlew devRun` / `./gradlew bootRun` from the repo root matches the task in both
-projects; in that case the provider task is skipped (logged) and the Micropay one runs.
+deliberately. A bare `./gradlew devRun` / `./gradlew bootRun` / `./gradlew bootJar` from the repo root matches
+the task in both projects; in that case the provider task is skipped (logged) and the Micropay one runs.
+The jar to start is `app/boot/build/libs/micropay-fineract-boot-<version>.jar`, not
+`fineract-provider/build/libs/fineract-provider.jar`.
 
 On startup the Micropay distribution logs a `MicropayReplacementReport` line per domain confirming that
 each replaced upstream service is served by its `Micropay…` twin; an upstream impl still being active

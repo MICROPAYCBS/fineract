@@ -143,7 +143,10 @@ Build a modern, cloud native, fully self contained JAR file:
 ./gradlew clean bootJar
 ```
 
-The JAR will be created in the `fineract-provider/build/libs` directory.
+The runnable JAR is `custom/micropay/app/boot/build/libs/micropay-fineract-boot-<version>.jar`.
+It is upstream Fineract plus every `custom/micropay/**` module. `fineract-provider/build/libs/fineract-provider.jar`
+does not contain those modules: service replacements, including the periodic-accrual prepay quote, are absent there.
+An unqualified `bootJar` skips that upstream jar. `:fineract-provider:bootJar` still builds it and warns; pass `-PupstreamOnly` to silence the warning.
 If you intend to use MariaDB or MySQL (warning: [both are deprecated](https://cwiki.apache.org/confluence/display/FINERACT/FSIP-9%3A+Standardize+on+PostgreSQL)), you must download the appropriate JDBC driver yourself and override default database settings. When you start the JAR, specify the directory containing the JDBC driver.
 
 MariaDB example:
@@ -154,7 +157,7 @@ MariaDB example:
 export FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME=org.mariadb.jdbc.Driver
 export FINERACT_DEFAULT_TENANTDB_PORT=3306
 export FINERACT_HIKARI_JDBC_URL=jdbc:mariadb://localhost:3306/fineract_tenants
-java -Dloader.path=. -jar fineract-provider/build/libs/fineract-provider.jar
+java -Dloader.path=. -jar custom/micropay/app/boot/build/libs/micropay-fineract-boot-0.1.0-SNAPSHOT.jar
 ```
 
 This does not require an external Tomcat.

@@ -81,16 +81,42 @@ project(':fineract-provider').tasks.matching { it.name in ['bootRun', 'devRun'] 
     }
 }
 
-// An unqualified `gradlew devRun` / `gradlew bootRun` from the repo root matches the task in BOTH projects and
-// Gradle schedules the provider one first. In that case the caller clearly wants the Micropay server: skip the
+// An unqualified `gradlew devRun` / `gradlew bootRun` / `gradlew bootJar` from the repo root matches the task in
+// BOTH projects and Gradle schedules the provider one first. The caller wants the Micropay distribution: skip the
 // provider task instead of failing, and let :custom:micropay:app:boot:<task> run.
+//
+// `gradlew build` and `:fineract-provider:jib*` also schedule the provider bootJar, but not as the requested task.
+// Those keep building the upstream jar so CI images and the full build are unchanged.
+def taskLeaf = { String name -> name.contains(':') ? name.substring(name.lastIndexOf(':') + 1) : name }
+def requestedTaskLeaves = gradle.startParameter.taskNames.collect { taskLeaf(it) }
 gradle.taskGraph.whenReady { graph ->
-    ['bootRun', 'devRun'].each { name ->
+    ['bootRun', 'devRun', 'bootJar'].each { name ->
+        if (!requestedTaskLeaves.contains(name) || upstreamOnly) {
+            return
+        }
         def bootTask = graph.allTasks.find { it.name == name && it.project.path == project.path }
         def providerTask = graph.allTasks.find { it.name == name && it.project.path == ':fineract-provider' }
-        if (bootTask != null && providerTask != null && !upstreamOnly) {
+        if (bootTask != null && providerTask != null) {
             providerTask.enabled = false
-            logger.lifecycle("{} skipped: {} runs the Micropay distribution instead", providerTask.path, bootTask.path)
+            logger.lifecycle("{} skipped: {} is the Micropay distribution (custom/micropay/** included). " +
+                    "The upstream jar has none of those modules, so replacements such as the prepay quote are absent.",
+                    providerTask.path, bootTask.path)
         }
+    }
+}
+
+project(':fineract-provider').tasks.named('bootJar').configure { providerBootJar ->
+    providerBootJar.doLast {
+        // jib and `gradlew build` depend on this task without the caller asking for a runnable jar.
+        def explicitlyRequested = gradle.startParameter.taskNames.any { String name ->
+            taskLeaf(name) == 'bootJar' && name.contains('fineract-provider')
+        }
+        if (upstreamOnly || !explicitlyRequested) {
+            return
+        }
+        logger.warn("{} is upstream-only. It does not contain custom/micropay/**. " +
+                "Run java -jar custom/micropay/app/boot/build/libs/micropay-fineract-boot-{}.jar " +
+                "(built by :custom:micropay:app:boot:bootJar). Pass -PupstreamOnly if this jar is intentional.",
+                providerBootJar.path, project.version)
     }
 }

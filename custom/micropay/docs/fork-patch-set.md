@@ -233,9 +233,11 @@ Run after every upstream merge, module move or twin change. Everything below was
 
 `:fineract-provider:bootRun`/`devRun` start upstream Fineract **without** `custom/micropay/**` and
 are now guarded (`custom/micropay/app/boot/dev-run.gradle`): they fail unless `-PupstreamOnly` is
-passed. A bare `gradlew devRun`/`bootRun` from the root matches both projects' tasks; the provider one
-is then skipped and the Micropay one runs. Use `:custom:micropay:app:boot:devRun` (or `bootRun`, or
-`java -jar` of the boot jar). On
+passed. A bare `gradlew devRun`/`bootRun`/`bootJar` from the root matches both projects' tasks; the
+provider one is then skipped and the Micropay one runs. `:fineract-provider:bootJar` still builds when
+it is only a dependency (`build`, `jib`), and warns that the resulting jar has no Micropay modules.
+Use `:custom:micropay:app:boot:devRun` (or `bootRun`, or `java -jar` of
+`custom/micropay/app/boot/build/libs/micropay-fineract-boot-<version>.jar`). On
 start-up `MicropayReplacementReport` (`platform/starter`) logs every upstream interface and the
 Micropay twin that implements it, and fails the context (`micropay.replacements.fail-on-missing`,
 default `true`) if an upstream implementation is still the active bean. The 404 on

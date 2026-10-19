@@ -57,6 +57,9 @@ bootJar {
         attributes('Main-Class': 'org.springframework.boot.loader.launch.PropertiesLauncher', 'Implementation-Title': 'Micropay Fineract', 'Implementation-Version': project.version)
     }
     archiveClassifier = ''
+    doLast {
+        logger.lifecycle("Micropay JAR: {}", archiveFile.get().asFile)
+    }
 }
 
 tasks.register('quickBootJar') {
