@@ -455,21 +455,6 @@ public class WorkingCapitalChargeStepDef extends AbstractStepDef {
         log.debug("WC penalty charge adjustment response: {}", response);
     }
 
-    @When("Admin makes a charge adjustment for the last added charge with {double} amount and transaction date {string} on working capital loan")
-    public void makeWcChargeAdjustmentWithDate(final Double amount, final String transactionDate) {
-        final Long loanId = getLoanId();
-        final Long loanChargeId = getLastAddedLoanChargeId();
-        final LocalDate parsedDate = LocalDate.parse(transactionDate, FORMATTER);
-        final PostWorkingCapitalLoansLoanIdChargesChargeIdRequest request = new PostWorkingCapitalLoansLoanIdChargesChargeIdRequest()
-                .amount(BigDecimal.valueOf(amount)).transactionDate(parsedDate.format(FORMATTER_API)).dateFormat(DATE_FORMAT_API)
-                .locale("en");
-        final PostWorkingCapitalLoansLoanIdChargesChargeIdResponse response = ok(
-                () -> fineractClient.workingCapitalLoanCharges().adjustLoanCharge(loanId, loanChargeId, request, "adjustment"));
-        Assertions.assertNotNull(response);
-        testContext().set(TestContextKey.WORKING_CAPITAL_CHARGE_ADJUSTMENT_RESPONSE, response);
-        log.debug("WC charge adjustment with date response: {}", response);
-    }
-
     @Then("Making a charge adjustment with {double} amount on working capital loan results an error with the following data:")
     public void makeWcChargeAdjustmentFails(final Double amount, final DataTable table) {
         final Long loanId = getLoanId();
@@ -624,6 +609,37 @@ public class WorkingCapitalChargeStepDef extends AbstractStepDef {
 
     private void assertErrorMessage(final CallFailedRuntimeException exception, final String expectedMessage) {
         assertThat(exception.getMessage()).as("Error message should contain: " + expectedMessage).contains(expectedMessage);
+    }
+
+    @Then("Initiating adding {string} specified due date charge to working capital loan with {string} due date and {double} transaction amount results an error with the following data:")
+    public void addWorkingCapitalChargeResultsAnError(final String chargeType, final String dueDate, final Double amount,
+            final DataTable table) {
+        final Long loanId = getLoanId();
+        final ChargeProductType chargeProductType = ChargeProductType.valueOf(chargeType);
+        final Long chargeTypeId = chargeProductResolver.resolve(chargeProductType);
+
+        final LocalDate dueDateParsed = LocalDate.parse(dueDate, FORMATTER);
+        final String dueDateFormatted = dueDateParsed.format(FORMATTER_API);
+
+        final PostLoansLoanIdChargesRequest request = new PostLoansLoanIdChargesRequest() //
+                .chargeId(chargeTypeId) //
+                .amount(amount) //
+                .dueDate(dueDateFormatted) //
+                .dateFormat(DATE_FORMAT_API) //
+                .locale("en");
+
+        final CallFailedRuntimeException exception = fail(
+                () -> fineractClient.workingCapitalLoanCharges().createLoanCharge(loanId, request));
+
+        final List<List<String>> data = table.asLists();
+        final String expectedHttpCode = data.get(1).getFirst();
+        final String expectedErrorMessage = data.get(1).get(1);
+
+        assertThat(exception.getStatus()).as("HTTP status code should be " + expectedHttpCode)
+                .isEqualTo(Integer.parseInt(expectedHttpCode));
+        assertThat(exception.getMessage()).as("Should contain error message").contains(expectedErrorMessage);
+
+        log.info("Verified adding charge {} after charge-off failed for loan {}", chargeType, loanId);
     }
 
     private void assertSingleOption(final List<EnumOptionData> options, final String optionName, final Long expectedId) {

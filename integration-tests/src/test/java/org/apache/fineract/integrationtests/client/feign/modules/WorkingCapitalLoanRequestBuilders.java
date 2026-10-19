@@ -81,8 +81,13 @@ public final class WorkingCapitalLoanRequestBuilders {
         return new PostWorkingCapitalLoansLoanIdRequest().locale(LOCALE).dateFormat(DATE_FORMAT);
     }
 
-    public static PutWorkingCapitalLoansLoanIdRateRequest updateRate(BigDecimal newRate) {
-        return new PutWorkingCapitalLoansLoanIdRateRequest().periodPaymentRate(newRate).locale(LOCALE);
+    /**
+     * The effective date is required, as it is for every other dated action here: a caller running under a simulated
+     * business date must state it, since the system date the tests otherwise default to is unrelated to it.
+     */
+    public static PutWorkingCapitalLoansLoanIdRateRequest updateRate(BigDecimal newRate, String effectiveDate) {
+        return new PutWorkingCapitalLoansLoanIdRateRequest().periodPaymentRate(newRate).effectiveDate(effectiveDate).locale(LOCALE)
+                .dateFormat(DATE_FORMAT);
     }
 
     public static PostWorkingCapitalLoansLoanIdNearBreachActionsRequest createNearBreachRescheduleAction(BigDecimal threshold,
@@ -94,6 +99,11 @@ public final class WorkingCapitalLoanRequestBuilders {
     }
 
     public static PostWorkingCapitalLoanTransactionsRequest repayment(BigDecimal amount, String transactionDate) {
+        return new PostWorkingCapitalLoanTransactionsRequest().transactionAmount(amount).transactionDate(transactionDate).locale(LOCALE)
+                .dateFormat(DATE_FORMAT);
+    }
+
+    public static PostWorkingCapitalLoanTransactionsRequest goodwillCredit(BigDecimal amount, String transactionDate) {
         return new PostWorkingCapitalLoanTransactionsRequest().transactionAmount(amount).transactionDate(transactionDate).locale(LOCALE)
                 .dateFormat(DATE_FORMAT);
     }
@@ -114,8 +124,15 @@ public final class WorkingCapitalLoanRequestBuilders {
                 .dateFormat(DATE_FORMAT);
     }
 
-    public static PostWorkingCapitalLoansLoanIdChargesChargeIdRequest chargeAdjustment(BigDecimal amount, String transactionDate) {
-        return new PostWorkingCapitalLoansLoanIdChargesChargeIdRequest().amount(amount).transactionDate(transactionDate).locale(LOCALE)
-                .dateFormat(DATE_FORMAT);
+    public static PostWorkingCapitalLoansLoanIdChargesChargeIdRequest chargeAdjustment(BigDecimal amount) {
+        return new PostWorkingCapitalLoansLoanIdChargesChargeIdRequest().amount(amount).locale(LOCALE).dateFormat(DATE_FORMAT);
+    }
+
+    public static PostWorkingCapitalLoanTransactionsRequest creditBalanceRefund(BigDecimal amount, String transactionDate) {
+        return repayment(amount, transactionDate);
+    }
+
+    public static ExecuteWorkingCapitalLoanTransactionCommandRequest reversal() {
+        return new ExecuteWorkingCapitalLoanTransactionCommandRequest();
     }
 }

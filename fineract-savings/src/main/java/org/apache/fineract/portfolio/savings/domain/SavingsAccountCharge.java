@@ -276,11 +276,12 @@ public class SavingsAccountCharge extends AbstractAuditableWithUTCDateTimeCustom
                 this.amountWrittenOff = null;
             break;
             case FLAT:
+                Money money = Money.of(this.savingsAccount().getCurrency(), effectiveChargeAmount);
                 this.percentage = null;
-                this.amount = effectiveChargeAmount;
+                this.amount = money.getAmount();
                 this.amountPercentageAppliedTo = null;
                 this.amountPaid = null;
-                this.amountOutstanding = effectiveChargeAmount;
+                this.amountOutstanding = money.getAmount();
                 this.amountWaived = null;
                 this.amountWrittenOff = null;
             break;

@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.client.command;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
@@ -36,13 +37,22 @@ public class ClientIdentifierCommand {
     private final String documentKey;
     private final String description;
     private final String status;
+    private final LocalDate issuanceDate;
+    private final LocalDate expiryDate;
+    private final boolean issuanceDateParameterProvided;
+    private final boolean expiryDateParameterProvided;
 
-    public ClientIdentifierCommand(final Long documentTypeId, final String documentKey, final String statusString,
-            final String description) {
+    public ClientIdentifierCommand(final Long documentTypeId, final String documentKey, final String statusString, final String description,
+            final LocalDate issuanceDate, final LocalDate expiryDate, final boolean issuanceDateParameterProvided,
+            final boolean expiryDateParameterProvided) {
         this.documentTypeId = documentTypeId;
         this.documentKey = documentKey;
         this.status = statusString;
         this.description = description;
+        this.issuanceDate = issuanceDate;
+        this.expiryDate = expiryDate;
+        this.issuanceDateParameterProvided = issuanceDateParameterProvided;
+        this.expiryDateParameterProvided = expiryDateParameterProvided;
     }
 
     public Long getDocumentTypeId() {
@@ -59,6 +69,14 @@ public class ClientIdentifierCommand {
 
     public String getStatus() {
         return this.status;
+    }
+
+    public LocalDate getIssuanceDate() {
+        return this.issuanceDate;
+    }
+
+    public LocalDate getExpiryDate() {
+        return this.expiryDate;
     }
 
     public void validateForCreate() {
@@ -93,7 +111,8 @@ public class ClientIdentifierCommand {
         // baseDataValidator.reset().parameter("documentTypeId").value(command.getDocumentTypeId()).notNull().integerGreaterThanZero();
         // }
 
-        baseDataValidator.reset().anyOfNotNull(this.documentTypeId, this.documentKey, this.status);
+        baseDataValidator.reset().anyOfNotNull(this.documentTypeId, this.documentKey, this.status, this.issuanceDate, this.expiryDate,
+                this.issuanceDateParameterProvided ? Boolean.TRUE : null, this.expiryDateParameterProvided ? Boolean.TRUE : null);
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",

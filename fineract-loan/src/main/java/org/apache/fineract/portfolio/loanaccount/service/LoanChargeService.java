@@ -39,6 +39,7 @@ import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargePaymentMode;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.charge.exception.LoanChargeCannotBeAddedException;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
 import org.apache.fineract.portfolio.charge.service.ChargeTierCalculator;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
@@ -233,6 +234,8 @@ public class LoanChargeService {
         update(loanCharge, chargeAmt, loanCharge.getDueLocalDate(), amount, loan.fetchNumberOfInstallmentsAfterExceptions(),
                 totalChargeAmt);
 
+        validateChargeAmountNotZero(loanCharge);
+
         // NOTE: must add new loan charge to set of loan charges before
         // reprocessing the repayment schedule.
         if (loan.getLoanCharges() == null) {
@@ -385,6 +388,7 @@ public class LoanChargeService {
                 case PERCENT_OF_AMOUNT_AND_INTEREST:
                 case PERCENT_OF_INTEREST:
                 case PERCENT_OF_DISBURSEMENT_AMOUNT:
+
                     loanCharge.setPercentage(newValue);
                     loanCharge.setAmountPercentageAppliedTo(amount);
                     loanChargeAmount = BigDecimal.ZERO;
@@ -832,13 +836,18 @@ public class LoanChargeService {
                 case INVALID:
                 break;
                 case FLAT:
+                    BigDecimal roundedAmount;
                     if (loanCharge.isInstalmentFee()) {
                         if (numberOfRepayments == null) {
                             numberOfRepayments = loanCharge.getLoan().fetchNumberOfInstallmentsAfterExceptions();
                         }
-                        loanCharge.setAmount(amount.multiply(BigDecimal.valueOf(numberOfRepayments)));
+                        roundedAmount = Money
+                                .of(loanCharge.getLoan().getCurrency(), amount.multiply(BigDecimal.valueOf(numberOfRepayments)))
+                                .getAmount();
+                        loanCharge.setAmount(roundedAmount);
                     } else {
-                        loanCharge.setAmount(amount);
+                        roundedAmount = Money.of(loanCharge.getLoan().getCurrency(), amount).getAmount();
+                        loanCharge.setAmount(roundedAmount);
                     }
                 break;
                 case PERCENT_OF_AMOUNT:
@@ -1010,6 +1019,15 @@ public class LoanChargeService {
     private boolean doesLoanChargePaidByContainLoanCharge(Set<LoanChargePaidBy> loanChargePaidBys, LoanCharge loanCharge) {
         return loanChargePaidBys.stream() //
                 .anyMatch(loanChargePaidBy -> loanChargePaidBy.getLoanCharge().equals(loanCharge));
+    }
+
+    private void validateChargeAmountNotZero(final LoanCharge loanCharge) {
+        if (loanCharge.getAmount() != null && BigDecimal.ZERO.compareTo(loanCharge.getAmount()) == 0) {
+            final String defaultUserMessage = "This charge cannot be added because the calculated amount becomes zero after rounding.";
+
+            throw new LoanChargeCannotBeAddedException("loanCharge", "amount.rounded.to.zero", defaultUserMessage,
+                    loanCharge.getLoan().getId(), loanCharge.name());
+        }
     }
 
 }

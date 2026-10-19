@@ -77,6 +77,8 @@ public class AddressCommandFromApiJsonDeserializer {
         supportedParameters.add("street");
         supportedParameters.add("isActive");
         supportedParameters.add("isPrimary");
+        supportedParameters.add("townVillage");
+        supportedParameters.add("countyDistrict");
         supportedParameters.add(fromNewClient ? "addressTypeId" : "addressId");
 
         this.fromApiJsonHelper.checkForUnsupportedParameters(typeOfMap, json, supportedParameters);

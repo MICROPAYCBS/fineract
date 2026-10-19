@@ -43,6 +43,9 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
+import org.apache.fineract.organisation.monetary.data.CurrencyData;
+import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
+import org.apache.fineract.organisation.monetary.domain.ApplicationCurrencyRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.domain.Money;
 import org.apache.fineract.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
@@ -80,6 +83,7 @@ public class ClientChargeWritePlatformServiceImpl implements ClientChargeWritePl
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
     private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
+    private final ApplicationCurrencyRepositoryWrapper applicationCurrencyRepositoryWrapper;
 
     @Override
     public CommandProcessingResult addCharge(Long clientId, JsonCommand command) {
@@ -97,7 +101,10 @@ public class ClientChargeWritePlatformServiceImpl implements ClientChargeWritePl
                 throw new ChargeCannotBeAppliedToException("client", errorMessage, charge.getId());
             }
 
-            final ClientCharge clientCharge = ClientCharge.createNew(client, charge, command);
+            Money roundedAmount = calculateRoundedChargeAmount(charge, command);
+            validateChargeAmountNotZero(roundedAmount);
+            final LocalDate date = command.localDateValueOfParameterNamed(ClientApiConstants.dueAsOfDateParamName);
+            final ClientCharge clientCharge = ClientCharge.createNew(client, charge, roundedAmount.getAmount(), date);
             final DateTimeFormatter fmt = DateTimeFormatter.ofPattern(command.dateFormat());
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
             final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
@@ -430,6 +437,25 @@ public class ClientChargeWritePlatformServiceImpl implements ClientChargeWritePl
         log.error("Error occured.", dve);
         throw ErrorHandler.getMappable(dve, "error.msg.client.charges.unknown.data.integrity.issue",
                 "Unknown data integrity issue with resource: " + realCause.getMessage());
+    }
+
+    private Money calculateRoundedChargeAmount(final Charge charge, final JsonCommand command) {
+        BigDecimal amount = command.bigDecimalValueOfParameterNamed(ClientApiConstants.amountParamName);
+        amount = (amount == null) ? charge.getAmount() : amount;
+
+        ApplicationCurrency currency = this.applicationCurrencyRepositoryWrapper.findOneWithNotFoundDetection(charge.getCurrencyCode());
+
+        CurrencyData currencyData = currency.toData();
+        return Money.of(currencyData, amount);
+    }
+
+    private void validateChargeAmountNotZero(Money amount) {
+        if (amount.isZero()) {
+            List<ApiParameterError> errors = new ArrayList<>();
+            errors.add(ApiParameterError.parameterError("error.msg.client.charge.amount.rounded.to.zero",
+                    "This charge cannot be added because the calculated amount becomes zero after rounding.", "amount"));
+            throw new PlatformApiDataValidationException(errors);
+        }
     }
 
 }

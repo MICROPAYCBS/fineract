@@ -24,6 +24,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -55,6 +56,12 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
     @Column(name = "description", length = 1000)
     private String description;
 
+    @Column(name = "issuance_date")
+    private LocalDate issuanceDate;
+
+    @Column(name = "expiry_date")
+    private LocalDate expiryDate;
+
     @Column(name = "active")
     private Integer active;
 
@@ -62,7 +69,9 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         final String documentKey = command.stringValueOfParameterNamed("documentKey");
         final String description = command.stringValueOfParameterNamed("description");
         final String status = command.stringValueOfParameterNamed("status");
-        return new ClientIdentifier(client, documentType, documentKey, status, description);
+        final LocalDate issuanceDate = command.localDateValueOfParameterNamed("issuanceDate");
+        final LocalDate expiryDate = command.localDateValueOfParameterNamed("expiryDate");
+        return new ClientIdentifier(client, documentType, documentKey, status, description, issuanceDate, expiryDate);
     }
 
     public static ClientIdentifier create(final Client client, final CodeValue documentType, final String documentKey, final String status,
@@ -75,11 +84,13 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
     }
 
     private ClientIdentifier(final Client client, final CodeValue documentType, final String documentKey, final String statusName,
-            String description) {
+            final String description, final LocalDate issuanceDate, final LocalDate expiryDate) {
         this.client = client;
         this.documentType = documentType;
         this.documentKey = StringUtils.defaultIfEmpty(documentKey, null);
         this.description = StringUtils.defaultIfEmpty(description, null);
+        this.issuanceDate = issuanceDate;
+        this.expiryDate = expiryDate;
         // Standalone create turns a missing status into "" via stringValueOfParameterNamed; nested create passes null.
         if (StringUtils.isBlank(statusName)) {
             throw new IllegalStateException("Client identifier status must be validated before the entity is built");
@@ -129,6 +140,20 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
                 this.status = newStatus.getValue();
                 this.active = newStatus.isActive() ? newStatus.getValue() : null;
             }
+        }
+
+        final String issuanceDateParamName = "issuanceDate";
+        if (command.isChangeInLocalDateParameterNamed(issuanceDateParamName, this.issuanceDate)) {
+            final LocalDate newValue = command.localDateValueOfParameterNamed(issuanceDateParamName);
+            actualChanges.put(issuanceDateParamName, newValue);
+            this.issuanceDate = newValue;
+        }
+
+        final String expiryDateParamName = "expiryDate";
+        if (command.isChangeInLocalDateParameterNamed(expiryDateParamName, this.expiryDate)) {
+            final LocalDate newValue = command.localDateValueOfParameterNamed(expiryDateParamName);
+            actualChanges.put(expiryDateParamName, newValue);
+            this.expiryDate = newValue;
         }
 
         return actualChanges;

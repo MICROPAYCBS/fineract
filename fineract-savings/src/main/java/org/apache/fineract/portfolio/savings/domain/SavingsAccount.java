@@ -325,6 +325,8 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
     protected SavingsHelper savingsHelper;
     @Transient
     protected List<SavingsAccountTransaction> savingsAccountTransactions = new ArrayList<>();
+    @Transient
+    private List<SavingsAccountTransactionReplacement> transactionReplacements = new ArrayList<>();
 
     @Column(name = "deposit_type_enum", insertable = false, updatable = false)
     private Integer depositType;
@@ -579,7 +581,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
     public boolean createWithHoldTransaction(final BigDecimal amount, final LocalDate date, final boolean backdatedTxnsAllowedTill) {
         boolean isTaxAdded = false;
-        if (this.taxGroup != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+        if (this.taxGroup != null && amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
             Map<TaxComponent, BigDecimal> taxSplit = TaxUtils.splitTax(amount, date, this.taxGroup.getTaxGroupMappings(), amount.scale());
             BigDecimal totalTax = TaxUtils.totalTaxAmount(taxSplit);
             if (totalTax.compareTo(BigDecimal.ZERO) > 0) {
@@ -598,7 +600,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
     protected boolean updateWithHoldTransaction(final BigDecimal amount, final SavingsAccountTransaction withholdTransaction) {
         boolean isTaxAdded = false;
-        if (this.taxGroup != null && amount.compareTo(BigDecimal.ZERO) > 0) {
+        if (this.taxGroup != null && amount != null && amount.compareTo(BigDecimal.ZERO) > 0) {
             Map<TaxComponent, BigDecimal> taxSplit = TaxUtils.splitTax(amount, withholdTransaction.getTransactionDate(),
                     this.taxGroup.getTaxGroupMappings(), amount.scale());
             BigDecimal totalTax = TaxUtils.totalTaxAmount(taxSplit);
@@ -938,6 +940,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
                     if (postReversals) {
                         reversal = SavingsAccountTransaction.reversal(transaction);
                     }
+                    this.transactionReplacements.add(new SavingsAccountTransactionReplacement(transaction, accountTransaction));
                     if (MathUtil.isGreaterThanZero(overdraftAmount)) {
                         accountTransaction.setOverdraftAmount(overdraftAmount);
                     }
@@ -1796,7 +1799,13 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
     public Map<String, Object> deriveAccountingBridgeData(final String currencyCode, final Set<Long> existingTransactionIds,
             final Set<Long> existingReversedTransactionIds, boolean isAccountTransfer, final boolean backdatedTxnsAllowedTill) {
+        return deriveAccountingBridgeData(currencyCode, existingTransactionIds, existingReversedTransactionIds, isAccountTransfer,
+                backdatedTxnsAllowedTill, Set.of());
+    }
 
+    public Map<String, Object> deriveAccountingBridgeData(final String currencyCode, final Set<Long> existingTransactionIds,
+            final Set<Long> existingReversedTransactionIds, boolean isAccountTransfer, final boolean backdatedTxnsAllowedTill,
+            final Set<Long> accountTransferTransactionIds) {
         final Map<String, Object> accountingBridgeData = new LinkedHashMap<>();
         accountingBridgeData.put("savingsId", getId());
         accountingBridgeData.put("savingsProductId", productId());
@@ -1805,6 +1814,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         accountingBridgeData.put("cashBasedAccountingEnabled", isCashBasedAccountingEnabledOnSavingsProduct());
         accountingBridgeData.put("accrualBasedAccountingEnabled", isAccrualBasedAccountingEnabledOnSavingsProduct());
         accountingBridgeData.put("isAccountTransfer", isAccountTransfer);
+        accountingBridgeData.put("accountTransferTransactionIds", accountTransferTransactionIds);
 
         final List<Map<String, Object>> newSavingsTransactions = new ArrayList<>();
 
@@ -1818,6 +1828,9 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
         // Adding new transactions to the array
         for (final SavingsAccountTransaction transaction : trans) {
+            if (transaction.isReversalTransaction()) {
+                continue;
+            }
             if (transaction.isReversed() && !existingReversedTransactionIds.contains(transaction.getId())) {
                 newSavingsTransactions.add(transaction.toMapData(currencyCode));
             } else if (!existingTransactionIds.contains(transaction.getId())) {
@@ -1836,6 +1849,10 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
             ids.add(transaction.getId());
         }
         return ids;
+    }
+
+    public List<SavingsAccountTransactionReplacement> getTransactionReplacements() {
+        return List.copyOf(this.transactionReplacements);
     }
 
     public Collection<Long> findCurrentTransactionIdsWithPivotDateConfig() {

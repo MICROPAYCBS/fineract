@@ -205,7 +205,6 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FINANCIALACTIVITYACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FIXEDDEPOSITPRODUCT;
-import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FLOATINGRATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_FUND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GLACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GLCLOSURE;
@@ -1140,6 +1139,15 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder payoutRefundWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_PAYOUTREFUND;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=payoutRefund";
+        return this;
+    }
+
     public CommandWrapperBuilder creditBalanceRefundWorkingCapitalLoanTransaction(final Long loanId) {
         this.actionName = ACTION_CREDITBALANCEREFUND;
         this.entityName = ENTITY_WORKINGCAPITALLOAN;
@@ -1153,6 +1161,15 @@ public class CommandWrapperBuilder {
         this.entityName = "WORKINGCAPITALLOAN";
         this.entityId = loanId;
         this.href = "/workingcapitalloans/" + loanId;
+        return this;
+    }
+
+    public CommandWrapperBuilder markAsFraudWorkingCapitalLoan(final Long loanId) {
+        this.actionName = "SETFRAUD";
+        this.entityName = "WORKINGCAPITALLOAN";
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/mark-as-fraud";
         return this;
     }
 
@@ -1515,6 +1532,42 @@ public class CommandWrapperBuilder {
         this.entityId = loanId;
         this.loanId = loanId;
         this.href = "/working-capital-loans/" + loanId + "/transactions/template?command=goodwillcredit";
+        return this;
+    }
+
+    public CommandWrapperBuilder chargeOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_CHARGEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=chargeOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoChargeOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_UNDOCHARGEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=undoChargeOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder writeOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_WRITEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=writeOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoWriteOffWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_UNDOWRITEOFF;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=undoWriteOff";
         return this;
     }
 
@@ -3621,22 +3674,6 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_PROVISIONENTRIES;
         this.entityId = entryId;
         this.href = "/provisioningentries/" + entryId;
-        return this;
-    }
-
-    public CommandWrapperBuilder createFloatingRate() {
-        this.actionName = ACTION_CREATE;
-        this.entityName = ENTITY_FLOATINGRATE;
-        this.entityId = null;
-        this.href = "/floatingrates";
-        return this;
-    }
-
-    public CommandWrapperBuilder updateFloatingRate(final Long floatingRateId) {
-        this.actionName = ACTION_UPDATE;
-        this.entityName = ENTITY_FLOATINGRATE;
-        this.entityId = floatingRateId;
-        this.href = "/floatingrates/" + floatingRateId;
         return this;
     }
 

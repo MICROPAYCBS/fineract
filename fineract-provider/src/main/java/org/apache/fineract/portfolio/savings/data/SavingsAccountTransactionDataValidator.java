@@ -49,6 +49,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
+import org.apache.fineract.infrastructure.configuration.service.BackdatedTransactionValidationService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -80,6 +81,7 @@ public class SavingsAccountTransactionDataValidator {
             Arrays.asList(SavingsApiConstants.dateFormatParamName, SavingsApiConstants.localeParamName, transactionDateParamName,
                     externalIdParamName, IS_POST_INTEREST_AS_ON_PARAM_NAME, POST_INTEREST_MANUAL_OR_AUTOMATIC_PARAM_NAME));
     private final ConfigurationDomainService configurationDomainService;
+    private final BackdatedTransactionValidationService backdatedTransactionValidationService;
 
     private static Set<String> createReleaseAmountRequestDataParameters() {
         final Set<String> requestDataParameters = new HashSet<>(SavingsAccountConstant.SAVINGS_ACCOUNT_TRANSACTION_REQUEST_DATA_PARAMETERS);
@@ -88,6 +90,7 @@ public class SavingsAccountTransactionDataValidator {
     }
 
     public void validateTransactionWithPivotDate(final LocalDate transactionDate, final SavingsAccount savingsAccount) {
+        this.backdatedTransactionValidationService.validateTransactionDate(transactionDate);
         final boolean backdatedTxnsAllowedTill = this.configurationDomainService.retrievePivotDateConfig();
         final boolean isRelaxingDaysConfigOn = this.configurationDomainService.isRelaxingDaysConfigForPivotDateEnabled();
 

@@ -82,10 +82,12 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
             }
             predicates.add(cb.or(visibilityPredicates.toArray(new Predicate[0])));
 
-            String searchLikeValue = "%" + searchText + "%";
-            predicates.add(cb.or(cb.like(r.get("accountNumber"), searchLikeValue), cb.like(r.get("displayName"), searchLikeValue),
-                    cb.like(r.get("externalId"), searchLikeValue), cb.like(r.get("mobileNo"), searchLikeValue),
-                    cb.like(identity.get("documentKey"), searchLikeValue)));
+            String searchLikeValue = "%" + searchText.toLowerCase() + "%";
+            predicates.add(cb.or(cb.like(cb.lower(r.get("accountNumber")), searchLikeValue),
+                    cb.like(cb.lower(r.get("displayName")), searchLikeValue),
+                    cb.like(cb.function("LOWER", String.class, r.get("externalId")), searchLikeValue),
+                    cb.like(cb.lower(r.get("mobileNo")), searchLikeValue),
+                    cb.like(cb.lower(identity.get("documentKey")), searchLikeValue)));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };

@@ -67,11 +67,12 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026   | 31 March 2026   | 300            | 0          | 300               | false                 |
       | 4            | 01 April 2026   | 30 April 2026   | 300            | 0          | 300               | false                 |
       | 5            | 01 May 2026     | 30 May 2026     | 300            | 0          | 300               | false                 |
-      | 6            | 31 May 2026     | 29 June 2026    | 300            | 0          | 300               | false                 |
-      | 7            | 30 June 2026    | 14 July 2026    | 300            | 0          | 300               | false                 |
-      | 8            | 15 July 2026    | 29 July 2026    | 300            | 0          | 300               | false                 |
-      | 9            | 30 July 2026    | 13 August 2026  | 300            | 0          | 300               | false                 |
-      | 10           | 14 August 2026  | 28 August 2026  | 300            | 0          | 300               |                       |
+      | 6            | 31 May 2026     | 14 June 2026    | 300            | 0          | 300               | false                 |
+      | 7            | 15 June 2026    | 29 June 2026    | 300            | 0          | 300               | false                 |
+      | 8            | 30 June 2026    | 14 July 2026    | 300            | 0          | 300               | false                 |
+      | 9            | 15 July 2026    | 29 July 2026    | 300            | 0          | 300               | false                 |
+      | 10           | 30 July 2026    | 13 August 2026  | 300            | 0          | 300               | false                 |
+      | 11           | 14 August 2026  | 28 August 2026  | 300            | 0          | 300               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 August 2026"
 
   @TestRailId:C74497
@@ -100,11 +101,12 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026   | 31 March 2026   | 300            | 0          | 300               | false                 |
       | 4            | 01 April 2026   | 30 April 2026   | 300            | 0          | 300               | false                 |
       | 5            | 01 May 2026     | 30 May 2026     | 300            | 0          | 300               | false                 |
-      | 6            | 31 May 2026     | 29 June 2026    | 200            | 0          | 200               | false                 |
-      | 7            | 30 June 2026    | 14 July 2026    | 200            | 0          | 200               | false                 |
-      | 8            | 15 July 2026    | 29 July 2026    | 200            | 0          | 200               | false                 |
-      | 9            | 30 July 2026    | 13 August 2026  | 200            | 0          | 200               | false                 |
-      | 10           | 14 August 2026  | 28 August 2026  | 200            | 0          | 200               |                       |
+      | 6            | 31 May 2026     | 14 June 2026    | 200            | 0          | 200               | false                 |
+      | 7            | 15 June 2026    | 29 June 2026    | 200            | 0          | 200               | false                 |
+      | 8            | 30 June 2026    | 14 July 2026    | 200            | 0          | 200               | false                 |
+      | 9            | 15 July 2026    | 29 July 2026    | 200            | 0          | 200               | false                 |
+      | 10           | 30 July 2026    | 13 August 2026  | 200            | 0          | 200               | false                 |
+      | 11           | 14 August 2026  | 28 August 2026  | 200            | 0          | 200               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 August 2026"
 
   @TestRailId:C74498
@@ -148,7 +150,6 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Admin fails to create WC delinquency reschedule action with minimumPayment 1 PERCENTAGE and frequency 30 DAYS with error containing "only for active Working Capital loans"
     When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
-    Then Admin fails to create WC delinquency reschedule action with minimumPayment 1 PERCENTAGE and frequency 30 DAYS with error containing "existing delinquency range schedule"
     When Admin runs inline COB job for Working Capital Loan
     Then Admin fails to create WC delinquency reschedule action with minimumPayment 0 PERCENTAGE and frequency 30 DAYS with error containing "`minimumPayment` must be greater than 0"
     Then Admin fails to create WC delinquency reschedule action with minimumPayment 1 PERCENTAGE and frequency 0 DAYS with error containing "`frequency` must be greater than 0"
@@ -339,14 +340,15 @@ Feature: Working Capital Delinquency Reschedule Action
       | 1              | PERCENTAGE         | 15        | DAYS          |
     Then WC loan delinquency range schedule has the following periods:
       | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
-      | 1            | 01 January 2026 | 30 January 2026 | 100            | 0          | 100               |                       |
+      | 1            | 01 January 2026 | 15 January 2026 | 100            | 0          | 100               |                       |
     When Admin sets the business date to "01 March 2026"
     When Admin runs inline COB job for Working Capital Loan
     Then WC loan delinquency range schedule has the following periods:
       | periodNumber | fromDate         | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
-      | 1            | 01 January 2026  | 30 January 2026  | 100            | 0          | 100               | false                 |
-      | 2            | 31 January 2026  | 14 February 2026 | 100            | 0          | 100               | false                 |
-      | 3            | 15 February 2026 | 01 March 2026    | 100            | 0          | 100               |                       |
+      | 1            | 01 January 2026  | 15 January 2026  | 100            | 0          | 100               | false                 |
+      | 2            | 16 January 2026  | 30 January 2026  | 100            | 0          | 100               | false                 |
+      | 3            | 31 January 2026  | 14 February 2026 | 100            | 0          | 100               | false                 |
+      | 4            | 15 February 2026 | 01 March 2026    | 100            | 0          | 100               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "01 March 2026"
 
   @TestRailId:C74507
@@ -375,11 +377,12 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026   | 31 March 2026   | 300            | 0          | 300               | false                 |
       | 4            | 01 April 2026   | 30 April 2026   | 300            | 0          | 300               | false                 |
       | 5            | 01 May 2026     | 30 May 2026     | 300            | 0          | 300               | false                 |
-      | 6            | 31 May 2026     | 29 June 2026    | 200            | 0          | 200               | false                 |
-      | 7            | 30 June 2026    | 13 July 2026    | 200            | 0          | 200               | false                 |
-      | 8            | 14 July 2026    | 27 July 2026    | 200            | 0          | 200               | false                 |
-      | 9            | 28 July 2026    | 10 August 2026  | 200            | 0          | 200               | false                 |
-      | 10           | 11 August 2026  | 24 August 2026  | 200            | 0          | 200               |                       |
+      | 6            | 31 May 2026     | 13 June 2026    | 200            | 0          | 200               | false                 |
+      | 7            | 14 June 2026    | 27 June 2026    | 200            | 0          | 200               | false                 |
+      | 8            | 28 June 2026    | 11 July 2026    | 200            | 0          | 200               | false                 |
+      | 9            | 12 July 2026    | 25 July 2026    | 200            | 0          | 200               | false                 |
+      | 10           | 26 July 2026    | 08 August 2026  | 200            | 0          | 200               | false                 |
+      | 11           | 09 August 2026  | 22 August 2026  | 200            | 0          | 200               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 August 2026"
 
   @TestRailId:C74508
@@ -444,7 +447,7 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Admin closes the Working Capital loan with a full repayment on "01 January 2026"
 
   @TestRailId:C74511
-  Scenario: Verify that reschedule supports minimumPayment over 100 percent
+  Scenario: Verify that a reschedule minimumPayment over 100 percent is capped at the remaining balance
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
@@ -460,7 +463,7 @@ Feature: Working Capital Delinquency Reschedule Action
       | 200            | PERCENTAGE         | 30        | DAYS          |
     Then WC loan delinquency range schedule has the following periods:
       | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
-      | 1            | 01 January 2026 | 30 January 2026 | 20000          | 0          | 20000             |                       |
+      | 1            | 01 January 2026 | 30 January 2026 | 10000          | 0          | 10000             |                       |
     Then Admin closes the Working Capital loan with a full repayment on "01 January 2026"
 
   @TestRailId:C74512
@@ -655,7 +658,7 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | minPaymentAmount | outstandingAmount |
       | 1            | 2026-01-01 | 2026-03-01 | 400              | 100               |
-      | 2            | 2026-03-02 | 2026-04-30 | 266.64           | 266.64            |
+      | 2            | 2026-03-02 | 2026-03-31 | 266.64           | 266.64            |
     Then WC loan delinquency actions have the following data:
       | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
       | RESCHEDULE | 15 March 2026 | 33.33          | PERCENTAGE         | 30        | DAYS          |
@@ -673,8 +676,9 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | minPaymentAmount | outstandingAmount | breach |
       | 1            | 2026-01-01 | 2026-03-01 | 400              | 100               | true   |
-      | 2            | 2026-03-02 | 2026-04-30 | 266.64           | 266.64            | true   |
-      | 3            | 2026-05-01 | 2026-05-30 | 266.64           | 266.64            | null   |
+      | 2            | 2026-03-02 | 2026-03-31 | 266.64           | 266.64            | true   |
+      | 3            | 2026-04-01 | 2026-04-30 | 266.64           | 266.64            | true   |
+      | 4            | 2026-05-01 | 2026-05-30 | 266.64           | 266.64            | null   |
     Then Admin closes the Working Capital loan with a full repayment on "04 May 2026"
 
   @TestRailId:C85450
@@ -712,7 +716,7 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | minPaymentAmount | outstandingAmount |
       | 1            | 2026-01-01 | 2026-03-01 | 400              | 100               |
-      | 2            | 2026-03-02 | 2026-04-30 | 266.64           | 266.64            |
+      | 2            | 2026-03-02 | 2026-03-31 | 266.64           | 266.64            |
     Then WC loan delinquency actions have the following data:
       | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
       | RESCHEDULE | 15 March 2026 | 33.33          | PERCENTAGE         | 30        | DAYS          |
@@ -737,7 +741,8 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | minPaymentAmount | outstandingAmount |
       | 1            | 2026-01-01 | 2026-03-01 | 400              | 100               |
-      | 2            | 2026-03-02 | 2026-04-30 | 160.0            | 160.0             |
+      | 2            | 2026-03-02 | 2026-03-31 | 266.64           | 266.64            |
+      | 3            | 2026-04-01 | 2026-04-30 | 160.0            | 160.0             |
     Then WC loan delinquency actions have the following data:
       | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
       | RESCHEDULE | 15 March 2026 | 33.33          | PERCENTAGE         | 30        | DAYS          |
@@ -768,9 +773,10 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | minPaymentAmount | outstandingAmount |
       | 1            | 2026-01-01 | 2026-03-01 | 400              | 100               |
-      | 2            | 2026-03-02 | 2026-04-30 | 160.0            | 160.0             |
-      | 3            | 2026-05-01 | 2026-05-30 | 160.0            | 160.0             |
-      | 4            | 2026-05-31 | 2026-06-29 | 80.0             | 80.0              |
+      | 2            | 2026-03-02 | 2026-03-31 | 266.64           | 266.64            |
+      | 3            | 2026-04-01 | 2026-04-30 | 160.0            | 160.0             |
+      | 4            | 2026-05-01 | 2026-05-30 | 160.0            | 160.0             |
+      | 5            | 2026-05-31 | 2026-06-29 | 80.0             | 80.0              |
     Then WC loan delinquency actions have the following data:
       | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
       | RESCHEDULE | 15 March 2026 | 33.33          | PERCENTAGE         | 30        | DAYS          |
@@ -904,7 +910,7 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
 
   @TestRailId:C85488
-  Scenario: Verify reschedule right after disbursement keeps action history and does not shift period dates
+  Scenario: Verify reschedule right after disbursement keeps action history and re-dates the current period
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 1 MONTHS and minimumPayment 5 FLAT
@@ -914,10 +920,9 @@ Feature: Working Capital Delinquency Reschedule Action
       | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
     When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
     And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
-    # Reschedule on the disbursement date (after the initial COB) is allowed. The current period
-    # keeps its boundaries from the original 1 MONTHS product config (01 Jan - 31 Jan) - a
-    # reschedule only updates the current period's expected amount;
-    # the new 30 DAYS frequency applies from the next generated period onward
+    # Reschedule on the disbursement date (after the initial COB) is allowed. Since this action
+    # carries a frequency group, the current period is re-dated from its own fromDate using the
+    # new 30 DAYS frequency (01 Jan - 30 Jan), not left at the original 1 MONTHS boundary
     When Admin runs inline COB job for Working Capital Loan
     When Admin creates WC delinquency reschedule action with the following parameters:
       | minimumPayment | minimumPaymentType | frequency | frequencyType |
@@ -929,15 +934,12 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin sets the business date to "15 March 2026"
     When Admin runs inline COB job for Working Capital Loan
     Then WC loan delinquency range schedule periods have specific data:
-      | periodNumber | fromDate         | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
-      | 1            | 01 January 2026  | 31 January 2026 | 200            | 0          | 200               | false                 |
-      | 2            | 01 February 2026 | 02 March 2026   | 200            | 0          | 200               | false                 |
-      | 3            | 03 March 2026    | 01 April 2026   | 200            | 0          | 200               |                       |
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               | false                 |
+      | 3            | 02 March 2026   | 31 March 2026   | 200            | 0          | 200               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 March 2026"
 
-  # Asserts transitive partial-reschedule inheritance - not implemented yet, follow-up story PS-3199
-  # (related to C76658 & C76659)
-  @Skip
   @TestRailId:C85489
   Scenario: Verify partial reschedules in 2 steps on the same day inherit parameters from each other
     When Admin sets the business date to "01 January 2026"
@@ -969,9 +971,6 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026   | 31 March 2026   | 200            | 0          | 200               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 March 2026"
 
-  # Asserts transitive partial-reschedule inheritance - not implemented yet, follow-up story PS-3199
-  # (related to C76658 & C76659)
-  @Skip
   @TestRailId:C85490
   Scenario: Verify partial reschedules in 2 steps on different days inherit parameters from each other
     When Admin sets the business date to "01 January 2026"
@@ -1006,7 +1005,6 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026   | 31 March 2026   | 200            | 0          | 200               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 March 2026"
 
-  @Skip
   @TestRailId:C85491
   Scenario: Verify that reschedule with payment group only keeps original frequency
     When Admin sets the business date to "01 January 2026"
@@ -1038,7 +1036,6 @@ Feature: Working Capital Delinquency Reschedule Action
       | 8            | 30 July 2026    | 28 August 2026  | 100            | 0          | 100               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 August 2026"
 
-  @Skip
   @TestRailId:C85492
   Scenario: Verify that reschedule with frequency group only keeps original payment
     When Admin sets the business date to "01 January 2026"
@@ -1065,12 +1062,53 @@ Feature: Working Capital Delinquency Reschedule Action
       | 3            | 02 March 2026   | 31 March 2026   | 300            | 0          | 300               | false                 |
       | 4            | 01 April 2026   | 30 April 2026   | 300            | 0          | 300               | false                 |
       | 5            | 01 May 2026     | 30 May 2026     | 300            | 0          | 300               | false                 |
-      | 6            | 31 May 2026     | 29 June 2026    | 300            | 0          | 300               | false                 |
-      | 7            | 30 June 2026    | 14 July 2026    | 300            | 0          | 300               | false                 |
-      | 8            | 15 July 2026    | 29 July 2026    | 300            | 0          | 300               | false                 |
-      | 9            | 30 July 2026    | 13 August 2026  | 300            | 0          | 300               | false                 |
-      | 10           | 14 August 2026  | 28 August 2026  | 300            | 0          | 300               |                       |
+      | 6            | 31 May 2026     | 14 June 2026    | 300            | 0          | 300               | false                 |
+      | 7            | 15 June 2026    | 29 June 2026    | 300            | 0          | 300               | false                 |
+      | 8            | 30 June 2026    | 14 July 2026    | 300            | 0          | 300               | false                 |
+      | 9            | 15 July 2026    | 29 July 2026    | 300            | 0          | 300               | false                 |
+      | 10           | 30 July 2026    | 13 August 2026  | 300            | 0          | 300               | false                 |
+      | 11           | 14 August 2026  | 28 August 2026  | 300            | 0          | 300               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "15 August 2026"
+
+  @TestRailId:C85574
+  Scenario: Verify that three partial reschedules inherit each parameter group from the latest action that set it
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 1 MONTHS and minimumPayment 5 FLAT
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin sets the business date to "02 January 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 25             | PERCENTAGE         |
+    When Admin sets the business date to "03 January 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | frequency | frequencyType |
+      | 30        | DAYS          |
+    When Admin sets the business date to "04 January 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 33.33          | PERCENTAGE         |
+    Then WC loan delinquency actions have the following data:
+      | action     | startDate       | minimumPayment | minimumPaymentType | frequency | frequencyType |
+      | RESCHEDULE | 02 January 2026 | 25             | PERCENTAGE         |           |               |
+      | RESCHEDULE | 03 January 2026 |                |                    | 30        | DAYS          |
+      | RESCHEDULE | 04 January 2026 | 33.33          | PERCENTAGE         |           |               |
+    When Admin sets the business date to "15 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 266.64         | 0          | 266.64            | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 266.64         | 0          | 266.64            | false                 |
+      | 3            | 02 March 2026   | 31 March 2026   | 266.64         | 0          | 266.64            |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "15 March 2026"
 
   @TestRailId:C85493
   Scenario: Verify backdated repayment after reschedule is re-evaluated against rescheduled periods
@@ -1335,7 +1373,7 @@ Feature: Working Capital Delinquency Reschedule Action
     Then Admin closes the Working Capital loan with a full repayment on "20 March 2026"
 
   @TestRailId:C85501
-  Scenario: Verify same date reschedules changing frequency apply the latest frequency to new periods
+  Scenario: Verify same date reschedules changing frequency re-date the current period using the latest frequency
     When Admin sets the business date to "01 January 2026"
     When Admin creates a client with random data
     When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
@@ -1362,16 +1400,17 @@ Feature: Working Capital Delinquency Reschedule Action
       | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
       | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
       | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               | false                 |
-      | 3            | 02 March 2026   | 31 March 2026   | 266.64         | 0          | 266.64            |                       |
+      | 3            | 02 March 2026   | 16 March 2026   | 266.64         | 0          | 266.64            |                       |
     When Admin sets the business date to "17 April 2026"
     When Admin runs inline COB job for Working Capital Loan
     Then WC loan delinquency range schedule periods have specific data:
       | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
       | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
       | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               | false                 |
-      | 3            | 02 March 2026   | 31 March 2026   | 266.64         | 0          | 266.64            | false                 |
-      | 4            | 01 April 2026   | 15 April 2026   | 266.64         | 0          | 266.64            | false                 |
-      | 5            | 16 April 2026   | 30 April 2026   | 266.64         | 0          | 266.64            |                       |
+      | 3            | 02 March 2026   | 16 March 2026   | 266.64         | 0          | 266.64            | false                 |
+      | 4            | 17 March 2026   | 31 March 2026   | 266.64         | 0          | 266.64            | false                 |
+      | 5            | 01 April 2026   | 15 April 2026   | 266.64         | 0          | 266.64            | false                 |
+      | 6            | 16 April 2026   | 30 April 2026   | 266.64         | 0          | 266.64            |                       |
     Then Admin closes the Working Capital loan with a full repayment on "17 April 2026"
 
   @TestRailId:C85502
@@ -1410,6 +1449,549 @@ Feature: Working Capital Delinquency Reschedule Action
     When Admin sets the business date to "01 April 2026"
     When Admin runs inline COB job for Working Capital Loan
     Then WC loan delinquency range schedule periods have specific data:
-      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
-      | 4            | 01 April 2026   | 30 April 2026   | 266.64         | 0          | 266.64            |                       |
+      | periodNumber | fromDate      | toDate        | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 4            | 01 April 2026 | 30 April 2026 | 200            | 0          | 200               |                       |
     Then Admin closes the Working Capital loan with a full repayment on "01 April 2026"
+
+  @TestRailId:C85575
+  Scenario: Verify that a delinquency period expects only the remaining balance when it is below the minimum payment
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 January 2026"
+    And Customer makes repayment on "15 January 2026" with 700 transaction amount on Working Capital loan
+    When Admin sets the business date to "28 February 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 0          | 100               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 100        | 0                 | true                  |
+
+  @TestRailId:C85576
+  Scenario: Verify that a reschedule-based minimum payment is capped at the remaining balance
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 January 2026"
+    And Customer makes repayment on "15 January 2026" with 700 transaction amount on Working Capital loan
+    When Admin sets the business date to "28 February 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 500            | FLAT               |
+    Then WC loan delinquency actions have the following data:
+      | action     | startDate        | minimumPayment | minimumPaymentType | frequency | frequencyType |
+      | RESCHEDULE | 28 February 2026 | 500            | FLAT               |           |               |
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 0          | 100               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
+
+  @TestRailId:C85577
+  Scenario: Verify that undoing a repayment restores the uncapped minimum payment expectation
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 January 2026"
+    And Customer makes repayment on "15 January 2026" with 700 transaction amount on Working Capital loan
+    When Admin sets the business date to "28 February 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 0          | 100               |                       |
+    When Customer undo "1"th working capital transaction made on "15 January 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
+
+  @TestRailId:C85578
+  Scenario: Verify that a past-due period beyond the remaining balance is met once the balance is fully paid
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 June 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               | false                 |
+      | 3            | 02 March 2026   | 31 March 2026   | 200            | 0          | 200               | false                 |
+      | 4            | 01 April 2026   | 30 April 2026   | 200            | 0          | 200               | false                 |
+      | 5            | 01 May 2026     | 30 May 2026     | 200            | 0          | 200               | false                 |
+      | 6            | 31 May 2026     | 29 June 2026    | 200            | 0          | 200               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "15 June 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 200        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 200        | 0                 | true                  |
+      | 3            | 02 March 2026   | 31 March 2026   | 200            | 200        | 0                 | true                  |
+      | 4            | 01 April 2026   | 30 April 2026   | 200            | 200        | 0                 | true                  |
+      | 5            | 01 May 2026     | 30 May 2026     | 0              | 0          | 0                 | true                  |
+      | 6            | 31 May 2026     | 29 June 2026    | 0              | 0          | 0                 | true                  |
+
+  @TestRailId:C85579
+  Scenario: Verify that the remaining balance cap on a discounted loan uses the principal plus discount base
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 100      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and "100" discount amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount and "100" discount amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 January 2026"
+    And Customer makes repayment on "15 January 2026" with 750 transaction amount on Working Capital loan
+    When Admin sets the business date to "28 February 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 225            | 750        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 150            | 0          | 150               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 225            | 750        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 150            | 150        | 0                 | true                  |
+
+  @TestRailId:C85580
+  Scenario: Verify that a backdated repayment reprocess recalculates the remaining balance cap
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "28 February 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    And Customer makes repayment on "28 February 2026" with 50 transaction amount on Working Capital loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 50         | 150               | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               |                       |
+    And Customer makes repayment on "15 January 2026" with 700 transaction amount on Working Capital loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 50         | 50                |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 100        | 0                 | true                  |
+
+  @TestRailId:C85581
+  Scenario: Verify that adding a discount after disbursement raises the remaining balance cap
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 200            | PERCENTAGE         |
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 800            | 0          | 800               |                       |
+    And Admin adds Discount fee with "100" amount on Working Capital loan account for last disbursement
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 900            | 0          | 900               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "01 January 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 900            | 900        | 0                 | true                  |
+
+  @TestRailId:C85582
+  Scenario: Verify that a discount adjustment and its undo re-derive the remaining balance cap
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 100      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and "100" discount amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount and "100" discount amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 January 2026"
+    And Customer makes repayment on "15 January 2026" with 700 transaction amount on Working Capital loan
+    When Admin sets the business date to "28 February 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 225            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               |                       |
+    And Admin loads discount fee transaction from Working Capital loan for adjustment
+    And Admin adds Discount fee adjustment with "100" amount on transaction date "28 February 2026" on Working Capital loan account for last discount
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 225            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 0          | 100               |                       |
+    When Admin undo the last Discount fee adjustment on Working Capital loan account
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 225            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "28 February 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 225            | 700        | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 200        | 0                 | true                  |
+
+  @TestRailId:C85583
+  Scenario: Verify partial reschedules inherit the payment group across a minimum payment type switch
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 33.33          | PERCENTAGE         |
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | expectedAmount | minPaymentCriteriaMet |
+      | 3            | 266.64         |                       |
+    When Admin sets the business date to "16 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 150            | FLAT               |
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | expectedAmount | minPaymentCriteriaMet |
+      | 3            | 150            |                       |
+    When Admin sets the business date to "17 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    # Frequency-only reschedule: the payment group must inherit the FLAT 150 from the latest action
+    # that set it - not the 33.33 percent from the first action and not the product's 25 percent.
+    # Frequency 30 DAYS matches the current period length, so its boundary stays 31 March and the
+    # assertion isolates payment group inheritance from re-dating
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | frequency | frequencyType |
+      | 30        | DAYS          |
+    Then WC loan delinquency actions have the following data:
+      | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
+      | RESCHEDULE | 15 March 2026 | 33.33          | PERCENTAGE         |           |               |
+      | RESCHEDULE | 16 March 2026 | 150            | FLAT               |           |               |
+      | RESCHEDULE | 17 March 2026 |                |                    | 30        | DAYS          |
+    When Admin sets the business date to "17 April 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               | false                 |
+      | 3            | 02 March 2026   | 31 March 2026   | 150            | 0          | 150               | false                 |
+      | 4            | 01 April 2026   | 30 April 2026   | 150            | 0          | 150               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "17 April 2026"
+
+  @TestRailId:C85584
+  Scenario: Verify a delinquency tag is lifted when the remaining balance cap marks skipped periods as met
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP        | 01 January 2026 | 01 January 2026          | 100             | 100                | 1                 | 0        |
+    Then Admin successfully approves the working capital loan on "01 January 2026" with "100" amount and expected disbursement date on "01 January 2026"
+    Then Admin successfully disburse the Working Capital loan on "01 January 2026" with "100" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "31 January 2026"
+    And Admin runs inline COB job for Working Capital Loan
+    # Period 1 (expected 3 = 3 percent of 100) is 1 day past due - tagged D00
+    Then Delinquency Tag History for Working Capital loan has lines:
+      | periodNumber | addedOnDate | liftedOnDate | classification | minimumAgeDays | maximumAgeDays |
+      | 1            | 2026-01-31  |              | D00            | 1              | 30             |
+    When Admin sets the business date to "15 February 2026"
+    And Customer makes repayment on "15 February 2026" with 1 transaction amount on Working Capital loan
+    # The backdated repayment fully pays the loan; reprocess caps period 2 to the zero remaining
+    # balance, marks it met, and the classification lifts the D00 tag from period 1
+    And Customer makes repayment on "10 January 2026" with 99 transaction amount on Working Capital loan
+    Then Delinquency Tag History for Working Capital loan has lines:
+      | periodNumber | addedOnDate | liftedOnDate | classification | minimumAgeDays | maximumAgeDays |
+      | 1            | 2026-01-31  | 2026-02-15   | D00            | 1              | 30             |
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 3              | 99         | 0                 | true                  |
+      | 2            | 31 January 2026 | 01 March 2026   | 1              | 1          | 0                 | true                  |
+
+  @TestRailId:C85585
+  Scenario: Verify delinquent amount and days are reported from the capped expectation
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 January 2026"
+    And Customer makes repayment on "15 January 2026" with 700 transaction amount on Working Capital loan
+    When Admin sets the business date to "15 April 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    # Remaining balance is 100, so the past-due periods expect (and report as delinquent) 100 - not
+    # the uncapped 200 minimum payment
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet | delinquentAmount | delinquentDays |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 700        | 0                 | true                  | 0                | 0              |
+      | 2            | 31 January 2026 | 01 March 2026   | 100            | 0          | 100               | false                 | 100              | 45             |
+      | 3            | 02 March 2026   | 31 March 2026   | 100            | 0          | 100               | false                 | 100              | 15             |
+      | 4            | 01 April 2026   | 30 April 2026   | 100            | 0          | 100               |                       |                  |                |
+    Then Admin closes the Working Capital loan with a full repayment on "15 April 2026"
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 200            | 700        | 0                 | true                  |
+      | 2            | 100            | 100        | 0                 | true                  |
+      | 3            | 0              | 0          | 0                 | true                  |
+      | 4            | 0              | 0          | 0                 | true                  |
+
+  @TestRailId:C85586
+  Scenario: Verify pause-shifted period boundaries survive a partial frequency-only reschedule
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "01 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    And Admin initiate a Working Capital loan delinquency pause with startDate "01 March 2026" and endDate "15 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "20 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    # Frequency-only reschedule: payment group falls back to the product's 25 percent (no prior
+    # reschedule); the pause-shifted boundaries of periods 2 and 3 must survive the rebuild
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | frequency | frequencyType |
+      | 15        | DAYS          |
+    Then WC loan has both PAUSE and RESCHEDULE delinquency actions
+    Then WC loan delinquency actions have the following data:
+      | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
+      | PAUSE      | 01 March 2026 |                |                    |           |               |
+      | RESCHEDULE | 20 March 2026 |                |                    | 15        | DAYS          |
+    When Admin sets the business date to "20 April 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
+      | 2            | 31 January 2026 | 16 March 2026   | 200            | 0          | 200               | false                 |
+      | 3            | 17 March 2026   | 31 March 2026   | 200            | 0          | 200               | false                 |
+      | 4            | 01 April 2026   | 15 April 2026   | 200            | 0          | 200               | false                 |
+      | 5            | 16 April 2026   | 30 April 2026   | 200            | 0          | 200               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "20 April 2026"
+
+  @TestRailId:C85587
+  Scenario: Verify the later of two same-day payment-only reschedules wins within the payment group
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 25 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 800             | 8000               | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "800" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "800" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "15 March 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 33.33          | PERCENTAGE         |
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | minimumPayment | minimumPaymentType |
+      | 150            | FLAT               |
+    Then WC loan delinquency actions have the following data:
+      | action     | startDate     | minimumPayment | minimumPaymentType | frequency | frequencyType |
+      | RESCHEDULE | 15 March 2026 | 33.33          | PERCENTAGE         |           |               |
+      | RESCHEDULE | 15 March 2026 | 150            | FLAT               |           |               |
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 200            | 0          | 200               | false                 |
+      | 2            | 31 January 2026 | 01 March 2026   | 200            | 0          | 200               | false                 |
+      | 3            | 02 March 2026   | 31 March 2026   | 150            | 0          | 150               |                       |
+    When Admin sets the business date to "17 April 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule periods have specific data:
+      | periodNumber | fromDate      | toDate        | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 4            | 01 April 2026 | 30 April 2026 | 150            | 0          | 150               |                       |
+    Then Admin closes the Working Capital loan with a full repayment on "17 April 2026"
+
+  @TestRailId:C93974
+  Scenario: Verify delinquency reschedule frequency change is rejected when resulting period end date is in the past
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 10000           | 10000              | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "20 January 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    Then Admin fails to create WC delinquency reschedule action with error containing "Frequency change results a delinquency period endDate before current businessDate is not allowed" and the following parameters:
+      | frequency | frequencyType |
+      | 15        | DAYS          |
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate          | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 30 January 2026 | 300            | 0          | 300               |                       |
+    Then Admin fails to create WC delinquency reschedule action with error containing "Frequency change results a delinquency period endDate before current businessDate is not allowed" and the following parameters:
+      | frequency | frequencyType |
+      | 19        | DAYS          |
+    # --- Delinquency reschedule ---
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | frequency | frequencyType |
+      | 20        | DAYS          |
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 20 January 2026  | 300            | 0          | 300               | false                 |
+      | 2            | 21 January 2026 | 09 February 2026 | 300            | 0          | 300               |                       |
+    # --- Close loan ---
+    Then Admin closes the Working Capital loan with a full repayment on "20 January 2026"
+
+  @TestRailId:C93975
+  Scenario: Verify delinquency reschedule validates the recalculated period end date against the resumed pause length
+    When Admin sets the business date to "01 January 2026"
+    When Admin creates a client with random data
+    When Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
+    When Admin creates a new Working Capital Loan Product with delinquency bucket
+    When Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 10000           | 10000              | 1                 | 0.0      |
+    When Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
+    When Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "10 January 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    # --- Delinquency pause ---
+    And Admin initiate a Working Capital loan delinquency pause with startDate "10 January 2026" and endDate "19 January 2026"
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 09 February 2026 | 300            | 0          | 300               |                       |
+    When Admin sets the business date to "15 January 2026"
+    When Admin runs inline COB job for Working Capital Loan
+    # --- Delinquency resume ---
+    And Admin initiate a Working Capital loan delinquency resume with startDate "15 January 2026"
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 05 February 2026 | 300            | 0          | 300               |                       |
+    When Admin sets the business date to "01 February 2026"
+    Then Admin fails to create WC delinquency reschedule action with error containing "Frequency change results a delinquency period endDate before current businessDate is not allowed" and the following parameters:
+      | frequency | frequencyType |
+      | 25        | DAYS          |
+    # --- Delinquency reschedule ---
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | frequency | frequencyType |
+      | 26        | DAYS          |
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate         | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026  | 01 February 2026 | 300            | 0          | 300               | false                 |
+      | 2            | 02 February 2026 | 27 February 2026 | 300            | 0          | 300               |                       |
+    # --- Close loan ---
+    Then Admin closes the Working Capital loan with a full repayment on "01 February 2026"
+
+  @TestRailId:94006
+  Scenario: Verify delinquency reschedule absorbs a pause starting beyond the base end date but inside the extended period
+    When Admin sets the business date to "01 January 2026"
+    And Admin creates a client with random data
+    And Admin creates WC Delinquency Bucket with frequency 30 DAYS and minimumPayment 3 PERCENTAGE
+    And Admin creates a new Working Capital Loan Product with delinquency bucket
+    And Admin creates a working capital loan with the following data:
+      | LoanProduct      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | WCLP_DELINQUENCY | 01 January 2026 | 01 January 2026          | 10000           | 10000              | 1                 | 0.0      |
+    And Admin successfully approves the working capital loan on "01 January 2026" with "10000" amount and expected disbursement date on "01 January 2026"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "10000" EUR transaction amount
+    And Admin runs inline COB job for Working Capital Loan
+    When Admin sets the business date to "10 January 2026"
+    And Admin runs inline COB job for Working Capital Loan
+    # --- Delinquency pause ---
+    And Admin initiate a Working Capital loan delinquency pause with startDate "10 January 2026" and endDate "19 January 2026"
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 09 February 2026 | 300            | 0          | 300               |                       |
+    # --- Delinquency pause ---
+    When Admin initiate a Working Capital loan delinquency pause with startDate "15 February 2026" and endDate "19 February 2026"
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate           | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 09 February 2026 | 300            | 0          | 300               |                       |
+    # --- Delinquency reschedule ---
+    When Admin creates WC delinquency reschedule action with the following parameters:
+      | frequency | frequencyType |
+      | 45        | DAYS          |
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate        | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 01 March 2026 | 300            | 0          | 300               |                       |
+    # --- Delinquency pause ---
+    When Admin initiate a Working Capital loan delinquency pause with startDate "20 March 2026" and endDate "24 March 2026"
+    # --- Delinquency pause ---
+    And Admin initiate a Working Capital loan delinquency pause with startDate "17 April 2026" and endDate "19 April 2026"
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate        | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 01 March 2026 | 300            | 0          | 300               |                       |
+    When Admin sets the business date to "02 March 2026"
+    And Admin runs inline COB job for Working Capital Loan
+    Then WC loan delinquency range schedule has the following periods:
+      | periodNumber | fromDate        | toDate        | expectedAmount | paidAmount | outstandingAmount | minPaymentCriteriaMet |
+      | 1            | 01 January 2026 | 01 March 2026 | 300            | 0          | 300               | false                 |
+      | 2            | 02 March 2026   | 23 April 2026 | 300            | 0          | 300               |                       |
+    # --- Close loan ---
+    When Admin closes the Working Capital loan with a full repayment on "02 March 2026"

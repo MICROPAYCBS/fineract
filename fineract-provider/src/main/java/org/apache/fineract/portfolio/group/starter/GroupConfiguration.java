@@ -26,10 +26,12 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrappe
 import org.apache.fineract.infrastructure.codes.service.CodeValueReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.data.PaginationParametersDataValidator;
+import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
 import org.apache.fineract.infrastructure.core.service.PaginationHelper;
 import org.apache.fineract.infrastructure.core.service.database.DatabaseSpecificSQLGenerator;
 import org.apache.fineract.infrastructure.dataqueries.service.EntityDatatableChecksWritePlatformService;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
+import org.apache.fineract.infrastructure.security.service.InputValidator;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.infrastructure.security.utils.ColumnValidator;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
@@ -74,10 +76,10 @@ public class GroupConfiguration {
     public CenterReadPlatformService centerReadPlatformService(JdbcTemplate jdbcTemplate, PlatformSecurityContext context,
             ClientReadPlatformService clientReadPlatformService, OfficeReadPlatformService officeReadPlatformService,
             StaffReadService staffReadPlatformService, CodeValueReadPlatformService codeValueReadPlatformService,
-            ConfigurationDomainService configurationDomainService, ColumnValidator columnValidator, PaginationHelper paginationHelper,
+            ConfigurationDomainService configurationDomainService, InputValidator inputValidator, PaginationHelper paginationHelper,
             DatabaseSpecificSQLGenerator sqlGenerator, PaginationParametersDataValidator paginationParametersDataValidator) {
         return new CenterReadPlatformServiceImpl(jdbcTemplate, context, clientReadPlatformService, officeReadPlatformService,
-                staffReadPlatformService, codeValueReadPlatformService, configurationDomainService, columnValidator, paginationHelper,
+                staffReadPlatformService, codeValueReadPlatformService, configurationDomainService, inputValidator, paginationHelper,
                 sqlGenerator, paginationParametersDataValidator);
     }
 
@@ -93,7 +95,7 @@ public class GroupConfiguration {
             AccountNumberFormatRepositoryWrapper accountNumberFormatRepository, AccountNumberGenerator accountNumberGenerator,
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService,
             BusinessEventNotifierService businessEventNotifierService, LoanOfficerService loanOfficerService,
-            AccountNumberManualEntryValidator accountNumberManualEntryValidator
+            AccountNumberManualEntryValidator accountNumberManualEntryValidator, ExternalIdFactory externalIdFactory
 
     ) {
         return new GroupingTypesWritePlatformServiceJpaRepositoryImpl(context, groupRepository, clientRepositoryWrapper,
@@ -101,7 +103,7 @@ public class GroupConfiguration {
                 loanRepositoryWrapper, codeValueRepository, commandProcessingService, calendarInstanceRepository,
                 configurationDomainService, savingsAccountRepositoryWrapper, accountNumberFormatRepository, accountNumberGenerator,
                 entityDatatableChecksWritePlatformService, businessEventNotifierService, loanOfficerService,
-                accountNumberManualEntryValidator
+                accountNumberManualEntryValidator, externalIdFactory
 
         );
     }

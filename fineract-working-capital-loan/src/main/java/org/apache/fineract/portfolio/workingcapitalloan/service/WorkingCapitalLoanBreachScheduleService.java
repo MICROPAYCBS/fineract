@@ -28,9 +28,9 @@ import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoa
 
 public interface WorkingCapitalLoanBreachScheduleService {
 
-    void generateInitialPeriod(WorkingCapitalLoan loan);
+    boolean generateInitialPeriod(WorkingCapitalLoan loan);
 
-    void generateNextPeriodIfNeeded(WorkingCapitalLoan loan, LocalDate businessDate);
+    boolean generateNextPeriodIfNeeded(WorkingCapitalLoan loan, LocalDate businessDate);
 
     boolean hasSchedule(Long loanId);
 
@@ -42,11 +42,19 @@ public interface WorkingCapitalLoanBreachScheduleService {
 
     void applyRepaymentUndo(Long loanId, LocalDate transactionDate, BigDecimal amount);
 
-    void evaluateBreach(WorkingCapitalLoan loan, LocalDate businessDate);
+    boolean evaluateBreach(WorkingCapitalLoan loan, LocalDate businessDate);
 
-    void rescheduleMinimumPayment(WorkingCapitalLoan loan, WorkingCapitalLoanBreachAction rescheduleAction);
+    /**
+     * Recalculates the schedule from the effective reschedule parameters resolved from the persisted RESCHEDULE
+     * actions; a newly created reschedule action must therefore be saved before this is called. When {@code action}
+     * carries a frequency group, the current open period is also re-dated: its toDate is recalculated from its fromDate
+     * and the new frequency, extended by the recorded pauses that overlap the period.
+     */
+    void rescheduleMinimumPayment(WorkingCapitalLoan loan, WorkingCapitalLoanBreachAction action);
 
     void recalculatePeriodsForPauses(WorkingCapitalLoan loan);
+
+    void recalculatePastDueAmount(WorkingCapitalLoan loan);
 
     void reprocessBreachSchedule(WorkingCapitalLoan loan);
 }
