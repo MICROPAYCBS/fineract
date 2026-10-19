@@ -220,5 +220,25 @@ public interface AccountingProcessorHelper {
     void createDebitJournalEntryForWorkingCapitalLoan(Office office, String currencyCode, GLAccount account, Long workingCapitalLoanId,
             Long workingCapitalLoanTransactionId, LocalDate transactionDate, BigDecimal amount, PaymentDetail paymentDetail);
 
+    GLAccount getLinkedGLAccountForSavingsProduct(Long savingsProductId, int accountMappingTypeId, Long paymentTypeId);
+
+    void createDebitJournalEntryForSavings(Office office, String currencyCode, GLAccount account, Long savingsId, String transactionId,
+            LocalDate transactionDate, BigDecimal amount);
+
+    void createCreditJournalEntryForSavings(Office office, String currencyCode, GLAccount account, Long savingsId, String transactionId,
+            LocalDate transactionDate, BigDecimal amount);
+
+    void createDebitJournalEntryForClientPayments(Office office, String currencyCode, GLAccount account, Long clientId, Long transactionId,
+            LocalDate transactionDate, BigDecimal amount);
+
+    void createCreditJournalEntryForClientPayments(Office office, String currencyCode, GLAccount account, Long clientId, Long transactionId,
+            LocalDate transactionDate, BigDecimal amount);
+
+    GLAccount getGLAccountById(Long accountId);
+
+    void createSavingsJournalReplacingReference(Office office, String currencyCode, GLAccount explicitAccount, int contraAccountType,
+            boolean debitExplicitAccount, Long savingsProductId, Long paymentTypeId, Long savingsId, String transactionId,
+            LocalDate transactionDate, BigDecimal amount, boolean isReversal);
+
     JournalEntry persistJournalEntry(JournalEntry journalEntry);
 }

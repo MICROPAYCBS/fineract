@@ -58,6 +58,7 @@ import org.apache.fineract.portfolio.savings.domain.SavingsChannelLimitDirection
 import org.apache.fineract.portfolio.savings.exception.DepositAccountTransactionNotAllowedException;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountPostInterestService;
+import org.apache.fineract.portfolio.savings.service.SavingsAccountTransfersService;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitCommand;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitHold;
 import org.apache.fineract.portfolio.savings.service.SavingsChannelLimitService;
@@ -81,6 +82,7 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
     private final CashierTransactionDataValidator cashierTransactionDataValidator;
     private final SavingsChannelLimitService savingsChannelLimitService;
     private final SavingsAccountPostInterestService savingsAccountPostInterestService;
+    private final SavingsAccountTransfersService savingsAccountTransfersService;
 
     @Autowired
     public MicropaySavingsAccountDomainServiceJpa(final SavingsAccountRepositoryWrapper savingsAccountRepository,
@@ -93,7 +95,8 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
             final CrossBranchTransactionAccessService crossBranchTransactionAccessService,
             final CashierTransactionDataValidator cashierTransactionDataValidator,
             final SavingsChannelLimitService savingsChannelLimitService,
-            final SavingsAccountPostInterestService savingsAccountPostInterestService) {
+            final SavingsAccountPostInterestService savingsAccountPostInterestService,
+            final SavingsAccountTransfersService savingsAccountTransfersService) {
         this.savingsAccountRepository = savingsAccountRepository;
         this.savingsAccountTransactionRepository = savingsAccountTransactionRepository;
         this.applicationCurrencyRepositoryWrapper = applicationCurrencyRepositoryWrapper;
@@ -106,6 +109,7 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
         this.cashierTransactionDataValidator = cashierTransactionDataValidator;
         this.savingsChannelLimitService = savingsChannelLimitService;
         this.savingsAccountPostInterestService = savingsAccountPostInterestService;
+        this.savingsAccountTransfersService = savingsAccountTransfersService;
     }
 
     @Transactional
@@ -345,9 +349,13 @@ public class MicropaySavingsAccountDomainServiceJpa implements SavingsAccountDom
     private void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
             final Set<Long> existingReversedTransactionIds, boolean isAccountTransfer, final boolean backdatedTxnsAllowedTill) {
 
+        final var transactionReplacements = savingsAccount.getTransactionReplacements();
+        final var accountTransferTransactionIds = this.savingsAccountTransfersService.findTransferTransactionIds(transactionReplacements);
         final Map<String, Object> accountingBridgeData = savingsAccount.deriveAccountingBridgeData(savingsAccount.getCurrency().getCode(),
-                existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, backdatedTxnsAllowedTill);
+                existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, backdatedTxnsAllowedTill,
+                accountTransferTransactionIds);
         this.journalEntryWritePlatformService.createJournalEntriesForSavings(accountingBridgeData);
+        this.savingsAccountTransfersService.updateSavingsTransactionReferences(transactionReplacements);
     }
 
     private void stampTransactionOffice(final SavingsAccountTransaction transaction, final Office homeOffice) {

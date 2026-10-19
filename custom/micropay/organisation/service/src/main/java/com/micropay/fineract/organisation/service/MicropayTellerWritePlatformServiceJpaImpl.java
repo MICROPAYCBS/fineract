@@ -194,7 +194,7 @@ public class MicropayTellerWritePlatformServiceJpaImpl implements TellerWritePla
      * Guaranteed to throw an exception no matter what the data integrity issue is.
      */
     private void handleTellerDataIntegrityIssues(final JsonCommand command, final Throwable realCause, final Exception dve) {
-        if (realCause.getMessage().contains("m_tellers_name_unq")) {
+        if (realCause.getMessage().contains("m_tellers_office_name_unq")) {
             final String name = command.stringValueOfParameterNamed("name");
             throw new PlatformDataIntegrityException("error.msg.teller.duplicate.name", "Teller with name `" + name + "` already exists",
                     "name", name);
@@ -365,31 +365,6 @@ public class MicropayTellerWritePlatformServiceJpaImpl implements TellerWritePla
             final Cashier cashier = this.cashierRepository.findById(cashierId).orElseThrow(() -> new CashierNotFoundException(cashierId));
 
             this.fromApiJsonDeserializer.validateForCashTxnForCashier(command.json());
-
-            // TODO: can we please remove this whole block?!? this is 20 lines of dead code!!!
-            final String entityType = command.stringValueOfParameterNamed("entityType");
-            if (entityType != null) {
-                if (entityType.equals("loan account")) {
-                    // TODO : Check if loan account exists
-                    // LoanAccount loan = null;
-                    // if (loan == null) { throw new
-                    // LoanAccountFoundException(entityId); }
-                } else if (entityType.equals("savings account")) {
-                    // TODO : Check if loan account exists
-                    // SavingsAccount savingsaccount = null;
-                    // if (savingsaccount == null) { throw new
-                    // SavingsAccountNotFoundException(entityId); }
-
-                }
-                if (entityType.equals("client")) {
-                    // TODO: Check if client exists
-                    // Client client = null;
-                    // if (client == null) { throw new
-                    // ClientNotFoundException(entityId); }
-                } else {
-                    // TODO : Invalid type handling
-                }
-            }
 
             final String currencyCode = command.stringValueOfParameterNamed("currencyCode");
             final BigDecimal txnAmount = command.bigDecimalValueOfParameterNamed("txnAmount");

@@ -5,31 +5,32 @@ directories** after the Category A moves and Category B replacements. These file
 merge-conflict surface when pulling `upstream/develop`; everything else lives under
 `custom/micropay/` and merges cleanly.
 
-Baseline: Apache Fineract 1.15.0 = `f188505b8b` (merged on `merge/upstream`). Prior
-merge-base with `origin/develop` was `0655191138f1dca52e63882a34c7671d0b40887c`.
+Baseline: pre-JDK-25 `3c97339d9c` (`ea0743dc1^1`, merged on `merge/upstream`).
+Prior step: Apache Fineract 1.15.0 = `f188505b8b`. Prior merge-base with
+`origin/develop` was `0655191138f1dca52e63882a34c7671d0b40887c`.
 
 Regenerate the raw numbers at any time (PowerShell, from the repo root):
 
 ```powershell
-$mb = 'f188505b8b'
+$mb = '3c97339d9c'
 git diff $mb --name-status -M | Where-Object { $_ -notmatch "`tcustom/" }   # A/M/D per file
 git diff $mb --numstat     | Where-Object { $_ -notmatch "`tcustom/" }      # +/- per file
 ```
 
 ## Headline numbers
 
-| | Before (plan, Oct 2026) | After 1.15.0 merge |
+| | Before (plan, Oct 2026) | After pre-JDK-25 merge |
 | --- | ---: | ---: |
-| Upstream files modified | 369 | 288 |
+| Upstream files modified | 369 | 286 |
 | Fork-added files under upstream dirs | 841 | 385 (of which 39 are `docs/**` and 3 `scripts/**`) |
 | Liquibase changelogs under `fineract-provider` | 220 | 0 (all in `custom/micropay/platform/db`, `workflow/starter`) |
 | `CommandWrapperBuilder` additions | +63 methods | +41 methods (callers still in upstream API resources, see below) |
 | `GlobalConfigurationConstants` / `ConfigurationDomainService` additions | +17 keys / +14 methods | 0 (Micropay keys live in `MicropayGlobalConfigurationConstants` / `MicropayConfigurationService`) |
 | Service impls modified in place | 75 | 22 carry a one-line seam annotation; behaviour changes left in place are the bug fixes in §4 |
 
-Modified files by module: `fineract-provider` 331 (includes fork-added files under that tree),
-`fineract-core` 117, `fineract-savings` 59, `fineract-security` 35, `fineract-loan` 20,
-`fineract-branch` 18, `fineract-charge` 18, `fineract-accounting` 10, `fineract-document` 5,
+Modified files by module: `fineract-provider` 325 (includes fork-added files under that tree),
+`fineract-core` 115, `fineract-savings` 59, `fineract-security` 35, `fineract-loan` 19,
+`fineract-branch` 18, `fineract-charge` 18, `fineract-accounting` 17, `fineract-document` 5,
 `integration-tests` 3, `fineract-report` 3, `fineract-working-capital-loan` 2, one each in
 `fineract-war`, `fineract-progressive-loan`, `kubernetes`, `.gitignore`, `.gitattributes`,
 `.cursor`.
@@ -107,6 +108,11 @@ email/address, `AddressData.instance(...)` 23-arg, `ClientData.instance(...)` 31
 - `CommandSourceService` (+5) maker-checker hook, `CommandStrategyProvider` (+2) batch strategy.
   After 1.15.0, `CommandSourceService` threads `JsonCommand` into `validateMakerChecker` so the
   hook still receives the command extracted from `processCommandAndSaveResult`.
+- `AccountingProcessorHelper` gained savings/client/GL methods that live on
+  `AccountingProcessorHelperImpl` (`getLinkedGLAccountForSavingsProduct`,
+  `createDebit/CreditJournalEntryForSavings`, `createDebit/CreditJournalEntryForClientPayments`,
+  `getGLAccountById`, `createSavingsJournalReplacingReference`) so
+  `InterBranchAccountingHelper` and the savings processors keep compiling against the interface.
 
 ### 1.5 Interface injection in API resources
 
@@ -131,13 +137,21 @@ Re-sync procedure after an upstream merge: run
 `.\custom\micropay\tools\Show-TwinDrift.ps1 -From <prev-step> -To <step>`
 then `git diff <old-upstream>:<upstream path> <new-upstream>:<upstream path>`
 and apply the hunks to the `Micropay…` twin. Compare the **step commits**
-(`f188505b8b`, not `HEAD`) so fork seams such as `@ConditionalOnMissingBean` are not
+(`f188505b8b` / `3c97339d9c`, not `HEAD`) so fork seams such as `@ConditionalOnMissingBean` are not
 counted as drift. Step 1 (1.15.0) re-synced `ClientReadPlatformServiceImpl`,
 `ClientFamilyMembersReadPlatformServiceImpl`, `LoanReadPlatformServiceImpl`,
 `OfficeReadPlatformServiceImpl`, `SavingsAccountWritePlatformServiceJpaRepositoryImpl`,
-`SavingsAccountDomainServiceJpa`, `AuditReadPlatformServiceImpl`. The JournalEntry write
-impl was renamed upstream to `JournalEntryWritePlatformServiceImpl` after 1.15.0; the
-script diffs the old path at merge-base against the new path.
+`SavingsAccountDomainServiceJpa`, `AuditReadPlatformServiceImpl`. Step 2 (pre-JDK-25)
+re-synced `ClientWritePlatformServiceJpaRepositoryImpl`, `ClientIdentifierReadPlatformServiceImpl`,
+`AddressWritePlatformServiceImpl`, `LoanReadPlatformServiceImpl` (`FloatingRatesReadService`),
+`TellerManagementReadPlatformServiceImpl`, `TellerWritePlatformServiceJpaImpl`,
+`SavingsAccountWritePlatformServiceJpaRepositoryImpl`, `SavingsAccountDomainServiceJpa`,
+`JournalEntryWritePlatformServiceJpaRepositoryImpl` (DTO package move +
+`createJournalEntriesForLoanTransaction(AccountingBridgeDataDTO, boolean)`; upstream of
+`JournalEntryWritePlatformServiceImpl`). `SearchReadServiceImpl` still needs the transaction-search
+SQL/columns (+174). The JournalEntry write impl was renamed upstream to
+`JournalEntryWritePlatformServiceImpl` after 1.15.0; the script diffs the old path at
+merge-base against the new path.
 
 ## 3. Residual in-place changes (true Category C)
 

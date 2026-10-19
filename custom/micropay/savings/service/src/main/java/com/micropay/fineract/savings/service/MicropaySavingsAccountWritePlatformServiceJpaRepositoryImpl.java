@@ -98,6 +98,7 @@ import org.apache.fineract.portfolio.account.domain.StandingInstructionStatus;
 import org.apache.fineract.portfolio.account.service.AccountAssociationsReadPlatformService;
 import org.apache.fineract.portfolio.account.service.AccountTransfersReadPlatformService;
 import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.client.domain.Client;
@@ -655,6 +656,13 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         final boolean backdatedTxnsAllowedTill = this.savingAccountAssembler.getPivotConfigStatus();
         final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsId, backdatedTxnsAllowedTill);
         checkClientOrGroupActive(account);
+        final Set<Long> existingTransactionIds = new HashSet<>();
+        final Set<Long> existingReversedTransactionIds = new HashSet<>();
+        if (backdatedTxnsAllowedTill) {
+            updateSavingsTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+        } else {
+            updateExistingTransactionsDetails(account, existingTransactionIds, existingReversedTransactionIds);
+        }
 
         final LocalDate today = DateUtils.getBusinessLocalDate();
         final MathContext mc = new MathContext(15, MoneyHelper.getRoundingMode());
@@ -668,7 +676,8 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
             this.savingsAccountTransactionRepository.saveAll(account.getSavingsAccountTransactionsWithPivotConfig());
         }
 
-        this.savingAccountRepositoryWrapper.save(account);
+        this.savingAccountRepositoryWrapper.saveAndFlush(account);
+        postJournalEntries(account, existingTransactionIds, existingReversedTransactionIds, backdatedTxnsAllowedTill);
 
         return new CommandProcessingResultBuilder() //
                 .withEntityId(savingsId) //
@@ -1394,6 +1403,8 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
         }
         final SavingsAccountCharge savingsAccountCharge = SavingsAccountCharge.createNewFromJson(savingsAccount, chargeDefinition, command);
 
+        validateChargeAmountNotZero(savingsAccountCharge, dataValidationErrors);
+
         if (chargeDefinition.isEnableFreeWithdrawal()) {
             savingsAccountCharge.setFreeWithdrawalCount(0);
         }
@@ -1734,10 +1745,22 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
     private void postJournalEntries(final SavingsAccount savingsAccount, final Set<Long> existingTransactionIds,
             final Set<Long> existingReversedTransactionIds, final boolean backdatedTxnsAllowedTill) {
 
-        boolean isAccountTransfer = false;
-        final Map<String, Object> accountingBridgeData = savingsAccount.deriveAccountingBridgeData(savingsAccount.getCurrency().getCode(),
-                existingTransactionIds, existingReversedTransactionIds, isAccountTransfer, backdatedTxnsAllowedTill);
-        this.journalEntryWritePlatformService.createJournalEntriesForSavings(accountingBridgeData);
+        this.savingsAccountDomainService.postJournalEntries(savingsAccount, existingTransactionIds, existingReversedTransactionIds,
+                backdatedTxnsAllowedTill);
+    }
+
+    private void validateChargeAmountNotZero(final SavingsAccountCharge savingsAccountCharge,
+            final List<ApiParameterError> dataValidationErrors) {
+        if (!ChargeCalculationType.fromInt(savingsAccountCharge.getCharge().getChargeCalculation()).isFlat()) {
+            return;
+        }
+
+        if (savingsAccountCharge.getAmount(savingsAccountCharge.savingsAccount().getCurrency()).isZero()) {
+            final String defaultUserMessage = "This charge cannot be added because the calculated amount becomes zero after rounding.";
+
+            dataValidationErrors
+                    .add(ApiParameterError.parameterError("error.msg.savings.charge.amount.rounded.to.zero", defaultUserMessage, "amount"));
+        }
     }
 
     @Override

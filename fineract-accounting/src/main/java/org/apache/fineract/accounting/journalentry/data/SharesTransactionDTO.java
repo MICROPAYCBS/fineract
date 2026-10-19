@@ -47,7 +47,7 @@ public class SharesTransactionDTO {
     private final boolean useSavings;
 
     public SharesTransactionDTO(final Long officeId, final Long paymentTypeId, final String transactionId, final LocalDate transactionDate,
-            final ShareAccountTransactionEnumData transactionType, final ShareAccountTransactionEnumData transactionStatus,
+            final ShareAccountTransactionTypeDTO transactionType, final ShareAccountTransactionTypeDTO transactionStatus,
             final BigDecimal amount, final BigDecimal chargeAmount, final List<ChargePaymentDTO> feePayments) {
         this(officeId, paymentTypeId, transactionId, transactionDate, transactionType, transactionStatus, amount, chargeAmount, feePayments,
                 false);

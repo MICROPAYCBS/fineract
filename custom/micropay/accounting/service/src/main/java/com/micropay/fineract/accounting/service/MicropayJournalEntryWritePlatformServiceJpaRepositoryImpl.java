@@ -112,10 +112,11 @@ import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.portfolio.PortfolioProductType;
 import org.apache.fineract.portfolio.department.service.OfficeDepartmentMappingValidator;
-import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeDataDTO;
-import org.apache.fineract.portfolio.loanaccount.data.AccountingBridgeLoanTransactionDTO;
-import org.apache.fineract.portfolio.loanaccount.data.ChargeTaxDetailDTO;
-import org.apache.fineract.portfolio.loanaccount.data.LoanChargePaidByDTO;
+import org.apache.fineract.accounting.journalentry.data.AccountingBridgeDataDTO;
+import org.apache.fineract.accounting.journalentry.data.AccountingBridgeLoanTransactionDTO;
+import org.apache.fineract.accounting.journalentry.data.ChargeTaxDetailDTO;
+import org.apache.fineract.accounting.journalentry.data.LoanChargeDTO;
+import org.apache.fineract.accounting.journalentry.data.LoanChargePaidByDTO;
 import org.apache.fineract.portfolio.loanaccount.domain.AmortizationType;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanAmortizationAllocationMapping;
@@ -643,7 +644,6 @@ public class MicropayJournalEntryWritePlatformServiceJpaRepositoryImpl implement
         return reversalTransactionId;
     }
 
-    @Override
     public String revertProvisioningJournalEntries(final LocalDate reversalTransactionDate, final Long entityId, final Integer entityType) {
         List<JournalEntry> journalEntries = this.glJournalEntryRepository.findProvisioningJournalEntriesByEntityId(entityId, entityType);
         final String reversalTransactionId = journalEntries.get(0).getTransactionId();
@@ -677,7 +677,6 @@ public class MicropayJournalEntryWritePlatformServiceJpaRepositoryImpl implement
 
     }
 
-    @Override
     public String createProvisioningJournalEntries(ProvisioningEntry provisioningEntry) {
         Collection<LoanProductProvisioningEntry> provisioningEntries = provisioningEntry.getLoanProductProvisioningEntries();
         Map<OfficeCurrencyKey, List<LoanProductProvisioningEntry>> officeMap = new HashMap<>();
@@ -1198,8 +1197,22 @@ public class MicropayJournalEntryWritePlatformServiceJpaRepositoryImpl implement
         accountingProcessorForClientTransactions.createJournalEntriesForClientTransaction(clientTransactionDTO);
     }
 
-    @Transactional
     @Override
+    public void createJournalEntriesForLoanTransaction(final AccountingBridgeDataDTO accountingBridgeData,
+            final boolean isLoanToLoanTransfer) {
+        if (!accountingBridgeData.isCashBasedAccountingEnabled() && !accountingBridgeData.isUpfrontAccrualBasedAccountingEnabled()
+                && !accountingBridgeData.isPeriodicAccrualBasedAccountingEnabled()) {
+            return;
+        }
+
+        if (isLoanToLoanTransfer) {
+            accountingBridgeData.getNewLoanTransactions().forEach(tx -> tx.setLoanToLoanTransfer(true));
+        }
+
+        this.createJournalEntriesForLoan(accountingBridgeData);
+    }
+
+    @Transactional
     public void createJournalEntriesForLoanTransaction(final LoanTransaction loanTransaction, final boolean isAccountTransfer,
             final boolean isLoanToLoanTransfer) {
         final Loan loan = loanTransaction.getLoan();
@@ -1221,7 +1234,6 @@ public class MicropayJournalEntryWritePlatformServiceJpaRepositoryImpl implement
     }
 
     @Transactional
-    @Override
     public void createJournalEntriesForExternalOwnerTransfer(final Loan loan, final ExternalAssetOwnerTransfer externalAssetOwnerTransfer,
             final ExternalAssetOwner previousOwner) {
         final boolean isBuyback = externalAssetOwnerTransfer.getStatus().name().contains("BUYBACK");
@@ -1397,7 +1409,7 @@ public class MicropayJournalEntryWritePlatformServiceJpaRepositoryImpl implement
                 .filter(e -> LoanTransactionRelationTypeEnum.CHARGE_ADJUSTMENT.equals(e.getRelationType())).findAny().orElse(null);
         if (loanTransactionRelation != null) {
             LoanCharge loanCharge = loanTransactionRelation.getToCharge();
-            transactionDTO.setLoanChargeData(loanCharge.toData());
+            transactionDTO.setLoanChargeDTO(new LoanChargeDTO(loanCharge.getCharge().getId(), loanCharge.isPenaltyCharge()));
         }
 
         // Set loanToLoanTransfer

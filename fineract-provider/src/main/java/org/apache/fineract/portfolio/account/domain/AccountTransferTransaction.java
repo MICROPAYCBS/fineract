@@ -114,7 +114,7 @@ public class AccountTransferTransaction extends AbstractPersistableCustom<Long> 
             final SavingsAccountTransaction withdrawal, final LocalDate transactionDate, final Money transactionAmount,
             final String description) {
         return new AccountTransferTransaction(accountTransferDetails, withdrawal, null, null, null, transactionDate, transactionAmount,
-                description);
+                description, null);
     }
 
     /**
@@ -124,7 +124,7 @@ public class AccountTransferTransaction extends AbstractPersistableCustom<Long> 
             final SavingsAccountTransaction deposit, final LocalDate transactionDate, final Money transactionAmount,
             final String description) {
         return new AccountTransferTransaction(accountTransferDetails, null, deposit, null, null, transactionDate, transactionAmount,
-                description);
+                description, null);
     }
 
     public static AccountTransferTransaction loanTosavingsTransfer(final AccountTransferDetails accountTransferDetails,

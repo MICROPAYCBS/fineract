@@ -76,7 +76,7 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
 
     public static ClientIdentifier create(final Client client, final CodeValue documentType, final String documentKey, final String status,
             final String description) {
-        return new ClientIdentifier(client, documentType, documentKey, status, description);
+        return new ClientIdentifier(client, documentType, documentKey, status, description, null, null);
     }
 
     protected ClientIdentifier() {
@@ -144,16 +144,16 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
 
         final String issuanceDateParamName = "issuanceDate";
         if (command.isChangeInLocalDateParameterNamed(issuanceDateParamName, this.issuanceDate)) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(issuanceDateParamName);
-            actualChanges.put(issuanceDateParamName, newValue);
-            this.issuanceDate = newValue;
+            final LocalDate newIssuanceDate = command.localDateValueOfParameterNamed(issuanceDateParamName);
+            actualChanges.put(issuanceDateParamName, newIssuanceDate);
+            this.issuanceDate = newIssuanceDate;
         }
 
         final String expiryDateParamName = "expiryDate";
         if (command.isChangeInLocalDateParameterNamed(expiryDateParamName, this.expiryDate)) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(expiryDateParamName);
-            actualChanges.put(expiryDateParamName, newValue);
-            this.expiryDate = newValue;
+            final LocalDate newExpiryDate = command.localDateValueOfParameterNamed(expiryDateParamName);
+            actualChanges.put(expiryDateParamName, newExpiryDate);
+            this.expiryDate = newExpiryDate;
         }
 
         return actualChanges;

@@ -256,6 +256,12 @@ public class MicropayAddressWritePlatformServiceImpl implements AddressWritePlat
 
         final Address addobj = this.addressRepository.getReferenceById(addressId);
 
+        if (!command.stringValueOfParameterNamed("street").isEmpty()) {
+            is_address_update = true;
+            final String street = command.stringValueOfParameterNamed("street");
+            addobj.setStreet(street);
+        }
+
         if (!command.stringValueOfParameterNamed("addressLine1").isEmpty()) {
 
             is_address_update = true;
