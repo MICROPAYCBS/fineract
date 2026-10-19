@@ -24,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDelinquencyAction;
@@ -43,6 +44,7 @@ public class WorkingCapitalLoanDelinquencyActionWriteServiceImpl implements Work
     private final WorkingCapitalLoanDelinquencyActionRepository actionRepository;
     private final WorkingCapitalLoanDelinquencyActionParseAndValidator validator;
     private final WorkingCapitalLoanDelinquencyRangeScheduleService rangeScheduleService;
+    private final WorkingCapitalLoanDelinquencyRangeScheduleService delinquencyRangeScheduleService;
 
     @Transactional
     @Override
@@ -54,7 +56,6 @@ public class WorkingCapitalLoanDelinquencyActionWriteServiceImpl implements Work
                 .findByWorkingCapitalLoanIdOrderById(workingCapitalLoanId);
 
         final WorkingCapitalLoanDelinquencyAction action = validator.validateAndParse(command, workingCapitalLoan, existing);
-        action.setWorkingCapitalLoan(workingCapitalLoan);
 
         final WorkingCapitalLoanDelinquencyAction saved = actionRepository.saveAndFlush(action);
         log.debug("Created WC loan delinquency action {} for loan {}", action.getAction(), workingCapitalLoanId);
@@ -63,6 +64,11 @@ public class WorkingCapitalLoanDelinquencyActionWriteServiceImpl implements Work
             rangeScheduleService.extendPeriodsForPause(workingCapitalLoan, action.getStartDate(), action.getEndDate());
         } else if (DelinquencyAction.RESCHEDULE.equals(action.getAction())) {
             rangeScheduleService.rescheduleMinimumPayment(workingCapitalLoan, action);
+            delinquencyRangeScheduleService.reprocessDelinquencySchedule(workingCapitalLoan);
+        } else if (DelinquencyAction.RESUME.equals(action.getAction())) {
+            final WorkingCapitalLoanDelinquencyAction activePause = validator.findActivePauseForResume(existing,
+                    DateUtils.getBusinessLocalDate());
+            rangeScheduleService.resumeActivePause(workingCapitalLoan, activePause, action);
         }
 
         return new CommandProcessingResultBuilder() //

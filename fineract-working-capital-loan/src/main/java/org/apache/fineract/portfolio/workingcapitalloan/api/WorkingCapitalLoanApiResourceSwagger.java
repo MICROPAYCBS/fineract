@@ -23,6 +23,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import org.apache.fineract.infrastructure.codes.data.CodeValueData;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.data.StringEnumOptionData;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.portfolio.delinquency.data.DelinquencyRangeData;
@@ -131,6 +133,14 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public String approvedByFirstname;
         @Schema(example = "Administrator")
         public String approvedByLastname;
+        @Schema(example = "[2024, 1, 15]")
+        public LocalDate rejectedOnDate;
+        @Schema(example = "admin")
+        public String rejectedByUsername;
+        @Schema(example = "App")
+        public String rejectedByFirstname;
+        @Schema(example = "Administrator")
+        public String rejectedByLastname;
         @Schema(example = "[2024, 2, 1]")
         public LocalDate expectedDisbursementDate;
         @Schema(example = "[2024, 2, 1]")
@@ -153,10 +163,6 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public LocalDate expectedMaturityDate;
         @Schema(example = "[2024, 12, 31]", description = "Actual maturity date (when loan is fully paid)")
         public LocalDate actualMaturityDate;
-        /**
-         * Full list of disbursement details (for multi-disbursement support).
-         */
-        public List<GetDisbursementDetail> disbursementDetails;
     }
 
     @Schema(description = "GetWorkingCapitalLoansLoanIdResponse")
@@ -170,39 +176,64 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public String accountNo;
         @Schema(example = "ext-id-001")
         public String externalId;
+        @Schema(description = "Client object. Populated only by the loan template endpoint; null in loan details "
+                + "(loan details exposes clientId/clientAccountNo/clientName/clientOfficeId instead)")
         public GetWorkingCapitalLoansClient client;
         @Schema(example = "1")
-        public Long officeId;
+        public Long clientId;
+        @Schema(example = "000000001")
+        public String clientAccountNo;
+        @Schema(example = "bharath gowda")
+        public String clientName;
+        @Schema(example = "786444UUUYYH7")
+        public String clientExternalId;
+        @Schema(example = "1")
+        public Long clientOfficeId;
         @Schema(example = "1")
         public Long fundId;
         @Schema(example = "Fund 1")
         public String fundName;
+        @Schema(description = "Product object. Populated only by the loan template endpoint; null in loan details "
+                + "(loan details exposes loanProductId/loanProductName instead)")
         public WorkingCapitalLoanProductApiResourceSwagger.GetWorkingCapitalLoanProductsResponse product;
+        @Schema(example = "1")
+        public Long loanProductId;
+        @Schema(example = "BNPL")
+        public String loanProductName;
+        @Schema(example = "Buy now pay later loan product")
+        public String loanProductDescription;
         public GetWorkingCapitalLoansLoanIdStatus status;
         public GetWorkingCapitalLoansLoanIdTimeline timeline;
-        @Schema(example = "[2024, 1, 15]")
-        public LocalDate submittedOnDate;
-        public LocalDate approvedOnDate;
-        public LocalDate rejectedOnDate;
         public BigDecimal proposedPrincipal;
         public BigDecimal approvedPrincipal;
+        @Schema(example = "10000.00", description = "Active principal (loanProductRelatedDetails.principal)")
+        public BigDecimal principal;
+        @Schema(example = "10000.00", description = "Net disbursal amount from the amortization schedule; null if schedule not yet generated")
+        public BigDecimal netDisbursalAmount;
 
         public CurrencyData currency;
         @Schema(example = "1.0")
-        public BigDecimal periodPaymentRate;
+        public BigDecimal paymentRate;
         @Schema(example = "30")
         public Integer repaymentEvery;
         public StringEnumOptionData repaymentFrequencyType;
+        @Schema(description = "Amortization type: EIR or FLAT")
+        public StringEnumOptionData amortizationType;
+        @Schema(example = "360", description = "NPV day count used by the amortization schedule")
+        public Integer npvDayCount;
+        @Schema(example = "1", description = "Loan cycle (sequential WC loan counter per client+product)")
+        public Integer loanProductCounter;
         @Schema(example = "10500.00")
         public BigDecimal totalPaymentVolume;
-        @Schema(example = "0.0", description = "Discount set during loan disbursement")
-        public BigDecimal discount;
-        @Schema(example = "0.0", description = "Proposed discount at loan submission time")
-        public BigDecimal discountProposed;
-        @Schema(example = "0.0", description = "Approved discount set during loan approval")
-        public BigDecimal discountApproved;
-        @Schema(example = "90", description = "Loan term in days (originalPaymentNumber from amortization schedule); null if schedule not yet generated")
-        public Integer totalNoPayments;
+        @Schema(example = "0.0", description = "Discount fee set during loan disbursement")
+        public BigDecimal discountFee;
+        @Schema(example = "0.0", description = "Proposed discount fee at loan submission time")
+        public BigDecimal proposedDiscountFee;
+        @Schema(example = "0.0", description = "Approved discount fee set during loan approval")
+        public BigDecimal approvedDiscountFee;
+        @Schema(example = "90", description = "Number of repayments (effectiveTotalTerm from the amortization schedule; for WC this is the "
+                + "loan term in days); null if schedule not yet generated")
+        public Integer numberOfRepayments;
         @Schema(example = "116.67", description = "Daily expected payment amount from the amortization schedule; null if schedule not yet generated")
         public BigDecimal periodPaymentAmount;
         @Schema(example = "0.000435", description = "Periodic (daily) effective interest rate computed via RATE(); null if schedule not yet generated")
@@ -219,19 +250,119 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public StringEnumOptionData delinquencyStartType;
         @Schema(example = "0", description = "Number of days to shift the start of the first breach schedule period after disbursement")
         public Integer breachGraceDays;
+        @Schema(example = "[2024, 1, 14]", description = "Start date of the loan's breach, i.e. the fromDate of the earliest breached "
+                + "breach schedule period (the breach grace days are already reflected in this date). Null when the loan is not in breach")
+        public LocalDate breachStartDate;
+        @Schema(example = "[2024, 1, 14]", description = "Start date of the loan's delinquency, i.e. the fromDate of the earliest "
+                + "delinquent range schedule period shifted by delinquencyGraceDays. Null when the loan is not delinquent")
+        public LocalDate delinquencyStartDate;
         @Schema(example = "[2024, 1, 14]", description = "Last closed business date (COB)")
         public LocalDate lastClosedBusinessDate;
         public List<GetPaymentAllocation> paymentAllocation;
         /**
-         * Full list of disbursement details (timeline uses the first).
+         * Full list of disbursement details (for multi-disbursement support).
          */
         public List<GetDisbursementDetail> disbursementDetails;
+        @Schema(description = "Charges associated with the loan")
+        public List<GetWorkingCapitalLoanCharge> charges;
         /**
          * Running balances (principal outstanding, total payment, etc.).
          */
         public GetBalance balance;
+        @Schema(description = "Loan summary: principal / fee / penalty totals, income recognition and aggregates")
+        public GetWorkingCapitalLoanSummary summary;
+
+        @Schema(description = "Working Capital Loan charge")
+        public static final class GetWorkingCapitalLoanCharge {
+
+            private GetWorkingCapitalLoanCharge() {}
+
+            @Schema(example = "1")
+            public Long id;
+            @Schema(example = "1")
+            public Long chargeId;
+            @Schema(example = "nsf fees")
+            public String name;
+            public EnumOptionData chargeTimeType;
+            public LocalDate submittedOnDate;
+            public LocalDate dueDate;
+            public EnumOptionData chargeCalculationType;
+            public CurrencyData currency;
+            @Schema(example = "10")
+            public BigDecimal amount;
+            @Schema(example = "10")
+            public BigDecimal amountPaid;
+            @Schema(example = "0")
+            public BigDecimal amountOutstanding;
+            @Schema(example = "false")
+            public boolean penalty;
+            public EnumOptionData chargePaymentMode;
+            @Schema(example = "true")
+            public boolean paid;
+            @Schema(example = "1")
+            public Long loanId;
+            @Schema(example = "c9b17bbe-4a4b-4a68-8c69-b9dfb9210f93")
+            public String externalId;
+            @Schema(example = "8f4a5f3e-7c2d-4d7a-9b1c-2e6d4a8b9c0d")
+            public String externalLoanId;
+        }
+
+        @Schema(description = "Working Capital Loan summary")
+        public static final class GetWorkingCapitalLoanSummary {
+
+            private GetWorkingCapitalLoanSummary() {}
+
+            public CurrencyData currency;
+            public BigDecimal principal;
+            public BigDecimal principalPaid;
+            public BigDecimal principalOutstanding;
+            public BigDecimal fee;
+            public BigDecimal feePaid;
+            public BigDecimal feeOutstanding;
+            public BigDecimal penalty;
+            public BigDecimal penaltyPaid;
+            public BigDecimal penaltyOutstanding;
+            public BigDecimal realizedIncomeFromDiscountFee;
+            public BigDecimal unrealizedIncomeFromDiscountFee;
+            public BigDecimal overpayment;
+            public BigDecimal totalDisbursement;
+            public BigDecimal totalDiscountFee;
+            public BigDecimal totalDiscountFeeAdjustment;
+            public BigDecimal totalExpectedRepayment;
+            public BigDecimal totalRepayment;
+            public BigDecimal totalOutstanding;
+        }
+
         @Schema(description = "Working Capital Delinquency Collection Data")
-        public WorkingCapitalCollection collectionData;
+        public WorkingCapitalCollection delinquent;
+        @Schema(description = "Installment-level delinquency flag (Term-compatible name). True when the loan has a delinquency "
+                + "bucket configured (Working Capital tracks delinquency at the period level); false otherwise", example = "true")
+        public Boolean enableInstallmentLevelDelinquency;
+        @Schema(description = "List of originators associated with this loan")
+        public List<GetWorkingCapitalLoansLoanIdOriginatorData> originators;
+        @Schema(description = "Fraud flag. Placeholder: null until the WCP fraud feature is implemented")
+        public Boolean fraud;
+        @Schema(description = "Charge-off flag. Placeholder: null until the WCP charge-off feature is implemented")
+        public Boolean chargedOff;
+
+        @Schema(description = "Originator data associated with the loan")
+        public static final class GetWorkingCapitalLoansLoanIdOriginatorData {
+
+            private GetWorkingCapitalLoansLoanIdOriginatorData() {}
+
+            @Schema(example = "1")
+            public Long id;
+            @Schema(example = "REV-SHARE-001")
+            public String externalId;
+            @Schema(example = "PP Merchant")
+            public String name;
+            @Schema(example = "ACTIVE")
+            public String status;
+            @Schema(description = "Originator type as a code value (id, name, ...)")
+            public CodeValueData originatorType;
+            @Schema(description = "Channel type as a code value (id, name, ...)")
+            public CodeValueData channelType;
+        }
     }
 
     @Schema(description = "Working capital loan running balances")
@@ -284,11 +415,16 @@ public final class WorkingCapitalLoanApiResourceSwagger {
 
         private GetDisbursementDetail() {}
 
+        @Schema(example = "1")
         public Long id;
+        @Schema(example = "1")
+        public Long loanId;
         public LocalDate expectedDisbursementDate;
-        public BigDecimal expectedAmount;
+        @Schema(example = "10000.00", description = "Expected (planned) disbursement principal")
+        public BigDecimal principal;
         public LocalDate expectedMaturityDate;
         public LocalDate actualDisbursementDate;
+        @Schema(example = "10000.00", description = "Actually disbursed amount; null until disbursed")
         public BigDecimal actualAmount;
         public String disbursedByUsername;
         public String disbursedByFirstname;
@@ -363,6 +499,12 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         @Schema(example = "0", description = "Number of days to shift the start of the first breach schedule period after disbursement")
         public Integer breachGraceDays;
         public List<PostPaymentAllocationRule> paymentAllocation;
+        @Schema(description = """
+                Optional array of originators to associate with this loan. \
+                Each entry can reference an existing originator by 'id' or 'externalId'. \
+                If the global config 'enable_originator_creation_during_loan_application' is enabled, \
+                non-existing originators will be auto-created using the provided details (name, typeId, channelTypeId).""")
+        public List<PostWorkingCapitalLoansOriginatorData> originators;
 
         @Schema(example = "en_GB")
         public String locale;
@@ -388,6 +530,27 @@ public final class WorkingCapitalLoanApiResourceSwagger {
             public String paymentAllocationRule;
             @Schema(example = "1")
             public Integer order;
+        }
+
+        @Schema(description = "Originator data for loan creation request")
+        public static final class PostWorkingCapitalLoansOriginatorData {
+
+            private PostWorkingCapitalLoansOriginatorData() {}
+
+            @Schema(description = "Originator internal ID (use this OR externalId, not both)", example = "1")
+            public Long id;
+
+            @Schema(description = "Originator external ID (use this OR id, not both)", example = "REV-SHARE-001")
+            public String externalId;
+
+            @Schema(description = "Originator name (used when creating new originator if config enabled)", example = "PP Merchant")
+            public String name;
+
+            @Schema(description = "Code value ID for originator type (from LoanOriginatorType code)", example = "1")
+            public Long typeId;
+
+            @Schema(description = "Code value ID for channel type (from LoanOriginationChannelType code)", example = "2")
+            public Long channelTypeId;
         }
     }
 
@@ -580,7 +743,9 @@ public final class WorkingCapitalLoanApiResourceSwagger {
 
         private WorkingCapitalCollection() {}
 
-        @Schema(description = "Working capital loan delinquency collection summary", example = "true")
+        @Schema(description = "Days the oldest unmet minimum-payment period is past due (measured from its toDate); 0 when not past due", example = "0")
+        public Long pastDueDays;
+        @Schema(description = "Number of days the loan has been delinquent, from the oldest active delinquency tag", example = "0")
         public Long delinquentDays;
         @Schema(description = "Date when the loan became delinquent", example = "[2024, 1, 15]")
         public LocalDate delinquentDate;
@@ -588,14 +753,10 @@ public final class WorkingCapitalLoanApiResourceSwagger {
         public BigDecimal delinquentAmount;
         @Schema(description = "Pause periods during which delinquency is not counted")
         public Collection<WorkingCapitalCollectionDelinquencyPausePeriod> delinquencyPausePeriods;
-        @Schema(description = "Delinquency amounts grouped by age range")
-        public Collection<WorkingCapitalCollectionRangeScheduleDelinquency> rangeLevelDelinquency;
+        @Schema(description = "Delinquency amounts grouped by age range (installment-level delinquency; Term-compatible name)")
+        public Collection<WorkingCapitalCollectionRangeScheduleDelinquency> installmentLevelDelinquency;
         @Schema(description = "Delinquent principal amount", example = "1000.00")
         public BigDecimal delinquentPrincipal;
-        @Schema(description = "Delinquent fee amount", example = "150.00")
-        public BigDecimal delinquentFee;
-        @Schema(description = "Delinquent penalty amount", example = "84.56")
-        public BigDecimal delinquentPenalty;
 
         @Schema(description = "Delinquency amount for a specific age range")
         public static final class WorkingCapitalCollectionRangeScheduleDelinquency {

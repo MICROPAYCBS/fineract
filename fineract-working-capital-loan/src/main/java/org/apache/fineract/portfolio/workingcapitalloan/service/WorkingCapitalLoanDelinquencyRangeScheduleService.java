@@ -33,7 +33,7 @@ public interface WorkingCapitalLoanDelinquencyRangeScheduleService {
 
     boolean hasSchedule(Long loanId);
 
-    void applyRepayment(Long loanId, LocalDate transactionDate, BigDecimal amount);
+    void applyRepayment(WorkingCapitalLoan loan, LocalDate transactionDate, BigDecimal amount);
 
     void evaluateExpiredPeriods(WorkingCapitalLoan loan, LocalDate businessDate);
 
@@ -42,5 +42,14 @@ public interface WorkingCapitalLoanDelinquencyRangeScheduleService {
     void extendPeriodsForPause(WorkingCapitalLoan loan, LocalDate pauseStart, LocalDate pauseEnd);
 
     void rescheduleMinimumPayment(WorkingCapitalLoan loan, WorkingCapitalLoanDelinquencyAction rescheduleAction);
+
+    void resumeActivePause(WorkingCapitalLoan loan, WorkingCapitalLoanDelinquencyAction activePause,
+            WorkingCapitalLoanDelinquencyAction resumeAction);
+
+    /**
+     * Rebuilds paid amounts and evaluation for all periods by replaying the principal portions of the repayment type
+     * transactions in chronological order.
+     */
+    void reprocessDelinquencySchedule(WorkingCapitalLoan loan);
 
 }

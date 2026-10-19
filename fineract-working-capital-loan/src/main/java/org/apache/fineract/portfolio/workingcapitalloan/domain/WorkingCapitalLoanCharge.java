@@ -33,6 +33,7 @@ import lombok.Setter;
 import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
+import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.portfolio.charge.domain.Charge;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
 import org.apache.fineract.portfolio.charge.domain.ChargeCalculationTypeConverter;
@@ -104,11 +105,12 @@ public class WorkingCapitalLoanCharge extends AbstractAuditableWithUTCDateTimeCu
                 .currency(getCharge().toData().getCurrency()).amount(amount).amountPaid(amountPaid)
                 .amountOutstanding(getAmountOutstanding()).chargeTimeType(chargeTimeTypeData).submittedOnDate(submittedOnDate)
                 .dueDate(dueDate).chargeCalculationType(chargeCalculationTypeData).penalty(penaltyCharge)
-                .chargePaymentMode(chargePaymentModeData).paid(paid).loanId(loan.getId()).externalId(externalId).build();
+                .chargePaymentMode(chargePaymentModeData).paid(paid).loanId(loan.getId()).externalId(externalId)
+                .externalLoanId(loan.getExternalId()).build();
     }
 
     public BigDecimal getAmountOutstanding() {
-        return getAmount().min(getAmountPaid());
+        return MathUtil.subtract(getAmount(), getAmountPaid());
     }
 
     public static WorkingCapitalLoanCharge build(WorkingCapitalLoan loan, ExternalId externalId, Charge charge, BigDecimal amount,

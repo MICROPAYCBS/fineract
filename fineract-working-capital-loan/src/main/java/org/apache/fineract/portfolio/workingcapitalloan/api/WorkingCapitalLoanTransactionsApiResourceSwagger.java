@@ -103,6 +103,8 @@ public final class WorkingCapitalLoanTransactionsApiResourceSwagger {
 
         @Schema(example = "62")
         public Long id;
+        @Schema(description = "Payment type")
+        public PaymentTypeData paymentType;
         @Schema(example = "acc123")
         public String accountNumber;
         @Schema(example = "che123")
@@ -113,6 +115,27 @@ public final class WorkingCapitalLoanTransactionsApiResourceSwagger {
         public String receiptNumber;
         @Schema(example = "ban123")
         public String bankNumber;
+    }
+
+    @Schema(description = "Payment type data")
+    public static final class PaymentTypeData {
+
+        private PaymentTypeData() {}
+
+        @Schema(example = "1")
+        public Long id;
+        @Schema(example = "Money Transfer")
+        public String name;
+        @Schema(example = "Transfer via banking network")
+        public String description;
+        @Schema(example = "false")
+        public Boolean isCashPayment;
+        @Schema(example = "1")
+        public Long position;
+        @Schema(example = "PAYMENT_TYPE_CODE")
+        public String codeName;
+        @Schema(example = "false")
+        public Boolean isSystemDefined;
     }
 
     @Schema(description = "Payment details for transaction request payload")
@@ -181,6 +204,34 @@ public final class WorkingCapitalLoanTransactionsApiResourceSwagger {
         public Long clientId;
         @Schema(example = "3")
         public Long loanId;
+        @Schema(example = "4")
+        public Long resourceId;
+        @Schema(example = "repayment-ext-001")
+        public String resourceExternalId;
+    }
+
+    @Schema(description = "Request for working capital loan transaction command execution")
+    public static final class ExecuteWorkingCapitalLoanTransactionCommandRequest {
+
+        private ExecuteWorkingCapitalLoanTransactionCommandRequest() {}
+
+        @Schema(example = "loan-ext-001")
+        public String reversalExternalId;
+    }
+
+    @Schema(description = "Response for working capital loan transaction command execution")
+    public static final class ExecuteWorkingCapitalLoanTransactionCommandResponse {
+
+        private ExecuteWorkingCapitalLoanTransactionCommandResponse() {}
+
+        @Schema(example = "1")
+        public Long officeId;
+        @Schema(example = "2")
+        public Long clientId;
+        @Schema(example = "3")
+        public Long loanId;
+        @Schema(example = "loan-ext-001")
+        public String loanExternalId;
         @Schema(example = "4")
         public Long resourceId;
         @Schema(example = "repayment-ext-001")

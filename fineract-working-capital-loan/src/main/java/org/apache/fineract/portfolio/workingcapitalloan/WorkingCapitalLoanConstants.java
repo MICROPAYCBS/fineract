@@ -51,7 +51,6 @@ public final class WorkingCapitalLoanConstants {
     public static final String CREDIT_BALANCE_REFUND_COMMAND = "creditBalanceRefund";
     public static final String DISCOUNT_FEE_LOAN_COMMAND = "discountFee";
     public static final String DISCOUNT_FEE_ADJUSTMENT_LOAN_COMMAND = "discountFeeAdjustment";
-    public static final String UNDO_LOAN_COMMAND = "undo";
 
     // Approval / Rejection / Undo-approval parameters
     public static final String RESOURCE_NAME = WCL_RESOURCE_NAME;
@@ -91,7 +90,22 @@ public final class WorkingCapitalLoanConstants {
     public static final String WRITE_OFF_REASONS = "WriteOffReasons";
     public static final String CHARGE_OFF_REASONS = "ChargeOffReasons";
 
+    // transaction undo parameters
+    public static final String reversalExternalIdParamName = "reversalExternalId";
+
+    // Transaction Commands
+    public static final String UNDO_COMMAND = "undo";
+
     // Period payment rate change parameters
     public static final String periodPaymentRateParamName = "periodPaymentRate";
     public static final String previousPeriodPaymentRateParamName = "previousRate";
+
+    // Near breach action parameters
+    public static final String nearBreachActionParamName = "action";
+    public static final String nearBreachThresholdParamName = "nearBreachThreshold";
+    public static final String nearBreachFrequencyParamName = "nearBreachFrequency";
+    public static final String nearBreachFrequencyTypeParamName = "nearBreachFrequencyType";
+
+    // Loan origination parameters
+    public static final String originatorsParameterName = "originators";
 }

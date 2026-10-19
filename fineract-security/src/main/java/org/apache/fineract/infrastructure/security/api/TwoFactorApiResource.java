@@ -24,7 +24,6 @@ import io.swagger.v3.oas.annotations.headers.Header;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -46,6 +45,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
+import org.apache.fineract.infrastructure.core.annotation.AlternativeOperationId;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.serialization.DefaultToApiJsonSerializer;
 import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer;
@@ -142,14 +142,9 @@ public class TwoFactorApiResource {
     @Path("invalidate")
     @POST
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Invalidate a two-factor access token", description = "Disables the access token in the body. The only accepted field is token.")
-    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorInvalidateRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = TwoFactorApiResourceSwagger.PostTwoFactorInvalidateResponse.class)))
-    @ApiResponse(responseCode = "400", description = "The body is empty or token is blank")
-    @ApiResponse(responseCode = "401", description = "The caller is not authenticated, or Fineract-Platform-TFA-Token is invalid. When a newer login superseded this session the response includes Fineract-Platform-Reason: session-superseded.", headers = {
-            @Header(name = "Fineract-Platform-Reason", description = "session-superseded when this access token was revoked by a newer login", schema = @Schema(example = "session-superseded")) })
-    @ApiResponse(responseCode = "403", description = "The access token does not exist or is no longer valid, or the caller may not invalidate it")
-    public String updateConfiguration(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
+    @Operation(operationId = "updateConfiguration")
+    @AlternativeOperationId("updateConfiguration_2")
+    public String updateConfiguration(final String apiRequestBodyAsJson) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().invalidateTwoFactorAccessToken().withJson(apiRequestBodyAsJson)
                 .build();
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);

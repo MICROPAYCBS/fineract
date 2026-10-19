@@ -18,10 +18,13 @@
  */
 package org.apache.fineract.portfolio.workingcapitalloan.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
+import org.apache.fineract.portfolio.workingcapitalloan.data.TransactionDateAndAmountHolder;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransaction;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,8 +48,44 @@ public interface WorkingCapitalLoanTransactionRepository extends JpaRepository<W
     List<WorkingCapitalLoanTransaction> findActiveByTypeOrderByIdDesc(@Param("wcLoanId") Long wcLoanId,
             @Param("transactionType") LoanTransactionType transactionType);
 
+    /** Net amortized discount fee income from non-reversed transactions: sum(amortization) - sum(adjustment). */
+    // 'else 0' is required by EclipseLink's CASE grammar; EclipseLink also rejects unary negation in JPQL CASE, so the
+    // adjustment branch subtracts via (0 - amount) rather than -amount.
+    @Query("""
+            select coalesce(sum(case when t.transactionType = :amortizationType then t.transactionAmount
+                                     when t.transactionType = :adjustmentType then (0 - t.transactionAmount)
+                                     else 0 end), 0)
+            from WorkingCapitalLoanTransaction t
+            where t.wcLoan.id = :wcLoanId and t.reversed = false
+              and t.transactionType in (:amortizationType, :adjustmentType)
+            """)
+    BigDecimal sumNetAmortization(@Param("wcLoanId") Long wcLoanId, @Param("amortizationType") LoanTransactionType amortizationType,
+            @Param("adjustmentType") LoanTransactionType adjustmentType);
+
+    /**
+     * Total amount of non-reversed discount fee adjustments dated strictly after {@code date} (not yet effective then).
+     */
+    @Query("""
+            select coalesce(sum(t.transactionAmount), 0)
+            from WorkingCapitalLoanTransaction t
+            where t.wcLoan.id = :wcLoanId and t.reversed = false
+              and t.transactionType = :transactionType and t.transactionDate > :date
+            """)
+    BigDecimal sumDiscountFeeAdjustmentsAfter(@Param("wcLoanId") Long wcLoanId,
+            @Param("transactionType") LoanTransactionType transactionType, @Param("date") LocalDate date);
+
     Optional<WorkingCapitalLoanTransaction> findByWcLoan_IdAndExternalId(Long wcLoanId, ExternalId externalId);
 
     boolean existsByExternalId(ExternalId externalId);
 
+    @Query("""
+            SELECT t.transactionDate, SUM(t.transactionAmount)
+            FROM WorkingCapitalLoanTransaction t
+            WHERE t.reversed = FALSE
+            AND t.wcLoan.id = :wcLoanId
+            AND t.transactionType in :transactionTypes
+            GROUP BY t.transactionDate
+            """)
+    List<TransactionDateAndAmountHolder> fetchTransactionDateAndAmount(@Param("wcLoanId") Long wcLoanId,
+            @Param("transactionTypes") List<LoanTransactionType> transactionTypes);
 }

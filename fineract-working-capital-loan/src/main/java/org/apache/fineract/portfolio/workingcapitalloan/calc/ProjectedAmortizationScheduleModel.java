@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.experimental.Accessors;
@@ -174,6 +175,27 @@ public final class ProjectedAmortizationScheduleModel {
                 .map(p -> p.actualAmortizationAmount().getAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
+    public BigDecimal totalActualAmortizationWithDiscount(final BigDecimal asOfDiscount) {
+        if (asOfDiscount == null || discountFeeAmount == null || asOfDiscount.compareTo(discountFeeAmount.getAmount()) == 0) {
+            return totalActualAmortization();
+        }
+        return withDiscount(asOfDiscount).totalActualAmortization();
+    }
+
+    private ProjectedAmortizationScheduleModel withDiscount(final BigDecimal asOfDiscount) {
+        final ProjectedAmortizationScheduleModel asOfModel = generate(asOfDiscount, netDisbursementAmount.getAmount(),
+                totalPaymentVolume.getAmount(), periodPaymentRate, npvDayCount, expectedDisbursementDate, mc, currency,
+                calculatedTillDate != null ? calculatedTillDate : expectedDisbursementDate);
+        for (final ActualPayment payment : actualPayments) {
+            asOfModel.applyPayment(payment.date(), payment.amount().getAmount());
+        }
+        if (calculatedTillDate != null) {
+            asOfModel.updateCalculatedTillDate(calculatedTillDate);
+            asOfModel.rebuildPayments();
+        }
+        return asOfModel;
+    }
+
     public int effectiveTotalTerm() {
         if (rateSegments == null || rateSegments.isEmpty()) {
             return originalPaymentNumber;
@@ -271,6 +293,21 @@ public final class ProjectedAmortizationScheduleModel {
         }
         actualPayments.add(new ActualPayment(allocationDate, money(amount)));
         rebuildPayments();
+    }
+
+    public void undoPayment(final LocalDate paymentDate, final BigDecimal amount) {
+        Objects.requireNonNull(paymentDate, "paymentDate");
+        Objects.requireNonNull(amount, "amount");
+        final int firstPeriodDayOffset = hasDisbursementDatePayment() || paymentDate.equals(expectedDisbursementDate) ? 0 : 1;
+        final LocalDate allocationDate = calculateAllocationDate(paymentDate, firstPeriodDayOffset);
+        Optional<ActualPayment> first = actualPayments.stream()
+                .filter(p -> p.date.equals(allocationDate) && p.amount.getAmount().compareTo(amount) == 0).findFirst();
+        if (first.isEmpty()) {
+            throw new IllegalStateException("payment not found: date=" + paymentDate + " with amount=" + amount);
+        }
+        actualPayments.remove(first.get());
+        rebuildPayments();
+        recalculateNetAmortizationAndDeferredBalanceFrom(paymentDate);
     }
 
     private void updateCalculatedTillDate(final LocalDate actionDate) {
