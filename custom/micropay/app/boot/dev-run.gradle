@@ -44,20 +44,32 @@ tasks.register('devRun', bootRunType) {
 }
 
 gradle.taskGraph.whenReady { graph ->
-    if (!graph.allTasks.any { it.name == 'devRun' && it.project.path == project.path }) {
-        return
-    }
-    rootProject.fineractJavaProjects.each { subproject ->
-        subproject.tasks.matching { task ->
-            task.name in fineractQuickBuildSkippedTaskNames ||
-                    task.name.startsWith('spotless') ||
-                    task.name.startsWith('checkstyle') ||
-                    task.name.startsWith('spotbugs')
-        }.configureEach {
-            enabled = false
+    def micropayDevRun = graph.allTasks.any { it.name == 'devRun' && it.project.path == project.path }
+    def micropayBootRun = graph.allTasks.any { it.name == 'bootRun' && it.project.path == project.path }
+    if (micropayDevRun) {
+        rootProject.fineractJavaProjects.each { subproject ->
+            subproject.tasks.matching { task ->
+                task.name in fineractQuickBuildSkippedTaskNames ||
+                        task.name.startsWith('spotless') ||
+                        task.name.startsWith('checkstyle') ||
+                        task.name.startsWith('spotbugs')
+            }.configureEach {
+                enabled = false
+            }
+            subproject.tasks.withType(JavaCompile).configureEach {
+                options.errorprone.enabled = false
+            }
         }
-        subproject.tasks.withType(JavaCompile).configureEach {
-            options.errorprone.enabled = false
+    }
+    // swagger-gradle-plugin resolve loads FineractOperationIdReader in the Gradle daemon JVM.
+    // The toolchain compiles that class for JDK 25 (class file 69); a Java 21 daemon then fails
+    // with UnsupportedClassVersionError. Local run does not need the generated OpenAPI files.
+    if (micropayDevRun || micropayBootRun) {
+        def resolveTask = graph.allTasks.find { it.name == 'resolve' && it.project.path == ':fineract-provider' }
+        if (resolveTask != null) {
+            resolveTask.enabled = false
+            logger.lifecycle(':fineract-provider:resolve skipped for {}: swagger-gradle-plugin cannot load JDK 25 classes in a Java 21 Gradle daemon. Run the daemon on JDK 25 if you need the spec.',
+                    micropayDevRun ? 'devRun' : 'bootRun')
         }
     }
 }

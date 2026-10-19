@@ -69,7 +69,9 @@ cd fineract
 ./gradlew createPGDB -PdbName=fineract_tenants
 ./gradlew createPGDB -PdbName=fineract_default
 
-# start backend (Micropay distribution: fineract-provider + every custom/micropay/** module)
+# start backend — Apache Fineract 1.16 plus every Micropay modification
+# (custom/micropay/** modules, replacements, and moved endpoints).
+# Do not use :fineract-provider:devRun / :fineract-provider:bootRun for this.
 ./gradlew :custom:micropay:app:boot:devRun
 ```
 

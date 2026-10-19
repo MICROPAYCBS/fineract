@@ -226,6 +226,9 @@ collection sheet, financial activity account), bulk-import handlers (+4/-3 total
 - `config/docker/env`, `fineract-war/setenv.sh`, `kubernetes/fineract-server-deployment.yml`: default tenant timezone `Africa/Kampala`, Sentry env placeholders.
 - `README.md` (+14, "Create an additional tenant" section; it still names `:fineract-provider:createNewTenant`, the task now lives at `:custom:micropay:app:boot:createNewTenant`), `.gitignore` (+3), `.gitattributes` (new).
 - `fineract-provider/src/main/resources/db/changelog/tenant/parts/0217_force_withdrawal_configs.xml`: one `validCheckSum` line, needed by databases migrated before the custom changelog existed. Keep.
+- `fineract-provider/src/main/resources/logback-spring.xml`: CONSOLE is always attached. Logback 1.5
+  (Boot 4) ignores the janino `condition` attribute, so the old if/else left no root appender and
+  `devRun` failed after EclipseLink with no Spring error.
 - `docs/**` (38 files) and `scripts/**` (3): non-conflicting, could move under `custom/micropay/docs` at any time.
 - `integration-tests` (3 modified): upstream helpers restored to merge-base. The nine fork-owned
   HTTP tests and their helpers live in `:custom:micropay:test:integration` (see §6.3).

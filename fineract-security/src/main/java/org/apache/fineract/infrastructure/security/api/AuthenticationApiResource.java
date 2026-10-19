@@ -55,6 +55,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -101,6 +102,9 @@ public class AuthenticationApiResource {
 
         final Authentication authentication = new UsernamePasswordAuthenticationToken(request.username, request.password);
         final Authentication authenticationCheck = this.customAuthenticationProvider.authenticate(authentication);
+        // Login is authenticated outside the filter chain, so later reads
+        // (session-idle config, password-renewal) need the principal on this thread.
+        SecurityContextHolder.getContext().setAuthentication(authenticationCheck);
 
         final Collection<String> permissions = new ArrayList<>();
         AuthenticatedUserData authenticatedUserData = new AuthenticatedUserData().setUsername(request.username).setPermissions(permissions);
