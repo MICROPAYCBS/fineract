@@ -62,5 +62,6 @@ public class ChargeRequest implements Serializable {
     @Schema(description = "Amount bands. Only the last tier may omit amountRangeTo. Requires locale. Not allowed when useChargeTiers is false.")
     private List<ChargeTierRequest> chargeTiers;
     private Long taxGroupId;
+    private Long incomeAccountId;
 
 }

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +43,8 @@ import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.charge.WorkingCapitalLoanAddChargeBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanBalanceChangedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.loan.WorkingCapitalLoanStatusChangedBusinessEvent;
-import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanChargeAdjustmentPostBusinessEvent;
-import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanChargeAdjustmentPreBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanChargeAdjustmentTransactionBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.workingcapitalloan.transaction.WorkingCapitalLoanChargeWaiverTransactionBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
 import org.apache.fineract.portfolio.charge.domain.Charge;
@@ -56,6 +57,7 @@ import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.paymentdetail.service.PaymentDetailWritePlatformService;
 import org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants;
+import org.apache.fineract.portfolio.workingcapitalloan.accounting.WorkingCapitalLoanAccountingProcessor;
 import org.apache.fineract.portfolio.workingcapitalloan.calc.ProjectedAmortizationScheduleModel;
 import org.apache.fineract.portfolio.workingcapitalloan.data.WorkingCapitalLoanAllocationPlan;
 import org.apache.fineract.portfolio.workingcapitalloan.data.WorkingCapitalLoanAllocationRequest;
@@ -63,15 +65,18 @@ import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoa
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBalance;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanCharge;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanChargePaidBy;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanChargeWaiverDomainService;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanEvent;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanLifecycleStateMachine;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanNote;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransaction;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransactionAllocation;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransactionFinder;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransactionRelation;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransactionRelationRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanChargeAdjustmentException;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanChargeNotFoundException;
+import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanChargeWaiverException;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanNotFoundException;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanBalanceRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanChargePaidByRepository;
@@ -112,6 +117,13 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
     private final WorkingCapitalLoanBreachScheduleService breachScheduleService;
     private final ProjectedAmortizationScheduleRepositoryWrapper scheduleRepositoryWrapper;
     private final WorkingCapitalLoanChargeAccrualService chargeAccrualService;
+    private final WorkingCapitalLoanChargeWaiverDomainService chargeWaiverDomainService;
+    // Needed directly because a waiver, unlike a charge adjustment, is not repayment-like: it never reaches
+    // processRepaymentLikeTransaction, which would otherwise post its journal entries and, when the waiver lands
+    // before an active charge-off, hand the loan to reprocessing.
+    private final WorkingCapitalLoanAccountingProcessor accountingProcessor;
+    private final WorkingCapitalLoanTransactionFinder transactionFinder;
+    private final WorkingCapitalLoanTransactionReprocessingService transactionReprocessingService;
 
     @Transactional
     @Override
@@ -155,6 +167,10 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
         }
 
         chargeAccrualService.processOnChargeAdded(loan, loanCharge);
+        // EOD mode does not accrue on add. A charge added to an already overpaid/closed loan may leave the account
+        // overpaid or closed again after overpayment settlement, so COB will never see it — accelerate any pending
+        // accrual here (no-op while the loan is still active; idempotent if real-time already posted).
+        chargeAccrualService.accrueOnClosure(loan, ThreadLocalContextUtil.getBusinessDate());
 
         businessEventNotifierService.notifyPostBusinessEvent(new WorkingCapitalLoanAddChargeBusinessEvent(loanCharge));
         notifyBalanceChanged(loan);
@@ -305,6 +321,7 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
             }
             loan.setMaturedOnDate(chargeDueDate);
             generateDelinquencyAndBreachPeriods(loan, chargeDueDate);
+            breachScheduleService.rederiveNearBreachIfReopened(loan, statusBeforeCharge);
         } else if (statusBeforeCharge.isOverpaid()) {
             // The overpayment exactly settled the charge: the loan closes with obligations met.
             stateMachine.transition(WorkingCapitalLoanEvent.LOAN_CREDIT_BALANCE_REFUND_IN_FULL, loan, chargeDueDate);
@@ -344,7 +361,7 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
         final LocalDate transactionDate = ThreadLocalContextUtil.getBusinessDate();
         final ExternalId externalId = externalIdFactory.createFromCommand(command, WorkingCapitalLoanChargeConstants.externalIdParamName);
 
-        chargeAdjustmentEntranceValidation(loan, wcCharge, amount);
+        chargeAdjustmentEntranceValidation(loan, wcCharge, amount, null);
 
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put(WorkingCapitalLoanChargeConstants.amountParamName, amount);
@@ -355,9 +372,6 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
 
         final WorkingCapitalLoanTransaction adjustmentTx = WorkingCapitalLoanTransaction.chargeAdjustment(loan, externalId, amount,
                 transactionDate, paymentDetail);
-
-        businessEventNotifierService
-                .notifyPreBusinessEvent(new WorkingCapitalLoanChargeAdjustmentPreBusinessEvent(adjustmentTx, loan.getId()));
 
         final WorkingCapitalLoanTransactionRelation relation = WorkingCapitalLoanTransactionRelation.linkToCharge(adjustmentTx, wcCharge,
                 LoanTransactionRelationTypeEnum.CHARGE_ADJUSTMENT);
@@ -376,7 +390,7 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
         }
 
         businessEventNotifierService
-                .notifyPostBusinessEvent(new WorkingCapitalLoanChargeAdjustmentPostBusinessEvent(adjustmentTx, loan.getId()));
+                .notifyPostBusinessEvent(new WorkingCapitalLoanChargeAdjustmentTransactionBusinessEvent(adjustmentTx, loan.getId()));
 
         workingCapitalLoanRepository.saveAndFlush(loan);
         notifyBalanceChanged(loan);
@@ -395,10 +409,169 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
                 .build();
     }
 
+    /**
+     * Waives the whole unpaid remainder of a single charge.
+     *
+     * <p>
+     * The relief lands in a waived bucket instead of going through the payment allocation order, so it is not mistaken
+     * for a payment and survives reprocessing, which resets only the paid distribution.
+     * </p>
+     *
+     * <p>
+     * The allocation carries the whole relief as the transaction's split, as a write-off does. Only the recognized part
+     * of it reaches the ledger, which can fall short of the full amount: income that was never accrued has no
+     * receivable to credit. Same split the term-loan waiver makes in its postings.
+     * </p>
+     */
+    @Transactional
+    @Override
+    public CommandProcessingResult waiveLoanCharge(final Long loanId, final Long wcLoanChargeId, final JsonCommand command) {
+        loanChargeDataValidator.validateChargeWaiverRequest(command.json());
+
+        final WorkingCapitalLoan loan = workingCapitalLoanRepository.findById(loanId)
+                .orElseThrow(() -> new WorkingCapitalLoanNotFoundException(loanId));
+        final WorkingCapitalLoanCharge wcCharge = loanChargeRepository.findById(wcLoanChargeId)
+                .orElseThrow(() -> new WorkingCapitalLoanChargeNotFoundException(wcLoanChargeId));
+
+        if (wcCharge.getLoan() == null || !loanId.equals(wcCharge.getLoan().getId())) {
+            throw new WorkingCapitalLoanChargeWaiverException("wc.loan.charge.waiver.charge.not.belongs.to.loan",
+                    "Working capital loan charge " + wcLoanChargeId + " does not belong to loan " + loanId);
+        }
+
+        chargeWaiverEntranceValidation(loan, wcCharge);
+
+        // The balance row exists on every status the waiver is allowed on, so there is nothing to create here. Read
+        // after the status check, so an undisbursed loan is rejected for its status rather than for the missing row.
+        final WorkingCapitalLoanBalance balance = balanceRepository.findByWcLoan_Id(loanId)
+                .orElseThrow(() -> new GeneralPlatformDomainRuleException("error.msg.wc.loan.balance.not.found",
+                        "No balance found for Working Capital Loan " + loanId, loanId));
+
+        final LocalDate businessDate = ThreadLocalContextUtil.getBusinessDate();
+        final LocalDate transactionDate = resolveWaiverTransactionDate(wcCharge, businessDate);
+        final BigDecimal waivedAmount = wcCharge.getAmountOutstanding();
+        final ExternalId externalId = externalIdFactory.createFromCommand(command, WorkingCapitalLoanChargeConstants.externalIdParamName);
+
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put(WorkingCapitalLoanChargeConstants.transactionDateParamName, transactionDate);
+        changes.put(WorkingCapitalLoanChargeConstants.externalIdParamName, externalId);
+
+        final WorkingCapitalLoanTransaction waiverTx = WorkingCapitalLoanTransaction.chargeWaiver(loan, waivedAmount, transactionDate,
+                externalId);
+        final WorkingCapitalLoanTransactionRelation relation = WorkingCapitalLoanTransactionRelation.linkToCharge(waiverTx, wcCharge,
+                LoanTransactionRelationTypeEnum.RELATED);
+        waiverTx.getLoanTransactionRelations().add(relation);
+        transactionRepository.saveAndFlush(waiverTx);
+
+        final BigDecimal recognizedPortion = calculateRecognizedWaiverPortion(wcCharge, waivedAmount);
+        final boolean isPenalty = wcCharge.isPenaltyCharge();
+        final WorkingCapitalLoanTransactionAllocation allocation = WorkingCapitalLoanTransactionAllocation.forPortions(waiverTx,
+                BigDecimal.ZERO, isPenalty ? BigDecimal.ZERO : waivedAmount, isPenalty ? waivedAmount : BigDecimal.ZERO, BigDecimal.ZERO);
+        allocationRepository.saveAndFlush(allocation);
+
+        chargeWaiverDomainService.applyWaived(wcCharge, balance, waivedAmount);
+        loanChargeRepository.saveAndFlush(wcCharge);
+        balanceRepository.saveAndFlush(balance);
+
+        accountingProcessor.postJournalEntriesForChargeWaiver(loan, waiverTx, isPenalty ? BigDecimal.ZERO : recognizedPortion,
+                isPenalty ? recognizedPortion : BigDecimal.ZERO,
+                transactionFinder.isAfterActiveChargeOffForAccountingRouting(loan, waiverTx));
+
+        // A waiver dated to a past due date can land before an active charge-off, which then wrote off a fee the
+        // borrower no longer owed as of that date. Replaying restates the charge-off's snapshot and everything routed
+        // off it - the same gate a backdated repayment passes in processRepaymentLikeTransaction. The delinquency
+        // periods are re-derived from the replayed history with it, the pairing that gate and the generic undo make.
+        if (transactionFinder.isBeforeActiveChargeOff(loan, waiverTx)) {
+            transactionReprocessingService.reprocessTransactions(loan);
+            delinquencyRangeScheduleService.reprocessDelinquencySchedule(loan);
+        }
+
+        final LoanStatus oldStatus = loan.getLoanStatus();
+        // Stamped with the business date rather than the transaction's: the relief is granted today, and a loan the
+        // waiver closes cannot be recorded as closed before the transactions that followed the charge's due date. The
+        // closure amortization and accrual below take the same day, the one createLoanCharge accrues a closure on.
+        stateMachine.determineAndTransition(loan, businessDate);
+        transactionProcessor.recalculateOverpaidOnDate(loan, waiverTx);
+        workingCapitalLoanRepository.saveAndFlush(loan);
+
+        // No-ops while the loan is still active. A waiver that cleared the last outstanding amount closes it, and a
+        // closed loan leaves the COB scope, so both would otherwise never run.
+        transactionProcessor.triggerInlineAmortizationIfLoanClosed(loan, businessDate);
+        chargeAccrualService.accrueOnClosure(loan, businessDate);
+
+        final String noteText = command.stringValueOfParameterNamed(WorkingCapitalLoanChargeConstants.noteParamName);
+        if (StringUtils.isNotBlank(noteText)) {
+            noteRepository.save(WorkingCapitalLoanNote.create(loan, noteText));
+            changes.put(WorkingCapitalLoanChargeConstants.noteParamName, noteText);
+        }
+
+        businessEventNotifierService
+                .notifyPostBusinessEvent(new WorkingCapitalLoanChargeWaiverTransactionBusinessEvent(waiverTx, loan.getId()));
+        notifyBalanceChanged(loan);
+        notifyStatusChanged(loan, oldStatus);
+
+        return new CommandProcessingResultBuilder() //
+                .withCommandId(command.commandId()) //
+                .withEntityId(wcLoanChargeId) //
+                .withEntityExternalId(wcCharge.getExternalId()) //
+                .withSubEntityId(waiverTx.getId()) //
+                .withSubEntityExternalId(waiverTx.getExternalId()) //
+                .withOfficeId(loan.getOfficeId()) //
+                .withClientId(loan.getClientId()) //
+                .withLoanId(loanId) //
+                .with(changes) //
+                .build();
+    }
+
+    /**
+     * A past due date wins over the business date, mirroring the term-loan waiver: the relief is dated to the period
+     * the obligation fell due in. With no due date, or one still ahead, the business date is all that is left. Only the
+     * transaction is dated back this way - the loan's own lifecycle keeps the business date.
+     */
+    private LocalDate resolveWaiverTransactionDate(final WorkingCapitalLoanCharge wcCharge, final LocalDate businessDate) {
+        return Optional.ofNullable(wcCharge.getDueDate()).filter(dueDate -> dueDate.isBefore(businessDate)).orElse(businessDate);
+    }
+
+    /**
+     * Only the part with a receivable behind it may reach the ledger: what the charge accrued, less what a payment
+     * already consumed of it. The rest is income that was never recognized, so there is nothing to reverse.
+     */
+    private BigDecimal calculateRecognizedWaiverPortion(final WorkingCapitalLoanCharge wcCharge, final BigDecimal waivedAmount) {
+        final BigDecimal accruedAmount = chargeAccrualService.getAccruedAmount(wcCharge);
+        final BigDecimal receivableCharge = MathUtil.subtractToZero(accruedAmount, wcCharge.getAmountPaid());
+        return MathUtil.min(waivedAmount, receivableCharge, true);
+    }
+
+    private void chargeWaiverEntranceValidation(final WorkingCapitalLoan loan, final WorkingCapitalLoanCharge wcCharge) {
+        // A charged-off loan passes deliberately: charge-off is a flag, not a status, and waiving an existing charge
+        // on one stays allowed (see createLoanCharge). CLOSED_WRITTEN_OFF is out - its charges already moved into the
+        // written-off bucket.
+        if (!loan.isOpen() && !loan.isClosedObligationsMet() && !loan.isOverpaid()) {
+            throw new WorkingCapitalLoanChargeWaiverException("wc.loan.charge.waiver.invalid.status",
+                    "Charge waiver is not supported for the status of " + loan.getLoanStatus());
+        }
+
+        if (!wcCharge.isActive()) {
+            throw new WorkingCapitalLoanChargeWaiverException("wc.loan.charge.waiver.inactive.charge",
+                    "Charge waiver is not supported for inactive charges");
+        }
+
+        if (!MathUtil.isGreaterThanZero(wcCharge.getAmountOutstanding())) {
+            throw new WorkingCapitalLoanChargeWaiverException("wc.loan.charge.waiver.no.outstanding.amount",
+                    "Charge " + wcCharge.getId() + " has no outstanding amount to waive");
+        }
+
+        checkClientActive(loan);
+    }
+
+    @Override
+    public void validateChargeAdjustmentEntrance(final WorkingCapitalLoan loan, final WorkingCapitalLoanCharge wcCharge,
+            final BigDecimal amount, final Long excludeTransactionId) {
+        chargeAdjustmentEntranceValidation(loan, wcCharge, amount, excludeTransactionId);
+    }
+
     private void chargeAdjustmentEntranceValidation(final WorkingCapitalLoan loan, final WorkingCapitalLoanCharge wcCharge,
-            final BigDecimal amount) {
-        if (loan.getLoanStatus() != LoanStatus.ACTIVE && loan.getLoanStatus() != LoanStatus.CLOSED_OBLIGATIONS_MET
-                && loan.getLoanStatus() != LoanStatus.OVERPAID) {
+            final BigDecimal amount, final Long excludeTransactionId) {
+        if (!loan.isOpen() && !loan.isClosedObligationsMet() && !loan.isOverpaid()) {
             throw new WorkingCapitalLoanChargeAdjustmentException("wc.loan.charge.adjustment.invalid.status",
                     "Adjustment is not supported for the status of " + loan.getLoanStatus());
         }
@@ -413,7 +586,7 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
                     "Transaction amount cannot be higher than the charge amount: " + wcCharge.getAmount());
         }
 
-        final BigDecimal available = calculateAvailableAmountForChargeAdjustment(wcCharge);
+        final BigDecimal available = calculateAvailableAmountForChargeAdjustment(wcCharge, excludeTransactionId);
         if (amount.compareTo(available) > 0) {
             throw new WorkingCapitalLoanChargeAdjustmentException("wc.loan.charge.adjustment.invalid.amount",
                     "Transaction amount cannot be higher than the available charge amount for adjustment: " + available);
@@ -422,12 +595,19 @@ public class WorkingCapitalLoanChargeWritePlatformServiceImpl implements Working
         checkClientActive(loan);
     }
 
-    private BigDecimal calculateAvailableAmountForChargeAdjustment(final WorkingCapitalLoanCharge wcCharge) {
+    private BigDecimal calculateAvailableAmountForChargeAdjustment(final WorkingCapitalLoanCharge wcCharge,
+            final Long excludeTransactionId) {
         final BigDecimal previouslyAdjusted = relationRepository
                 .findAllByToChargeAndFromTransactionReversedAndFromTransactionTransactionType(wcCharge, false,
                         LoanTransactionType.CHARGE_ADJUSTMENT)
-                .stream().map(rel -> rel.getFromTransaction().getTransactionAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
-        return wcCharge.getAmount().subtract(previouslyAdjusted);
+                .stream().filter(rel -> excludeTransactionId == null || !excludeTransactionId.equals(rel.getFromTransaction().getId()))
+                .map(rel -> rel.getFromTransaction().getTransactionAmount()).reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Waived and adjusted relief together cannot exceed the charge: without the waived part here, an adjustment on
+        // a fully waived charge would credit the borrower for a fee they never paid and no longer owe. The paid part
+        // stays adjustable on purpose - relief beyond the outstanding lands on principal or overpayment, as on any
+        // settled charge. The written-off part needs no such guard - a write-off is terminal, so no adjustment can
+        // follow it.
+        return MathUtil.subtract(wcCharge.getAmount(), previouslyAdjusted, wcCharge.getAmountWaived());
     }
 
     private void checkClientActive(final WorkingCapitalLoan loan) {

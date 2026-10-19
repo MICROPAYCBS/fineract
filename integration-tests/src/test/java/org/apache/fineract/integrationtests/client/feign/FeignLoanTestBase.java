@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -216,10 +217,6 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
         return loanHelper.createLoanProduct(request).getResourceId();
     }
 
-    protected Long createLoanProductFromJson(String loanProductJson) {
-        return loanHelper.createLoanProductFromJson(loanProductJson);
-    }
-
     protected GetLoanProductsProductIdResponse retrieveLoanProduct(Long productId) {
         return loanHelper.retrieveLoanProduct(productId);
     }
@@ -336,10 +333,6 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
         return loanHelper.calculateLoanSchedule(request);
     }
 
-    protected Long applyForLoanFromJson(String loanApplicationJson) {
-        return loanHelper.applyForLoanFromJson(loanApplicationJson);
-    }
-
     protected PostLoansLoanIdResponse approveLoan(Long loanId, PostLoansLoanIdRequest request) {
         return loanHelper.approveLoan(loanId, request);
     }
@@ -394,6 +387,17 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
 
     protected PostLoansLoanIdResponse moveLoanState(Long loanId, PostLoansLoanIdRequest request, String command) {
         return loanHelper.moveLoanState(loanId, request, command);
+    }
+
+    protected PostLoansLoanIdResponse applyContractTermination(Long loanId, String transactionDate) {
+        return moveLoanState(loanId,
+                new PostLoansLoanIdRequest().transactionDate(transactionDate).dateFormat(LoanTestData.DATETIME_PATTERN)
+                        .locale(LoanTestData.LOCALE).note("Contract Termination").externalId(Utils.randomStringGenerator("", 20)),
+                "contractTermination");
+    }
+
+    protected PostLoansLoanIdResponse undoContractTermination(Long loanId) {
+        return moveLoanState(loanId, new PostLoansLoanIdRequest().note("Undo Contract Termination"), "undoContractTermination");
     }
 
     protected PostLoansLoanIdTransactionsResponse closeLoan(Long loanId, PostLoansLoanIdTransactionsRequest request) {
@@ -686,6 +690,15 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
         journalHelper.checkJournalEntryForExpenseAccount(account, date, entries);
     }
 
+    /**
+     * Codes the server puts at the top of an error body purely as an envelope; the code that names the actual failure
+     * is then the first entry of the nested {@code errors} array. A resource-not-found reply is one of these: every
+     * {@code AbstractPlatformResourceNotFoundException} reports {@code error.msg.resource.not.found} at the top and the
+     * entity-specific code underneath.
+     */
+    private static final Set<String> GENERIC_ERROR_ENVELOPE_CODES = Set.of("validation.msg.validation.errors.exist",
+            "validation.msg.domain.rule.violation", "error.msg.resource.not.found");
+
     protected static void assertErrorGlobalisationCode(CallFailedRuntimeException exception, String expectedCode) {
         assertEquals(expectedCode, extractErrorGlobalisationCode(exception));
     }
@@ -695,8 +708,7 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
             return exception.getUserMessageGlobalisationCode();
         }
         String topLevelCode = feignException.getUserMessageGlobalisationCode();
-        if (topLevelCode != null && !topLevelCode.equals("validation.msg.validation.errors.exist")
-                && !topLevelCode.equals("validation.msg.domain.rule.violation")) {
+        if (topLevelCode != null && !GENERIC_ERROR_ENVELOPE_CODES.contains(topLevelCode)) {
             return topLevelCode;
         }
         try {
@@ -710,6 +722,23 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
             // fall through to top-level code
         }
         return topLevelCode;
+    }
+
+    /**
+     * The number of entries in the failed response's {@code errors} array. A validation failure reports one entry per
+     * rejected field, so a test that pinned the count with a REST Assured body matcher keeps that assertion here.
+     */
+    protected static int extractErrorCount(CallFailedRuntimeException exception) {
+        if (!(exception.getCause() instanceof FeignException feignException)) {
+            return 0;
+        }
+        try {
+            Map<String, Object> body = ObjectMapperFactory.getShared().readValue(feignException.responseBodyAsString(),
+                    new TypeReference<Map<String, Object>>() {});
+            return body.get("errors") instanceof List<?> errorList ? errorList.size() : 0;
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not read the errors array from: " + feignException.responseBodyAsString(), e);
+        }
     }
 
     protected LoanTestData.Journal journalEntry(double amount, Account account, String type) {
@@ -877,7 +906,7 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
 
     /**
      * Runs the given action with batch requests issued as a user that lacks the loan-checker bypass permission, so
-     * loan-lock enforcement is not bypassed. Mirrors {@code BaseLoanIntegrationTest.runAsNonByPass}.
+     * loan-lock enforcement is not bypassed.
      */
     protected void runAsNonByPass(Runnable runnable) {
         FineractFeignClient previous = activeBatchClient;
@@ -1065,31 +1094,29 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
         });
     }
 
-    protected Integer getLoanProductId(String loanProductJson) {
-        return createLoanProductFromJson(loanProductJson).intValue();
+    protected Long getLoanProductId(PostLoanProductsRequest request) {
+        return createLoanProduct(request);
     }
 
-    protected PostLoansResponse applyForLoanApplication(Integer clientId, Integer loanProductId, String externalId) {
+    protected PostLoansResponse applyForLoanApplication(Long clientId, Long loanProductId, String externalId) {
         return applyForLoanApplication(clientId, loanProductId, externalId, null);
     }
 
-    protected PostLoansResponse applyForLoanApplication(Integer clientId, Integer loanProductId, String externalId, String linkAccountId) {
-        final String loanApplicationJSON = new org.apache.fineract.integrationtests.common.loans.LoanApplicationTestBuilder()
-                .withPrincipal("1000").withLoanTermFrequency("1").withLoanTermFrequencyAsMonths().withNumberOfRepayments("1")
-                .withRepaymentEveryAfter("1").withRepaymentFrequencyTypeAsMonths().withInterestRatePerPeriod("0")
-                .withInterestTypeAsDecliningBalance().withAmortizationTypeAsEqualPrincipalPayments()
-                .withInterestCalculationPeriodTypeSameAsRepaymentPeriod().withExpectedDisbursementDate("03 September 2022")
-                .withSubmittedOnDate("01 September 2022").withLoanType("individual").withInArrearsTolerance("1001")
-                .withExternalId(externalId).build(clientId.toString(), loanProductId.toString(), linkAccountId);
-        return getLoanIdFromApplication(loanApplicationJSON);
+    protected PostLoansResponse applyForLoanApplication(Long clientId, Long loanProductId, String externalId, String linkAccountId) {
+        PostLoansRequest request = LoanRequestBuilders
+                .legacyIndividualApplication(clientId, loanProductId, "1000", 1, BigDecimal.ZERO, "03 September 2022")
+                .submittedOnDate("01 September 2022")//
+                .amortizationType(LoanTestData.AmortizationType.EQUAL_PRINCIPAL)//
+                .inArrearsTolerance(new BigDecimal("1001"))//
+                .externalId(externalId);
+        if (linkAccountId != null) {
+            request.linkAccountId(Long.valueOf(linkAccountId));
+        }
+        return applyForLoanResponse(request);
     }
 
-    protected PostLoansResponse getLoanIdFromApplication(String loanApplicationJson) {
-        Long loanId = applyForLoanFromJson(loanApplicationJson);
-        PostLoansResponse result = new PostLoansResponse();
-        result.setResourceId(loanId);
-        result.setResourceExternalId(getLoanDetails(loanId).getExternalId());
-        return result;
+    protected PostLoansResponse applyForLoanResponse(PostLoansRequest request) {
+        return loanHelper.applyForLoan(request);
     }
 
     protected PostLoansLoanIdResponse disburseLoan(String date, Integer loanId, String transactionAmount, String externalId) {
@@ -1551,6 +1578,12 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
         LoanTestValidators.verifyRepaymentSchedule(loanDetails, installments);
     }
 
+    protected void verifyTransactionPortions(Long loanId, String type, String date, double amount, double principalPortion,
+            double interestPortion, double feePortion, double penaltyPortion) {
+        LoanTestValidators.verifyTransactionPortions(getLoanDetails(loanId), type, date, amount, principalPortion, interestPortion,
+                feePortion, penaltyPortion);
+    }
+
     protected PostLoanProductsRequest createOnePeriod30DaysPeriodicAccrualProductWithAdvancedPaymentAllocationAndInterestRecalculation(
             double interestRatePerPeriod, Integer rescheduleStrategyMethod) {
         return createOnePeriod30DaysPeriodicAccrualProduct(interestRatePerPeriod)//
@@ -1651,15 +1684,11 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
     }
 
     protected void disburseLoanWithRepaymentReschedule(Long loanId, String date, String adjustRepaymentDate) {
-        loanHelper.disburseLoanFromJson(loanId, LoanRequestBuilders.disburseLoanWithRepaymentRescheduleJson(date, adjustRepaymentDate));
+        loanHelper.disburseLoan(loanId, LoanRequestBuilders.disburseLoanWithRepaymentReschedule(date, adjustRepaymentDate));
     }
 
     protected void disburseLoanWithNetDisbursalAmount(Long loanId, String date, String netDisbursalAmount) {
-        loanHelper.disburseLoanFromJson(loanId, LoanRequestBuilders.disburseLoanWithNetDisbursalAmountJson(date, netDisbursalAmount));
-    }
-
-    protected void approveLoanFromJson(Long loanId, String approveLoanJson) {
-        loanHelper.approveLoanFromJson(loanId, approveLoanJson);
+        loanHelper.disburseLoan(loanId, LoanRequestBuilders.disburseLoanWithNetDisbursalAmount(date, new BigDecimal(netDisbursalAmount)));
     }
 
     protected Long addRepaymentForLoan(Long loanId, Double amount, String date) {
@@ -1868,8 +1897,8 @@ public abstract class FeignLoanTestBase extends FeignIntegrationTest implements 
         return loanHelper.getAdvancedPaymentAllocationRules(loanId);
     }
 
-    protected <T> T getLoanProductError(String loanProductJson, String jsonAttributeToGetBack) {
-        return loanHelper.getLoanProductError(loanProductJson, jsonAttributeToGetBack);
+    protected <T> T getLoanProductError(PostLoanProductsRequest request, String jsonAttributeToGetBack) {
+        return loanHelper.getLoanProductError(request, jsonAttributeToGetBack);
     }
 
     protected PostLoansLoanIdTransactionsResponse makeRefundByCash(Long loanId, String date, Double amount) {

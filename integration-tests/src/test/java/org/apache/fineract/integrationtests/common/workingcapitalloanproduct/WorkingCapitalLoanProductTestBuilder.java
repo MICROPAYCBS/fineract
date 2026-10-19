@@ -47,7 +47,7 @@ public class WorkingCapitalLoanProductTestBuilder {
     public static final BigDecimal DEFAULT_PERIOD_PAYMENT_RATE_PERCENT = BigDecimal.valueOf(18);
     public static final BigDecimal DEFAULT_MIN_PERIOD_PAYMENT_RATE_PERCENT = BigDecimal.valueOf(5);
     public static final BigDecimal DEFAULT_MAX_PERIOD_PAYMENT_RATE_PERCENT = BigDecimal.valueOf(25);
-    private static final Integer DEFAULT_PERIOD_PAYMENT_FREQUENCY = 30;
+    private static final Integer DEFAULT_PERIOD_PAYMENT_FREQUENCY = 1;
     private static final String DEFAULT_PERIOD_PAYMENT_FREQUENCY_TYPE = WorkingCapitalLoanPeriodFrequencyType.DAYS.name();
     private static final List<String> DEFAULT_PAYMENT_ALLOCATION_TYPES = List.of("DUE_PENALTY", "DUE_FEE", "DUE_PRINCIPAL",
             "IN_ADVANCE_PENALTY", "IN_ADVANCE_FEE", "IN_ADVANCE_PRINCIPAL");
@@ -70,6 +70,13 @@ public class WorkingCapitalLoanProductTestBuilder {
     private BigDecimal minPeriodPaymentRate;
     private BigDecimal periodPaymentRate = DEFAULT_PERIOD_PAYMENT_RATE_PERCENT;
     private BigDecimal maxPeriodPaymentRate;
+    private String paymentAmountCalculationStrategy;
+    private BigDecimal annualEir;
+    private BigDecimal minAnnualEir;
+    private BigDecimal maxAnnualEir;
+    private BigDecimal paymentAmount;
+    private BigDecimal minPaymentAmount;
+    private BigDecimal maxPaymentAmount;
     private BigDecimal discount;
     private Integer repaymentEvery = DEFAULT_PERIOD_PAYMENT_FREQUENCY;
     private String repaymentFrequencyType = DEFAULT_PERIOD_PAYMENT_FREQUENCY_TYPE;
@@ -200,6 +207,41 @@ public class WorkingCapitalLoanProductTestBuilder {
 
     public WorkingCapitalLoanProductTestBuilder withMaxPeriodPaymentRate(final BigDecimal maxPeriodPaymentRate) {
         this.maxPeriodPaymentRate = maxPeriodPaymentRate;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withPaymentAmountCalculationStrategy(final String paymentAmountCalculationStrategy) {
+        this.paymentAmountCalculationStrategy = paymentAmountCalculationStrategy;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withAnnualEir(final BigDecimal annualEir) {
+        this.annualEir = annualEir;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withMinAnnualEir(final BigDecimal minAnnualEir) {
+        this.minAnnualEir = minAnnualEir;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withMaxAnnualEir(final BigDecimal maxAnnualEir) {
+        this.maxAnnualEir = maxAnnualEir;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withPaymentAmount(final BigDecimal paymentAmount) {
+        this.paymentAmount = paymentAmount;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withMinPaymentAmount(final BigDecimal minPaymentAmount) {
+        this.minPaymentAmount = minPaymentAmount;
+        return this;
+    }
+
+    public WorkingCapitalLoanProductTestBuilder withMaxPaymentAmount(final BigDecimal maxPaymentAmount) {
+        this.maxPaymentAmount = maxPaymentAmount;
         return this;
     }
 
@@ -374,6 +416,16 @@ public class WorkingCapitalLoanProductTestBuilder {
         request.setMinPeriodPaymentRate(this.minPeriodPaymentRate);
         request.setPeriodPaymentRate(this.periodPaymentRate);
         request.setMaxPeriodPaymentRate(this.maxPeriodPaymentRate);
+        if (this.paymentAmountCalculationStrategy != null) {
+            request.setPaymentAmountCalculationStrategy(PostWorkingCapitalLoanProductsRequest.PaymentAmountCalculationStrategyEnum
+                    .valueOf(this.paymentAmountCalculationStrategy));
+        }
+        request.setAnnualEir(this.annualEir);
+        request.setMinAnnualEir(this.minAnnualEir);
+        request.setMaxAnnualEir(this.maxAnnualEir);
+        request.setPaymentAmount(this.paymentAmount);
+        request.setMinPaymentAmount(this.minPaymentAmount);
+        request.setMaxPaymentAmount(this.maxPaymentAmount);
         request.setDiscount(this.discount);
         request.setRepaymentEvery(this.repaymentEvery);
         if (this.repaymentFrequencyType != null) {

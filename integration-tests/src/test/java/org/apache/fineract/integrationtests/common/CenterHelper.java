@@ -25,8 +25,6 @@ import com.google.common.reflect.TypeToken;
 import com.google.gson.Gson;
 import io.restassured.specification.RequestSpecification;
 import io.restassured.specification.ResponseSpecification;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import org.slf4j.Logger;
@@ -43,18 +41,6 @@ public final class CenterHelper {
 
     private CenterHelper() {
 
-    }
-
-    // TODO: Rewrite to use fineract-client instead!
-    // Example: org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper.disburseLoan(java.lang.Long,
-    // org.apache.fineract.client.models.PostLoansLoanIdRequest)
-    @Deprecated(forRemoval = true)
-    public static CenterDomain retrieveByID(int id, final RequestSpecification requestSpec, final ResponseSpecification responseSpec) {
-        final String GET_CENTER_BY_ID_URL = CENTERS_URL + "/" + id + "?associations=groupMembers&" + Utils.TENANT_IDENTIFIER;
-        LOG.info("------------------------ RETRIEVING CENTER AT {}-------------------------", id);
-        Object get = Utils.performServerGet(requestSpec, responseSpec, GET_CENTER_BY_ID_URL, "");
-        final String jsonData = new Gson().toJson(get);
-        return new Gson().fromJson(jsonData, new TypeToken<CenterDomain>() {}.getType());
     }
 
     // TODO: Rewrite to use fineract-client instead!
@@ -93,38 +79,6 @@ public final class CenterHelper {
         Object get = Utils.performServerGet(requestSpec, responseSpec, GET_CENTER, "");
         final String jsonData = new Gson().toJson(get);
         return new Gson().fromJson(jsonData, new TypeToken<ArrayList<CenterDomain>>() {}.getType());
-    }
-
-    /**
-     * Sends a GET /centers request with caller-supplied, unsanitized {@code orderBy}/{@code sortOrder} values.
-     *
-     * Intended for negative/security testing of the input validation added around {@code CenterReadPlatformServiceImpl}
-     * order-by handling (CVE-style SQL injection regression tests) — the caller is expected to pass a
-     * {@code responseSpec} that asserts a 400 (validation failure), not 200.
-     *
-     * @param orderBy
-     *            raw value for the orderBy query param; null to omit it
-     * @param sortOrder
-     *            raw value for the sortOrder query param; null to omit it
-     * @param paged
-     *            whether to hit the paginated listing endpoint (paged=true) or the plain one
-     */
-    public static Object listCentersRaw(final String orderBy, final String sortOrder, final boolean paged,
-            final RequestSpecification requestSpec, final ResponseSpecification responseSpec) {
-        final StringBuilder url = new StringBuilder(CENTERS_URL).append("?limit=-1");
-        if (paged) {
-            url.append("&paged=true");
-        }
-        url.append('&').append(Utils.TENANT_IDENTIFIER);
-        if (orderBy != null) {
-            url.append("&orderBy=").append(URLEncoder.encode(orderBy, StandardCharsets.UTF_8));
-        }
-        if (sortOrder != null) {
-            url.append("&sortOrder=").append(URLEncoder.encode(sortOrder, StandardCharsets.UTF_8));
-        }
-        LOG.info("------------------------ ATTEMPTING CENTERS LIST (paged={}) WITH orderBy={} sortOrder={} -------------------------",
-                paged, orderBy, sortOrder);
-        return Utils.performServerGet(requestSpec, responseSpec, url.toString(), "");
     }
 
     // TODO: Rewrite to use fineract-client instead!

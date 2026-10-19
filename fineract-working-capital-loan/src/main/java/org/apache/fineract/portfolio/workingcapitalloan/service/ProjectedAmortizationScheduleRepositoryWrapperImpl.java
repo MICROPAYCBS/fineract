@@ -29,7 +29,7 @@ import org.apache.fineract.portfolio.workingcapitalloan.calc.ProjectedAmortizati
 import org.apache.fineract.portfolio.workingcapitalloan.domain.ProjectedAmortizationLoanModel;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.ProjectedAmortizationLoanModelRepository;
-import org.springframework.lang.NonNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,6 +59,14 @@ public class ProjectedAmortizationScheduleRepositoryWrapperImpl implements Proje
         entity.setJsonModelVersion(ProjectedAmortizationScheduleModel.getModelVersion());
         repository.save(entity);
         updateExpectedMaturityDate(loan, model);
+    }
+
+    @Override
+    @Transactional
+    public void deleteModel(@NonNull final WorkingCapitalLoan loan) {
+        repository.findByLoanId(loan.getId()).ifPresent(repository::delete);
+        // The maturity date was derived from the projection being removed, so it goes with it.
+        loan.setExpectedMaturityDate(null);
     }
 
     private void updateExpectedMaturityDate(final WorkingCapitalLoan loan, final ProjectedAmortizationScheduleModel model) {

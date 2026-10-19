@@ -1095,12 +1095,41 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder discountFeeWorkingCapitalLoanTransaction(final Long loanId, final Long transactionId) {
+        this.actionName = ACTION_DISCOUNTFEE;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.subentityId = transactionId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions/" + transactionId + "?command=discountFee";
+        return this;
+    }
+
+    public CommandWrapperBuilder discountFeeAdjustmentWorkingCapitalLoanTransaction(final Long loanId, final Long transactionId) {
+        this.actionName = ACTION_DISCOUNTFEEADJUSTMENT;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.subentityId = transactionId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions/" + transactionId + "?command=discountFeeAdjustment";
+        return this;
+    }
+
     public CommandWrapperBuilder undoWorkingCapitalLoanTransaction(final Long loanId, final Long transactionId) {
         this.actionName = ACTION_UNDO;
         this.entityName = ENTITY_WORKINGCAPITALLOANTRANSACTION;
         this.entityId = transactionId;
         this.loanId = loanId;
         this.href = "/working-capital-loans/" + loanId + "/transactions/" + transactionId + "?command=undo";
+        return this;
+    }
+
+    public CommandWrapperBuilder adjustWorkingCapitalLoanTransaction(final Long loanId, final Long transactionId) {
+        this.actionName = ACTION_ADJUST;
+        this.entityName = ENTITY_WORKINGCAPITALLOANTRANSACTION;
+        this.entityId = transactionId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions/" + transactionId + "?command=adjust";
         return this;
     }
 
@@ -1432,6 +1461,15 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder waiveWorkingCapitalLoanCharge(final Long loanId, final Long loanChargeId) {
+        this.actionName = ACTION_WAIVE;
+        this.entityName = ENTITY_WORKINGCAPITALLOANCHARGE;
+        this.entityId = loanChargeId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/charges/" + loanChargeId;
+        return this;
+    }
+
     public CommandWrapperBuilder updateLoanCharge(final Long loanId, final Long loanChargeId) {
         this.actionName = ACTION_UPDATE;
         this.entityName = ENTITY_LOANCHARGE;
@@ -1568,6 +1606,15 @@ public class CommandWrapperBuilder {
         this.entityId = loanId;
         this.loanId = loanId;
         this.href = "/working-capital-loans/" + loanId + "/transactions?command=undoWriteOff";
+        return this;
+    }
+
+    public CommandWrapperBuilder recoveryPaymentWorkingCapitalLoanTransaction(final Long loanId) {
+        this.actionName = ACTION_RECOVERYPAYMENT;
+        this.entityName = ENTITY_WORKINGCAPITALLOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/working-capital-loans/" + loanId + "/transactions?command=recoveryPayment";
         return this;
     }
 
@@ -4197,6 +4244,15 @@ public class CommandWrapperBuilder {
 
     public CommandWrapperBuilder updateExternalAssetOwnerLoanProductAttribute(final Long loanProductId, final Long attributeId) {
         this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_EXTERNAL_ASSET_OWNER_LOAN_PRODUCT_ATTRIBUTE;
+        this.productId = loanProductId;
+        this.entityId = attributeId;
+        this.href = "/external-asset-owners/loan-product/" + loanProductId + "/attributes/" + attributeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteExternalAssetOwnerLoanProductAttribute(final Long loanProductId, final Long attributeId) {
+        this.actionName = ACTION_DELETE;
         this.entityName = ENTITY_EXTERNAL_ASSET_OWNER_LOAN_PRODUCT_ATTRIBUTE;
         this.productId = loanProductId;
         this.entityId = attributeId;

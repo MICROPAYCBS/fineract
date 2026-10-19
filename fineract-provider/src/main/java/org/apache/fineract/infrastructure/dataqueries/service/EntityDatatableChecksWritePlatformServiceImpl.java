@@ -164,7 +164,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
                 }
             }
             if (!reqDatatables.isEmpty()) {
-                throw new DatatableEntryRequiredException(reqDatatables.toString());
+                throw new DatatableEntryRequiredException(reqDatatables, entityName, status);
             }
         }
     }
@@ -192,7 +192,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
                 }
             }
             if (!reqDatatables.isEmpty()) {
-                throw new DatatableEntryRequiredException(reqDatatables.toString());
+                throw new DatatableEntryRequiredException(reqDatatables, entityName, status);
             }
         }
     }
@@ -272,7 +272,7 @@ public class EntityDatatableChecksWritePlatformServiceImpl implements EntityData
             msgCode += ".unknown.data.integrity.issue";
             msgArgs = new Object[] { dae };
         }
-        log.error("Error occured.", dae);
+        log.error("Error occurred.", dae);
         throw ErrorHandler.getMappable(dae, msgCode, msg, param, msgArgs);
     }
 }

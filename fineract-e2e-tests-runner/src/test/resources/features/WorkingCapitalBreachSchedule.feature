@@ -41,11 +41,37 @@ Feature: Working Capital Breach Schedule
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
       | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | null   |
 
+  @TestRailId:C111072
+  Scenario: Verify working capital loan breach schedule override after undo disbursement and following disbursement with new amounts
+    When Admin sets the business date to "01 January 2026"
+    And Admin creates a client with random data
+    And Admin creates a new Working Capital Loan Product with breachId and overrides enabled
+    And Admin creates a working capital loan using created product with the following data:
+      | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
+      | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 800      |
+    And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and "800" discount amount and expected disbursement date on "01 January 2026"
+    When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount and "800" discount amount
+    And Admin runs inline COB job for Working Capital Loan by loanId
+    Then Working Capital loan breach schedule has the following data:
+      | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
+      | 1            | 2026-01-01 | 2026-02-28 | 59           | 120.54           | 120.54            | null       | null   |
+# --- undo disbursement --- #
+    Then Admin successfully undo Working Capital disbursal
+    Then Working Capital loan status will be "APPROVED"
+    And Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount and "500" discount amount
+    And Admin runs inline COB job for Working Capital Loan by loanId
+    Then Working Capital loan breach schedule has the following data:
+      | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
+      | 1            | 2026-01-01 | 2026-02-28 | 59           | 116.85           | 116.85            | null       | null   |
+    Then Admin closes the Working Capital loan with all obligations met with a full repayment on "01 January 2026"
+
   @TestRailId:C74542
   Scenario: Verify working capital loan breach schedule - last day of 1st period - no evaluation yet
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
-    And Admin creates a new Working Capital Loan Product with breachId and overrides enabled
+    And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
+      | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | delinquencyGraceDays |
+      | 6               | DAYS                | PERCENTAGE                  | 1.23         |                      |
     And Admin creates a working capital loan using created product with the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
@@ -54,50 +80,61 @@ Feature: Working Capital Breach Schedule
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | null   |
-    When Admin sets the business date to "28 February 2026"
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | null   |
+    When Admin sets the business date to "06 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | null   |
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | null   |
 
   @TestRailId:C74543
   Scenario: Verify working capital loan breach schedule - first day after 1st period - 2nd period generated, 1st evaluated
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
-    And Admin creates a new Working Capital Loan Product with breachId and overrides enabled
+    And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
+      | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | delinquencyGraceDays |
+      | 6               | DAYS                | PERCENTAGE                  | 1.23         |                      |
     And Admin creates a working capital loan using created product with the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
     And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and expected disbursement date on "01 January 2026"
     When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount
     And Admin runs inline COB job for Working Capital Loan by loanId
-    When Admin sets the business date to "01 March 2026"
+    When Admin sets the business date to "07 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | true   |
-      | 2            | 2026-03-01 | 2026-04-30 | 61           | 110.70           | 110.70            | null       | null   |
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | true   |
+      | 2            | 2026-01-07 | 2026-01-12 | 6            | 110.70           | 110.70            | null       | null   |
 
   @TestRailId:C74544
-  Scenario: Verify working capital loan breach schedule - multiple periods
+  Scenario: Verify working capital loan breach schedule - multiple periods, a discount fee added later re-derives only the current period
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
-    And Admin creates a new Working Capital Loan Product with breachId and overrides enabled
+    And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
+      | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | delinquencyGraceDays |
+      | 6               | DAYS                | PERCENTAGE                  | 1.23         |                      |
     And Admin creates a working capital loan using created product with the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
     And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and expected disbursement date on "01 January 2026"
     When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount
     And Admin runs inline COB job for Working Capital Loan by loanId
-    When Admin sets the business date to "01 July 2026"
+    When Admin sets the business date to "19 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | true   |
-      | 2            | 2026-03-01 | 2026-04-30 | 61           | 110.70           | 110.70            | null       | true   |
-      | 3            | 2026-05-01 | 2026-06-30 | 61           | 110.70           | 110.70            | null       | true   |
-      | 4            | 2026-07-01 | 2026-08-31 | 62           | 110.70           | 110.70            | null       | null   |
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | true   |
+      | 2            | 2026-01-07 | 2026-01-12 | 6            | 110.70           | 110.70            | null       | true   |
+      | 3            | 2026-01-13 | 2026-01-18 | 6            | 110.70           | 110.70            | null       | true   |
+      | 4            | 2026-01-19 | 2026-01-24 | 6            | 110.70           | 110.70            | null       | null   |
+    When Admin adds Discount fee with "1000" amount on Working Capital loan account for last disbursement
+    Then Working Capital loan breach schedule has the following data:
+      | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | true   |
+      | 2            | 2026-01-07 | 2026-01-12 | 6            | 110.70           | 110.70            | null       | true   |
+      | 3            | 2026-01-13 | 2026-01-18 | 6            | 110.70           | 110.70            | null       | true   |
+      | 4            | 2026-01-19 | 2026-01-24 | 6            | 123.00           | 123.00            | null       | null   |
 
   @TestRailId:C74545
   Scenario: Verify working capital loan breach schedule - with discount affects minPayment
@@ -282,7 +319,7 @@ Feature: Working Capital Breach Schedule
     And Admin creates a client with random data
     And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
       | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | delinquencyGraceDays |
-      | 1               | MONTHS              | PERCENTAGE                  | 10           |                      |
+      | 6               | DAYS                | PERCENTAGE                  | 10           |                      |
     And Admin creates a working capital loan using created product with the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
@@ -290,13 +327,13 @@ Feature: Working Capital Breach Schedule
     When Admin successfully disburse the Working Capital loan on "01 January 2026" with "9000" EUR transaction amount
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has 1 period
-    When Admin sets the business date to "30 January 2026"
+    When Admin sets the business date to "05 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has 1 period
-    When Admin sets the business date to "31 January 2026"
+    When Admin sets the business date to "06 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has 1 period
-    When Admin sets the business date to "01 February 2026"
+    When Admin sets the business date to "07 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has 2 periods
 
@@ -304,7 +341,9 @@ Feature: Working Capital Breach Schedule
   Scenario: Verify working capital loan breach schedule - idempotent COB run on the same business date
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
-    And Admin creates a new Working Capital Loan Product with breachId and overrides enabled
+    And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
+      | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | delinquencyGraceDays |
+      | 6               | DAYS                | PERCENTAGE                  | 1.23         |                      |
     And Admin creates a working capital loan using created product with the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
@@ -315,14 +354,14 @@ Feature: Working Capital Breach Schedule
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | null   |
-    When Admin sets the business date to "01 March 2026"
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | null   |
+    When Admin sets the business date to "07 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-02-28 | 59           | 110.70           | 110.70            | null       | true   |
-      | 2            | 2026-03-01 | 2026-04-30 | 61           | 110.70           | 110.70            | null       | null   |
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 110.70           | 110.70            | null       | true   |
+      | 2            | 2026-01-07 | 2026-01-12 | 6            | 110.70           | 110.70            | null       | null   |
 
   @TestRailId:C74556
   Scenario: Verify working capital loan breach schedule - GET for non-existent loanId returns 404
@@ -376,7 +415,7 @@ Feature: Working Capital Breach Schedule
     And Admin creates a client with random data
     And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
       | breachFrequency | breachFrequencyType | breachAmountCalculationType | breachAmount | delinquencyGraceDays |
-      | 1               | MONTHS              | FLAT                        | 0            |                      |
+      | 6               | DAYS                | FLAT                        | 0            |                      |
     And Admin creates a working capital loan using created product with the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 01 January 2026          | 9000            | 100000             | 18                | 0        |
@@ -385,13 +424,13 @@ Feature: Working Capital Breach Schedule
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-01-31 | 31           | 0.00             | 0.00              | null       | false  |
-    When Admin sets the business date to "01 February 2026"
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 0.00             | 0.00              | null       | false  |
+    When Admin sets the business date to "07 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working Capital loan breach schedule has the following data:
       | periodNumber | fromDate   | toDate     | numberOfDays | minPaymentAmount | outstandingAmount | nearBreach | breach |
-      | 1            | 2026-01-01 | 2026-01-31 | 31           | 0.00             | 0.00              | null       | false  |
-      | 2            | 2026-02-01 | 2026-02-28 | 28           | 0.00             | 0.00              | null       | false  |
+      | 1            | 2026-01-01 | 2026-01-06 | 6            | 0.00             | 0.00              | null       | false  |
+      | 2            | 2026-01-07 | 2026-01-12 | 6            | 0.00             | 0.00              | null       | false  |
 
   @TestRailId:C77000
   Scenario: Verify working capital loan breach schedule - first period start shifted by breachGraceDays
@@ -468,7 +507,8 @@ Feature: Working Capital Breach Schedule
   Scenario: Verify that breachStartDate and delinquencyStartDate are populated once the loan is in breach and delinquent
     # Validates breachStartDate / delinquencyStartDate on the GET loan by response
     # breachStartDate       = fromDate of the earliest breached breach-schedule period
-    # delinquencyStartDate  = fromDate of the earliest delinquent range-schedule period + delinquencyGraceDays
+    # delinquencyStartDate  = fromDate of the earliest delinquent range-schedule period (the range schedule bakes
+    #                         delinquencyGraceDays into the toDate of its first period, so the fromDate is the raw anchor)
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
     And Admin creates a Working Capital Loan Product with custom breach config and overrides enabled:
@@ -548,16 +588,18 @@ Feature: Working Capital Breach Schedule
   Scenario: Verify that delinquencyStartDate is anchored on the loan creation date when delinquencyStartType is LOAN_CREATION
     When Admin sets the business date to "01 January 2026"
     And Admin creates a client with random data
-    And Admin creates a Working Capital Loan Product with delinquencyGraceDays 3 and delinquencyStartType "LOAN_CREATION" for loan test
+    And Admin creates WC Delinquency Bucket with frequency 3 DAYS and minimumPayment 3 PERCENTAGE
+    And Admin creates a Working Capital Loan Product with delinquencyGraceDays 3 and delinquencyStartType "LOAN_CREATION" and the created delinquency bucket for loan test
     And Admin creates a working capital loan with the grace days product and the following data:
       | submittedOnDate | expectedDisbursementDate | principalAmount | totalPaymentVolume | periodPaymentRate | discount |
       | 01 January 2026 | 08 January 2026          | 9000            | 100000             | 18                |          |
     And Admin successfully approves the working capital loan on "01 January 2026" with "9000" amount and expected disbursement date on "08 January 2026"
     When Admin sets the business date to "08 January 2026"
     And Admin successfully disburse the Working Capital loan on "08 January 2026" with "9000" EUR transaction amount
-    # Evaluate after both the creation-anchored ([Jan 1 .. Jan 30]) and disbursement-anchored ([Jan 8 .. Feb 6])
-    # first period have elapsed, so the asserted value is unambiguous
-    When Admin sets the business date to "07 February 2026"
+    # The product uses its own 3-day delinquency bucket rather than the seeded 30-day default, so the scenario does
+    # not depend on that default. Evaluate after both the creation-anchored ([Jan 1 .. Jan 3]) and
+    # disbursement-anchored ([Jan 8 .. Jan 10]) first period have elapsed, so the asserted value is unambiguous
+    When Admin sets the business date to "11 January 2026"
     And Admin runs inline COB job for Working Capital Loan by loanId
     Then Working capital loan account has the correct data:
       | breachStartDate | delinquencyStartDate |

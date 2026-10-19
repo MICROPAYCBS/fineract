@@ -22,25 +22,45 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.Validate;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
+import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.core.service.MathUtil;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
 import org.apache.fineract.organisation.monetary.domain.MoneyHelper;
+import org.apache.fineract.portfolio.loanaccount.domain.LoanTransactionType;
+import org.apache.fineract.portfolio.workingcapitalloan.WorkingCapitalLoanConstants;
 import org.apache.fineract.portfolio.workingcapitalloan.calc.ProjectedAmortizationScheduleModel;
 import org.apache.fineract.portfolio.workingcapitalloan.data.ProjectedAmortizationScheduleGenerateRequest;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDisbursementDetails;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodPaymentRateChange;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransaction;
+import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanTransactionAllocation;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanEirNotCalculableException;
 import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanNotFoundException;
+import org.apache.fineract.portfolio.workingcapitalloan.exception.WorkingCapitalLoanPaymentAmountNotCalculableException;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanPeriodPaymentRateChangeRepository;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanRepository;
-import org.springframework.lang.NonNull;
+import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanTransactionRepository;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.WorkingCapitalLoanProductConstants;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalAmortizationType;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductRelatedDetail;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalLoanProductRelatedDetails;
+import org.apache.fineract.portfolio.workingcapitalloanproduct.domain.WorkingCapitalPaymentAmountCalculationStrategy;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +76,7 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
     private final WorkingCapitalLoanRepository loanRepository;
     private final ProjectedAmortizationScheduleRepositoryWrapper scheduleRepositoryWrapper;
     private final WorkingCapitalLoanPeriodPaymentRateChangeRepository rateChangeRepository;
+    private final WorkingCapitalLoanTransactionRepository transactionRepository;
 
     // Deliberately a different tie-break from the allocation replay's (which leads with the submitted-on date, matching
     // the core loan module). This stream mixes payments with rate changes, and creation time is the only key both carry
@@ -76,13 +97,17 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
         final WorkingCapitalLoan loan = loanRepository.findById(loanId).orElseThrow(() -> new WorkingCapitalLoanNotFoundException(loanId));
 
         final MathContext mc = MoneyHelper.getMathContext();
+        final ScheduleFrequency frequency = loanFrequency(loan);
 
         final ProjectedAmortizationScheduleModel model = ProjectedAmortizationScheduleModel.generate(//
+                amortizationTypeOf(loan), //
                 request.getDiscountFeeAmount(), //
                 request.getNetDisbursementAmount(), //
                 request.getTotalPaymentVolume(), //
                 request.getPeriodPaymentRate(), //
                 request.getNpvDayCount(), //
+                frequency.type(), //
+                frequency.every(), //
                 request.getExpectedDisbursementDate(), //
                 mc, WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan), DateUtils.getBusinessLocalDate());
 
@@ -103,31 +128,187 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
         final BigDecimal periodPaymentRate = loan.getLoanProductRelatedDetails() != null
                 ? loan.getLoanProductRelatedDetails().getPeriodPaymentRate()
                 : null;
-        return generateBaseModel(loan, disbursedAmount, disbursementDate, periodPaymentRate);
+        return generateBaseModel(loan, disbursedAmount, disbursementDate, periodPaymentRate, scheduledFrequency(loan));
     }
 
     @NonNull
     private ProjectedAmortizationScheduleModel generateBaseModel(final WorkingCapitalLoan loan, final BigDecimal disbursedAmount,
-            final LocalDate disbursementDate, final BigDecimal periodPaymentRate) {
+            final LocalDate disbursementDate, final BigDecimal periodPaymentRate, final ScheduleFrequency frequency) {
+        // The pre-checks solve the term without dating it, so a term whose due dates run past the calendar is only
+        // caught here.
+        try {
+            return buildBaseModel(loan, disbursedAmount, disbursementDate, periodPaymentRate, frequency);
+        } catch (final ArithmeticException e) {
+            throw notCalculable(loan, e);
+        }
+    }
+
+    @NonNull
+    private ProjectedAmortizationScheduleModel buildBaseModel(final WorkingCapitalLoan loan, final BigDecimal disbursedAmount,
+            final LocalDate disbursementDate, final BigDecimal periodPaymentRate, final ScheduleFrequency frequency) {
         Validate.notNull(loan, "loan must not be null");
         Validate.notNull(disbursedAmount, "disbursedAmount must not be null");
         Validate.notNull(disbursementDate, "disbursementDate must not be null");
 
         final MathContext mc = MoneyHelper.getMathContext();
         final BigDecimal discount = getWorkingCapitalLoanDiscountAmount(loan);
-        final BigDecimal totalPaymentVolume = loan.getTotalPaymentVolume() != null ? loan.getTotalPaymentVolume() : BigDecimal.ZERO;
-        final Integer npvDayCount = loan.getLoanProductRelatedDetails() != null ? loan.getLoanProductRelatedDetails().getNpvDayCount()
-                : null;
+        final int npvDayCount = Objects.requireNonNull(
+                loan.getLoanProductRelatedDetails() != null ? loan.getLoanProductRelatedDetails().getNpvDayCount() : null,
+                "npvDayCount must not be null");
+        final WorkingCapitalLoanPeriodFrequencyType repaymentFrequencyType = frequency.type();
+        final Integer repaymentEvery = frequency.every();
 
-        Validate.isTrue(totalPaymentVolume.signum() > 0, "totalPaymentVolume must be positive");
-        Validate.notNull(periodPaymentRate, "periodPaymentRate must not be null");
-        Validate.notNull(npvDayCount, "npvDayCount must not be null");
+        final WorkingCapitalPaymentAmountCalculationStrategy strategy = resolvePaymentAmountCalculationStrategy(loan);
+        if (strategy.isPaymentAmount()) {
+            final BigDecimal paymentAmount = requireStrategyInput(resolvePaymentAmount(loan),
+                    WorkingCapitalLoanProductConstants.paymentAmountParamName);
+            final WorkingCapitalAmortizationType amortizationType = amortizationTypeOf(loan);
+            assertPaymentAmountCalculable(amortizationType, discount, disbursedAmount, paymentAmount, npvDayCount, repaymentFrequencyType,
+                    repaymentEvery, loan.getLoanProduct().getCurrency(), mc);
+            return ProjectedAmortizationScheduleModel.generateFromPaymentAmount(amortizationType, discount, disbursedAmount, paymentAmount,
+                    npvDayCount, repaymentFrequencyType, repaymentEvery, disbursementDate, mc,
+                    WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan), DateUtils.getBusinessLocalDate());
+        }
+        if (strategy.isAnnualEir()) {
+            final BigDecimal annualEir = requireStrategyInput(resolveAnnualEir(loan), WorkingCapitalLoanConstants.annualEirParamName);
+            final WorkingCapitalAmortizationType amortizationType = amortizationTypeOf(loan);
+            assertAnnualEirCalculable(amortizationType, discount, disbursedAmount, annualEir, npvDayCount, repaymentFrequencyType,
+                    repaymentEvery, loan.getLoanProduct().getCurrency(), mc);
+            return ProjectedAmortizationScheduleModel.generateFromAnnualEir(amortizationType, discount, disbursedAmount, annualEir,
+                    npvDayCount, repaymentFrequencyType, repaymentEvery, disbursementDate, mc,
+                    WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan), DateUtils.getBusinessLocalDate());
+        }
 
-        assertEirCalculable(discount, disbursedAmount, totalPaymentVolume, periodPaymentRate, npvDayCount,
-                loan.getLoanProduct().getCurrency(), mc);
+        // A non-positive volume or rate is left to assertScheduleCalculable, which rejects it as not calculable.
+        final BigDecimal totalPaymentVolume = requireStrategyInput(loan.getTotalPaymentVolume(),
+                WorkingCapitalLoanConstants.totalPaymentVolumeParamName);
+        requireStrategyInput(periodPaymentRate, WorkingCapitalLoanConstants.periodPaymentRateParamName);
 
-        return ProjectedAmortizationScheduleModel.generate(discount, disbursedAmount, totalPaymentVolume, periodPaymentRate, npvDayCount,
-                disbursementDate, mc, WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan), DateUtils.getBusinessLocalDate());
+        final WorkingCapitalAmortizationType amortizationType = amortizationTypeOf(loan);
+        assertScheduleCalculable(amortizationType, discount, disbursedAmount, totalPaymentVolume, periodPaymentRate, npvDayCount,
+                repaymentFrequencyType, repaymentEvery, loan.getLoanProduct().getCurrency(), mc);
+
+        return ProjectedAmortizationScheduleModel.generate(amortizationType, discount, disbursedAmount, totalPaymentVolume,
+                periodPaymentRate, npvDayCount, repaymentFrequencyType, repaymentEvery, disbursementDate, mc,
+                WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan), DateUtils.getBusinessLocalDate());
+    }
+
+    private static WorkingCapitalAmortizationType amortizationTypeOf(final WorkingCapitalLoan loan) {
+        return loan.getLoanProductRelatedDetails() != null ? loan.getLoanProductRelatedDetails().getAmortizationType() : null;
+    }
+
+    private static WorkingCapitalPaymentAmountCalculationStrategy resolvePaymentAmountCalculationStrategy(final WorkingCapitalLoan loan) {
+        if (loan.getLoanProductRelatedDetails() != null
+                && loan.getLoanProductRelatedDetails().getPaymentAmountCalculationStrategy() != null) {
+            return loan.getLoanProductRelatedDetails().getPaymentAmountCalculationStrategy();
+        }
+        if (loan.getLoanProduct() != null && loan.getLoanProduct().getRelatedDetail() != null
+                && loan.getLoanProduct().getRelatedDetail().getPaymentAmountCalculationStrategy() != null) {
+            return loan.getLoanProduct().getRelatedDetail().getPaymentAmountCalculationStrategy();
+        }
+        return WorkingCapitalPaymentAmountCalculationStrategy.TPV;
+    }
+
+    /**
+     * The strategy's input, or a 400 naming it when it cannot be resolved - a missing input is a configuration problem
+     * the caller can fix, not a server error. Every strategy goes through here so all three fail the same way.
+     */
+    private static BigDecimal requireStrategyInput(final BigDecimal input, final String paramName) {
+        if (input == null) {
+            final List<ApiParameterError> errors = new ArrayList<>();
+            new DataValidatorBuilder(errors).resource(WorkingCapitalLoanConstants.WCL_RESOURCE_NAME).reset().parameter(paramName)
+                    .value(null).notNull();
+            throw new PlatformApiDataValidationException(errors);
+        }
+        return input;
+    }
+
+    /**
+     * A stored frequency the engine cannot schedule (YEARS, accepted before) is a 400 on the frequency, not the rate.
+     */
+    private static WorkingCapitalLoanPeriodFrequencyType requireSchedulableFrequency(
+            final WorkingCapitalLoanPeriodFrequencyType repaymentFrequencyType) {
+        if (repaymentFrequencyType != null && !repaymentFrequencyType.isRepaymentFrequency()) {
+            final List<ApiParameterError> errors = new ArrayList<>();
+            new DataValidatorBuilder(errors).resource(WorkingCapitalLoanConstants.WCL_RESOURCE_NAME).reset()
+                    .parameter(WorkingCapitalLoanProductConstants.repaymentFrequencyTypeParamName)
+                    .failWithCode(WorkingCapitalLoanProductConstants.INVALID_PERIOD_FREQUENCY_TYPE_CODE);
+            throw new PlatformApiDataValidationException(errors);
+        }
+        return repaymentFrequencyType;
+    }
+
+    /**
+     * The frequency a schedule that already exists was dated with, which is what every rebuild of it keeps. A schedule
+     * stored before the frequency was honoured reads as daily, whatever the loan still records.
+     */
+    private ScheduleFrequency scheduledFrequency(final WorkingCapitalLoan loan) {
+        return scheduleRepositoryWrapper
+                .readModel(loan.getId(), MoneyHelper.getMathContext(), WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan))
+                .map(ScheduleFrequency::of).orElseGet(() -> loanFrequency(loan));
+    }
+
+    private static ScheduleFrequency loanFrequency(final WorkingCapitalLoan loan) {
+        return new ScheduleFrequency(requireSchedulableFrequency(resolveRepaymentFrequencyType(loan)), resolveRepaymentEvery(loan));
+    }
+
+    private record ScheduleFrequency(WorkingCapitalLoanPeriodFrequencyType type, Integer every) {
+
+        static ScheduleFrequency of(final ProjectedAmortizationScheduleModel model) {
+            return new ScheduleFrequency(model.repaymentFrequencyType(), model.repaymentEvery());
+        }
+    }
+
+    private static BigDecimal resolveAnnualEir(final WorkingCapitalLoan loan) {
+        return resolveLoanOverrideOrProductDefault(loan, WorkingCapitalLoanProductRelatedDetails::getAnnualEir,
+                WorkingCapitalLoanProductRelatedDetail::getAnnualEir);
+    }
+
+    private static BigDecimal resolvePaymentAmount(final WorkingCapitalLoan loan) {
+        return resolveLoanOverrideOrProductDefault(loan, WorkingCapitalLoanProductRelatedDetails::getPaymentAmount,
+                WorkingCapitalLoanProductRelatedDetail::getPaymentAmount);
+    }
+
+    private static WorkingCapitalLoanPeriodFrequencyType resolveRepaymentFrequencyType(final WorkingCapitalLoan loan) {
+        return resolveLoanOverrideOrProductDefault(loan, WorkingCapitalLoanProductRelatedDetails::getRepaymentFrequencyType,
+                WorkingCapitalLoanProductRelatedDetail::getRepaymentFrequencyType);
+    }
+
+    private static Integer resolveRepaymentEvery(final WorkingCapitalLoan loan) {
+        return resolveLoanOverrideOrProductDefault(loan, WorkingCapitalLoanProductRelatedDetails::getRepaymentEvery,
+                WorkingCapitalLoanProductRelatedDetail::getRepaymentEvery);
+    }
+
+    private static <T> T resolveLoanOverrideOrProductDefault(final WorkingCapitalLoan loan,
+            final Function<WorkingCapitalLoanProductRelatedDetails, T> fromLoan,
+            final Function<WorkingCapitalLoanProductRelatedDetail, T> fromProduct) {
+        if (loan.getLoanProductRelatedDetails() != null && fromLoan.apply(loan.getLoanProductRelatedDetails()) != null) {
+            return fromLoan.apply(loan.getLoanProductRelatedDetails());
+        }
+        if (loan.getLoanProduct() != null && loan.getLoanProduct().getRelatedDetail() != null) {
+            return fromProduct.apply(loan.getLoanProduct().getRelatedDetail());
+        }
+        return null;
+    }
+
+    private void assertPaymentAmountCalculable(final WorkingCapitalAmortizationType amortizationType, final BigDecimal discount,
+            final BigDecimal netDisbursementAmount, final BigDecimal paymentAmount, final int npvDayCount,
+            final WorkingCapitalLoanPeriodFrequencyType repaymentFrequencyType, final Integer repaymentEvery,
+            final MonetaryCurrency currency, final MathContext mc) {
+        if (!ProjectedAmortizationScheduleModel.isPaymentAmountCalculable(amortizationType, discount, netDisbursementAmount, paymentAmount,
+                npvDayCount, repaymentFrequencyType, repaymentEvery, currency, mc)) {
+            throw new WorkingCapitalLoanPaymentAmountNotCalculableException();
+        }
+    }
+
+    private void assertAnnualEirCalculable(final WorkingCapitalAmortizationType amortizationType, final BigDecimal discount,
+            final BigDecimal netDisbursementAmount, final BigDecimal annualEir, final int npvDayCount,
+            final WorkingCapitalLoanPeriodFrequencyType repaymentFrequencyType, final Integer repaymentEvery,
+            final MonetaryCurrency currency, final MathContext mc) {
+        if (!ProjectedAmortizationScheduleModel.isAnnualEirCalculable(amortizationType, discount, netDisbursementAmount, annualEir,
+                npvDayCount, repaymentFrequencyType, repaymentEvery, currency, mc)) {
+            throw WorkingCapitalLoanEirNotCalculableException.forType(amortizationType);
+        }
     }
 
     /**
@@ -140,13 +321,13 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
      */
     @NonNull
     private ProjectedAmortizationScheduleModel reconstructScheduleModel(final WorkingCapitalLoan loan,
-            final List<PrincipalPayment> payments, final List<PrincipalAdjustment> adjustments) {
-        final BigDecimal disbursedAmount = resolveActualDisbursedAmount(loan);
-        final LocalDate disbursementDate = resolveActualDisbursementDate(loan);
+            final List<PrincipalPayment> payments, final List<PrincipalAdjustment> adjustments, final ScheduleFrequency frequency) {
+        final BigDecimal disbursedAmount = loan.getFirstActualDisbursementAmount();
+        final LocalDate disbursementDate = loan.getFirstActualDisbursementDate();
         final List<WorkingCapitalLoanPeriodPaymentRateChange> rateChanges = rateChangeRepository
                 .findByWorkingCapitalLoanIdAndReversedFalse(loan.getId());
         final ProjectedAmortizationScheduleModel model = generateBaseModel(loan, disbursedAmount, disbursementDate,
-                resolveOriginalPeriodPaymentRate(loan));
+                resolveOriginalPeriodPaymentRate(loan), frequency);
         replayRateChangesAndPayments(model, rateChanges, payments);
         // Principal re-injected by an over-refunding credit balance refund is overlaid after the payment/rate-change
         // replay: it is not a payment competing for replay order, but a correction restoring principal the refund
@@ -212,46 +393,57 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
 
     @Override
     public void generateAndSaveAmortizationScheduleOnApproval(final WorkingCapitalLoan loan) {
-        generateAndSaveForApprovedLoanState(loan);
+        generateAndSaveForApprovedLoanState(loan, loanFrequency(loan));
     }
 
     @Override
     public void regenerateAmortizationScheduleOnUndoDisbursal(final WorkingCapitalLoan loan) {
-        generateAndSaveForApprovedLoanState(loan);
+        generateAndSaveForApprovedLoanState(loan, scheduledFrequency(loan));
     }
 
     @Override
-    public BigDecimal getWorkingCapitalLoanDiscountAmount(WorkingCapitalLoan loan) {
+    public void restoreScheduledFrequencyOnUndoApproval(final WorkingCapitalLoan loan) {
+        final WorkingCapitalLoanProductRelatedDetails details = loan.getLoanProductRelatedDetails();
+        if (details == null) {
+            return;
+        }
+        scheduleRepositoryWrapper
+                .readModel(loan.getId(), MoneyHelper.getMathContext(), WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan))
+                .map(ScheduleFrequency::of).filter(scheduled -> scheduled.type() != resolveRepaymentFrequencyType(loan)
+                        || !scheduled.every().equals(resolveRepaymentEvery(loan)))
+                .ifPresent(scheduled -> {
+                    details.setRepaymentFrequencyType(scheduled.type());
+                    details.setRepaymentEvery(scheduled.every());
+                });
+    }
+
+    @Override
+    public void deleteAmortizationScheduleOnUndoApproval(final WorkingCapitalLoan loan) {
+        Validate.notNull(loan, "loan must not be null");
+        scheduleRepositoryWrapper.deleteModel(loan);
+    }
+
+    private BigDecimal getWorkingCapitalLoanDiscountAmount(WorkingCapitalLoan loan) {
         BigDecimal discount = BigDecimal.ZERO;
         if (loan.getLoanProductRelatedDetails() != null) {
-            if (loan.getLoanStatus().isSubmittedAndPendingApproval() && loan.getLoanProductRelatedDetails().getDiscountProposed() != null) {
+            if (loan.isSubmittedAndPendingApproval() && loan.getLoanProductRelatedDetails().getDiscountProposed() != null) {
                 discount = loan.getLoanProductRelatedDetails().getDiscountProposed();
-            } else if (loan.getLoanStatus().isApproved() && loan.getLoanProductRelatedDetails().getDiscountApproved() != null) {
+            } else if (loan.isApproved() && loan.getLoanProductRelatedDetails().getDiscountApproved() != null) {
                 discount = loan.getLoanProductRelatedDetails().getDiscountApproved();
-            } else if (loan.getLoanStatus().isActive() && loan.getLoanProductRelatedDetails().getDiscount() != null) {
+            } else if (loan.getLoanProductRelatedDetails().getDiscount() != null) {
                 discount = loan.getLoanProductRelatedDetails().getDiscount();
             }
         }
         return discount;
     }
 
-    private void generateAndSaveForApprovedLoanState(final WorkingCapitalLoan loan) {
+    private void generateAndSaveForApprovedLoanState(final WorkingCapitalLoan loan, final ScheduleFrequency frequency) {
         Validate.notNull(loan, "loan must not be null");
-
-        final MathContext mc = MoneyHelper.getMathContext();
-        final BigDecimal discount = getWorkingCapitalLoanDiscountAmount(loan);
-        final BigDecimal totalPaymentVolume = loan.getBalance() != null && loan.getTotalPaymentVolume() != null
-                ? loan.getTotalPaymentVolume()
-                : BigDecimal.ZERO;
-        final BigDecimal periodPaymentRate = loan.getLoanProductRelatedDetails() != null
-                ? loan.getLoanProductRelatedDetails().getPeriodPaymentRate()
-                : null;
-        final Integer npvDayCount = loan.getLoanProductRelatedDetails() != null ? loan.getLoanProductRelatedDetails().getNpvDayCount()
-                : null;
 
         final WorkingCapitalLoanDisbursementDetails detail = loan.getDisbursementDetails() != null
                 && !loan.getDisbursementDetails().isEmpty() ? loan.getDisbursementDetails().getFirst() : null;
         final LocalDate expectedDisbursementDate = detail != null ? detail.getExpectedDisbursementDate() : null;
+        Validate.notNull(expectedDisbursementDate, "expectedDisbursementDate must not be null");
 
         final BigDecimal netDisbursementAmount;
         if (loan.getApprovedPrincipal() != null && loan.getApprovedPrincipal().compareTo(BigDecimal.ZERO) > 0) {
@@ -259,28 +451,23 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
         } else {
             netDisbursementAmount = detail != null && detail.getExpectedAmount() != null ? detail.getExpectedAmount() : BigDecimal.ZERO;
         }
-
-        Validate.isTrue(totalPaymentVolume.signum() > 0, "totalPaymentVolume must be positive");
-        Validate.notNull(periodPaymentRate, "periodPaymentRate must not be null");
-        Validate.notNull(npvDayCount, "npvDayCount must not be null");
-        Validate.notNull(expectedDisbursementDate, "expectedDisbursementDate must not be null");
         Validate.isTrue(netDisbursementAmount.signum() > 0, "net disbursement amount for schedule must be positive");
 
-        assertEirCalculable(discount, netDisbursementAmount, totalPaymentVolume, periodPaymentRate, npvDayCount,
-                loan.getLoanProduct().getCurrency(), mc);
-
-        final ProjectedAmortizationScheduleModel model = ProjectedAmortizationScheduleModel.generate(discount, netDisbursementAmount,
-                totalPaymentVolume, periodPaymentRate, npvDayCount, expectedDisbursementDate, mc,
-                WorkingCapitalLoanCurrencyResolver.resolveCurrency(loan), DateUtils.getBusinessLocalDate());
-        scheduleRepositoryWrapper.writeModel(loan, model);
+        final BigDecimal periodPaymentRate = loan.getLoanProductRelatedDetails() != null
+                ? loan.getLoanProductRelatedDetails().getPeriodPaymentRate()
+                : null;
+        scheduleRepositoryWrapper.writeModel(loan,
+                generateBaseModel(loan, netDisbursementAmount, expectedDisbursementDate, periodPaymentRate, frequency));
     }
 
     /** Guards paths that bypass request validation, before {@code generate()} materialises the full schedule. */
-    private void assertEirCalculable(final BigDecimal discount, final BigDecimal netDisbursementAmount, final BigDecimal totalPaymentVolume,
-            final BigDecimal periodPaymentRate, final int npvDayCount, final MonetaryCurrency currency, final MathContext mc) {
-        if (!ProjectedAmortizationScheduleModel.isEirCalculable(discount, netDisbursementAmount, totalPaymentVolume, periodPaymentRate,
-                npvDayCount, currency, mc)) {
-            throw new WorkingCapitalLoanEirNotCalculableException();
+    private void assertScheduleCalculable(final WorkingCapitalAmortizationType amortizationType, final BigDecimal discount,
+            final BigDecimal netDisbursementAmount, final BigDecimal totalPaymentVolume, final BigDecimal periodPaymentRate,
+            final int npvDayCount, final WorkingCapitalLoanPeriodFrequencyType repaymentFrequencyType, final Integer repaymentEvery,
+            final MonetaryCurrency currency, final MathContext mc) {
+        if (!ProjectedAmortizationScheduleModel.isScheduleCalculable(amortizationType, discount, netDisbursementAmount, totalPaymentVolume,
+                periodPaymentRate, npvDayCount, repaymentFrequencyType, repaymentEvery, currency, mc)) {
+            throw WorkingCapitalLoanEirNotCalculableException.forType(amortizationType);
         }
     }
 
@@ -296,7 +483,6 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
                 .orElseThrow(() -> new IllegalStateException("Projected amortization schedule is not found for loan " + loan.getId()));
 
         model.applyPayment(transactionDate, repaymentAmount);
-        model.recalculateNetAmortizationAndDeferredBalanceFrom(transactionDate);
 
         scheduleRepositoryWrapper.writeModel(loan, model);
     }
@@ -315,7 +501,7 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
     }
 
     @Override
-    public void regenerateAmortizationScheduleOnRateChange(final WorkingCapitalLoan loan) {
+    public ProjectedAmortizationScheduleModel regenerateAmortizationScheduleOnRateChange(final WorkingCapitalLoan loan) {
         Validate.notNull(loan, "loan must not be null");
 
         final MathContext mc = MoneyHelper.getMathContext();
@@ -324,24 +510,89 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
                 .orElseThrow(() -> new IllegalStateException("Projected amortization schedule is not found for loan " + loan.getId()));
 
         // Rebuilt from scratch rather than split in place: rate changes are effective-dated, so a backdated one has to
-        // land ahead of the changes that follow it, and applyRateChange drops every segment at or after its own split.
-        // Reconstruction replays them all in effective-date order instead. The source transactions are not retained by
-        // the model, so payments and adjustments are carried over from the model being replaced.
+        // land ahead of the changes that follow it, and applyRateChange can only append - it rejects a date that
+        // precedes a change already recorded, because each change is sized against the balance and unearned fee reached
+        // on its own day. Reconstruction replays them all in effective-date order instead, which is the only order that
+        // method accepts. The source transactions are not retained by the model, so payments and adjustments are
+        // carried over from the model being replaced.
         final List<PrincipalPayment> preservedPayments = currentModel.snapshotActualPayments().stream()
-                .map(payment -> new PrincipalPayment(payment.date(), payment.amount().getAmount(), null, null)).toList();
+                .map(payment -> new PrincipalPayment(payment.effectiveDate(), payment.amount().getAmount(), null, null)).toList();
         final List<PrincipalAdjustment> preservedAdjustments = currentModel.snapshotPrincipalAdjustments().stream()
                 .map(adjustment -> new PrincipalAdjustment(adjustment.date(), adjustment.amount().getAmount())).toList();
 
+        return writeReconstructed(loan, preservedPayments, preservedAdjustments, ScheduleFrequency.of(currentModel));
+    }
+
+    @Override
+    public void rebuildScheduleModelFromRecordedHistory(final WorkingCapitalLoan loan) {
+        Validate.notNull(loan, "loan must not be null");
+
+        final List<PrincipalPayment> payments = new ArrayList<>();
+        final List<PrincipalAdjustment> adjustments = new ArrayList<>();
+        collectPrincipalHistory(loan, payments, adjustments);
+
+        writeReconstructed(loan, payments, adjustments, scheduledFrequency(loan));
+    }
+
+    /**
+     * The principal the loan has really taken in, read from its transactions and their stored allocations.
+     *
+     * <p>
+     * Deliberately not read back out of the model, unlike every other rebuild here. The model is the thing being
+     * replaced, and it is being replaced because an older version of the calculation wrote it - so whatever it says
+     * about itself is exactly what cannot be trusted. The transactions and the allocation rows against them are the
+     * record of what actually happened, and they are what a rebuild has to start from if a future version is to be free
+     * to change the model's shape however it likes. This is what the progressive term-loan rebuild does, for the same
+     * reason.
+     *
+     * <p>
+     * Which transactions contribute, and as what, follows the transaction replay in
+     * {@code WorkingCapitalLoanTransactionReprocessingServiceImpl}: a charge-off moves no principal and contributes
+     * nothing; a credit balance refund contributes the part of itself no overpayment was backing, as a principal
+     * adjustment on its own date; every other repayment-like transaction contributes the principal its allocation
+     * records. A transaction never allocated has nothing to say about principal and is skipped.
+     */
+    private void collectPrincipalHistory(final WorkingCapitalLoan loan, final List<PrincipalPayment> payments,
+            final List<PrincipalAdjustment> adjustments) {
+        for (final WorkingCapitalLoanTransaction transaction : transactionRepository
+                .findByWcLoan_IdOrderByTransactionDateAscIdAsc(loan.getId())) {
+            if (transaction.isReversed() || transaction.getTypeOf() == LoanTransactionType.CHARGE_OFF) {
+                continue;
+            }
+            final WorkingCapitalLoanTransactionAllocation allocation = transaction.getAllocation();
+            if (allocation == null) {
+                continue;
+            }
+            final BigDecimal principalPortion = MathUtil.nullToZero(allocation.getPrincipalPortion());
+            if (transaction.getTypeOf() == LoanTransactionType.CREDIT_BALANCE_REFUND) {
+                adjustments.add(new PrincipalAdjustment(transaction.getTransactionDate(), principalPortion));
+            } else if (transaction.getTransactionType().isRepaymentType()) {
+                payments.add(new PrincipalPayment(transaction.getTransactionDate(), principalPortion,
+                        transaction.getCreatedDate().orElse(null), transaction.getId()));
+            }
+        }
+    }
+
+    private ProjectedAmortizationScheduleModel writeReconstructed(final WorkingCapitalLoan loan, final List<PrincipalPayment> payments,
+            final List<PrincipalAdjustment> adjustments, final ScheduleFrequency frequency) {
         // A pathological rate can make a re-solved segment non-computable (zero daily payment, over-cap term,
         // non-convergent EIR); surface those as a domain-rule error.
         final ProjectedAmortizationScheduleModel model;
         try {
-            model = reconstructScheduleModel(loan, preservedPayments, preservedAdjustments);
+            model = reconstructScheduleModel(loan, payments, adjustments, frequency);
         } catch (final IllegalStateException | IllegalArgumentException | ArithmeticException e) {
-            throw new WorkingCapitalLoanEirNotCalculableException(e);
+            throw notCalculable(loan, e);
         }
 
         scheduleRepositoryWrapper.writeModel(loan, model);
+        return model;
+    }
+
+    private AbstractPlatformDomainRuleException notCalculable(final WorkingCapitalLoan loan, final RuntimeException cause) {
+        if (resolvePaymentAmountCalculationStrategy(loan).isPaymentAmount()) {
+            return new WorkingCapitalLoanPaymentAmountNotCalculableException(cause);
+        }
+        return WorkingCapitalLoanEirNotCalculableException.forType(amortizationTypeOf(loan), cause);
     }
 
     @Override
@@ -355,14 +606,13 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
 
         // Reconstructed from the schedule model, which does not retain the source transactions.
         final List<PrincipalPayment> preservedPayments = currentModel.snapshotActualPayments().stream()
-                .map(payment -> new PrincipalPayment(payment.date(), payment.amount().getAmount(), null, null)).toList();
+                .map(payment -> new PrincipalPayment(payment.effectiveDate(), payment.amount().getAmount(), null, null)).toList();
         // Preserve principal re-injected by an over-refund CBR: restating from a fresh model would otherwise drop the
         // CBR-date overlay, leaving the schedule out of step with the loan balance that still owns the adjustment.
         final List<PrincipalAdjustment> preservedAdjustments = currentModel.snapshotPrincipalAdjustments().stream()
                 .map(adjustment -> new PrincipalAdjustment(adjustment.date(), adjustment.amount().getAmount())).toList();
 
-        final ProjectedAmortizationScheduleModel restatedModel = reconstructScheduleModel(loan, preservedPayments, preservedAdjustments);
-        scheduleRepositoryWrapper.writeModel(loan, restatedModel);
+        writeReconstructed(loan, preservedPayments, preservedAdjustments, ScheduleFrequency.of(currentModel));
     }
 
     @Override
@@ -372,8 +622,7 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
         Validate.notNull(principalPayments, "principalPayments must not be null");
         Validate.notNull(principalAdjustments, "principalAdjustments must not be null");
 
-        final ProjectedAmortizationScheduleModel model = reconstructScheduleModel(loan, principalPayments, principalAdjustments);
-        scheduleRepositoryWrapper.writeModel(loan, model);
+        writeReconstructed(loan, principalPayments, principalAdjustments, scheduledFrequency(loan));
     }
 
     @Override
@@ -388,23 +637,7 @@ public class WorkingCapitalLoanAmortizationScheduleWriteServiceImpl implements W
                 .orElseThrow(() -> new IllegalStateException("Projected amortization schedule is not found for loan " + loan.getId()));
 
         model.undoPayment(transactionDate, repaymentAmount);
-        model.recalculateNetAmortizationAndDeferredBalanceFrom(transactionDate);
 
         scheduleRepositoryWrapper.writeModel(loan, model);
-    }
-
-    private BigDecimal resolveActualDisbursedAmount(final WorkingCapitalLoan loan) {
-        if (loan.getDisbursementDetails() != null && !loan.getDisbursementDetails().isEmpty()
-                && loan.getDisbursementDetails().getFirst().getActualAmount() != null) {
-            return loan.getDisbursementDetails().getFirst().getActualAmount();
-        }
-        return BigDecimal.ZERO;
-    }
-
-    private LocalDate resolveActualDisbursementDate(final WorkingCapitalLoan loan) {
-        if (loan.getDisbursementDetails() != null && !loan.getDisbursementDetails().isEmpty()) {
-            return loan.getDisbursementDetails().getFirst().getActualDisbursementDate();
-        }
-        return null;
     }
 }

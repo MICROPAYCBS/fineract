@@ -2,6 +2,12 @@ name: Fineract E2E Tests
 
 on:
   workflow_call:
+    inputs:
+      upload_artifacts:
+        description: Upload test results, Allure reports, and logs even when the tests succeed
+        required: false
+        default: false
+        type: boolean
     secrets:
       DEVELOCITY_ACCESS_KEY:
         required: false
@@ -12,7 +18,7 @@ permissions:
 jobs:
   test:
     name: E2E Tests (Shard ${{ matrix.shard_index }} of ${{ matrix.total_shards }})
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 90
 
     strategy:
@@ -39,15 +45,15 @@ jobs:
       ACTIVEMQ_TOPIC_NAME: events
 
     steps:
-      - name: Set up JDK 21
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+      - name: Set up JDK 25
+        uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'zulu'
 
       - name: Download workspace
         id: download-workspace
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         continue-on-error: true
         with:
           name: fineract-workspace-${{ github.run_id }}
@@ -67,12 +73,18 @@ jobs:
 
       - name: Build workspace fallback
         if: steps.download-workspace.outcome != 'success'
-        uses: ./.github/actions/setup-and-build-fineract
+        uses: $/.github/actions/setup-and-build-fineract
         with:
           cache-read-only: false
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@3f131e8634966bd73d06cc69884922b02e6faf92 # v6.2.0
+        uses: gradle/actions/setup-gradle@3f5f9adaf7d9fecd50b5935e54106014257a94e6 # v6.4.0
+
+      - name: Apply Gradle memory budget
+        uses: $/.github/actions/gradle-memory-budget
+        with:
+          max-heap: '4g'
+          workers-max: '2'
 
       - name: Make scripts executable
         run: chmod +x scripts/split-features.sh
@@ -177,7 +189,7 @@ jobs:
           fi
 
       - name: Collect Docker logs
-        if: failure()
+        if: ${{ failure() || inputs.upload_artifacts }}
         run: |
           mkdir -p "$DOCKER_LOG_DIR"
           docker ps -a > "$DOCKER_LOG_DIR/docker-ps.txt" 2>&1 || true
@@ -194,8 +206,8 @@ jobs:
           done
 
       - name: Upload test results
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() || inputs.upload_artifacts }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: allure-results-shard-${{ matrix.shard_index }}-attempt-${{ github.run_attempt }}
           path: |
@@ -209,8 +221,8 @@ jobs:
           compression-level: 9
 
       - name: Upload Allure Report
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() || inputs.upload_artifacts }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: allure-report-shard-${{ matrix.shard_index }}-attempt-${{ github.run_attempt }}
           path: allure-report-shard-${{ matrix.shard_index }}
@@ -219,8 +231,8 @@ jobs:
           compression-level: 9
 
       - name: Upload logs
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: ${{ failure() || inputs.upload_artifacts }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: logs-shard-${{ matrix.shard_index }}-attempt-${{ github.run_attempt }}
           path: |

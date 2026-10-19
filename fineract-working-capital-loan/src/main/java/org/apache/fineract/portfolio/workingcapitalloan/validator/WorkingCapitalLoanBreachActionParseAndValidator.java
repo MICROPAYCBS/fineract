@@ -35,7 +35,6 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -52,7 +51,6 @@ import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoa
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachPauseUtils;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachSchedule;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanBreachScheduleEvaluationUtils;
-import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDisbursementDetails;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPausePeriodUtils;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanPeriodFrequencyType;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanBreachActionRepository;
@@ -132,6 +130,7 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
 
         validateStartBeforeEnd(dataValidator, startDate, endDate);
         validateNotBeforeScheduleStart(dataValidator, startDate, workingCapitalLoan);
+        validateNotBeforeBreachReset(dataValidator, startDate, existing);
         validateNoOverlap(dataValidator, startDate, endDate, existing);
 
         throwExceptionIfValidationWarningsExist(dataValidator);
@@ -265,7 +264,7 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
     }
 
     private void validateDisableState(final DataValidatorBuilder dataValidator, final Long loanId, final boolean isEnable) {
-        final boolean alreadyDisabled = breachActionRepository.isBreachDisabledAsOf(loanId, DateUtils.getBusinessLocalDate());
+        final boolean alreadyDisabled = breachActionRepository.isBreachDisabled(loanId);
         if (isEnable && !alreadyDisabled) {
             failGeneralValidation(dataValidator, "no.active.breach.disable.to.enable",
                     "There is no active breach disable to enable for this Working Capital loan.");
@@ -347,7 +346,7 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
     }
 
     private void validateLoanIsActive(final DataValidatorBuilder dataValidator, final WorkingCapitalLoan workingCapitalLoan) {
-        if (!workingCapitalLoan.getLoanStatus().isActive()) {
+        if (!workingCapitalLoan.isOpen()) {
             failGeneralValidation(dataValidator, "loan.is.not.active",
                     "Breach actions can be created only for active Working Capital loans.");
         }
@@ -362,7 +361,7 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
     }
 
     private void validateBreachNotDisabled(final DataValidatorBuilder dataValidator, final Long loanId) {
-        if (breachActionRepository.isBreachDisabledAsOf(loanId, DateUtils.getBusinessLocalDate())) {
+        if (breachActionRepository.isBreachDisabled(loanId)) {
             failGeneralValidation(dataValidator, "breach.is.disabled",
                     "Breach pause, resume, reschedule and reset actions are not allowed while breach evaluation is disabled.");
         }
@@ -394,18 +393,35 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
                 : details.getBreachStartType();
         final Optional<LocalDate> anchorDate = WorkingCapitalLoanBreachStartType.LOAN_CREATION.equals(breachStartType)
                 ? Optional.ofNullable(workingCapitalLoan.getSubmittedOnDate())
-                : firstActualDisbursementDate(workingCapitalLoan);
+                : Optional.ofNullable(workingCapitalLoan.getFirstActualDisbursementDate());
         return anchorDate.map(anchor -> anchor.plusDays(getBreachGraceDays(workingCapitalLoan)));
-    }
-
-    private Optional<LocalDate> firstActualDisbursementDate(final WorkingCapitalLoan workingCapitalLoan) {
-        return workingCapitalLoan.getDisbursementDetails().stream().map(WorkingCapitalLoanDisbursementDetails::getActualDisbursementDate)
-                .filter(Objects::nonNull).min(LocalDate::compareTo);
     }
 
     private int getBreachGraceDays(final WorkingCapitalLoan workingCapitalLoan) {
         final WorkingCapitalLoanProductRelatedDetails details = workingCapitalLoan.getLoanProductRelatedDetails();
         return (details == null || details.getBreachGraceDays() == null) ? 0 : details.getBreachGraceDays();
+    }
+
+    /**
+     * A reset closes the breach period it lands on and restarts the evaluation from its own date. A pause that starts
+     * before that date would re-date periods the reset already settled, so backdating a pause behind the latest active
+     * reset is rejected. Resets that were undone are not considered: their split is restored by the undo, so there is
+     * nothing left to protect.
+     *
+     * The boundary is the reset on top of the resolver stack, which replays the actions on their own timeline. Scanning
+     * the active resets here for the highest date would be a second definition of "latest" to keep in step with the
+     * resolver, for an answer the resolver already holds.
+     */
+    private void validateNotBeforeBreachReset(final DataValidatorBuilder dataValidator, final LocalDate startDate,
+            final List<WorkingCapitalLoanBreachAction> existing) {
+        if (startDate == null) {
+            return;
+        }
+        Optional.ofNullable(activeBreachResetResolver.activeResets(existing).peek()) //
+                .map(WorkingCapitalLoanBreachAction::getStartDate) //
+                .filter(startDate::isBefore) //
+                .ifPresent(latestResetDate -> failParameterValidation(dataValidator, START_DATE, "must.not.be.before.breach.reset.date",
+                        "Breach pause cannot start before the latest breach reset date: " + latestResetDate));
     }
 
     private void validateNoOverlap(final DataValidatorBuilder dataValidator, final LocalDate startDate, final LocalDate endDate,
@@ -447,15 +463,19 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
 
     /**
      * Rejects a frequency change whose resulting period end date falls before the business date. The candidate end date
-     * is derived exactly as the re-date derives it: from the current open period fromDate, extended by the pauses.
+     * is derived exactly as the re-date derives it: from the current open period fromDate, carrying the breach grace
+     * days when that period is the first one, and extended by the pauses.
      */
     private void validateFrequencyDoesNotEndBeforeBusinessDate(final WorkingCapitalLoanBreachAction action,
             final WorkingCapitalLoan workingCapitalLoan, final List<WorkingCapitalLoanBreachAction> existing,
             final DataValidatorBuilder dataValidator) {
         final LocalDate businessDate = DateUtils.getBusinessLocalDate();
+        final WorkingCapitalLoanProductRelatedDetails details = workingCapitalLoan.getLoanProductRelatedDetails();
+        final Integer breachGraceDays = details == null ? null : details.getBreachGraceDays();
         final Optional<LocalDate> candidateToDate = breachScheduleRepository.findCurrentOpenPeriod(workingCapitalLoan.getId(), businessDate)
                 .map(currentPeriod -> WorkingCapitalLoanBreachScheduleEvaluationUtils.calculateRescheduledToDate(
-                        currentPeriod.getFromDate(), action.getFrequency(), action.getFrequencyType(), existing));
+                        currentPeriod.getFromDate(), currentPeriod.getPeriodNumber(), action.getFrequency(), action.getFrequencyType(),
+                        breachGraceDays, existing, activeBreachResetResolver.activeRestartResetDates(existing)));
         if (candidateToDate.filter(toDate -> toDate.isBefore(businessDate)).isPresent()) {
             failGeneralValidation(dataValidator, "reschedule.frequency.results.endDate.before.businessDate",
                     "Frequency change results a breach period endDate before current businessDate is not allowed");
@@ -475,9 +495,7 @@ public class WorkingCapitalLoanBreachActionParseAndValidator extends ParseAndVal
     }
 
     private void validateLoanIsDisbursed(final WorkingCapitalLoan workingCapitalLoan, final DataValidatorBuilder dataValidator) {
-        final boolean isDisbursed = workingCapitalLoan.getDisbursementDetails().stream()
-                .map(WorkingCapitalLoanDisbursementDetails::getActualDisbursementDate).anyMatch(Objects::nonNull);
-        if (!isDisbursed) {
+        if (workingCapitalLoan.isNotDisbursed()) {
             failGeneralValidation(dataValidator, "loan.not.disbursed", "Breach action requires the loan to be disbursed.");
         }
     }

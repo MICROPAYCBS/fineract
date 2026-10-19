@@ -39,7 +39,7 @@ For a list of known vulnerabilities, see [Apache Fineract Security Reports](http
 
 If you believe you have found a new vulnerability, [let us know privately](https://fineract.apache.org/#contribute).
 
-For details about security during development and deployment, see the documentation [here](https://fineract.apache.org/docs/stable/#_security).
+For details about security during development and deployment, see the documentation [here](https://fineract.apache.org/docs/develop/#_security).
 
 PRIVATE FORKS
 ============
@@ -74,6 +74,10 @@ cd fineract
 ```
 
 After a minute or two, Fineract will be listening for API requests on port 8443.
+Wait for the `APACHE FINERACT IS READY` message in the log before sending requests.
+
+Stopping a `bootRun` or `devRun` process is reported by Gradle as `Build cancelled while executing task`, but that does not mean that Fineract failed.
+A graceful shutdown is also logged, as `APACHE FINERACT IS SHUTTING DOWN GRACEFULLY`.
 
 Do not start the server with `:fineract-provider:bootRun` / `:fineract-provider:devRun`: that classpath has none of the Micropay modules, so the moved endpoints (customer classes, sectors, job sequences, workflows, GL enquiry, ...) answer 404 and the Micropay service replacements are absent. Those tasks now fail fast; pass `-PupstreamOnly` if you really want upstream-only Fineract. See [custom/micropay/README.md](custom/micropay/README.md).
 
@@ -125,6 +129,11 @@ Expected response for fresh instance:
 {"totalFilteredRecords":0,"pageItems":[]}
 ```
 
+How to run the tests
+---
+
+See [CONTRIBUTING.md](CONTRIBUTING.md#how-to-run-tests) and [Integration Testing](https://fineract.apache.org/docs/develop/#_integration_testing).
+
 How to run for production
 ---
 
@@ -171,6 +180,19 @@ Build a traditional WAR file:
 The WAR will be created in the `fineract-war/build/libs` directory. Afterwards deploy the WAR to your Tomcat Servlet Container.
 
 We recommend using the JAR instead of the WAR file deployment, because it's much easier.
+
+CI covers the JAR-based image everywhere and the WAR through one smoke job
+([`build-war-smoke.yml`](.github/workflows/build-war-smoke.yml)), which deploys the WAR into a stock Tomcat and runs
+a single E2E scenario against it. To reproduce that locally:
+
+```bash
+./gradlew :fineract-war:war
+docker compose -f docker-compose-war-test.yml up -d
+curl --retry 60 --retry-all-errors http://localhost:8080/fineract-provider/actuator/health
+```
+
+Tomcat serves the WAR over plain HTTP on port 8080, so point the suites at it with `BASE_URL` (E2E) or
+`BACKEND_PROTOCOL`/`BACKEND_PORT` (integration tests).
 
 
 How to run using Docker or Podman
@@ -419,7 +441,7 @@ See <https://github.com/apache/fineract/releases> for a list of PRs and contribu
 
 EOL/unsupported releases are [archived](https://www.apache.org/legal/release-policy.html#archived).
 
-Versioned build products created from the `develop` branch will include `-SNAPSHOT`. See [related settings](https://github.com/qoomon/gradle-git-versioning-plugin) near `version` and `gitVersioning` in `build.gradle` for details.
+Versioned build products created from the `develop` branch will include `-SNAPSHOT`. The version is derived from git by `GitVersionValueSource` in `buildSrc`; see the settings near `version` in `build.gradle` for details.
 
 
 LICENSE

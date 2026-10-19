@@ -33,6 +33,7 @@ import org.apache.fineract.infrastructure.configuration.service.ConfigurationRea
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.infrastructure.core.validator.PhoneNumberValidationService;
 import org.apache.fineract.infrastructure.dataqueries.domain.EntityDatatableChecks;
 import org.apache.fineract.infrastructure.dataqueries.domain.EntityDatatableChecksRepository;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
@@ -56,6 +57,9 @@ class ClientDataValidatorTest {
     @Mock
     private EntityDatatableChecksRepository entityDatatableChecksRepository;
 
+    @Mock
+    private PhoneNumberValidationService phoneNumberValidationService;
+
     private ClientDataValidator validator;
 
     @BeforeEach
@@ -64,8 +68,9 @@ class ClientDataValidatorTest {
         when(configurationReadPlatformService.retrieveGlobalConfiguration(anyString()))
                 .thenReturn(new GlobalConfigurationPropertyData().setEnabled(false));
         final ClientIdentifierValidationService clientIdentifierValidationService = new NoOpClientIdentifierValidationService();
+        when(phoneNumberValidationService.getRegex()).thenReturn("^\\+?[0-9]{7,15}$");
         validator = new ClientDataValidator(fromApiJsonHelper, configurationReadPlatformService, clientIdentifierValidationService,
-                entityDatatableChecksRepository);
+                entityDatatableChecksRepository, phoneNumberValidationService);
     }
 
     private static String validMinimalCreateJson(String dateFormat) {

@@ -44,6 +44,7 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccountType;
 import org.apache.fineract.client.feign.util.CallFailedRuntimeException;
 import org.apache.fineract.client.models.AllowAttributeOverrides;
 import org.apache.fineract.client.models.ChargeRequest;
+import org.apache.fineract.client.models.CollateralManagementData;
 import org.apache.fineract.client.models.DisbursementDetail;
 import org.apache.fineract.client.models.GetJournalEntriesTransactionIdResponse;
 import org.apache.fineract.client.models.GetLoanProductsProductIdResponse;
@@ -136,6 +137,8 @@ public class ClientLoanIntegrationTest extends FeignLoanTestBase {
     /** The loan/product JSON builders this test replaced used {@code en_GB}; keep it so number parsing is unchanged. */
     private static final String LOCALE = "en_GB";
     private static final String OVERRIDE_MESSAGE = "Loan overrode the product's %s";
+    /** The disburse-to-savings JSON builder this test replaced always sent this note; keep the payload unchanged. */
+    private static final String DISBURSE_NOTE = "DISBURSE NOTE";
     /** The interoperation repayment body was built with plain {@code en}, unlike the {@code en_GB} used elsewhere. */
     private static final String INTEROP_LOCALE = "en";
 
@@ -4874,6 +4877,23 @@ public class ClientLoanIntegrationTest extends FeignLoanTestBase {
     }
 
     @Test
+    public void testLoanCollateralIncludesNameUnitPriceAndPercentageToBase() {
+        Long collateralId = collateralHelper.createCollateralProduct().getResourceId();
+        CollateralManagementData collateralProduct = collateralHelper.getCollateralProduct(collateralId);
+        Long clientId = createClient();
+        Long clientCollateralId = collateralHelper.createClientCollateral(clientId, collateralId).getResourceId();
+        Long loanProductId = createLoanProduct(false, NONE);
+
+        Long loanId = applyForLoanApplication(clientId, loanProductId, null, null, "12,000.00",
+                List.of(collateral(clientCollateralId, BigDecimal.ONE)));
+
+        GetLoansLoanIdCollateralData loanCollateral = getLoanDetails(loanId).getCollateral().get(0);
+        assertEquals(collateralProduct.getName(), loanCollateral.getName());
+        assertEquals(0, collateralProduct.getBasePrice().compareTo(loanCollateral.getUnitPrice()));
+        assertEquals(0, collateralProduct.getPctToBase().compareTo(loanCollateral.getPctToBase()));
+    }
+
+    @Test
     public void undoWaivedChargeTransactionDoesNotExist() {
         CallFailedRuntimeException exception = assertThrows(CallFailedRuntimeException.class,
                 () -> undoWaiveLoanCharge(-1L, -2L, new PutChargeTransactionChangesRequest().id(-2L).loanId(-1L)));
@@ -7298,8 +7318,9 @@ public class ClientLoanIntegrationTest extends FeignLoanTestBase {
                 .expectedDisbursementDate(disbursementDate)//
                 .submittedOnDate(disbursementDate)//
                 .transactionProcessingStrategyCode(repaymentStrategy)//
-                .collateral(createClientCollateral(clientId));
-        return applyForLoan(LoanRequestBuilders.applyLoanWithLegacyDates(request, null, firstRepaymentDate));
+                .collateral(createClientCollateral(clientId))//
+                .repaymentsStartingFromDate(firstRepaymentDate);
+        return applyForLoan(request);
     }
 
     private PostLoansResponse applyForLoanApplicationForOnePeriod30DaysLongNoInterestPeriodicAccrual(Long clientId, Long loanProductId,
@@ -7824,7 +7845,8 @@ public class ClientLoanIntegrationTest extends FeignLoanTestBase {
                 .actualDisbursementDate(date)//
                 .dateFormat(DATETIME_PATTERN)//
                 .locale(LOCALE)//
-                .netDisbursalAmount(netDisbursalAmount));
+                .netDisbursalAmount(netDisbursalAmount)//
+                .note(DISBURSE_NOTE));
         return getLoanDetails(loanId);
     }
 

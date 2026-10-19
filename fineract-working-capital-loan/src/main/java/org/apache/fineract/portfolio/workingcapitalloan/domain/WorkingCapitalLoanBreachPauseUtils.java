@@ -56,12 +56,21 @@ public final class WorkingCapitalLoanBreachPauseUtils {
     }
 
     /**
-     * Extends an inclusive period end date by the recorded pauses. See
-     * {@link WorkingCapitalLoanPausePeriodUtils#applyPauses} for the rule.
+     * Extends an inclusive period end date by the recorded pauses. See {@link #applyPauses} for the rule.
      */
     public static LocalDate extendToDateByRecordedPauses(final LocalDate fromDate, final LocalDate baseToDate,
-            final List<WorkingCapitalLoanBreachAction> actions) {
-        return WorkingCapitalLoanPausePeriodUtils.extendToDate(fromDate, baseToDate, toEffectivePauses(actions));
+            final List<WorkingCapitalLoanBreachAction> actions, final List<LocalDate> restartResetDates) {
+        return applyPauses(fromDate, baseToDate, toEffectivePauses(actions), restartResetDates).toDate();
+    }
+
+    /**
+     * The bounds of a breach period after the pauses, holding its start in place when a restart reset began it. See
+     * {@link WorkingCapitalLoanPausePeriodUtils#applyPauses(LocalDate, LocalDate, List, List)} for the rule, shared
+     * with the delinquency schedule.
+     */
+    public static WorkingCapitalLoanPeriodBounds applyPauses(final LocalDate fromDate, final LocalDate toDate,
+            final List<WorkingCapitalLoanPausePeriod> pauses, final List<LocalDate> restartResetDates) {
+        return WorkingCapitalLoanPausePeriodUtils.applyPauses(fromDate, toDate, pauses, restartResetDates);
     }
 
 }

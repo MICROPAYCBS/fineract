@@ -20,8 +20,6 @@ package org.apache.fineract.portfolio.workingcapitalloan.validator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import com.google.gson.JsonElement;
@@ -40,7 +38,6 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyAction;
 import org.apache.fineract.portfolio.delinquency.domain.DelinquencyBucket;
-import org.apache.fineract.portfolio.loanaccount.domain.LoanStatus;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoan;
 import org.apache.fineract.portfolio.workingcapitalloan.domain.WorkingCapitalLoanDelinquencyAction;
 import org.apache.fineract.portfolio.workingcapitalloan.repository.WorkingCapitalLoanDelinquencyActionRepository;
@@ -91,7 +88,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
         businessDates.put(BusinessDateType.COB_DATE, today.minusDays(1));
         ThreadLocalContextUtil.setBusinessDates(businessDates);
         when(loan.getId()).thenReturn(LOAN_ID);
-        when(loan.getLoanStatus()).thenReturn(LoanStatus.ACTIVE);
+        when(loan.isOpen()).thenReturn(true);
         when(loan.getLoanProductRelatedDetails()).thenReturn(productRelatedDetails);
         when(productRelatedDetails.getDelinquencyBucket()).thenReturn(delinquencyBucket);
     }
@@ -103,7 +100,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
 
     @Test
     void disableAppliesAsOfCurrentBusinessDateWhenNoneActive() {
-        when(actionRepository.isDelinquencyDisabledAsOf(eq(LOAN_ID), any())).thenReturn(false);
+        when(actionRepository.isDelinquencyDisabled(LOAN_ID)).thenReturn(false);
 
         final WorkingCapitalLoanDelinquencyAction result = validator.validateAndParse(command("disable", today, null), loan, List.of());
 
@@ -114,7 +111,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
 
     @Test
     void disableIsRejectedWhenAlreadyDisabled() {
-        when(actionRepository.isDelinquencyDisabledAsOf(eq(LOAN_ID), any())).thenReturn(true);
+        when(actionRepository.isDelinquencyDisabled(LOAN_ID)).thenReturn(true);
 
         assertThatThrownBy(() -> validator.validateAndParse(command("disable", today, null), loan, List.of()))
                 .isInstanceOf(PlatformApiDataValidationException.class).hasMessageContaining("Validation errors exist");
@@ -122,7 +119,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
 
     @Test
     void disableWithEndDateIsRejected() {
-        when(actionRepository.isDelinquencyDisabledAsOf(eq(LOAN_ID), any())).thenReturn(false);
+        when(actionRepository.isDelinquencyDisabled(LOAN_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> validator.validateAndParse(command("disable", today, today.plusDays(3)), loan, List.of()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
@@ -130,7 +127,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
 
     @Test
     void backdatedDisableIsRejected() {
-        when(actionRepository.isDelinquencyDisabledAsOf(eq(LOAN_ID), any())).thenReturn(false);
+        when(actionRepository.isDelinquencyDisabled(LOAN_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> validator.validateAndParse(command("disable", today.minusDays(1), null), loan, List.of()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
@@ -138,7 +135,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
 
     @Test
     void enableReturnsNewEnableAction() {
-        when(actionRepository.isDelinquencyDisabledAsOf(eq(LOAN_ID), any())).thenReturn(true);
+        when(actionRepository.isDelinquencyDisabled(LOAN_ID)).thenReturn(true);
         final WorkingCapitalLoanDelinquencyAction active = activeDisable();
 
         final WorkingCapitalLoanDelinquencyAction result = validator.validateAndParse(command("enable", today, null), loan, List.of(active));
@@ -152,7 +149,7 @@ class WorkingCapitalLoanDelinquencyDisableValidatorTest {
 
     @Test
     void enableIsRejectedWhenNoActiveDisable() {
-        when(actionRepository.isDelinquencyDisabledAsOf(eq(LOAN_ID), any())).thenReturn(false);
+        when(actionRepository.isDelinquencyDisabled(LOAN_ID)).thenReturn(false);
 
         assertThatThrownBy(() -> validator.validateAndParse(command("enable", today, null), loan, List.of()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
