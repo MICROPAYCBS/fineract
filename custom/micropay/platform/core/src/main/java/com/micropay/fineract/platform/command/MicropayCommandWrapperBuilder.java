@@ -23,6 +23,7 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_MARKASNPA;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RESETTOTP;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_OVERRIDE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RETIRE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_REVOKE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SAVINGS_TO_GL;
@@ -46,6 +47,8 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_LEGAL_TENDER;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORECARD;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_AUTHORITY_RULE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_DECISION;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_PRODUCT_CONFIG;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SECTOR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SUBINDUSTRY;
@@ -697,6 +700,37 @@ public class MicropayCommandWrapperBuilder {
         this.entityId = loanId;
         this.loanId = loanId;
         this.href = "/scoring/loans/" + loanId + "?command=score";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder overrideScoringDecision(final Long decisionId) {
+        this.actionName = ACTION_OVERRIDE;
+        this.entityName = ENTITY_SCORING_DECISION;
+        this.entityId = decisionId;
+        this.href = "/scoring/decisions/" + decisionId + "?command=override";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createScoringAuthorityRule() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_SCORING_AUTHORITY_RULE;
+        this.href = "/scoring/authority-rules";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateScoringAuthorityRule(final Long ruleId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SCORING_AUTHORITY_RULE;
+        this.entityId = ruleId;
+        this.href = "/scoring/authority-rules/" + ruleId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder deleteScoringAuthorityRule(final Long ruleId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_SCORING_AUTHORITY_RULE;
+        this.entityId = ruleId;
+        this.href = "/scoring/authority-rules/" + ruleId;
         return this;
     }
 }

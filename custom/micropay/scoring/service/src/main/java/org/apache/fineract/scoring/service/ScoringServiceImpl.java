@@ -36,6 +36,9 @@ import org.apache.fineract.scoring.domain.ScorecardStatus;
 import org.apache.fineract.scoring.domain.ScoringDecision;
 import org.apache.fineract.scoring.domain.ScoringDecisionRepository;
 import org.apache.fineract.scoring.domain.ScoringMode;
+import org.apache.fineract.scoring.domain.ScoringOutcome;
+import org.apache.fineract.scoring.domain.ScoringOverride;
+import org.apache.fineract.scoring.domain.ScoringOverrideRepository;
 import org.apache.fineract.scoring.domain.ScoringProductConfig;
 import org.apache.fineract.scoring.domain.ScoringProductConfigRepository;
 import org.apache.fineract.scoring.domain.ScoringTrigger;
@@ -63,6 +66,7 @@ public class ScoringServiceImpl implements ScoringService {
     private final ScoringDecisionRepository decisionRepository;
     private final ScoringInputCollector inputCollector;
     private final ScoringEngine scoringEngine;
+    private final ScoringOverrideRepository overrideRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -134,6 +138,22 @@ public class ScoringServiceImpl implements ScoringService {
             throw new ScoringConfigurationException("loan.not.scorable", "Loan " + loanId + " does not exist or has no client", loanId);
         }
         return this.scoringEngine.evaluate(scorecard, this.inputCollector.collect(loan, datatableCharacteristics(scorecard)));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<ScoringOverride> findEffectiveOverride(final Long loanId) {
+        if (loanId == null) {
+            return Optional.empty();
+        }
+        return this.overrideRepository.findFirstByLoanIdOrderByIdDesc(loanId).filter(override -> !this.decisionRepository
+                .existsByLoanIdAndIdGreaterThanAndTriggerNot(loanId, override.getDecisionId(), ScoringTrigger.APPROVE));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ScoringOutcome effectiveOutcome(final ScoringDecision decision) {
+        return findEffectiveOverride(decision.getLoanId()).map(ScoringOverride::getToOutcome).orElse(decision.getOutcome());
     }
 
     private static Set<String> datatableCharacteristics(final Scorecard scorecard) {

@@ -27,11 +27,16 @@ public final class ScoringApiConstants {
     public static final String SCORECARD_RESOURCE_NAME = "SCORECARD";
     public static final String SCORING_PRODUCT_CONFIG_RESOURCE_NAME = "SCORING_PRODUCT_CONFIG";
     public static final String SCORING_DECISION_RESOURCE_NAME = "SCORING_DECISION";
+    public static final String SCORING_AUTHORITY_RULE_RESOURCE_NAME = "SCORING_AUTHORITY_RULE";
+
+    public static final String OVERRIDE_REASON_CODE_NAME = "ScoringOverrideReason";
+    public static final String DEFAULT_AUTHORITY_TASK = "APPROVE_LOAN";
 
     public static final String COMMAND_ACTIVATE = "activate";
     public static final String COMMAND_RETIRE = "retire";
     public static final String COMMAND_TEST = "test";
     public static final String COMMAND_SCORE = "score";
+    public static final String COMMAND_OVERRIDE = "override";
 
     public static final String CODE_PARAM = "code";
     public static final String NAME_PARAM = "name";
@@ -64,4 +69,20 @@ public final class ScoringApiConstants {
     public static final String MODE_PARAM = "mode";
 
     public static final String LOAN_ID_PARAM = "loanId";
+
+    public static final String TO_OUTCOME_PARAM = "toOutcome";
+    public static final String REASON_ID_PARAM = "reasonId";
+    public static final String COMMENT_PARAM = "comment";
+
+    public static final String TASK_PERMISSION_CODE_PARAM = "taskPermissionCode";
+    public static final String STAGE_CODE_PARAM = "stageCode";
+    public static final String LOAN_PRODUCT_ID_PARAM = "loanProductId";
+    public static final String CURRENCY_CODE_PARAM = "currencyCode";
+    public static final String MIN_AMOUNT_PARAM = "minAmount";
+    public static final String MAX_AMOUNT_PARAM = "maxAmount";
+    public static final String MIN_EXPOSURE_PARAM = "minExposure";
+    public static final String MAX_EXPOSURE_PARAM = "maxExposure";
+    public static final String GRADES_PARAM = "grades";
+    public static final String OUTCOMES_PARAM = "outcomes";
+    public static final String OVERRIDDEN_PARAM = "overridden";
 }

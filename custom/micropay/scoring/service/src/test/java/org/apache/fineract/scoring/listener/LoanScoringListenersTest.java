@@ -84,6 +84,24 @@ class LoanScoringListenersTest {
     }
 
     @Test
+    void overriddenDeclineLetsEnforcedApprovalContinue() {
+        configure(ScoringMode.ENFORCED);
+        decide(ScoringOutcome.DECLINE);
+        when(scoringService.effectiveOutcome(any())).thenReturn(ScoringOutcome.REFER);
+
+        assertDoesNotThrow(() -> listeners.onApproved(loan));
+    }
+
+    @Test
+    void overrideToDeclineBlocksEnforcedApproval() {
+        configure(ScoringMode.ENFORCED);
+        decide(ScoringOutcome.APPROVE);
+        when(scoringService.effectiveOutcome(any())).thenReturn(ScoringOutcome.DECLINE);
+
+        assertThrows(ScoringDeclinedException.class, () -> listeners.onApproved(loan));
+    }
+
+    @Test
     void advisoryDeclineOnlyRecords() {
         configure(ScoringMode.ADVISORY);
         decide(ScoringOutcome.DECLINE);
@@ -153,5 +171,6 @@ class LoanScoringListenersTest {
         decision.setOutcome(outcome);
         decision.setReasonCodes("ID_EXPIRED");
         when(scoringService.scoreAndRecord(any(), any(), any())).thenReturn(decision);
+        when(scoringService.effectiveOutcome(decision)).thenReturn(outcome);
     }
 }

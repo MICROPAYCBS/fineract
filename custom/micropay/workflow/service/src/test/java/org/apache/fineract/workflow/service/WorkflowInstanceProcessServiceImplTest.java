@@ -23,11 +23,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.Optional;
+import java.util.Set;
 import org.apache.fineract.commands.domain.CommandSource;
 import org.apache.fineract.commands.service.ApprovalWorkflowDecision;
 import org.apache.fineract.useradministration.domain.AppUser;
@@ -45,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
@@ -67,6 +70,9 @@ class WorkflowInstanceProcessServiceImplTest {
 
     @Mock
     private TerminalStageExecution terminalStageExecution;
+
+    @Spy
+    private WorkflowStageRouter stageRouter = WorkflowStageRouter.withoutSkips();
 
     @InjectMocks
     private WorkflowInstanceProcessServiceImpl service;
@@ -143,6 +149,26 @@ class WorkflowInstanceProcessServiceImplTest {
 
         assertEquals(ApprovalWorkflowDecision.PROCEED_TO_EXECUTE, decision);
         assertEquals(WorkflowInstanceStatus.IN_PROGRESS, instance.getStatus());
+        verify(this.workflowInstanceRepository, never()).saveAndFlush(any());
+        verify(this.terminalStageExecution).arm(1L);
+    }
+
+    @Test
+    void skippedLaterStagesMakeCurrentStageTerminal() {
+        doReturn(Set.of("HEAD_OFFICE")).when(this.stageRouter).stagesToSkip(commandSource, definition);
+        when(this.tenantConfiguration.isApprovalWorkflowsEnabled()).thenReturn(true);
+        when(this.workflowInstanceRepository.findByCommandSourceIdWithDefinitionGraph(42L)).thenReturn(Optional.of(instance));
+        doNothing().when(this.stageAuthorizationService).validateActorMayApproveAtStage(eq(commandSource), eq(instance), eq(checker),
+                any());
+        when(this.workflowInstanceActionRepository.existsByWorkflowInstanceIdAndStageCodeAndActionAndCreatedBy(1L, "BRANCH_MANAGER",
+                WorkflowApprovalAction.APPROVE, 99L)).thenReturn(false);
+        when(this.workflowInstanceActionRepository.countDistinctActorsByInstanceAndStageAndAction(1L, "BRANCH_MANAGER",
+                WorkflowApprovalAction.APPROVE)).thenReturn(1L);
+
+        final ApprovalWorkflowDecision decision = this.service.processCheckerApprove(commandSource, checker);
+
+        assertEquals(ApprovalWorkflowDecision.PROCEED_TO_EXECUTE, decision);
+        assertEquals("BRANCH_MANAGER", instance.getCurrentStageCode());
         verify(this.workflowInstanceRepository, never()).saveAndFlush(any());
         verify(this.terminalStageExecution).arm(1L);
     }

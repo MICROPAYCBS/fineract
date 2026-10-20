@@ -60,4 +60,7 @@ public final class MicropayCommandWrapperConstants {
     public static final String ENTITY_SCORING_PRODUCT_CONFIG = "SCORING_PRODUCT_CONFIG";
     public static final String ACTION_RETIRE = "RETIRE";
     public static final String ACTION_SCORE = "SCORE";
+    public static final String ENTITY_SCORING_DECISION = "SCORING_DECISION";
+    public static final String ENTITY_SCORING_AUTHORITY_RULE = "SCORING_AUTHORITY_RULE";
+    public static final String ACTION_OVERRIDE = "OVERRIDE";
 }

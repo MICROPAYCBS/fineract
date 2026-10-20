@@ -12,7 +12,7 @@ The design is in the "Credit Scoring Design for Micropay" doc.
 | When | What happens |
 | --- | --- |
 | Loan submitted | Scored after the submission commits. Submission is never blocked. A submission held for maker-checker is not scored. |
-| Loan approved | Scored again with the approved amount. In `ENFORCED` mode a `DECLINE` rolls the approval back. With maker-checker on, this also runs when the approval is first held, so a declined loan never reaches the checkers. |
+| Loan approved | Scored again with the approved amount. In `ENFORCED` mode a `DECLINE` rolls the approval back unless it was overridden. With maker-checker on, this also runs when the approval is first held, so a declined loan never reaches the checkers. |
 | On request | `POST /v1/scoring/loans/{loanId}?command=score` records a `MANUAL` decision. |
 
 Each run saves a row in `m_scoring_decision` in its own transaction, so a decline that blocks an approval is still on record. Only loans with a client are scored; group loans are skipped.
@@ -26,7 +26,41 @@ Each run saves a row in `m_scoring_decision` in its own transaction, so a declin
 5. `PUT /v1/scoring/products/{productId}` with `{"scorecardCode": "AGENT", "mode": "ADVISORY"}`. Run in `ADVISORY` first, then switch to `ENFORCED`.
 6. `GET /v1/scoring/decisions?loanId=123` shows every decision with reason codes, rule results, points and the input snapshot.
 
-Overrides of a decline (with a reason code) and approval routing by amount and grade come in the next step. Until then, a decline on an `ENFORCED` product cannot be approved.
+## Overriding a decision
+
+While a loan awaits approval, a user with `OVERRIDE_SCORING_DECISION` can change the outcome of its latest decision:
+
+`POST /v1/scoring/decisions/{decisionId}?command=override` with `{"toOutcome": "REFER", "reasonId": 41, "comment": "Float verified at the branch"}`
+
+`reasonId` is a value of the `ScoringOverrideReason` code, which starts empty: add the tenant's reasons with `POST /v1/codes/{codeId}/codevalues`. The override goes through maker-checker by default.
+
+An override of a `DECLINE` lets an `ENFORCED` loan go on to the approvers. It stays in force through the re-scoring that runs at approval, and lapses when the loan is scored again on request (`command=score`), since that means new information. Overrides are listed under each decision in `GET /v1/scoring/decisions`.
+
+## Approval authority
+
+One `APPROVE_LOAN` workflow holds every approval stage in rising authority. Authority rules say when a stage is needed, and the stages a loan does not need are skipped:
+
+- A stage with no rules always applies.
+- A stage with rules applies when at least one of its rules matches. Every condition set on a rule must hold; conditions left out match any loan.
+- Conditions: `loanProductId`, `currencyCode`, `minAmount`/`maxAmount` (the larger of the requested and approved amount), `minExposure`/`maxExposure` (that amount plus the client's other active and approved loans), `grades`, `outcomes` (after any override) and `overridden`. Bounds are inclusive.
+- If the product is scored but the loan has no decision yet, every stage applies. If the rules cannot be read, every stage applies.
+- When every stage would be skipped, the first stage is kept, so a held approval always needs a checker.
+
+The rules are checked when the approval is held and again at each stage, so an override made in between changes the route. They depend on maker-checker for `APPROVE_LOAN` and on the workflow module being on.
+
+Example, for a workflow `CREDIT_OFFICER` → `BRANCH_MANAGER` → `HEAD_OF_CREDIT` → `CREDIT_COMMITTEE` (amounts in UGX):
+
+```json
+{ "stageCode": "HEAD_OF_CREDIT", "minAmount": 5000000.01, "description": "Above 5m" }
+{ "stageCode": "HEAD_OF_CREDIT", "outcomes": ["REFER"], "description": "Any referral" }
+{ "stageCode": "CREDIT_COMMITTEE", "minAmount": 50000000.01, "description": "Above 50m" }
+{ "stageCode": "CREDIT_COMMITTEE", "grades": ["D", "E"], "description": "Poor grades" }
+{ "stageCode": "CREDIT_COMMITTEE", "overridden": true, "description": "Any overridden decision" }
+```
+
+Each is a `POST /v1/scoring/authority-rules` (`taskPermissionCode` defaults to `APPROVE_LOAN`). With these, a 3m grade A loan needs the credit officer and branch manager only, and an overridden decline goes all the way to the committee.
+
+`GET /v1/scoring/loans/{loanId}/approval-route` shows which stages a loan would need now, and why.
 
 ## Example: agent scorecard
 
@@ -71,4 +105,4 @@ A bin matches a range `[lower, upper)`, an exact `matchValue` (text, any case) o
 
 ## Permissions
 
-Grouping `scoring`: `CREATE_SCORECARD`, `READ_SCORECARD`, `UPDATE_SCORECARD`, `ACTIVATE_SCORECARD`, `RETIRE_SCORECARD`, `READ_SCORING_PRODUCT_CONFIG`, `UPDATE_SCORING_PRODUCT_CONFIG`, `READ_SCORING_DECISION`, plus `_CHECKER` variants for activate, retire and product config. Grouping `portfolio`: `SCORE_LOAN`.
+Grouping `scoring`: `CREATE_SCORECARD`, `READ_SCORECARD`, `UPDATE_SCORECARD`, `ACTIVATE_SCORECARD`, `RETIRE_SCORECARD`, `READ_SCORING_PRODUCT_CONFIG`, `UPDATE_SCORING_PRODUCT_CONFIG`, `READ_SCORING_DECISION`, `OVERRIDE_SCORING_DECISION`, `CREATE_SCORING_AUTHORITY_RULE`, `READ_SCORING_AUTHORITY_RULE`, `UPDATE_SCORING_AUTHORITY_RULE`, `DELETE_SCORING_AUTHORITY_RULE`, plus `_CHECKER` variants for every one that goes through maker-checker (activate, retire, product config, override and the authority rule changes). Grouping `portfolio`: `SCORE_LOAN`.

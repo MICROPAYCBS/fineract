@@ -51,7 +51,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * record. A submission held for maker-checker rolls back and is not scored.</li>
  * <li>Approval: scores again with the approved amount. Internal listeners run inside the approval transaction, so in
  * ENFORCED mode a DECLINE throws and rolls the approval back. With maker-checker on, this also runs when the approval
- * is first held, so a declined loan does not reach the checkers.</li>
+ * is first held, so a declined loan does not reach the checkers. A decline that was overridden is let through.</li>
  * </ul>
  *
  * Only loans with a client are scored; group loans are skipped.
@@ -121,7 +121,8 @@ public class LoanScoringListeners {
             log.error("Credit scoring failed for approved loan {}; advisory mode, so the approval continues", facts.loanId(), e);
             return;
         }
-        if (enforced && decision.getOutcome() == ScoringOutcome.DECLINE) {
+        // an override with a reason code lets a declined loan go on to the approvers
+        if (enforced && scoringService.effectiveOutcome(decision) == ScoringOutcome.DECLINE) {
             throw new ScoringDeclinedException(facts.loanId(), decision.getId(),
                     decision.getReasonCodes() == null ? List.of() : Arrays.asList(decision.getReasonCodes().split(",")));
         }

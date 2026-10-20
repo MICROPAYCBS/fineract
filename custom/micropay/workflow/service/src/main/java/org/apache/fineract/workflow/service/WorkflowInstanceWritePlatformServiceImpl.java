@@ -42,6 +42,7 @@ public class WorkflowInstanceWritePlatformServiceImpl implements WorkflowInstanc
     private final WorkflowTenantConfiguration tenantConfiguration;
     private final WorkflowSelectionService workflowSelectionService;
     private final WorkflowInstanceRepository workflowInstanceRepository;
+    private final WorkflowStageRouter stageRouter;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -67,7 +68,7 @@ public class WorkflowInstanceWritePlatformServiceImpl implements WorkflowInstanc
         }
 
         final WorkflowDefinition definition = selectedDefinition.get();
-        final Optional<String> entryStageCode = definition.findEntryStageCode();
+        final Optional<String> entryStageCode = this.stageRouter.firstStage(definition, commandSource);
         if (entryStageCode.isEmpty()) {
             log.warn("Active workflow definition {} has no entry stage; skipping instance for command {}", definition.getId(),
                     commandSourceId);

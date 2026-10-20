@@ -21,23 +21,31 @@ package org.apache.fineract.scoring.service;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.MODULE_ENABLED_PROPERTY;
 
 import com.google.gson.Gson;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.scoring.data.ScorecardData;
 import org.apache.fineract.scoring.data.ScoringCharacteristicData;
 import org.apache.fineract.scoring.data.ScoringDecisionData;
+import org.apache.fineract.scoring.data.ScoringOverrideData;
 import org.apache.fineract.scoring.data.ScoringProductConfigData;
 import org.apache.fineract.scoring.domain.Scorecard;
 import org.apache.fineract.scoring.domain.ScorecardRepository;
 import org.apache.fineract.scoring.domain.ScoringDecision;
 import org.apache.fineract.scoring.domain.ScoringDecisionRepository;
+import org.apache.fineract.scoring.domain.ScoringOverride;
+import org.apache.fineract.scoring.domain.ScoringOverrideRepository;
 import org.apache.fineract.scoring.domain.ScoringProductConfigRepository;
 import org.apache.fineract.scoring.exception.ScorecardNotFoundException;
 import org.apache.fineract.scoring.input.ScoringCharacteristics;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +60,9 @@ public class ScoringReadPlatformServiceImpl implements ScoringReadPlatformServic
     private final ScorecardRepository scorecardRepository;
     private final ScoringProductConfigRepository productConfigRepository;
     private final ScoringDecisionRepository decisionRepository;
+    private final ScoringOverrideRepository overrideRepository;
+    private final ScoringService scoringService;
+    private final JdbcTemplate jdbcTemplate;
 
     @Override
     public List<ScorecardData> retrieveScorecards(final String code, final String status) {
@@ -93,17 +104,46 @@ public class ScoringReadPlatformServiceImpl implements ScoringReadPlatformServic
             throw new PlatformApiDataValidationException("validation.msg.scoring.decisions.filter.required",
                     "Pass loanId or clientId to list scoring decisions", "loanId");
         }
-        return decisions.stream().map(ScoringReadPlatformServiceImpl::toData).toList();
+        final Map<Long, List<ScoringOverrideData>> overrides = overridesByDecision(decisions);
+        return decisions.stream().map(decision -> toData(decision, overrides.getOrDefault(decision.getId(), List.of()))).toList();
     }
 
-    private static ScoringDecisionData toData(final ScoringDecision decision) {
+    private Map<Long, List<ScoringOverrideData>> overridesByDecision(final List<ScoringDecision> decisions) {
+        if (decisions.isEmpty()) {
+            return Map.of();
+        }
+        final List<ScoringOverride> overrides = this.overrideRepository
+                .findByDecisionIdInOrderByIdAsc(decisions.stream().map(ScoringDecision::getId).toList());
+        final Map<Long, Optional<Long>> effectiveByLoan = new HashMap<>();
+        final Map<Long, String> reasons = new HashMap<>();
+        final Map<Long, List<ScoringOverrideData>> byDecision = new HashMap<>();
+        for (final ScoringOverride override : overrides) {
+            final Optional<Long> effectiveId = effectiveByLoan.computeIfAbsent(override.getLoanId(),
+                    loanId -> this.scoringService.findEffectiveOverride(loanId).map(ScoringOverride::getId));
+            final String reason = reasons.computeIfAbsent(override.getReasonCodeValueId(), this::codeValueName);
+            byDecision.computeIfAbsent(override.getDecisionId(), id -> new ArrayList<>())
+                    .add(new ScoringOverrideData(override.getId(), override.getDecisionId(), override.getLoanId(),
+                            override.getFromOutcome().name(), override.getToOutcome().name(), override.getReasonCodeValueId(), reason,
+                            override.getComment(), effectiveId.filter(override.getId()::equals).isPresent(),
+                            override.getCreatedBy().orElse(null), override.getCreatedDate().orElse(null)));
+        }
+        return byDecision;
+    }
+
+    private String codeValueName(final Long codeValueId) {
+        final List<String> names = this.jdbcTemplate.queryForList("SELECT code_value FROM m_code_value WHERE id = ?", String.class,
+                codeValueId);
+        return names.isEmpty() ? null : names.getFirst();
+    }
+
+    private static ScoringDecisionData toData(final ScoringDecision decision, final List<ScoringOverrideData> overrides) {
         final List<String> reasonCodes = StringUtils.isBlank(decision.getReasonCodes()) ? List.of()
                 : Arrays.asList(decision.getReasonCodes().split(","));
         return new ScoringDecisionData(decision.getId(), decision.getClientId(), decision.getLoanId(), decision.getLoanProductId(),
                 decision.getTrigger().name(), decision.getMode().name(), decision.getScorecardId(), decision.getScorecardCode(),
                 decision.getScorecardVersion(), decision.getScore(), decision.getGrade(), decision.getExpectedPd(),
                 decision.getOutcome().name(), reasonCodes, parse(decision.getRuleResults()), parse(decision.getPointsBreakdown()),
-                parse(decision.getInputsSnapshot()), decision.getCreatedBy().orElse(null), decision.getCreatedDate().orElse(null));
+                parse(decision.getInputsSnapshot()), overrides, decision.getCreatedBy().orElse(null), decision.getCreatedDate().orElse(null));
     }
 
     private static Object parse(final String json) {

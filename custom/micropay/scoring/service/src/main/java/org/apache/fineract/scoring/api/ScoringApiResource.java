@@ -18,9 +18,11 @@
  */
 package org.apache.fineract.scoring.api;
 
+import static org.apache.fineract.scoring.api.ScoringApiConstants.COMMAND_OVERRIDE;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.COMMAND_SCORE;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORECARD_RESOURCE_NAME;
+import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_AUTHORITY_RULE_RESOURCE_NAME;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_DECISION_RESOURCE_NAME;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_PRODUCT_CONFIG_RESOURCE_NAME;
 
@@ -49,10 +51,13 @@ import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformS
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.scoring.data.ApprovalRouteData;
 import org.apache.fineract.scoring.data.ScoringCharacteristicData;
 import org.apache.fineract.scoring.data.ScoringDecisionData;
 import org.apache.fineract.scoring.data.ScoringProductConfigData;
+import org.apache.fineract.scoring.data.ScoringOverrideRequest;
 import org.apache.fineract.scoring.data.ScoringProductConfigRequest;
+import org.apache.fineract.scoring.service.ScoringAuthorityReadPlatformService;
 import org.apache.fineract.scoring.service.ScoringReadPlatformService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -66,6 +71,7 @@ public class ScoringApiResource {
 
     private final PlatformSecurityContext context;
     private final ScoringReadPlatformService readPlatformService;
+    private final ScoringAuthorityReadPlatformService authorityReadPlatformService;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
 
     @GET
@@ -111,6 +117,34 @@ public class ScoringApiResource {
             @QueryParam("clientId") final Long clientId) {
         this.context.authenticatedUser().validateHasReadPermission(SCORING_DECISION_RESOURCE_NAME);
         return this.readPlatformService.retrieveDecisions(loanId, clientId);
+    }
+
+    @POST
+    @Path("decisions/{decisionId}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Override a scoring decision", description = "command=override changes the outcome of a loan's latest decision while the loan awaits approval. Body: toOutcome (APPROVE, REFER or DECLINE), reasonId (a value of the ScoringOverrideReason code) and an optional comment.")
+    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ScoringOverrideRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    public CommandProcessingResult overrideDecision(@PathParam("decisionId") final Long decisionId,
+            @QueryParam("command") @Parameter(description = "override", required = true) final String commandParam,
+            @Parameter(hidden = true) final String apiRequestBodyAsJson) {
+        if (!COMMAND_OVERRIDE.equalsIgnoreCase(commandParam)) {
+            throw new UnrecognizedQueryParamException("command", commandParam, new Object[] { COMMAND_OVERRIDE });
+        }
+        return this.commandsSourceWritePlatformService.logCommandSource(
+                new MicropayCommandWrapperBuilder().overrideScoringDecision(decisionId).withJson(apiRequestBodyAsJson).build());
+    }
+
+    @GET
+    @Path("loans/{loanId}/approval-route")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Approval stages a loan needs", description = "Applies the authority rules to the loan as it is now and lists each stage of the task's active workflow as required or skipped, with the reason")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ApprovalRouteData.class)))
+    public ApprovalRouteData retrieveApprovalRoute(@PathParam("loanId") final Long loanId,
+            @QueryParam("taskPermissionCode") @Parameter(description = "defaults to APPROVE_LOAN") final String taskPermissionCode) {
+        this.context.authenticatedUser().validateHasReadPermission(SCORING_AUTHORITY_RULE_RESOURCE_NAME);
+        return this.authorityReadPlatformService.retrieveApprovalRoute(loanId, taskPermissionCode);
     }
 
     @POST

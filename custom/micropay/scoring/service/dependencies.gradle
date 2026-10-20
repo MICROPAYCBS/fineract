@@ -21,6 +21,7 @@ dependencies {
     implementation(project(':fineract-core'))
     implementation(project(':fineract-loan'))
     implementation(project(':custom:micropay:platform:core'))
+    implementation(project(':custom:micropay:workflow:service'))
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('org.springframework.boot:spring-boot-starter-security')
     implementation('jakarta.ws.rs:jakarta.ws.rs-api')

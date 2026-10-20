@@ -20,6 +20,7 @@ package org.apache.fineract.workflow.service;
 
 import static org.apache.fineract.workflow.api.WorkflowApiConstants.MODULE_ENABLED_PROPERTY;
 
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.commands.domain.CommandSource;
 import org.apache.fineract.commands.service.ApprovalWorkflowDecision;
@@ -47,6 +48,7 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
     private final WorkflowInstanceActionRepository workflowInstanceActionRepository;
     private final WorkflowStageAuthorizationService stageAuthorizationService;
     private final TerminalStageExecution terminalStageExecution;
+    private final WorkflowStageRouter stageRouter;
 
     @Override
     @Transactional
@@ -76,7 +78,7 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
         if (alreadyApproved) {
             // This transaction commits before the held command runs. A previous terminal approval may already be
             // recorded while the command is still awaiting approval because execution failed.
-            if (isRetryableTerminalExecution(definition, instance, currentStage)) {
+            if (isRetryableTerminalExecution(commandSource, definition, instance, currentStage)) {
                 this.terminalStageExecution.arm(instance.getId());
                 return ApprovalWorkflowDecision.PROCEED_TO_EXECUTE;
             }
@@ -92,17 +94,16 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
             return ApprovalWorkflowDecision.STAGE_RECORDED;
         }
 
-        if (definition.isTerminalStage(instance.getCurrentStageCode())) {
+        // The next stage is the next one that applies to this command; stages skipped by authority rules are passed over.
+        final Optional<String> nextStageCode = this.stageRouter.nextStage(definition, instance.getCurrentStageCode(), commandSource);
+        if (nextStageCode.isEmpty()) {
             // Stay IN_PROGRESS until the command succeeds. TerminalStageExecutionAspect marks the instance COMPLETED
             // only after approveEntry returns; a failed execution stays retryable for this approver.
             this.terminalStageExecution.arm(instance.getId());
             return ApprovalWorkflowDecision.PROCEED_TO_EXECUTE;
         }
 
-        final String nextStageCode = definition.resolveNextStageCode(instance.getCurrentStageCode())
-                .orElseThrow(() -> new WorkflowRuntimeException("transition.not.found",
-                        "No transition is configured from stage " + instance.getCurrentStageCode(), instance.getCurrentStageCode()));
-        instance.setCurrentStageCode(nextStageCode);
+        instance.setCurrentStageCode(nextStageCode.get());
         this.workflowInstanceRepository.saveAndFlush(instance);
         return ApprovalWorkflowDecision.STAGE_RECORDED;
     }
@@ -140,9 +141,9 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
         return ApprovalWorkflowDecision.STAGE_RECORDED;
     }
 
-    private boolean isRetryableTerminalExecution(final WorkflowDefinition definition, final WorkflowInstance instance,
-            final WorkflowStage currentStage) {
-        if (!definition.isTerminalStage(instance.getCurrentStageCode())) {
+    private boolean isRetryableTerminalExecution(final CommandSource commandSource, final WorkflowDefinition definition,
+            final WorkflowInstance instance, final WorkflowStage currentStage) {
+        if (this.stageRouter.nextStage(definition, instance.getCurrentStageCode(), commandSource).isPresent()) {
             return false;
         }
         final long approvalCount = this.workflowInstanceActionRepository.countDistinctActorsByInstanceAndStageAndAction(instance.getId(),
