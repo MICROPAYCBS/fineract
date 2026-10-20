@@ -56,4 +56,8 @@ public final class MicropayCommandWrapperConstants {
     public static final String ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL = "SAVINGSACCOUNTPAYMENTCHANNEL";
     public static final String ENTITY_USERSESSION = "USERSESSION";
     public static final String ENTITY_WORKFLOW_DEFINITION = "WORKFLOW_DEFINITION";
+    public static final String ENTITY_SCORECARD = "SCORECARD";
+    public static final String ENTITY_SCORING_PRODUCT_CONFIG = "SCORING_PRODUCT_CONFIG";
+    public static final String ACTION_RETIRE = "RETIRE";
+    public static final String ACTION_SCORE = "SCORE";
 }

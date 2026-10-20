@@ -23,8 +23,10 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_MARKASNPA;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RESETTOTP;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RETIRE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_REVOKE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SAVINGS_TO_GL;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SCORE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBMIT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBSCRIBE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNDOMARKASNPA;
@@ -43,6 +45,8 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_JOBSEQUENCE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_LEGAL_TENDER;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORECARD;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_PRODUCT_CONFIG;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SECTOR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SUBINDUSTRY;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_USERSESSION;
@@ -644,6 +648,55 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = ENTITY_WORKFLOW_DEFINITION;
         this.entityId = definitionId;
         this.href = "/workflow-definitions/" + definitionId + "?command=deactivate";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createScorecard() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_SCORECARD;
+        this.href = "/scoring/scorecards";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateScorecard(final Long scorecardId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SCORECARD;
+        this.entityId = scorecardId;
+        this.href = "/scoring/scorecards/" + scorecardId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder activateScorecard(final Long scorecardId) {
+        this.actionName = ACTION_ACTIVATE;
+        this.entityName = ENTITY_SCORECARD;
+        this.entityId = scorecardId;
+        this.href = "/scoring/scorecards/" + scorecardId + "?command=activate";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder retireScorecard(final Long scorecardId) {
+        this.actionName = ACTION_RETIRE;
+        this.entityName = ENTITY_SCORECARD;
+        this.entityId = scorecardId;
+        this.href = "/scoring/scorecards/" + scorecardId + "?command=retire";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateScoringProductConfig(final Long loanProductId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SCORING_PRODUCT_CONFIG;
+        this.entityId = loanProductId;
+        this.productId = loanProductId;
+        this.href = "/scoring/products/" + loanProductId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder scoreLoan(final Long loanId) {
+        this.actionName = ACTION_SCORE;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/scoring/loans/" + loanId + "?command=score";
         return this;
     }
 }
