@@ -49,6 +49,7 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORECARD;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_AUTHORITY_RULE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_DECISION;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_LIMIT_POLICY;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_PRODUCT_CONFIG;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SECTOR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SUBINDUSTRY;
@@ -731,6 +732,21 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = ENTITY_SCORING_AUTHORITY_RULE;
         this.entityId = ruleId;
         this.href = "/scoring/authority-rules/" + ruleId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createScoringLimitPolicy() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_SCORING_LIMIT_POLICY;
+        this.href = "/scoring/limit-policies";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateScoringLimitPolicy(final Long policyId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_SCORING_LIMIT_POLICY;
+        this.entityId = policyId;
+        this.href = "/scoring/limit-policies/" + policyId;
         return this;
     }
 }

@@ -28,6 +28,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.event.business.domain.loan.LoanApprovedBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.LoanCreatedBusinessEvent;
+import org.apache.fineract.infrastructure.event.business.domain.loan.LoanDisbursalBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.scoring.domain.ScoringDecision;
@@ -37,6 +38,7 @@ import org.apache.fineract.scoring.domain.ScoringProductConfig;
 import org.apache.fineract.scoring.domain.ScoringTrigger;
 import org.apache.fineract.scoring.exception.ScoringDeclinedException;
 import org.apache.fineract.scoring.input.ScoringInputCollector.LoanFacts;
+import org.apache.fineract.scoring.limit.LimitCheckService;
 import org.apache.fineract.scoring.service.ScoringService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -52,6 +54,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
  * <li>Approval: scores again with the approved amount. Internal listeners run inside the approval transaction, so in
  * ENFORCED mode a DECLINE throws and rolls the approval back. With maker-checker on, this also runs when the approval
  * is first held, so a declined loan does not reach the checkers. A decline that was overridden is let through.</li>
+ * <li>Disbursal: scores again just before the money goes out, so a client blacklisted or in arrears since approval is
+ * caught. An ENFORCED DECLINE stops the disbursal.</li>
+ * <li>Approval and disbursal also check the loan against the pre-approved limits of its product.</li>
  * </ul>
  *
  * Only loans with a client are scored; group loans are skipped.
@@ -64,11 +69,14 @@ public class LoanScoringListeners {
 
     private final BusinessEventNotifierService businessEventNotifierService;
     private final ScoringService scoringService;
+    private final LimitCheckService limitCheckService;
 
     @PostConstruct
     public void addListeners() {
         businessEventNotifierService.addPostBusinessEventListener(LoanCreatedBusinessEvent.class, event -> onSubmitted(event.get()));
         businessEventNotifierService.addPostBusinessEventListener(LoanApprovedBusinessEvent.class, event -> onApproved(event.get()));
+        // fired before the disbursal is applied, so throwing stops it
+        businessEventNotifierService.addPreBusinessEventListener(LoanDisbursalBusinessEvent.class, event -> onDisbursing(event.get()));
     }
 
     void onSubmitted(final Loan loan) {
@@ -101,10 +109,22 @@ public class LoanScoringListeners {
     }
 
     void onApproved(final Loan loan) {
-        final LoanFacts facts = facts(loan);
+        scoreAndCheckLimit(facts(loan), ScoringTrigger.APPROVE);
+    }
+
+    void onDisbursing(final Loan loan) {
+        scoreAndCheckLimit(facts(loan), ScoringTrigger.DISBURSE);
+    }
+
+    private void scoreAndCheckLimit(final LoanFacts facts, final ScoringTrigger trigger) {
         if (facts.clientId() == null) {
             return;
         }
+        score(facts, trigger);
+        limitCheckService.check(facts.loanId(), facts.clientId(), facts.productId(), facts.principal());
+    }
+
+    private void score(final LoanFacts facts, final ScoringTrigger trigger) {
         final Optional<ScoringProductConfig> config = scoringService.findActiveConfig(facts.productId());
         if (config.isEmpty()) {
             return;
@@ -112,13 +132,13 @@ public class LoanScoringListeners {
         final boolean enforced = config.get().getMode() == ScoringMode.ENFORCED;
         final ScoringDecision decision;
         try {
-            decision = scoringService.scoreAndRecord(facts, config.get(), ScoringTrigger.APPROVE);
+            decision = scoringService.scoreAndRecord(facts, config.get(), trigger);
         } catch (RuntimeException e) {
             if (enforced) {
                 // fail closed: an enforced product is never approved without a decision
                 throw e;
             }
-            log.error("Credit scoring failed for approved loan {}; advisory mode, so the approval continues", facts.loanId(), e);
+            log.error("Credit scoring failed at {} of loan {}; advisory mode, so it continues", trigger, facts.loanId(), e);
             return;
         }
         // an override with a reason code lets a declined loan go on to the approvers

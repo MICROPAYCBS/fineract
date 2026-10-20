@@ -29,7 +29,7 @@ public class ScoringDeclinedException extends AbstractPlatformDomainRuleExceptio
 
     public ScoringDeclinedException(final Long loanId, final Long decisionId, final List<String> reasonCodes) {
         super("error.msg.scoring.loan.declined",
-                "Loan " + loanId + " cannot be approved: credit scoring decision " + decisionId + " is DECLINE (" + String.join(", ", reasonCodes)
+                "Loan " + loanId + " is stopped by credit scoring: decision " + decisionId + " is DECLINE (" + String.join(", ", reasonCodes)
                         + ")",
                 loanId, decisionId, reasonCodes);
     }

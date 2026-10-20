@@ -22,8 +22,10 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -38,6 +40,8 @@ import org.apache.fineract.scoring.domain.ScoringOutcome;
 import org.apache.fineract.scoring.domain.ScoringProductConfig;
 import org.apache.fineract.scoring.domain.ScoringTrigger;
 import org.apache.fineract.scoring.exception.ScoringDeclinedException;
+import org.apache.fineract.scoring.exception.ScoringLimitExceededException;
+import org.apache.fineract.scoring.limit.LimitCheckService;
 import org.apache.fineract.scoring.service.ScoringService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -59,12 +63,15 @@ class LoanScoringListenersTest {
     @Mock
     private ScoringService scoringService;
 
+    @Mock
+    private LimitCheckService limitCheckService;
+
     private LoanScoringListeners listeners;
     private Loan loan;
 
     @BeforeEach
     void setUp() {
-        listeners = new LoanScoringListeners(businessEventNotifierService, scoringService);
+        listeners = new LoanScoringListeners(businessEventNotifierService, scoringService, limitCheckService);
         loan = mock(Loan.class);
         final Money principal = mock(Money.class);
         when(principal.getAmount()).thenReturn(new BigDecimal("1000000"));
@@ -99,6 +106,33 @@ class LoanScoringListenersTest {
         when(scoringService.effectiveOutcome(any())).thenReturn(ScoringOutcome.DECLINE);
 
         assertThrows(ScoringDeclinedException.class, () -> listeners.onApproved(loan));
+    }
+
+    @Test
+    void enforcedDeclineAtDisbursalStopsIt() {
+        configure(ScoringMode.ENFORCED);
+        decide(ScoringOutcome.DECLINE);
+
+        assertThrows(ScoringDeclinedException.class, () -> listeners.onDisbursing(loan));
+        verify(scoringService).scoreAndRecord(any(), any(), eq(ScoringTrigger.DISBURSE));
+    }
+
+    @Test
+    void limitIsCheckedAtApprovalAndDisbursalEvenWithoutScoring() {
+        when(scoringService.findActiveConfig(PRODUCT_ID)).thenReturn(Optional.empty());
+
+        listeners.onApproved(loan);
+        listeners.onDisbursing(loan);
+
+        verify(limitCheckService, times(2)).check(42L, 9L, PRODUCT_ID, new BigDecimal("1000000"));
+    }
+
+    @Test
+    void limitBreachStopsApproval() {
+        when(scoringService.findActiveConfig(PRODUCT_ID)).thenReturn(Optional.empty());
+        doThrow(new ScoringLimitExceededException(42L, "AGENT_FLOAT")).when(limitCheckService).check(any(), any(), any(), any());
+
+        assertThrows(ScoringLimitExceededException.class, () -> listeners.onApproved(loan));
     }
 
     @Test

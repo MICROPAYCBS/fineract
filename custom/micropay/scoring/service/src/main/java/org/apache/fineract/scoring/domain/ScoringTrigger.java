@@ -18,6 +18,10 @@
  */
 package org.apache.fineract.scoring.domain;
 
+/**
+ * Why a scoring decision was made: a loan event (SUBMIT, APPROVE, DISBURSE), a request (MANUAL) or the nightly
+ * behavioural run (NIGHTLY, with no loan).
+ */
 public enum ScoringTrigger {
-    SUBMIT, APPROVE, MANUAL
+    SUBMIT, APPROVE, DISBURSE, MANUAL, NIGHTLY
 }

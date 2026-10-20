@@ -13,7 +13,9 @@ The design is in the "Credit Scoring Design for Micropay" doc.
 | --- | --- |
 | Loan submitted | Scored after the submission commits. Submission is never blocked. A submission held for maker-checker is not scored. |
 | Loan approved | Scored again with the approved amount. In `ENFORCED` mode a `DECLINE` rolls the approval back unless it was overridden. With maker-checker on, this also runs when the approval is first held, so a declined loan never reaches the checkers. |
+| Loan disbursed | Scored again just before the money goes out, so a client blacklisted or in arrears since approval is caught. In `ENFORCED` mode a `DECLINE` that was not overridden stops the disbursal. |
 | On request | `POST /v1/scoring/loans/{loanId}?command=score` records a `MANUAL` decision. |
+| Nightly | The "Credit Scoring Behavioural Run" job scores the clients of every limit policy (see below) and records `NIGHTLY` decisions with no loan. |
 
 Each run saves a row in `m_scoring_decision` in its own transaction, so a decline that blocks an approval is still on record. Only loans with a client are scored; group loans are skipped.
 
@@ -103,6 +105,39 @@ The points and cut-offs below are placeholders for the credit team to set.
 
 A bin matches a range `[lower, upper)`, an exact `matchValue` (text, any case) or a missing value (`"missing": true`). Reason codes list the fired rules first, then up to three characteristics that cost the most points against their best bin.
 
+## Pre-approved limits
+
+A limit policy gives clients a limit on one loan product from a behavioural scorecard (a scorecard of type `BEHAVIOURAL`, built like any other; loan characteristics are empty when no loan is scored):
+
+```json
+{
+  "code": "AGENT_FLOAT",
+  "name": "Agent float loan",
+  "scorecardCode": "AGENT_BEHAVIOUR",
+  "loanProductId": 3,
+  "mode": "ADVISORY",
+  "staffOnly": true,
+  "validDays": 35,
+  "baseCharacteristic": "SAVINGS_MONTHLY_DEPOSITS_6M",
+  "roundingUnit": 10000,
+  "bands": [
+    { "grade": "A", "multiplier": 2, "maxAmount": 5000000 },
+    { "grade": "B", "multiplier": 1, "maxAmount": 2000000 },
+    { "grade": "C", "maxAmount": 500000 }
+  ]
+}
+```
+
+`POST /v1/scoring/limit-policies` creates it (maker-checker by default); `PUT /v1/scoring/limit-policies/{id}` replaces it.
+
+- **Who is scored**: active clients, agents only (`staffOnly`, the `is_staff` flag) unless set to false, optionally one office (`officeId`) or customer class (`customerClassId`).
+- **The limit**: the band of the client's grade gives `multiplier` × the base characteristic, capped at `maxAmount`, rounded down to `roundingUnit`. A band without a multiplier gives `maxAmount`. A `DECLINE`, a grade with no band or a missing base gives zero.
+- **Validity**: each run replaces the client's limit, valid for `validDays` from the business date. If a run fails for a client, the old limit stays until it expires.
+- **Enforcement**: under `ENFORCED`, every loan on the product, whoever the client, must fit within the client's current limit at approval and again at disbursal. The limit is used by the outstanding principal of the client's active loans on the product plus approved loans not yet disbursed. A client with no current limit cannot borrow on the product. `ADVISORY` only logs breaches, so start there.
+- **Job**: "Credit Scoring Behavioural Run" is created inactive with a 03:00 schedule. Turn it on in the scheduler after the policy is set up, and run it once by hand to give the first limits.
+
+`GET /v1/scoring/clients/{clientId}/limits` shows the client's latest limit under each policy, with what is used and available today.
+
 ## Permissions
 
-Grouping `scoring`: `CREATE_SCORECARD`, `READ_SCORECARD`, `UPDATE_SCORECARD`, `ACTIVATE_SCORECARD`, `RETIRE_SCORECARD`, `READ_SCORING_PRODUCT_CONFIG`, `UPDATE_SCORING_PRODUCT_CONFIG`, `READ_SCORING_DECISION`, `OVERRIDE_SCORING_DECISION`, `CREATE_SCORING_AUTHORITY_RULE`, `READ_SCORING_AUTHORITY_RULE`, `UPDATE_SCORING_AUTHORITY_RULE`, `DELETE_SCORING_AUTHORITY_RULE`, plus `_CHECKER` variants for every one that goes through maker-checker (activate, retire, product config, override and the authority rule changes). Grouping `portfolio`: `SCORE_LOAN`.
+Grouping `scoring`: `CREATE_SCORECARD`, `READ_SCORECARD`, `UPDATE_SCORECARD`, `ACTIVATE_SCORECARD`, `RETIRE_SCORECARD`, `READ_SCORING_PRODUCT_CONFIG`, `UPDATE_SCORING_PRODUCT_CONFIG`, `READ_SCORING_DECISION`, `OVERRIDE_SCORING_DECISION`, `CREATE_SCORING_AUTHORITY_RULE`, `READ_SCORING_AUTHORITY_RULE`, `UPDATE_SCORING_AUTHORITY_RULE`, `DELETE_SCORING_AUTHORITY_RULE`, `CREATE_SCORING_LIMIT_POLICY`, `READ_SCORING_LIMIT_POLICY`, `UPDATE_SCORING_LIMIT_POLICY`, `READ_SCORING_LIMIT`, plus `_CHECKER` variants for every one that goes through maker-checker (activate, retire, product config, override, authority rule and limit policy changes). Grouping `portfolio`: `SCORE_LOAN`.

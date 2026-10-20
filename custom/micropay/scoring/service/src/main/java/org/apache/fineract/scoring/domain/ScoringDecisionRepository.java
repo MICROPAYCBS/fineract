@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.scoring.domain;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,5 +31,5 @@ public interface ScoringDecisionRepository extends JpaRepository<ScoringDecision
 
     Optional<ScoringDecision> findFirstByLoanIdOrderByIdDesc(Long loanId);
 
-    boolean existsByLoanIdAndIdGreaterThanAndTriggerNot(Long loanId, Long decisionId, ScoringTrigger trigger);
+    boolean existsByLoanIdAndIdGreaterThanAndTriggerIn(Long loanId, Long decisionId, Collection<ScoringTrigger> triggers);
 }

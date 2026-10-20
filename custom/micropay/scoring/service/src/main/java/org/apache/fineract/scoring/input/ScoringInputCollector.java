@@ -80,6 +80,11 @@ public class ScoringInputCollector {
      * because the approval's changes may not be flushed to the database yet.
      */
     public record LoanFacts(Long loanId, Long clientId, Long productId, BigDecimal principal, Integer numberOfRepayments) {
+
+        /** A client scored on its own, for a product but without a loan. */
+        public static LoanFacts forClient(final Long clientId, final Long productId) {
+            return new LoanFacts(null, clientId, productId, null, null);
+        }
     }
 
     public LoanFacts loanFacts(final Long loanId) {
@@ -145,12 +150,12 @@ public class ScoringInputCollector {
 
     private void collectLoanHistory(final LoanFacts loan, final LocalDate today, final Map<String, Object> inputs) {
         inputs.put(CLIENT_ACTIVE_LOANS, BigDecimal.valueOf(count("SELECT COUNT(*) FROM m_loan WHERE client_id = ? AND loan_status_id = ?"
-                + " AND id <> ?", loan.clientId(), LOAN_STATUS_ACTIVE, loan.loanId())));
+                + " AND id <> ?", loan.clientId(), LOAN_STATUS_ACTIVE, excludedLoanId(loan))));
         inputs.put(CLIENT_CLOSED_LOANS, BigDecimal.valueOf(count("SELECT COUNT(*) FROM m_loan WHERE client_id = ? AND loan_status_id = ?",
                 loan.clientId(), LOAN_STATUS_CLOSED_OBLIGATIONS_MET)));
         final BigDecimal outstanding = jdbcTemplate.queryForObject(
                 "SELECT SUM(principal_outstanding_derived) FROM m_loan WHERE client_id = ? AND loan_status_id = ? AND id <> ?",
-                BigDecimal.class, loan.clientId(), LOAN_STATUS_ACTIVE, loan.loanId());
+                BigDecimal.class, loan.clientId(), LOAN_STATUS_ACTIVE, excludedLoanId(loan));
         inputs.put(CLIENT_OUTSTANDING_PRINCIPAL, outstanding == null ? BigDecimal.ZERO : outstanding);
 
         final List<LocalDate> overdueSince = jdbcTemplate.query(
@@ -209,6 +214,10 @@ public class ScoringInputCollector {
             entityId = loan.clientId();
             foreignKey = "client_id";
         } else if ("m_loan".equals(appTable)) {
+            if (loan.loanId() == null) {
+                // a nightly behavioural run scores the client without a loan
+                return null;
+            }
             entityId = loan.loanId();
             foreignKey = "loan_id";
         } else {
@@ -226,6 +235,11 @@ public class ScoringInputCollector {
                     parts[0], parts[1]);
         }
         return row.get(parts[1]);
+    }
+
+    /** A client scored without a loan (the nightly run) has every loan counted. */
+    private static long excludedLoanId(final LoanFacts loan) {
+        return loan.loanId() == null ? -1L : loan.loanId();
     }
 
     private long count(final String sql, final Object... args) {

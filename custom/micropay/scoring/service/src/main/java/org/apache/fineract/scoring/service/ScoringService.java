@@ -18,8 +18,10 @@
  */
 package org.apache.fineract.scoring.service;
 
+import java.util.Map;
 import java.util.Optional;
 import org.apache.fineract.scoring.domain.ScoringDecision;
+import org.apache.fineract.scoring.domain.ScoringMode;
 import org.apache.fineract.scoring.domain.ScoringOutcome;
 import org.apache.fineract.scoring.domain.ScoringOverride;
 import org.apache.fineract.scoring.domain.ScoringProductConfig;
@@ -41,14 +43,24 @@ public interface ScoringService {
     ScoringDecision scoreAndRecord(LoanFacts loan, ScoringProductConfig config, ScoringTrigger trigger);
 
     /**
+     * As {@link #scoreAndRecord}, with an explicit scorecard code and mode, and returning the inputs used as well.
+     */
+    ScoringRun scoreAndRecord(LoanFacts loan, String scorecardCode, ScoringMode mode, ScoringTrigger trigger);
+
+    /**
+     * A recorded decision and the inputs it was made from.
+     */
+    record ScoringRun(ScoringDecision decision, Map<String, Object> inputs) {}
+
+    /**
      * Scores a loan with any scorecard version, drafts included, without saving anything.
      */
     ScoringResult test(Long scorecardId, Long loanId);
 
     /**
      * The override that applies to the loan: its latest override, unless the loan was scored again on submission or on
-     * request after the overridden decision. The re-scoring at approval keeps the override, so an approved override
-     * survives the checker's run of the approval.
+     * request after the overridden decision. The re-scoring at approval and disbursal keeps the override, so an
+     * override survives the checker's run of the approval.
      */
     Optional<ScoringOverride> findEffectiveOverride(Long loanId);
 

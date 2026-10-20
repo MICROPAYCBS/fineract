@@ -28,6 +28,8 @@ public final class ScoringApiConstants {
     public static final String SCORING_PRODUCT_CONFIG_RESOURCE_NAME = "SCORING_PRODUCT_CONFIG";
     public static final String SCORING_DECISION_RESOURCE_NAME = "SCORING_DECISION";
     public static final String SCORING_AUTHORITY_RULE_RESOURCE_NAME = "SCORING_AUTHORITY_RULE";
+    public static final String SCORING_LIMIT_POLICY_RESOURCE_NAME = "SCORING_LIMIT_POLICY";
+    public static final String SCORING_LIMIT_RESOURCE_NAME = "SCORING_LIMIT";
 
     public static final String OVERRIDE_REASON_CODE_NAME = "ScoringOverrideReason";
     public static final String DEFAULT_AUTHORITY_TASK = "APPROVE_LOAN";

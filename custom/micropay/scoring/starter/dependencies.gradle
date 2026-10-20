@@ -23,4 +23,6 @@ dependencies {
     compileOnly('org.springframework.boot:spring-boot-autoconfigure')
     compileOnly('com.github.spotbugs:spotbugs-annotations')
     implementation(project(':custom:micropay:scoring:service'))
+    implementation('org.springframework.batch:spring-batch-core')
+    implementation('org.springframework.boot:spring-boot-starter-data-jpa') { exclude group: 'org.hibernate' }
 }

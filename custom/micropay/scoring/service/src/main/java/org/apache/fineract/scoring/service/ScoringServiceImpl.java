@@ -22,6 +22,7 @@ import static org.apache.fineract.scoring.api.ScoringApiConstants.MODULE_ENABLED
 
 import com.google.gson.Gson;
 import java.math.BigDecimal;
+import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -60,6 +61,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ScoringServiceImpl implements ScoringService {
 
     private static final Gson GSON = new Gson();
+    /** A later decision from one of these means new information, so an earlier override no longer applies. */
+    private static final Set<ScoringTrigger> RESCORING_TRIGGERS = EnumSet.of(ScoringTrigger.SUBMIT, ScoringTrigger.MANUAL);
 
     private final ScoringProductConfigRepository productConfigRepository;
     private final ScorecardRepository scorecardRepository;
@@ -82,8 +85,18 @@ public class ScoringServiceImpl implements ScoringService {
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public ScoringDecision scoreAndRecord(final LoanFacts loan, final ScoringProductConfig config, final ScoringTrigger trigger) {
-        final Scorecard scorecard = this.scorecardRepository.findFirstByCodeAndStatus(config.getScorecardCode(), ScorecardStatus.ACTIVE)
-                .orElseThrow(() -> new ScorecardNotFoundException(config.getScorecardCode()));
+        return run(loan, config.getScorecardCode(), config.getMode(), trigger).decision();
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public ScoringRun scoreAndRecord(final LoanFacts loan, final String scorecardCode, final ScoringMode mode, final ScoringTrigger trigger) {
+        return run(loan, scorecardCode, mode, trigger);
+    }
+
+    private ScoringRun run(final LoanFacts loan, final String scorecardCode, final ScoringMode mode, final ScoringTrigger trigger) {
+        final Scorecard scorecard = this.scorecardRepository.findFirstByCodeAndStatus(scorecardCode, ScorecardStatus.ACTIVE)
+                .orElseThrow(() -> new ScorecardNotFoundException(scorecardCode));
         final Map<String, Object> inputs = this.inputCollector.collect(loan, datatableCharacteristics(scorecard));
         final ScoringResult result = this.scoringEngine.evaluate(scorecard, inputs);
 
@@ -92,7 +105,7 @@ public class ScoringServiceImpl implements ScoringService {
         decision.setLoanId(loan.loanId());
         decision.setLoanProductId(loan.productId());
         decision.setTrigger(trigger);
-        decision.setMode(config.getMode());
+        decision.setMode(mode);
         decision.setScorecardId(scorecard.getId());
         decision.setScorecardCode(scorecard.getCode());
         decision.setScorecardVersion(scorecard.getVersion());
@@ -125,7 +138,7 @@ public class ScoringServiceImpl implements ScoringService {
         final Map<String, Object> snapshot = new LinkedHashMap<>();
         inputs.forEach((key, value) -> snapshot.put(key, jsonSafe(value)));
         decision.setInputsSnapshot(GSON.toJson(snapshot));
-        return this.decisionRepository.saveAndFlush(decision);
+        return new ScoringRun(this.decisionRepository.saveAndFlush(decision), inputs);
     }
 
     @Override
@@ -147,7 +160,7 @@ public class ScoringServiceImpl implements ScoringService {
             return Optional.empty();
         }
         return this.overrideRepository.findFirstByLoanIdOrderByIdDesc(loanId).filter(override -> !this.decisionRepository
-                .existsByLoanIdAndIdGreaterThanAndTriggerNot(loanId, override.getDecisionId(), ScoringTrigger.APPROVE));
+                .existsByLoanIdAndIdGreaterThanAndTriggerIn(loanId, override.getDecisionId(), RESCORING_TRIGGERS));
     }
 
     @Override

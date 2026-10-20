@@ -24,6 +24,7 @@ import static org.apache.fineract.scoring.api.ScoringApiConstants.MODULE_ENABLED
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORECARD_RESOURCE_NAME;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_AUTHORITY_RULE_RESOURCE_NAME;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_DECISION_RESOURCE_NAME;
+import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_LIMIT_RESOURCE_NAME;
 import static org.apache.fineract.scoring.api.ScoringApiConstants.SCORING_PRODUCT_CONFIG_RESOURCE_NAME;
 
 import com.micropay.fineract.platform.command.MicropayCommandWrapperBuilder;
@@ -53,11 +54,13 @@ import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamE
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.scoring.data.ApprovalRouteData;
 import org.apache.fineract.scoring.data.ScoringCharacteristicData;
+import org.apache.fineract.scoring.data.ScoringClientLimitData;
 import org.apache.fineract.scoring.data.ScoringDecisionData;
 import org.apache.fineract.scoring.data.ScoringProductConfigData;
 import org.apache.fineract.scoring.data.ScoringOverrideRequest;
 import org.apache.fineract.scoring.data.ScoringProductConfigRequest;
 import org.apache.fineract.scoring.service.ScoringAuthorityReadPlatformService;
+import org.apache.fineract.scoring.service.ScoringLimitPlatformService;
 import org.apache.fineract.scoring.service.ScoringReadPlatformService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
@@ -72,6 +75,7 @@ public class ScoringApiResource {
     private final PlatformSecurityContext context;
     private final ScoringReadPlatformService readPlatformService;
     private final ScoringAuthorityReadPlatformService authorityReadPlatformService;
+    private final ScoringLimitPlatformService limitService;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
 
     @GET
@@ -158,5 +162,15 @@ public class ScoringApiResource {
             throw new UnrecognizedQueryParamException("command", commandParam, new Object[] { COMMAND_SCORE });
         }
         return this.commandsSourceWritePlatformService.logCommandSource(new MicropayCommandWrapperBuilder().scoreLoan(loanId).build());
+    }
+
+    @GET
+    @Path("clients/{clientId}/limits")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "A client's pre-approved limits", description = "The latest limit under each policy, with the amount used and available today")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = ScoringClientLimitData.class))))
+    public List<ScoringClientLimitData> retrieveClientLimits(@PathParam("clientId") final Long clientId) {
+        this.context.authenticatedUser().validateHasReadPermission(SCORING_LIMIT_RESOURCE_NAME);
+        return this.limitService.retrieveClientLimits(clientId);
     }
 }
