@@ -61,6 +61,7 @@ public final class SavingsAccountData implements Serializable {
     private final String groupName;
     private final Long clientId;
     private final String clientName;
+    private String officeName;
     private final Long savingsProductId;
     private final String savingsProductName;
     private final Long fieldOfficerId;
@@ -146,6 +147,8 @@ public final class SavingsAccountData implements Serializable {
     private transient Set<Long> existingReversedTransactionIds = new HashSet<>();
     private transient Long glAccountIdForSavingsControl;
     private transient Long glAccountIdForInterestOnSavings;
+    private transient Long glAccountIdForSavingsReference;
+    private transient Long glAccountIdForIncomeFromInterest;
 
     private Long glAccountIdForInterestPayable;
     private Long glAccountIdForOverdraftPorfolio;

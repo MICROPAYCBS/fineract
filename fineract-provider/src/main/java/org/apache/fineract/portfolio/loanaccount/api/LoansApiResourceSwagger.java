@@ -650,6 +650,16 @@ final class LoansApiResourceSwagger {
             public Boolean inArrears;
             @Schema(example = "false")
             public Boolean isNPA;
+            @Schema(example = "false")
+            public Boolean deliberateNpa;
+            @Schema(example = "1")
+            public Long npaReasonId;
+            @Schema(example = "Fraud")
+            public String npaReason;
+            @Schema(example = "Borrower confirmed fraudulent activity")
+            public String npaReasonNote;
+            @Schema(example = "[2026, 10, 15]")
+            public LocalDate deliberateNpaOnDate;
             @Schema(example = "0.000000")
             public BigDecimal totalMerchantRefund;
             @Schema(example = "0.000000")
@@ -912,6 +922,8 @@ final class LoansApiResourceSwagger {
             public BigDecimal outstandingLoanBalance;
             @Schema(example = "[2022, 07, 01]")
             public LocalDate submittedOnDate;
+            @Schema(example = "mifos")
+            public String submittedByUsername;
             public boolean manuallyReversed;
             @Schema(example = "[2022, 07, 01]")
             public LocalDate possibleNextRepaymentDate;
@@ -1904,6 +1916,8 @@ final class LoansApiResourceSwagger {
         public BigDecimal netDisbursalAmount;
         @Schema(example = "Description of disbursement details.")
         public String note;
+        @Schema(example = "1", description = "Required when command is markAsNpa. Code value from LoanNPAReasons.")
+        public Long npaReasonId;
         @Schema(example = "28 June 2022")
         public String actualDisbursementDate;
         @Schema(example = "31 March 2024")

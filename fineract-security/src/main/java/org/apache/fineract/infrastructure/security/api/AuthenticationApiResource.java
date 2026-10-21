@@ -42,7 +42,9 @@ import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer
 import org.apache.fineract.infrastructure.security.constants.TwoFactorConstants;
 import org.apache.fineract.infrastructure.security.data.AuthenticatedUserData;
 import org.apache.fineract.infrastructure.security.exception.PasswordResetRequiredException;
+import org.apache.fineract.infrastructure.security.service.SessionIdlePolicyReadService;
 import org.apache.fineract.infrastructure.security.service.SpringSecurityPlatformSecurityContext;
+import org.apache.fineract.infrastructure.security.service.TwoFactorAuthResponseHelper;
 import org.apache.fineract.useradministration.data.RoleData;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.apache.fineract.useradministration.domain.Role;
@@ -53,6 +55,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -75,6 +78,8 @@ public class AuthenticationApiResource {
     private final DaoAuthenticationProvider customAuthenticationProvider;
     private final ToApiJsonSerializer<AuthenticatedUserData> apiJsonSerializerService;
     private final SpringSecurityPlatformSecurityContext springSecurityPlatformSecurityContext;
+    private final SessionIdlePolicyReadService sessionIdlePolicyReadService;
+    private final TwoFactorAuthResponseHelper twoFactorAuthResponseHelper;
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
@@ -97,6 +102,9 @@ public class AuthenticationApiResource {
 
         final Authentication authentication = new UsernamePasswordAuthenticationToken(request.username, request.password);
         final Authentication authenticationCheck = this.customAuthenticationProvider.authenticate(authentication);
+        // Login is authenticated outside the filter chain, so later reads
+        // (session-idle config, password-renewal) need the principal on this thread.
+        SecurityContextHolder.getContext().setAuthentication(authenticationCheck);
 
         final Collection<String> permissions = new ArrayList<>();
         AuthenticatedUserData authenticatedUserData = new AuthenticatedUserData().setUsername(request.username).setPermissions(permissions);
@@ -129,18 +137,19 @@ public class AuthenticationApiResource {
                     && !principal.hasSpecificPermissionTo(TwoFactorConstants.BYPASS_TWO_FACTOR_PERMISSION);
             Long userId = principal.getId();
             if (this.springSecurityPlatformSecurityContext.doesPasswordHasToBeRenewed(principal)) {
-                authenticatedUserData = new AuthenticatedUserData().setUsername(request.username).setUserId(userId)
-                        .setBase64EncodedAuthenticationKey(new String(base64EncodedAuthenticationKey, StandardCharsets.UTF_8))
-                        .setAuthenticated(true).setShouldRenewPassword(true).setTwoFactorAuthenticationRequired(isTwoFactorRequired);
+                authenticatedUserData = this.sessionIdlePolicyReadService.applySessionIdlePolicy(
+                        twoFactorAuthResponseHelper.apply(new AuthenticatedUserData().setUsername(request.username).setUserId(userId)
+                                .setBase64EncodedAuthenticationKey(new String(base64EncodedAuthenticationKey, StandardCharsets.UTF_8))
+                                .setAuthenticated(true).setShouldRenewPassword(true), principal, isTwoFactorRequired));
                 throw new PasswordResetRequiredException(authenticatedUserData);
             } else {
 
-                authenticatedUserData = new AuthenticatedUserData().setUsername(request.username).setOfficeId(officeId)
-                        .setOfficeName(officeName).setStaffId(staffId).setStaffDisplayName(staffDisplayName)
-                        .setOrganisationalRole(organisationalRole).setRoles(roles).setPermissions(permissions).setUserId(principal.getId())
-                        .setAuthenticated(true)
-                        .setBase64EncodedAuthenticationKey(new String(base64EncodedAuthenticationKey, StandardCharsets.UTF_8))
-                        .setTwoFactorAuthenticationRequired(isTwoFactorRequired);
+                authenticatedUserData = this.sessionIdlePolicyReadService.applySessionIdlePolicy(twoFactorAuthResponseHelper.apply(
+                        new AuthenticatedUserData().setUsername(request.username).setOfficeId(officeId).setOfficeName(officeName)
+                                .setStaffId(staffId).setStaffDisplayName(staffDisplayName).setOrganisationalRole(organisationalRole)
+                                .setRoles(roles).setPermissions(permissions).setUserId(principal.getId()).setAuthenticated(true)
+                                .setBase64EncodedAuthenticationKey(new String(base64EncodedAuthenticationKey, StandardCharsets.UTF_8)),
+                        principal, isTwoFactorRequired));
 
             }
 

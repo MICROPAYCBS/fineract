@@ -28,7 +28,16 @@ public final class TwoFactorConstants {
 
     public static final String SMS_DELIVERY_METHOD_NAME = "sms";
     public static final String EMAIL_DELIVERY_METHOD_NAME = "email";
+    public static final String TOTP_DELIVERY_METHOD_NAME = "totp";
 
     public static final String BYPASS_TWO_FACTOR_PERMISSION = "BYPASS_TWOFACTOR";
+
+    public static final String REVOCATION_REASON_SUPERSEDED = "SUPERSEDED_BY_NEW_LOGIN";
+    public static final String REVOCATION_REASON_ADMIN = "REVOKED_BY_ADMIN";
+    public static final String USERSESSION_RESOURCE_NAME = "USERSESSION";
+    public static final String SESSION_SUPERSEDED_REASON_HEADER = "Fineract-Platform-Reason";
+    public static final String SESSION_SUPERSEDED_REASON_VALUE = "session-superseded";
+
+    public static final String TOTP_ISSUER = "MicroPay";
 
 }

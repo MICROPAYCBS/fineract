@@ -21,8 +21,10 @@ package org.apache.fineract.organisation.teller.domain.model.request;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.apache.fineract.organisation.monetary.data.CashierLegalTenderLineRequest;
 
 @Data
 @NoArgsConstructor
@@ -37,4 +39,5 @@ public class CashierTransactionRequest implements Serializable {
     public String locale;
     public String dateFormat;
     public String txnDate;
+    public List<CashierLegalTenderLineRequest> legalTenderLines;
 }

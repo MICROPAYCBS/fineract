@@ -52,6 +52,7 @@ public class GuarantorCommand {
     private final String mobileNumber;
     private final String housePhoneNumber;
     private final String comment;
+    private final String nationalIdNumber;
     private final LocalDate dob;
     private final Long savingsId;
     private final BigDecimal amount;
@@ -59,7 +60,7 @@ public class GuarantorCommand {
     public GuarantorCommand(final Long clientRelationshipTypeId, final Integer guarantorTypeId, final Long entityId, final String firstname,
             final String lastname, final String addressLine1, final String addressLine2, final String city, final String state,
             final String zip, final String country, final String mobileNumber, final String housePhoneNumber, final String comment,
-            final LocalDate dob, final Long savingsId, final BigDecimal amount) {
+            final String nationalIdNumber, final LocalDate dob, final Long savingsId, final BigDecimal amount) {
 
         this.clientRelationshipTypeId = clientRelationshipTypeId;
 
@@ -79,6 +80,7 @@ public class GuarantorCommand {
         this.mobileNumber = mobileNumber;
         this.housePhoneNumber = housePhoneNumber;
         this.comment = comment;
+        this.nationalIdNumber = nationalIdNumber;
         this.dob = dob;
         this.savingsId = savingsId;
         this.amount = amount;
@@ -119,6 +121,8 @@ public class GuarantorCommand {
                     .notExceedingLengthOf(50);
             baseDataValidator.reset().parameter(GuarantorJSONinputParams.LASTNAME.getValue()).value(this.lastname).notBlank()
                     .notExceedingLengthOf(50);
+            baseDataValidator.reset().parameter(GuarantorJSONinputParams.NATIONAL_ID_NUMBER.getValue()).value(this.nationalIdNumber)
+                    .notBlank().notExceedingLengthOf(50);
             validateNonMandatoryFieldsForMaxLength(baseDataValidator);
         }
 
@@ -158,11 +162,13 @@ public class GuarantorCommand {
                     .notExceedingLengthOf(50);
             baseDataValidator.reset().parameter(GuarantorJSONinputParams.LASTNAME.getValue()).value(this.lastname).ignoreIfNull()
                     .notExceedingLengthOf(50);
+            baseDataValidator.reset().parameter(GuarantorJSONinputParams.NATIONAL_ID_NUMBER.getValue()).value(this.nationalIdNumber)
+                    .ignoreIfNull().notBlank().notExceedingLengthOf(50);
 
             validateNonMandatoryFieldsForMaxLength(baseDataValidator);
         }
         baseDataValidator.reset().anyOfNotNull(this.entityId, this.addressLine1, this.addressLine2, this.city, this.comment, this.country,
-                this.firstname, this.housePhoneNumber, this.lastname, this.mobileNumber, this.state, this.zip);
+                this.firstname, this.housePhoneNumber, this.lastname, this.mobileNumber, this.nationalIdNumber, this.state, this.zip);
 
         if (!dataValidationErrors.isEmpty()) {
             throw new PlatformApiDataValidationException("validation.msg.validation.errors.exist", "Validation errors exist.",

@@ -34,6 +34,7 @@ import jakarta.ws.rs.PUT;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.UriInfo;
@@ -46,6 +47,7 @@ import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatData;
+import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatPreviewData;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatConstants;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatReadPlatformService;
@@ -59,7 +61,7 @@ import org.springframework.stereotype.Component;
 
 @Path(AccountNumberFormatConstants.resourceRelativeURL)
 @Component
-@Tag(name = "Account number format", description = "Account number preferences are used to describe custom formats for account numbers associated with Customer, Loan and Savings accounts.")
+@Tag(name = "Account number format", description = "Account number preferences describe how account numbers are built for clients, groups, centers, loans, savings, shares and working capital loans.")
 @RequiredArgsConstructor
 public class AccountNumberFormatsApiResource {
 
@@ -68,10 +70,15 @@ public class AccountNumberFormatsApiResource {
     private final ToApiJsonSerializer<AccountNumberFormatData> toApiJsonSerializer;
     private final ApiRequestParameterHelper apiRequestParameterHelper;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
-    private static final Set<String> ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(AccountNumberFormatConstants.idParamName, AccountNumberFormatConstants.accountTypeParamName,
-                    AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.accountTypeOptionsParamName,
-                    AccountNumberFormatConstants.prefixTypeOptionsParamName));
+    private final ToApiJsonSerializer<AccountNumberFormatPreviewData> previewDataSerializer;
+    private static final Set<String> ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(
+            AccountNumberFormatConstants.idParamName, AccountNumberFormatConstants.accountTypeParamName,
+            AccountNumberFormatConstants.prefixTypeParamName, AccountNumberFormatConstants.accountTypeOptionsParamName,
+            AccountNumberFormatConstants.prefixTypeOptionsParamName, AccountNumberFormatConstants.prefixCharacterParamName,
+            AccountNumberFormatConstants.formatPatternParamName, AccountNumberFormatConstants.sequenceScopeParamName,
+            AccountNumberFormatConstants.checkDigitAlgorithmParamName, AccountNumberFormatConstants.structuredEnabledParamName,
+            AccountNumberFormatConstants.sequenceScopeOptionsParamName, AccountNumberFormatConstants.checkDigitAlgorithmOptionsParamName,
+            AccountNumberFormatConstants.segmentTokenOptionsParamName));
 
     @GET
     @Path("template")
@@ -129,6 +136,8 @@ public class AccountNumberFormatsApiResource {
             final AccountNumberFormatData templateData = this.accountNumberFormatReadPlatformService
                     .retrieveTemplate(EntityAccountType.fromInt(accountNumberFormatData.getAccountType().getId().intValue()));
             accountNumberFormatData.templateOnTop(templateData.getAccountTypeOptions(), templateData.getPrefixTypeOptions());
+            accountNumberFormatData.structuredTemplateOnTop(templateData.getSequenceScopeOptions(),
+                    templateData.getCheckDigitAlgorithmOptions(), templateData.getSegmentTokenOptions());
         }
 
         return this.toApiJsonSerializer.serialize(settings, accountNumberFormatData, ACCOUNT_NUMBER_FORMAT_RESPONSE_DATA_PARAMETERS);
@@ -174,6 +183,29 @@ public class AccountNumberFormatsApiResource {
         final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
 
         return this.toApiJsonSerializer.serialize(result);
+    }
+
+    @GET
+    @Path("preview")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Preview structured account number", description = "Dry-run a structured account number without consuming a sequence value.")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = AccountNumberFormatsApiResourceSwagger.GetAccountNumberFormatPreviewResponse.class)))
+    public String preview(
+            @QueryParam("accountType") @Parameter(description = "Account type: 1 client, 2 loan, 3 savings, 4 center, 5 group, 6 shares, 7 working capital loan") final Integer accountType,
+            @QueryParam("officeId") @Parameter(description = "Office whose code is printed. Omit to preview with branch code 001.") final Long officeId,
+            @QueryParam("productShortName") @Parameter(description = "Product short name printed as the product code.") final String productShortName,
+            @QueryParam("clientTypeLabel") @Parameter(description = "Client type label printed as the client type code.") final String clientTypeLabel,
+            @QueryParam("formatPattern") @Parameter(description = "Pattern to preview. Omit to use the saved preference or the type default.") final String formatPattern,
+            @QueryParam("sequenceScope") @Parameter(description = "1 global, 2 per office, 3 per office and product.") final Integer sequenceScope,
+            @QueryParam("checkDigitAlgorithm") @Parameter(description = "0 none, 1 Luhn, 2 digit sum, 3 Mod 11.") final Integer checkDigitAlgorithm,
+            @Context final UriInfo uriInfo) {
+
+        this.context.authenticatedUser().validateHasReadPermission(AccountNumberFormatConstants.ENTITY_NAME);
+
+        final AccountNumberFormatPreviewData previewData = this.accountNumberFormatReadPlatformService.previewAccountNumber(accountType,
+                officeId, productShortName, clientTypeLabel, formatPattern, sequenceScope, checkDigitAlgorithm);
+        final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
+        return this.previewDataSerializer.serialize(settings, previewData);
     }
 
     @DELETE

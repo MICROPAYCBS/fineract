@@ -41,6 +41,7 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
 import org.apache.fineract.infrastructure.core.exception.PlatformDataIntegrityException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepositoryWrapper;
 import org.apache.fineract.organisation.monetary.data.CurrencyData;
 import org.apache.fineract.organisation.monetary.domain.ApplicationCurrency;
@@ -81,6 +82,7 @@ public class ClientChargeWritePlatformServiceImpl implements ClientChargeWritePl
     private final ClientTransactionRepository clientTransactionRepository;
     private final PaymentDetailWritePlatformService paymentDetailWritePlatformService;
     private final JournalEntryWritePlatformService journalEntryWritePlatformService;
+    private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
     private final ApplicationCurrencyRepositoryWrapper applicationCurrencyRepositoryWrapper;
 
     @Override
@@ -162,6 +164,8 @@ public class ClientChargeWritePlatformServiceImpl implements ClientChargeWritePl
 
             ClientTransaction clientTransaction = ClientTransaction.payCharge(client, client.getOffice(), paymentDetail, transactionDate,
                     chargePaid, clientCharge.getCurrency().getCode(), transactionExternalId);
+            this.crossBranchTransactionAccessService.resolveTransactionOffice(client.getOffice())
+                    .ifPresent(clientTransaction::setTransactionOffice);
             this.clientTransactionRepository.saveAndFlush(clientTransaction);
 
             // update charge paid by associations

@@ -43,6 +43,8 @@ public final class FineractEntityType {
             .setTableName("m_charge");
     public static final FineractEntityType SHARE_PRODUCT = new FineractEntityType().setType("shares_product")
             .setDescription("Shares Product").setTableName("m_share_product");
+    public static final FineractEntityType DEPARTMENT = new FineractEntityType().setType("department").setDescription("Departments")
+            .setTableName("m_department");
 
     public static FineractEntityType get(String type) {
 
@@ -58,6 +60,8 @@ public final class FineractEntityType {
             retType = CHARGE;
         } else if (type.equals(SHARE_PRODUCT.type)) {
             retType = SHARE_PRODUCT;
+        } else if (type.equals(DEPARTMENT.type)) {
+            retType = DEPARTMENT;
         }
         return retType;
     }

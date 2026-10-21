@@ -30,4 +30,8 @@ public interface AppUserWritePlatformService {
     CommandProcessingResult updateUser(Long userId, JsonCommand command);
 
     CommandProcessingResult deleteUser(Long userId);
+
+    default CommandProcessingResult resetUserTotp(Long userId) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 }

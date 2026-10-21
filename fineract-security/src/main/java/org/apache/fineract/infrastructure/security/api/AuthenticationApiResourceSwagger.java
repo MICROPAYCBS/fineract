@@ -72,5 +72,9 @@ public final class AuthenticationApiResourceSwagger {
         public Collection<RoleData> roles;
         @Schema(example = "ALL_FUNCTIONS")
         public Collection<String> permissions;
+        @Schema(example = "15")
+        public Integer sessionIdleTimeoutMinutes;
+        @Schema(example = "60")
+        public Integer sessionIdleWarningSeconds;
     }
 }

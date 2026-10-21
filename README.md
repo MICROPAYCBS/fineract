@@ -69,8 +69,10 @@ cd fineract
 ./gradlew createPGDB -PdbName=fineract_tenants
 ./gradlew createPGDB -PdbName=fineract_default
 
-# start backend
-./gradlew devRun
+# start backend — Apache Fineract 1.16 plus every Micropay modification
+# (custom/micropay/** modules, replacements, and moved endpoints).
+# Do not use :fineract-provider:devRun / :fineract-provider:bootRun for this.
+./gradlew :custom:micropay:app:boot:devRun
 ```
 
 After a minute or two, Fineract will be listening for API requests on port 8443.
@@ -78,6 +80,22 @@ Wait for the `APACHE FINERACT IS READY` message in the log before sending reques
 
 Stopping a `bootRun` or `devRun` process is reported by Gradle as `Build cancelled while executing task`, but that does not mean that Fineract failed.
 A graceful shutdown is also logged, as `APACHE FINERACT IS SHUTTING DOWN GRACEFULLY`.
+
+Do not start the server with `:fineract-provider:bootRun` / `:fineract-provider:devRun`: that classpath has none of the Micropay modules, so the moved endpoints (customer classes, sectors, job sequences, workflows, GL enquiry, ...) answer 404 and the Micropay service replacements are absent. Those tasks now fail fast; pass `-PupstreamOnly` if you really want upstream-only Fineract. See [custom/micropay/README.md](custom/micropay/README.md).
+
+### Create an additional tenant
+
+After the default tenant is running (so `fineract_tenants` exists and connection `id=1` is seeded), register another empty tenant database and row with:
+
+```bash
+./gradlew :custom:micropay:app:boot:createNewTenant -PtenantIdentifier=demo
+```
+
+This creates database `fineract_demo`, inserts `tenant_server_connections` + `tenants` (default name `Demo Tenant`, timezone `Africa/Kampala`), and reuses the encrypted DB password from connection `id=1` when credentials match. Optional overrides: `-PtenantName`, `-PtenantTimezone`, `-PtenantDbHost`, `-PtenantDbPort`, `-PtenantDbUser`, `-PtenantDbPassword`, `-PtenantAdminUser`, `-PtenantAdminPassword`, `-PmasterPassword`, `-PdbType=postgresql|mariadb|mysql`.
+
+If you see `permission denied to create database`, either grant `CREATEDB` to the app user, create the empty DB first (`./gradlew createPGDB -PdbName=fineract_demo` then re-run), or pass a privileged admin user via `-PtenantAdminUser` / `-PtenantAdminPassword`.
+
+**Restart Fineract** (re-run `:custom:micropay:app:boot:devRun`) so `TenantDatabaseUpgradeService` Liquibase-migrates the new schema. Then use header `Fineract-Platform-TenantId: demo`. The task does not run Liquibase itself.
 
 > [!TIP]
 > Java properties or environment variables can be used to override default settings. See `fineract-provider/src/main/resources/application.properties`.
@@ -133,7 +151,10 @@ Build a modern, cloud native, fully self contained JAR file:
 ./gradlew clean bootJar
 ```
 
-The JAR will be created in the `fineract-provider/build/libs` directory.
+The runnable JAR is `custom/micropay/app/boot/build/libs/micropay-fineract-boot-<version>.jar`.
+It is upstream Fineract plus every `custom/micropay/**` module. `fineract-provider/build/libs/fineract-provider.jar`
+does not contain those modules: service replacements, including the periodic-accrual prepay quote, are absent there.
+An unqualified `bootJar` skips that upstream jar. `:fineract-provider:bootJar` still builds it and warns; pass `-PupstreamOnly` to silence the warning.
 If you intend to use MariaDB or MySQL (warning: [both are deprecated](https://cwiki.apache.org/confluence/display/FINERACT/FSIP-9%3A+Standardize+on+PostgreSQL)), you must download the appropriate JDBC driver yourself and override default database settings. When you start the JAR, specify the directory containing the JDBC driver.
 
 MariaDB example:
@@ -144,7 +165,7 @@ MariaDB example:
 export FINERACT_HIKARI_DRIVER_SOURCE_CLASS_NAME=org.mariadb.jdbc.Driver
 export FINERACT_DEFAULT_TENANTDB_PORT=3306
 export FINERACT_HIKARI_JDBC_URL=jdbc:mariadb://localhost:3306/fineract_tenants
-java -Dloader.path=. -jar fineract-provider/build/libs/fineract-provider.jar
+java -Dloader.path=. -jar custom/micropay/app/boot/build/libs/micropay-fineract-boot-0.1.0-SNAPSHOT.jar
 ```
 
 This does not require an external Tomcat.

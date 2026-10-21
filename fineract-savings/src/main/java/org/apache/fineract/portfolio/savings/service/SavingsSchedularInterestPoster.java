@@ -76,6 +76,8 @@ public class SavingsSchedularInterestPoster {
     @Transactional(transactionManager = "jdbcTransactionManager", isolation = Isolation.READ_UNCOMMITTED, rollbackFor = Exception.class)
     public void postInterest() throws JobExecutionException {
         if (!savingAccounts.isEmpty()) {
+            // Clear in case Resilience4j retries reuse this prototype instance
+            savingsAccountDataList.clear();
             List<Throwable> errors = new ArrayList<>();
             for (SavingsAccountData savingsAccountData : savingAccounts) {
                 boolean postInterestAsOn = false;
@@ -127,9 +129,15 @@ public class SavingsSchedularInterestPoster {
                 if (savingsAccountTransactionData.getId() == null && !MathUtil.isZero(savingsAccountTransactionData.getAmount())) {
                     final String key = savingsAccountTransactionData.getRefNo();
                     final SavingsAccountTransactionData dataFromFetch = savingsAccountTransactionDataHashMap.get(key);
+                    if (dataFromFetch == null || dataFromFetch.getId() == null) {
+                        throw new IllegalStateException("Interest posting transaction not found after insert for refNo=" + key
+                                + ", savingsAccountId=" + savingsAccountData.getId());
+                    }
                     savingsAccountTransactionData.setId(dataFromFetch.getId());
-                    if (savingsAccountData.getGlAccountIdForSavingsControl() != 0
-                            && savingsAccountData.getGlAccountIdForInterestOnSavings() != 0) {
+                    if (isNonZeroGlAccountId(savingsAccountData.getGlAccountIdForSavingsControl())
+                            && isNonZeroGlAccountId(savingsAccountData.getGlAccountIdForInterestOnSavings())
+                            && isNonZeroGlAccountId(savingsAccountTransactionData.getAccountDebit())
+                            && isNonZeroGlAccountId(savingsAccountTransactionData.getAccountCredit())) {
                         OffsetDateTime auditDatetime = DateUtils.getAuditOffsetDateTime();
                         paramsForGLInsertion.add(
                                 new Object[] { savingsAccountTransactionData.getAccountCredit(), savingsAccountData.getOfficeId(), null,
@@ -273,6 +281,10 @@ public class SavingsSchedularInterestPoster {
             }
             batchUpdateJournalEntries(successfulAccounts, savingsAccountTransactionMap);
         }
+    }
+
+    private static boolean isNonZeroGlAccountId(final Long accountId) {
+        return accountId != null && accountId != 0L;
     }
 
     private String batchQueryForTransactionInsertion() {

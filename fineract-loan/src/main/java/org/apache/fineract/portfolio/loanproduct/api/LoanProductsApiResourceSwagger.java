@@ -43,7 +43,7 @@ public final class LoanProductsApiResourceSwagger {
 
         @Schema(example = "1")
         public Long id;
-        @Schema(example = "60.0")
+        @Schema(example = "60.0", description = "Optional product-level amount override. Omit to inherit the charge definition amount. Not allowed when the charge uses tiers.")
         public BigDecimal amount;
     }
 

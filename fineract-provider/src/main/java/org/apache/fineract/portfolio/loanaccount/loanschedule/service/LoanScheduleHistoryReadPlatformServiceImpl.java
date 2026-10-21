@@ -21,9 +21,12 @@ package org.apache.fineract.portfolio.loanaccount.loanschedule.service;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
@@ -91,7 +94,24 @@ public class LoanScheduleHistoryReadPlatformServiceImpl implements LoanScheduleH
     @Override
     public Map<String, Object> fetchOldAuditDates(Long id) {
         final String sql = "select lrs.created_date, lrs.lastmodified_date from m_loan_repayment_schedule lrs where lrs.id = ?";
-        return this.jdbcTemplate.queryForMap(sql, id);
+        Map<String, Object> auditDates = this.jdbcTemplate.queryForMap(sql, id);
+        Map<String, Object> result = new HashMap<>(auditDates.size());
+        result.put("created_date", toLocalDateTime(auditDates.get("created_date")));
+        result.put("lastmodified_date", toLocalDateTime(auditDates.get("lastmodified_date")));
+        return result;
+    }
+
+    private static LocalDateTime toLocalDateTime(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        throw new IllegalArgumentException("Unexpected datetime type: " + value.getClass().getName());
     }
 
     private static final class LoanScheduleArchiveResultSetExtractor implements ResultSetExtractor<LoanScheduleData> {

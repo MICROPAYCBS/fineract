@@ -20,13 +20,16 @@ package org.apache.fineract.infrastructure.core.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.MonthDay;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
@@ -156,5 +159,34 @@ public class DateUtilsTest {
     public void safeMonthDay_firstDayOfMonth_preserved() {
         assertEquals(MonthDay.of(2, 1), DateUtils.safeMonthDay(2, 1));
         assertEquals(MonthDay.of(7, 1), DateUtils.safeMonthDay(7, 1));
+    }
+
+    @Test
+    public void convertDateTimeStringToLocalDateTime_parsesIsoOffsetDateTime() {
+        LocalDateTime result = DateUtils.convertDateTimeStringToLocalDateTime("2026-06-23T00:00:00Z", null, null, LocalTime.MIN);
+        assertEquals(LocalDateTime.of(2026, 6, 23, 0, 0, 0), result);
+    }
+
+    @Test
+    public void convertDateTimeStringToLocalDateTime_parsesDocumentedDefaultFormat() {
+        LocalDateTime result = DateUtils.convertDateTimeStringToLocalDateTime("2013-03-25 08:00:00", null, null, LocalTime.MIN);
+        assertEquals(LocalDateTime.of(2013, 3, 25, 8, 0, 0), result);
+    }
+
+    @Test
+    public void convertDateTimeStringToLocalDateTime_parsesDateOnlyWithFallbackTime() {
+        LocalDateTime result = DateUtils.convertDateTimeStringToLocalDateTime("2013-03-25", null, null, LocalTime.of(18, 30));
+        assertEquals(LocalDateTime.of(2013, 3, 25, 18, 30), result);
+    }
+
+    @Test
+    public void convertDateTimeStringToOffsetDateTime_parsesIsoOffsetDateTime() {
+        OffsetDateTime result = DateUtils.convertDateTimeStringToOffsetDateTime("2026-06-23T00:00:00Z", null, null, LocalTime.MIN);
+        assertEquals(OffsetDateTime.of(2026, 6, 23, 0, 0, 0, 0, ZoneOffset.UTC), result);
+    }
+
+    @Test
+    public void convertDateTimeStringToLocalDateTime_returnsNullForBlankInput() {
+        assertNull(DateUtils.convertDateTimeStringToLocalDateTime(" ", null, null, LocalTime.MIN));
     }
 }

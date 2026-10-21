@@ -36,6 +36,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberManualEntryValidator;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -135,6 +136,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
     private final LoanChargeService loanChargeService;
     private final LoanOfficerService loanOfficerService;
     private final LoanScheduleComponent loanSchedule;
+    private final AccountNumberManualEntryValidator accountNumberManualEntryValidator;
     // FINERACT-2665: recalculate the schedule from the loan's own state (same as approval/reschedule/holidays).
     private final LoanScheduleService loanScheduleService;
     private final LoanUtilService loanUtilService;
@@ -166,6 +168,7 @@ public class LoanAssemblerImpl implements LoanAssembler {
         final Long clientId = this.fromApiJsonHelper.extractLongNamed("clientId", element);
         final Long groupId = this.fromApiJsonHelper.extractLongNamed("groupId", element);
         final String accountNo = this.fromApiJsonHelper.extractStringNamed("accountNo", element);
+        this.accountNumberManualEntryValidator.validateManualAccountNumberIfStructuredModeEnabled(EntityAccountType.LOAN, accountNo);
         final Long productId = this.fromApiJsonHelper.extractLongNamed("productId", element);
         final Long fundId = this.fromApiJsonHelper.extractLongNamed("fundId", element);
         final Long loanOfficerId = this.fromApiJsonHelper.extractLongNamed("loanOfficerId", element);

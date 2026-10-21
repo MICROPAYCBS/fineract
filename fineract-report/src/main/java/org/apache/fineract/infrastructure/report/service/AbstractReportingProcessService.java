@@ -31,6 +31,10 @@ public abstract class AbstractReportingProcessService implements ReportingProces
 
     private static final String NUMERIC_FORMAT_TYPE = "number";
     private static final String DATE_FORMAT_TYPE = "date";
+    /**
+     * Stretchy currency filters use {@code m_organisation_currency.code} (e.g. {@code USD}), not numeric ids.
+     */
+    private static final String CURRENCY_CODE_PARAM_VARIABLE = "currencyId";
 
     private final InputValidator inputValidator;
     private final ReportParameterTypeResolver reportParameterTypeResolver;
@@ -71,6 +75,9 @@ public abstract class AbstractReportingProcessService implements ReportingProces
     }
 
     private void validateParamByType(final String paramName, final String value, final String formatType) {
+        if (CURRENCY_CODE_PARAM_VARIABLE.equals(paramName)) {
+            return;
+        }
         if (NUMERIC_FORMAT_TYPE.equalsIgnoreCase(formatType)) {
             inputValidator.validate(NUMERIC_FORMAT_TYPE, value);
         } else if (DATE_FORMAT_TYPE.equalsIgnoreCase(formatType)) {

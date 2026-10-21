@@ -42,7 +42,7 @@ public final class DepositsApiConstants {
     public static final String SAVINGS_ACCOUNT_CHARGE_RESOURCE_NAME = "savingsaccountcharge";
 
     // deposit product actions
-    public static final String summitalAction = ".summital";
+    public static final String submittalAction = ".submittal";
     public static final String approvalAction = ".approval";
     public static final String undoApprovalAction = ".undoApproval";
     public static final String rejectAction = ".reject";
@@ -229,7 +229,8 @@ public final class DepositsApiConstants {
             SavingProductAccountingParams.PENALTY_INCOME_ACCOUNT_MAPPING.getValue(),
             SavingProductAccountingParams.INTEREST_PAYABLE.getValue(), SavingProductAccountingParams.PENALTIES_RECEIVABLE.getValue(),
             SavingProductAccountingParams.FEES_RECEIVABLE.getValue(), chartsParamName, SavingsApiConstants.withHoldTaxParamName,
-            SavingsApiConstants.taxGroupIdParamName));
+            SavingsApiConstants.taxGroupIdParamName, SavingsApiConstants.startDateParamName, SavingsApiConstants.closeDateParamName,
+            SavingsApiConstants.dateFormatParamName));
 
     private static final Set<String> PRECLOSURE_REQUEST_DATA_PARAMETERS = new HashSet<>(
             Arrays.asList(preClosurePenalApplicableParamName, preClosurePenalInterestParamName, preClosurePenalInterestOnTypeIdParamName));

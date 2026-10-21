@@ -1,0 +1,73 @@
+--
+-- Licensed to the Apache Software Foundation (ASF) under one
+-- or more contributor license agreements. See the NOTICE file
+-- distributed with this work for additional information
+-- regarding copyright ownership. The ASF licenses this file
+-- to you under the Apache License, Version 2.0 (the
+-- "License"); you may not use this file except in compliance
+-- with the License. You may obtain a copy of the License at
+--
+-- http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing,
+-- software distributed under the License is distributed on an
+-- "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+-- KIND, either express or implied. See the License for the
+-- specific language governing permissions and limitations
+-- under the License.
+--
+
+-- MICROPAY CBS: client compliance profile (PEP, FATCA, DPF, other banking flag) — MySQL / MariaDB
+
+CREATE TABLE m_client_compliance_profile (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    client_id BIGINT NOT NULL,
+    has_other_bank_accounts CHAR(1) DEFAULT 'N' NOT NULL,
+    is_pep CHAR(1) DEFAULT 'N' NOT NULL,
+    pep_position VARCHAR(200),
+    pep_relative_name VARCHAR(200),
+    us_citizen_or_resident CHAR(1) DEFAULT 'N' NOT NULL,
+    fatca_registered CHAR(1) DEFAULT 'N' NOT NULL,
+    fatca_registration_no VARCHAR(100),
+    dpf_alternative_bank_name VARCHAR(200),
+    dpf_alternative_account_number VARCHAR(50),
+    created_by BIGINT NOT NULL,
+    created_on_utc DATETIME(6) NOT NULL,
+    last_modified_by BIGINT NOT NULL,
+    last_modified_on_utc DATETIME(6) NOT NULL,
+    version BIGINT DEFAULT 1 NOT NULL,
+    CONSTRAINT chk_m_client_compliance_profile_has_other_bank CHECK (has_other_bank_accounts IN ('Y', 'N')),
+    CONSTRAINT chk_m_client_compliance_profile_is_pep CHECK (is_pep IN ('Y', 'N')),
+    CONSTRAINT chk_m_client_compliance_profile_us_citizen CHECK (us_citizen_or_resident IN ('Y', 'N')),
+    CONSTRAINT chk_m_client_compliance_profile_fatca_registered CHECK (fatca_registered IN ('Y', 'N'))
+);
+
+CREATE UNIQUE INDEX uk_m_client_compliance_profile_client_id ON m_client_compliance_profile (client_id);
+
+ALTER TABLE m_client_compliance_profile
+    ADD CONSTRAINT FK_m_client_compliance_profile_client_id FOREIGN KEY (client_id) REFERENCES m_client (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    ADD CONSTRAINT FK_m_client_compliance_profile_created_by FOREIGN KEY (created_by) REFERENCES m_appuser (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    ADD CONSTRAINT FK_m_client_compliance_profile_last_modified_by FOREIGN KEY (last_modified_by) REFERENCES m_appuser (id) ON DELETE RESTRICT ON UPDATE RESTRICT;
+
+CREATE TABLE m_client_other_bank_account (
+    id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    client_id BIGINT NOT NULL,
+    bank_name VARCHAR(200) NOT NULL,
+    branch_name VARCHAR(200),
+    account_number VARCHAR(50) NOT NULL,
+    display_order SMALLINT NOT NULL,
+    created_by BIGINT NOT NULL,
+    created_on_utc DATETIME(6) NOT NULL,
+    last_modified_by BIGINT NOT NULL,
+    last_modified_on_utc DATETIME(6) NOT NULL,
+    version BIGINT DEFAULT 1 NOT NULL,
+    CONSTRAINT chk_m_client_other_bank_account_display_order CHECK (display_order BETWEEN 1 AND 2)
+);
+
+CREATE INDEX idx_m_client_other_bank_account_client_id ON m_client_other_bank_account (client_id);
+CREATE UNIQUE INDEX uk_m_client_other_bank_account_client_order ON m_client_other_bank_account (client_id, display_order);
+
+ALTER TABLE m_client_other_bank_account
+    ADD CONSTRAINT FK_m_client_other_bank_account_client_id FOREIGN KEY (client_id) REFERENCES m_client (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    ADD CONSTRAINT FK_m_client_other_bank_account_created_by FOREIGN KEY (created_by) REFERENCES m_appuser (id) ON DELETE RESTRICT ON UPDATE RESTRICT,
+    ADD CONSTRAINT FK_m_client_other_bank_account_last_modified_by FOREIGN KEY (last_modified_by) REFERENCES m_appuser (id) ON DELETE RESTRICT ON UPDATE RESTRICT;

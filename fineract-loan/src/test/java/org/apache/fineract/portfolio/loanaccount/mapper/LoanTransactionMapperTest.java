@@ -144,5 +144,6 @@ public class LoanTransactionMapperTest {
         assertNull(result.getBankNumber());
         assertNull(result.getAccountId());
         assertNull(result.getTransactionAmount());
+        assertNull(result.getSubmittedByUsername());
     }
 }

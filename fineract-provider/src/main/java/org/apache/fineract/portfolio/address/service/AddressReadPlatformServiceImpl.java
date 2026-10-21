@@ -31,11 +31,13 @@ import org.apache.fineract.infrastructure.core.component.FetcherRule;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.address.data.AddressData;
 import org.apache.fineract.portfolio.address.filter.ClientAddressSearchParam;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = AddressReadPlatformService.class, ignored = AddressReadPlatformServiceImpl.class)
 @RequiredArgsConstructor
 public class AddressReadPlatformServiceImpl implements AddressReadPlatformService {
 

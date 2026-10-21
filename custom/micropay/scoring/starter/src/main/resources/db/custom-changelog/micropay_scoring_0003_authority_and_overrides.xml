@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: approval authority matrix and overrides of scoring decisions.
+  m_scoring_override has no foreign key to m_loan for the same reason as m_scoring_decision. The ScoringOverrideReason
+  code starts empty; each tenant adds its own reasons through the codes API.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/scoring/parts/0003_authority_and_overrides.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="scoring.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="scoring.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+
+    <!-- When a workflow stage is required: amount, exposure, grade, outcome, product, currency -->
+    <changeSet id="scoring-authority-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_authority_rule"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_authority_rule">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="task_permission_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="loan_product_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="min_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_amount" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="min_exposure" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_exposure" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="grades" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="outcomes" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="overridden" type="BOOLEAN">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-authority-002" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_authority_rule" baseColumnNames="loan_product_id"
+                                 constraintName="fk_scoring_authority_rule_product" referencedTableName="m_product_loan"
+                                 referencedColumnNames="id" onDelete="CASCADE"/>
+    </changeSet>
+
+    <changeSet id="scoring-authority-003" author="micropay">
+        <createIndex tableName="m_scoring_authority_rule" indexName="idx_scoring_authority_rule_task">
+            <column name="task_permission_code"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- A person changing the outcome of a scoring decision -->
+    <changeSet id="scoring-authority-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_override"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_override">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="decision_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="loan_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="client_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_cv_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-authority-005" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_override" baseColumnNames="decision_id"
+                                 constraintName="fk_scoring_override_decision" referencedTableName="m_scoring_decision"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_scoring_override" baseColumnNames="reason_cv_id"
+                                 constraintName="fk_scoring_override_reason" referencedTableName="m_code_value"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="scoring-authority-006" author="micropay">
+        <createIndex tableName="m_scoring_override" indexName="idx_scoring_override_loan">
+            <column name="loan_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="scoring-authority-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code WHERE code_name = 'ScoringOverrideReason'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code">
+            <column name="code_name" value="ScoringOverrideReason"/>
+            <column name="is_system_defined" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

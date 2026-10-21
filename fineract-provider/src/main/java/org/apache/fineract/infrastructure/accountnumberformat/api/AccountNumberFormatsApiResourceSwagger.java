@@ -142,4 +142,17 @@ final class AccountNumberFormatsApiResourceSwagger {
 
     }
 
+    @Schema(description = "GetAccountNumberFormatPreviewResponse")
+    public static final class GetAccountNumberFormatPreviewResponse {
+
+        private GetAccountNumberFormatPreviewResponse() {}
+
+        @Schema(example = "001SV0000000426")
+        public String accountNumber;
+        @Schema(example = "{officeCode:3}{productCode:2}{sequence:9}{checkDigit:1}")
+        public String formatPattern;
+        @Schema(example = "2")
+        public Integer accountType;
+    }
+
 }

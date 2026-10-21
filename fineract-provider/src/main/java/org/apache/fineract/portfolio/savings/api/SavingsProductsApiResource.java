@@ -74,6 +74,7 @@ import org.apache.fineract.portfolio.savings.SavingsPostingInterestPeriodType;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 import org.apache.fineract.portfolio.savings.service.SavingsDropdownReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsEnumerations;
+import org.apache.fineract.portfolio.savings.service.SavingsProductPaymentChannelReadPlatformService;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
 import org.apache.fineract.portfolio.tax.data.TaxGroupData;
 import org.apache.fineract.portfolio.tax.service.TaxReadPlatformService;
@@ -100,6 +101,7 @@ public class SavingsProductsApiResource {
     private final PaymentTypeReadService paymentTypeReadPlatformService;
     private final TaxReadPlatformService taxReadPlatformService;
     private final ConfigurationDomainService configurationDomainService;
+    private final SavingsProductPaymentChannelReadPlatformService savingsProductPaymentChannelReadPlatformService;
 
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
@@ -174,6 +176,7 @@ public class SavingsProductsApiResource {
         final Collection<ChargeData> charges = this.chargeReadPlatformService.retrieveSavingsProductCharges(productId);
 
         savingProductData = SavingsProductData.withCharges(savingProductData, charges);
+        savingProductData.setPaymentChannels(this.savingsProductPaymentChannelReadPlatformService.retrieveProductChannels(productId));
 
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
 

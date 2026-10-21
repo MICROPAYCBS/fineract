@@ -52,4 +52,7 @@ public class PaymentType extends AbstractPersistableCustom<Long> {
 
     @Column(name = "is_system_defined")
     private Boolean isSystemDefined;
+
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = Boolean.TRUE;
 }

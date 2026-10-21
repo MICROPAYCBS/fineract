@@ -33,6 +33,7 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.jpa.CriteriaQueryFactory;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientIdentifier;
@@ -49,6 +50,7 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
     private EntityManager entityManager;
 
     private final CriteriaQueryFactory criteriaQueryFactory;
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
 
     @Override
     public Page<SearchedClient> searchByText(String searchText, Pageable pageable, String officeHierarchy) {
@@ -72,7 +74,13 @@ public class SearchingClientRepositoryImpl implements SearchingClientRepository 
             Join<Client, ClientIdentifier> identity = r.join("identifiers", JoinType.LEFT);
 
             List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
+            List<Predicate> visibilityPredicates = new ArrayList<>();
+            if (this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+                visibilityPredicates.add(cb.isTrue(cb.literal(true)));
+            } else {
+                visibilityPredicates.add(cb.like(o.get("hierarchy"), hierarchyLikeValue));
+            }
+            predicates.add(cb.or(visibilityPredicates.toArray(new Predicate[0])));
 
             String searchLikeValue = "%" + searchText.toLowerCase() + "%";
             predicates.add(cb.or(cb.like(cb.lower(r.get("accountNumber")), searchLikeValue),

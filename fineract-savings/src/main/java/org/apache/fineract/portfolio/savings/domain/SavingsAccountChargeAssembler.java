@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -50,6 +51,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.ChargeCannotBeAppliedToException;
 import org.apache.fineract.portfolio.charge.exception.SavingsAccountChargeNotFoundException;
+import org.apache.fineract.portfolio.charge.service.ProductChargeAmountService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -59,13 +61,16 @@ public class SavingsAccountChargeAssembler {
     private final FromJsonHelper fromApiJsonHelper;
     private final ChargeRepositoryWrapper chargeRepository;
     private final SavingsAccountChargeRepository savingsAccountChargeRepository;
+    private final ProductChargeAmountService productChargeAmountService;
 
     @Autowired
     public SavingsAccountChargeAssembler(final FromJsonHelper fromApiJsonHelper, final ChargeRepositoryWrapper chargeRepository,
-            final SavingsAccountChargeRepository savingsAccountChargeRepository) {
+            final SavingsAccountChargeRepository savingsAccountChargeRepository,
+            final ProductChargeAmountService productChargeAmountService) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.chargeRepository = chargeRepository;
         this.savingsAccountChargeRepository = savingsAccountChargeRepository;
+        this.productChargeAmountService = productChargeAmountService;
     }
 
     public Set<SavingsAccountCharge> fromParsedJson(final JsonElement element, final String productCurrencyCode) {
@@ -142,6 +147,8 @@ public class SavingsAccountChargeAssembler {
     public Set<SavingsAccountCharge> fromSavingsProduct(final SavingsProduct savingsProduct) {
 
         final Set<SavingsAccountCharge> savingsAccountCharges = new HashSet<>();
+        final Map<Long, BigDecimal> productAmountOverrides = this.productChargeAmountService
+                .getSavingsProductChargeAmounts(savingsProduct.getId());
         Set<Charge> productCharges = savingsProduct.charges();
         for (Charge charge : productCharges) {
             ChargeTimeType chargeTime = null;
@@ -157,8 +164,10 @@ public class SavingsAccountChargeAssembler {
                 chargeCalculation = ChargeCalculationType.fromInt(charge.getChargeCalculation());
             }
             final boolean status = true;
-            final SavingsAccountCharge savingsAccountCharge = SavingsAccountCharge.createNewWithoutSavingsAccount(charge,
-                    charge.getAmount(), chargeTime, chargeCalculation, null, status, charge.getFeeOnMonthDay(), charge.feeInterval());
+            final BigDecimal overrideAmount = productAmountOverrides.get(charge.getId());
+            final BigDecimal amount = overrideAmount != null ? overrideAmount : charge.getAmount();
+            final SavingsAccountCharge savingsAccountCharge = SavingsAccountCharge.createNewWithoutSavingsAccount(charge, amount,
+                    chargeTime, chargeCalculation, null, status, charge.getFeeOnMonthDay(), charge.feeInterval());
             savingsAccountCharges.add(savingsAccountCharge);
         }
         return savingsAccountCharges;

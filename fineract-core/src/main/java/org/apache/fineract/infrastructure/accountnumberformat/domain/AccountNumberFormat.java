@@ -40,6 +40,18 @@ public class AccountNumberFormat extends AbstractPersistableCustom<Long> {
     @Column(name = AccountNumberFormatConstants.PREFIX_CHARACTER_COLUMN_NAME, nullable = true)
     private String prefixCharacter;
 
+    @Column(name = AccountNumberFormatConstants.FORMAT_PATTERN_COLUMN_NAME, nullable = true)
+    private String formatPattern;
+
+    @Column(name = AccountNumberFormatConstants.SEQUENCE_SCOPE_ENUM_COLUMN_NAME, nullable = true)
+    private Integer sequenceScopeEnum;
+
+    @Column(name = AccountNumberFormatConstants.CHECK_DIGIT_ALGORITHM_ENUM_COLUMN_NAME, nullable = true)
+    private Integer checkDigitAlgorithmEnum;
+
+    @Column(name = AccountNumberFormatConstants.STRUCTURED_ENABLED_COLUMN_NAME, nullable = false)
+    private Boolean structuredEnabled = Boolean.FALSE;
+
     protected AccountNumberFormat() {
         //
     }
@@ -81,10 +93,54 @@ public class AccountNumberFormat extends AbstractPersistableCustom<Long> {
     }
 
     public void setPrefix(AccountNumberPrefixType accountNumberPrefixType) {
-        setPrefixEnum(accountNumberPrefixType.getValue());
+        setPrefixEnum(accountNumberPrefixType != null ? accountNumberPrefixType.getValue() : null);
     }
 
     public void setPrefixCharacter(String prefixCharacter) {
         this.prefixCharacter = prefixCharacter;
+    }
+
+    public String getFormatPattern() {
+        return this.formatPattern;
+    }
+
+    public void setFormatPattern(String formatPattern) {
+        this.formatPattern = formatPattern;
+    }
+
+    public Integer getSequenceScopeEnum() {
+        return this.sequenceScopeEnum;
+    }
+
+    public AccountNumberSequenceScope getSequenceScope() {
+        return AccountNumberSequenceScope.fromInt(this.sequenceScopeEnum);
+    }
+
+    public void setSequenceScope(AccountNumberSequenceScope sequenceScope) {
+        this.sequenceScopeEnum = sequenceScope != null ? sequenceScope.getValue() : null;
+    }
+
+    public Integer getCheckDigitAlgorithmEnum() {
+        return this.checkDigitAlgorithmEnum;
+    }
+
+    public CheckDigitAlgorithm getCheckDigitAlgorithm() {
+        return CheckDigitAlgorithm.fromInt(this.checkDigitAlgorithmEnum);
+    }
+
+    public void setCheckDigitAlgorithm(CheckDigitAlgorithm checkDigitAlgorithm) {
+        this.checkDigitAlgorithmEnum = checkDigitAlgorithm != null ? checkDigitAlgorithm.getValue() : CheckDigitAlgorithm.NONE.getValue();
+    }
+
+    public Boolean getStructuredEnabled() {
+        return this.structuredEnabled;
+    }
+
+    public void setStructuredEnabled(Boolean structuredEnabled) {
+        this.structuredEnabled = structuredEnabled;
+    }
+
+    public boolean isStructuredRuleActive() {
+        return Boolean.TRUE.equals(this.structuredEnabled) && this.formatPattern != null && !this.formatPattern.isBlank();
     }
 }

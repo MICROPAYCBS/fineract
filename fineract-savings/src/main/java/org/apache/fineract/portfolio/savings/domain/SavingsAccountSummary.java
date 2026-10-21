@@ -133,6 +133,18 @@ public final class SavingsAccountSummary {
                         this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
                     }
                 break;
+                case GL_TO_SAVINGS:
+                    if (transaction.isDepositAndNotReversed()) {
+                        this.totalDeposits = Money.of(currency, this.totalDeposits).plus(transactionAmount).getAmount();
+                        this.accountBalance = Money.of(currency, this.accountBalance).plus(transactionAmount).getAmount();
+                    }
+                break;
+                case SAVINGS_TO_GL:
+                    if (transaction.isWithdrawal() && transaction.isNotReversed()) {
+                        this.totalWithdrawals = Money.of(currency, this.totalWithdrawals).plus(transactionAmount).getAmount();
+                        this.accountBalance = Money.of(currency, this.accountBalance).minus(transactionAmount).getAmount();
+                    }
+                break;
                 case WITHDRAWAL_FEE:
                     if (transaction.isWithdrawalFeeAndNotReversed() && transaction.isNotReversed()) {
                         this.totalWithdrawalFees = Money.of(currency, this.totalWithdrawalFees).plus(transactionAmount).getAmount();

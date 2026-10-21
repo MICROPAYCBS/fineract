@@ -35,6 +35,7 @@ public class ClientAddressRequest implements Serializable {
     private String city;
     private Long countryId;
     private Boolean isActive;
+    private Boolean isPrimary;
     private String postalCode;
     private Long addressTypeId;
     private String addressLine1;

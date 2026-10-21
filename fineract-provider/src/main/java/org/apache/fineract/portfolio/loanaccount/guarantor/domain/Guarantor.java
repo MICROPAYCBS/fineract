@@ -97,6 +97,10 @@ public class Guarantor extends AbstractPersistableCustom<Long> {
     @Column(name = "comment", length = 500)
     private String comment;
 
+    @Getter
+    @Column(name = "national_id_number", length = 50)
+    private String nationalIdNumber;
+
     @Column(name = "is_active", nullable = false)
     private boolean active;
 
@@ -111,8 +115,8 @@ public class Guarantor extends AbstractPersistableCustom<Long> {
     private Guarantor(final Loan loan, final CodeValue clientRelationshipType, final Integer gurantorType, final Long entityId,
             final String firstname, final String lastname, final LocalDate dateOfBirth, final String addressLine1,
             final String addressLine2, final String city, final String state, final String country, final String zip,
-            final String housePhoneNumber, final String mobilePhoneNumber, final String comment, final boolean active,
-            final List<GuarantorFundingDetails> guarantorFundDetails) {
+            final String housePhoneNumber, final String mobilePhoneNumber, final String comment, final String nationalIdNumber,
+            final boolean active, final List<GuarantorFundingDetails> guarantorFundDetails) {
         this.loan = loan;
         this.clientRelationshipType = clientRelationshipType;
         this.gurantorType = gurantorType;
@@ -129,6 +133,7 @@ public class Guarantor extends AbstractPersistableCustom<Long> {
         this.housePhoneNumber = StringUtils.defaultIfEmpty(housePhoneNumber, null);
         this.mobilePhoneNumber = StringUtils.defaultIfEmpty(mobilePhoneNumber, null);
         this.comment = StringUtils.defaultIfEmpty(comment, null);
+        this.nationalIdNumber = StringUtils.defaultIfEmpty(nationalIdNumber, null);
         this.active = active;
         this.guarantorFundDetails.addAll(guarantorFundDetails);
     }
@@ -151,13 +156,15 @@ public class Guarantor extends AbstractPersistableCustom<Long> {
             final String housePhoneNumber = command.stringValueOfParameterNamed(GuarantorJSONinputParams.PHONE_NUMBER.getValue());
             final String mobilePhoneNumber = command.stringValueOfParameterNamed(GuarantorJSONinputParams.MOBILE_NUMBER.getValue());
             final String comment = command.stringValueOfParameterNamed(GuarantorJSONinputParams.COMMENT.getValue());
+            final String nationalIdNumber = command.stringValueOfParameterNamed(GuarantorJSONinputParams.NATIONAL_ID_NUMBER.getValue());
 
             return new Guarantor(loan, clientRelationshipType, gurantorType, entityId, firstname, lastname, dateOfBirth, addressLine1,
-                    addressLine2, city, state, country, zip, housePhoneNumber, mobilePhoneNumber, comment, active, fundingDetails);
+                    addressLine2, city, state, country, zip, housePhoneNumber, mobilePhoneNumber, comment, nationalIdNumber, active,
+                    fundingDetails);
         }
 
         return new Guarantor(loan, clientRelationshipType, gurantorType, entityId, null, null, null, null, null, null, null, null, null,
-                null, null, null, active, fundingDetails);
+                null, null, null, null, active, fundingDetails);
 
     }
 
@@ -180,6 +187,7 @@ public class Guarantor extends AbstractPersistableCustom<Long> {
             handlePropertyUpdate(command, actualChanges, GuarantorJSONinputParams.PHONE_NUMBER.getValue(), this.housePhoneNumber);
             handlePropertyUpdate(command, actualChanges, GuarantorJSONinputParams.MOBILE_NUMBER.getValue(), this.mobilePhoneNumber);
             handlePropertyUpdate(command, actualChanges, GuarantorJSONinputParams.COMMENT.getValue(), this.comment);
+            handlePropertyUpdate(command, actualChanges, GuarantorJSONinputParams.NATIONAL_ID_NUMBER.getValue(), this.nationalIdNumber);
             updateExistingEntityToNull();
         }
 
@@ -249,6 +257,8 @@ public class Guarantor extends AbstractPersistableCustom<Long> {
                 this.mobilePhoneNumber = newValue;
             } else if (paramName.equals(GuarantorJSONinputParams.COMMENT.getValue())) {
                 this.comment = newValue;
+            } else if (paramName.equals(GuarantorJSONinputParams.NATIONAL_ID_NUMBER.getValue())) {
+                this.nationalIdNumber = newValue;
             }
         }
     }

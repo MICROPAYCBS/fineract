@@ -20,22 +20,25 @@ package org.apache.fineract.organisation.teller.data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.OffsetDateTime;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
-import org.apache.fineract.infrastructure.core.service.SearchParameters;
 import org.apache.fineract.organisation.teller.domain.Cashier;
 import org.apache.fineract.organisation.teller.domain.Teller;
+import org.apache.fineract.organisation.teller.exception.ActiveCashierRequiredException;
 import org.apache.fineract.organisation.teller.exception.CashierAlreadyAllocated;
 import org.apache.fineract.organisation.teller.exception.CashierDateRangeOutOfTellerDateRangeException;
 import org.apache.fineract.organisation.teller.exception.CashierInsufficientAmountException;
 import org.apache.fineract.organisation.teller.service.TellerManagementReadPlatformService;
+import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
+import org.apache.fineract.portfolio.paymentdetail.util.CashPaymentHelper;
 import org.apache.fineract.useradministration.domain.AppUser;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -46,20 +49,22 @@ public class CashierTransactionDataValidator {
 
     private final TellerManagementReadPlatformService tellerManagementReadPlatformService;
     private final NamedParameterJdbcTemplate jdbcTemplate;
-    private static final Logger LOG = LoggerFactory.getLogger(CashierTransactionDataValidator.class);
+    private final ConfigurationReadPlatformService configurationReadPlatformService;
 
     @Autowired
     public CashierTransactionDataValidator(final TellerManagementReadPlatformService tellerManagementReadPlatformService,
-            final NamedParameterJdbcTemplate jdbcTemplate) {
+            final NamedParameterJdbcTemplate jdbcTemplate, final ConfigurationReadPlatformService configurationReadPlatformService) {
         this.tellerManagementReadPlatformService = tellerManagementReadPlatformService;
         this.jdbcTemplate = jdbcTemplate;
+        this.configurationReadPlatformService = configurationReadPlatformService;
     }
 
     public void validateSettleCashAndCashOutTransactions(final Long cashierId, String currencyCode, final BigDecimal transactionAmount) {
-        final SearchParameters searchParameters = SearchParameters.builder().build();
-        final CashierTransactionsWithSummaryData cashierTxnWithSummary = this.tellerManagementReadPlatformService
-                .retrieveCashierTransactionsWithSummary(cashierId, false, null, null, currencyCode, searchParameters);
-        if (MathUtil.isGreaterThan(transactionAmount, cashierTxnWithSummary.getNetCash())) {
+        if (!isPreventCashierOverdrawEnabled()) {
+            return;
+        }
+        final BigDecimal netCash = this.tellerManagementReadPlatformService.retrieveCashierNetCash(cashierId, currencyCode);
+        if (MathUtil.isGreaterThan(transactionAmount, netCash)) {
             throw new CashierInsufficientAmountException();
         }
     }
@@ -68,6 +73,45 @@ public class CashierTransactionDataValidator {
         String currencyCode = command.stringValueOfParameterNamed("currencyCode");
         BigDecimal transactionAmount = command.bigDecimalValueOfParameterNamed("txnAmount");
         validateSettleCashAndCashOutTransactions(cashierId, currencyCode, transactionAmount);
+    }
+
+    public void validateActiveCashierRequired(final AppUser user) {
+        if (!isRequireCashierForCashTransactionsEnabled()) {
+            return;
+        }
+        findActiveCashierId(user);
+    }
+
+    public void validateActiveCashierRequiredForCashTransaction(final AppUser user, final PaymentDetail paymentDetail) {
+        if (!isCashPayment(paymentDetail)) {
+            return;
+        }
+        validateActiveCashierRequired(user);
+    }
+
+    public void validateOnLoanDisbursal(AppUser user, String currencyCode, BigDecimal transactionAmount) {
+        validateActiveCashierRequired(user);
+
+        if (!isPreventCashierOverdrawEnabled()) {
+            return;
+        }
+        findActiveCashierIdOptional(user)
+                .ifPresent(cashierId -> validateSettleCashAndCashOutTransactions(cashierId, currencyCode, transactionAmount));
+    }
+
+    /**
+     * Cash going out of the till for a savings debit: needs an active cashier (if required) and, when
+     * prevent-cashier-overdraw is on, enough net cash in that cashier's till.
+     */
+    public void validateCashOut(final AppUser user, final PaymentDetail paymentDetail, final String currencyCode, final BigDecimal amount) {
+        if (!isCashPayment(paymentDetail)) {
+            return;
+        }
+        validateActiveCashierRequired(user);
+        if (!isPreventCashierOverdrawEnabled()) {
+            return;
+        }
+        findActiveCashierIdOptional(user).ifPresent(cashierId -> validateSettleCashAndCashOutTransactions(cashierId, currencyCode, amount));
     }
 
     public void validateCashierAllowedDateAndTime(final Cashier cashier, final Teller teller) {
@@ -88,8 +132,8 @@ public class CashierTransactionDataValidator {
                 + "OR (c.start_date BETWEEN :fromDate AND :endDate OR c.end_date BETWEEN :fromDate AND :endDate))";
 
         if (!cashier.getIsFullDay()) {
-            sql += " AND (TIME(c.start_time) BETWEEN TIME(:startTime) AND TIME(:endTime) "
-                    + "OR TIME(c.end_time) BETWEEN TIME(:startTime) AND TIME(:endTime))";
+            sql += " AND (CAST(c.start_time AS TIME) BETWEEN CAST(:startTime AS TIME) AND CAST(:endTime AS TIME) "
+                    + "OR CAST(c.end_time AS TIME) BETWEEN CAST(:startTime AS TIME) AND CAST(:endTime AS TIME))";
         }
 
         Map<String, Object> paramMap = new HashMap<>();
@@ -108,26 +152,46 @@ public class CashierTransactionDataValidator {
         }
     }
 
-    public void validateOnLoanDisbursal(AppUser user, String currencyCode, BigDecimal transactionAmount) {
-        LocalDate tenantDate = DateUtils.getLocalDateOfTenant();
-        OffsetDateTime tenantDateTime = DateUtils.getOffsetDateTimeOfTenant();
-        if (user.getStaff() != null) {
-            String sql = "SELECT c.id FROM m_cashiers c WHERE c.staff_id = :staffId "
-                    + "AND (CASE WHEN c.full_day THEN :tenantDate BETWEEN c.start_date AND c.end_date "
-                    + "ELSE (:tenantDate BETWEEN c.start_date AND c.end_date AND "
-                    + "TIME(:tenantDateTime) BETWEEN TIME(c.start_time) AND TIME(c.end_time)) END)";
+    private Long findActiveCashierId(final AppUser user) {
+        return findActiveCashierIdOptional(user).orElseThrow(ActiveCashierRequiredException::new);
+    }
 
-            Map<String, Object> paramMap = new HashMap<>();
-            paramMap.put("staffId", user.getStaff().getId());
-            paramMap.put("tenantDate", tenantDate);
-            paramMap.put("tenantDateTime", tenantDateTime);
-
-            try {
-                Long cashierId = jdbcTemplate.queryForObject(sql, paramMap, Long.class);
-                validateSettleCashAndCashOutTransactions(cashierId, currencyCode, transactionAmount);
-            } catch (EmptyResultDataAccessException e) {
-                LOG.error("Problem occurred in validateOnLoanDisbursal function", e);
-            }
+    private Optional<Long> findActiveCashierIdOptional(final AppUser user) {
+        if (user == null || user.getStaff() == null) {
+            return Optional.empty();
         }
+        LocalDate tenantDate = DateUtils.getLocalDateOfTenant();
+        LocalTime tenantTime = DateUtils.getOffsetDateTimeOfTenant().toLocalTime();
+        String sql = "SELECT c.id FROM m_cashiers c WHERE c.staff_id = :staffId "
+                + "AND (CASE WHEN COALESCE(c.full_day, false) THEN :tenantDate BETWEEN c.start_date AND c.end_date "
+                + "ELSE (:tenantDate BETWEEN c.start_date AND c.end_date AND "
+                + "CAST(:tenantTime AS TIME) BETWEEN CAST(c.start_time AS TIME) AND CAST(c.end_time AS TIME)) END)";
+
+        Map<String, Object> paramMap = new HashMap<>();
+        paramMap.put("staffId", user.getStaff().getId());
+        paramMap.put("tenantDate", tenantDate);
+        paramMap.put("tenantTime", tenantTime);
+
+        try {
+            return Optional.ofNullable(jdbcTemplate.queryForObject(sql, paramMap, Long.class));
+        } catch (EmptyResultDataAccessException e) {
+            return Optional.empty();
+        }
+    }
+
+    private boolean isCashPayment(final PaymentDetail paymentDetail) {
+        return CashPaymentHelper.isCashPayment(paymentDetail);
+    }
+
+    private boolean isPreventCashierOverdrawEnabled() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("prevent-cashier-overdraw");
+        return property.isEnabled();
+    }
+
+    private boolean isRequireCashierForCashTransactionsEnabled() {
+        final GlobalConfigurationPropertyData property = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("require-cashier-for-cash-transactions");
+        return property.isEnabled();
     }
 }

@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.account.service;
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Predicate;
 import lombok.AllArgsConstructor;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -28,10 +29,12 @@ import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumb
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations.AccountNumberPrefixType;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberGeneratorService;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberStructuredGenerationService;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
+import org.apache.fineract.infrastructure.core.exception.GeneralPlatformDomainRuleException;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientRepository;
 import org.apache.fineract.portfolio.group.domain.Group;
@@ -63,12 +66,16 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     private static final String SHARE_PRODUCT_SHORT_NAME = "sharesProductShortName";
     private static final String PREFIX_SHORT_NAME = "prefixShortName";
     private final ConfigurationReadPlatformService configurationReadPlatformService;
+    private final AccountNumberStructuredGenerationService accountNumberStructuredGenerationService;
     private final ClientRepository clientRepository;
     private final LoanRepository loanRepository;
     private final SavingsAccountRepository savingsAccountRepository;
     private final WorkingCapitalLoanRepository workingCapitalLoanRepository;
 
     public String generate(Client client, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.CLIENT, client, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, client.getId().toString());
         propertyMap.put(OFFICE_NAME, client.getOffice().getName());
@@ -81,6 +88,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(Loan loan, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.LOAN, loan, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, loan.getId().toString());
         propertyMap.put(OFFICE_NAME, loan.getOffice().getName());
@@ -90,6 +100,12 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(SavingsAccount savingsAccount, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return generateUniqueStructuredNumber(EntityAccountType.SAVINGS, savingsAccount, accountNumberFormat, accountNumber -> {
+                final SavingsAccount existing = this.savingsAccountRepository.findSavingsAccountByAccountNumber(accountNumber);
+                return existing != null && (savingsAccount.getId() == null || !savingsAccount.getId().equals(existing.getId()));
+            });
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, savingsAccount.getId().toString());
         propertyMap.put(OFFICE_NAME, savingsAccount.office().getName());
@@ -99,6 +115,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(ShareAccount shareaccount, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.SHARES, shareaccount, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, shareaccount.getId().toString());
         propertyMap.put(SHARE_PRODUCT_SHORT_NAME, shareaccount.getShareProduct().getShortName());
@@ -107,6 +126,10 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generate(WorkingCapitalLoan wcl, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.WORKING_CAPITAL_LOAN, wcl, accountNumberFormat,
+                    false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, wcl.getId().toString());
         propertyMap.put(OFFICE_NAME,
@@ -127,6 +150,13 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
             case CENTER, GROUP ->
                 throw new UnsupportedOperationException("Use generateCenterAccountNumber / generateGroupAccountNumber for " + type);
         };
+    }
+
+    private boolean useStructuredGeneration(final AccountNumberFormat accountNumberFormat) {
+        final GlobalConfigurationPropertyData structuredFormats = this.configurationReadPlatformService
+                .retrieveGlobalConfiguration("structured-account-number-formats");
+        return structuredFormats.isEnabled() && accountNumberFormat != null
+                && Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled());
     }
 
     private String generateAccountNumber(Map<String, String> propertyMap, AccountNumberFormat accountNumberFormat) {
@@ -173,6 +203,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
                 break;
 
                 case PREFIX_SHORT_NAME:
+                    if (StringUtils.isBlank(accountNumberFormat.getPrefixCharacter())) {
+                        break;
+                    }
                     generatePrefix(propertyMap, propertyMap.get(ID), accountMaxLength, accountNumberFormat);
                     prefix = propertyMap.get(PREFIX_SHORT_NAME);
                 break;
@@ -184,7 +217,7 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
             if (prefix != null) {
                 prefix = prefix.substring(0, Math.min(prefix.length(), 10));
             }
-            if (accountNumberPrefixType.getValue().equals(AccountNumberPrefixType.PREFIX_SHORT_NAME.getValue())) {
+            if (accountNumberPrefixType == AccountNumberPrefixType.PREFIX_SHORT_NAME && prefix != null) {
                 Integer prefixLength = prefix.length();
 
                 if (randomAccountNumber.isEnabled()) {
@@ -205,8 +238,46 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
             if (randomNumberConflict) {
                 accountNumber = generateAccountNumber(propertyMap, accountNumberFormat);
             }
+        } else if (Boolean.TRUE.equals(checkAccountNumberConflict(propertyMap, accountNumberFormat, accountNumber))) {
+            // Id-based numbers collide when that value is already stored on another account
+            // (for example prefix "1" + id 1 => 1000000001). Skip ahead to a free number.
+            accountNumber = nextUnusedAccountNumber(propertyMap, accountNumberFormat, accountNumber);
         }
         return accountNumber;
+    }
+
+    private String generateUniqueStructuredNumber(final EntityAccountType entityAccountType, final Object entity,
+            final AccountNumberFormat accountNumberFormat, final Predicate<String> alreadyUsed) {
+        String accountNumber = null;
+        for (int attempt = 0; attempt < 50; attempt++) {
+            accountNumber = this.accountNumberStructuredGenerationService.generate(entityAccountType, entity, accountNumberFormat, false);
+            if (!alreadyUsed.test(accountNumber)) {
+                return accountNumber;
+            }
+        }
+        throw new GeneralPlatformDomainRuleException("error.msg.account.number.duplicate",
+                "Account number " + accountNumber + " already exists", accountNumber);
+    }
+
+    private String nextUnusedAccountNumber(final Map<String, String> propertyMap, final AccountNumberFormat accountNumberFormat,
+            final String accountNumber) {
+        String candidate = accountNumber;
+        for (int attempt = 0; attempt < 100; attempt++) {
+            candidate = incrementAccountNumber(candidate);
+            if (!Boolean.TRUE.equals(checkAccountNumberConflict(propertyMap, accountNumberFormat, candidate))) {
+                return candidate;
+            }
+        }
+        throw new GeneralPlatformDomainRuleException("error.msg.account.number.duplicate",
+                "Account number " + accountNumber + " already exists", accountNumber);
+    }
+
+    private String incrementAccountNumber(final String accountNumber) {
+        if (StringUtils.isNumeric(accountNumber)) {
+            final String next = new BigInteger(accountNumber).add(BigInteger.ONE).toString();
+            return next.length() < accountNumber.length() ? StringUtils.leftPad(next, accountNumber.length(), '0') : next;
+        }
+        return accountNumber + "1";
     }
 
     private String randomNumberGenerator(int accountMaxLength, Map<String, String> propertyMap) {
@@ -234,21 +305,21 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
         switch (entityType) {
             case "client": // avoid duplication it will loop until it finds new random account no.
                 Client client = this.clientRepository.getClientByAccountNumber(accountNumber);
-                if (client != null) {
+                if (client != null && conflictsWithAnotherEntity(propertyMap, client.getId())) {
                     randomNumberConflict = true;
                 }
             break;
 
             case "loan":
                 Loan loan = this.loanRepository.findLoanAccountByAccountNumber(accountNumber);
-                if (loan != null) {
+                if (loan != null && conflictsWithAnotherEntity(propertyMap, loan.getId())) {
                     randomNumberConflict = true;
                 }
             break;
 
             case "savingsAccount":
                 SavingsAccount savingsAccount = this.savingsAccountRepository.findSavingsAccountByAccountNumber(accountNumber);
-                if (savingsAccount != null) {
+                if (savingsAccount != null && conflictsWithAnotherEntity(propertyMap, savingsAccount.getId())) {
                     randomNumberConflict = true;
                 }
             break;
@@ -264,6 +335,14 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
         }
 
         return randomNumberConflict;
+    }
+
+    private boolean conflictsWithAnotherEntity(final Map<String, String> propertyMap, final Long existingEntityId) {
+        if (existingEntityId == null) {
+            return true;
+        }
+        final String currentId = propertyMap.get(ID);
+        return currentId == null || !currentId.equals(String.valueOf(existingEntityId));
     }
 
     private Map<String, String> generatePrefix(Map<String, String> propertyMap, String accountNumber, Integer accountMaxLength,
@@ -286,6 +365,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generateGroupAccountNumber(Group group, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.GROUP, group, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, group.getId().toString());
         propertyMap.put(OFFICE_NAME, group.getOffice().getName());
@@ -294,6 +376,9 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     }
 
     public String generateCenterAccountNumber(Group group, AccountNumberFormat accountNumberFormat) {
+        if (useStructuredGeneration(accountNumberFormat)) {
+            return accountNumberStructuredGenerationService.generate(EntityAccountType.CENTER, group, accountNumberFormat, false);
+        }
         Map<String, String> propertyMap = new HashMap<>();
         propertyMap.put(ID, group.getId().toString());
         propertyMap.put(OFFICE_NAME, group.getOffice().getName());

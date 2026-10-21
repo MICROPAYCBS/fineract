@@ -47,10 +47,12 @@ import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
 import org.apache.fineract.portfolio.savings.data.SavingsProductData;
 import org.apache.fineract.portfolio.savings.service.SavingsProductReadPlatformService;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 @Service
+@ConditionalOnMissingBean(value = ClientTemplateReadPlatformService.class, ignored = ClientTemplateReadPlatformServiceImpl.class)
 @RequiredArgsConstructor
 public class ClientTemplateReadPlatformServiceImpl implements ClientTemplateReadPlatformService {
 

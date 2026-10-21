@@ -117,6 +117,8 @@ spec:
               key: password
         - name: FINERACT_DEFAULT_TENANTDB_CONN_PARAMS
           value: ''
+        - name: FINERACT_DEFAULT_TENANTDB_TIMEZONE
+          value: Africa/Kampala
         - name: FINERACT_SERVER_PORT
           value: "8443"
         - name: JAVA_TOOL_OPTIONS

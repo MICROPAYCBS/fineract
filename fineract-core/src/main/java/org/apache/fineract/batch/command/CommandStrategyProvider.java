@@ -189,6 +189,8 @@ public class CommandStrategyProvider {
                 "adjustLoanTransactionByExternalIdCommandStrategy");
         commandStrategies.put(CommandContext.resource("v1\\/clients\\/" + NUMBER_REGEX + "\\?command=activate").method(POST).build(),
                 "activateClientCommandStrategy");
+        commandStrategies.put(CommandContext.resource("v1\\/clients\\/" + NUMBER_REGEX + "\\?command=submit").method(POST).build(),
+                "submitClientCommandStrategy");
         commandStrategies.put(CommandContext.resource("v1\\/loans\\/" + NUMBER_REGEX + "\\?command=approve").method(POST).build(),
                 "approveLoanCommandStrategy");
         commandStrategies.put(CommandContext.resource("v1\\/loans\\/" + NUMBER_REGEX + "\\?command=disburse").method(POST).build(),

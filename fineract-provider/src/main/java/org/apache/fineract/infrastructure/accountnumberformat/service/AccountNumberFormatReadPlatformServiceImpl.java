@@ -36,12 +36,14 @@ import org.apache.fineract.infrastructure.core.data.EnumOptionData;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = AccountNumberFormatReadPlatformService.class, ignored = AccountNumberFormatReadPlatformServiceImpl.class)
 @RequiredArgsConstructor
 public class AccountNumberFormatReadPlatformServiceImpl implements AccountNumberFormatReadPlatformService {
 

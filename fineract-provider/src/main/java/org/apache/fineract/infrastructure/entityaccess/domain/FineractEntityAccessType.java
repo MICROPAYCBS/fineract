@@ -37,6 +37,8 @@ public class FineractEntityAccessType {
             .setStr("office_access_to_savings_products");
     public static final FineractEntityAccessType OFFICE_ACCESS_TO_CHARGES = new FineractEntityAccessType()
             .setStr("office_access_to_fees/charges");
+    public static final FineractEntityAccessType OFFICE_ACCESS_TO_DEPARTMENTS = new FineractEntityAccessType()
+            .setStr("office_access_to_departments");
 
     public static FineractEntityAccessType get(String type) {
 
@@ -48,6 +50,8 @@ public class FineractEntityAccessType {
             retType = OFFICE_ACCESS_TO_SAVINGS_PRODUCTS;
         } else if (type.equals(OFFICE_ACCESS_TO_CHARGES.str)) {
             retType = OFFICE_ACCESS_TO_CHARGES;
+        } else if (type.equals(OFFICE_ACCESS_TO_DEPARTMENTS.str)) {
+            retType = OFFICE_ACCESS_TO_DEPARTMENTS;
         }
 
         return retType;

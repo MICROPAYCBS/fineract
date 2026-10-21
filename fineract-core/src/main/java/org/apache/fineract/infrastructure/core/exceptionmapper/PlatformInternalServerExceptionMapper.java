@@ -27,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.data.ApiGlobalErrorResponse;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.apache.fineract.infrastructure.core.exception.PlatformInternalServerException;
+import org.apache.fineract.infrastructure.core.monitoring.ServerExceptionReporter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -42,9 +44,15 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class PlatformInternalServerExceptionMapper implements FineractExceptionMapper, ExceptionMapper<PlatformInternalServerException> {
 
+    @Autowired(required = false)
+    private ServerExceptionReporter serverExceptionReporter;
+
     @Override
     public Response toResponse(final PlatformInternalServerException exception) {
         log.warn("Exception occurred", ErrorHandler.findMostSpecificException(exception));
+        if (serverExceptionReporter != null) {
+            serverExceptionReporter.reportServerError(exception, Status.INTERNAL_SERVER_ERROR.getStatusCode(), null, null);
+        }
         final ApiGlobalErrorResponse notFoundErrorResponse = ApiGlobalErrorResponse.serverSideError(exception.getGlobalisationMessageCode(),
                 exception.getDefaultUserMessage(), exception.getDefaultUserMessageArgs());
         return Response.status(Status.INTERNAL_SERVER_ERROR).entity(notFoundErrorResponse).type(MediaType.APPLICATION_JSON).build();

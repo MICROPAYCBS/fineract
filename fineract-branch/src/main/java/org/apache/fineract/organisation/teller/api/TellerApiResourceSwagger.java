@@ -367,6 +367,26 @@ final class TellerApiResourceSwagger {
         public Long tellerId;
         @Schema(example = "B, Ramesh")
         public String cashierName;
+        @Schema(description = "Note and coin lines stored with this cash movement")
+        public java.util.List<GetCashierLegalTenderLine> legalTenderLines;
+
+        static final class GetCashierLegalTenderLine {
+
+            private GetCashierLegalTenderLine() {}
+
+            @Schema(example = "4")
+            public Long legalTenderId;
+            @Schema(example = "10")
+            public Integer quantity;
+            @Schema(example = "100")
+            public String label;
+            @Schema(example = "NOTE")
+            public String tenderType;
+            @Schema(example = "100.00")
+            public BigDecimal value;
+            @Schema(description = "quantity multiplied by value", example = "1000.00")
+            public BigDecimal lineAmount;
+        }
     }
 
     @Schema(description = "PostTellersTellerIdCashiersCashierIdAllocateRequest")
@@ -388,6 +408,18 @@ final class TellerApiResourceSwagger {
         public String dateFormat;
         @Schema(example = "[2015, 02, 01]")
         public LocalDate txnDate;
+        @Schema(description = "Note and coin breakdown. When sent, the sum of quantity times tender value must equal txnAmount.")
+        public java.util.List<PostCashierLegalTenderLine> legalTenderLines;
+
+        static final class PostCashierLegalTenderLine {
+
+            private PostCashierLegalTenderLine() {}
+
+            @Schema(description = "Legal tender id for this currency", example = "4")
+            public Long legalTenderId;
+            @Schema(description = "Number of notes or coins of this tender", example = "10")
+            public Integer quantity;
+        }
     }
 
     @Schema(description = "PostTellersTellerIdCashiersCashierIdAllocateResponse")
@@ -422,6 +454,8 @@ final class TellerApiResourceSwagger {
         public String dateFormat;
         @Schema(example = "[2015, 02, 20]")
         public LocalDate txnDate;
+        @Schema(description = "Note and coin breakdown. When sent, the sum of quantity times tender value must equal txnAmount.")
+        public java.util.List<PostTellersTellerIdCashiersCashierIdAllocateRequest.PostCashierLegalTenderLine> legalTenderLines;
 
     }
 

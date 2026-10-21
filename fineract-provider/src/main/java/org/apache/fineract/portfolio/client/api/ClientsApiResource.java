@@ -50,6 +50,7 @@ import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
 import org.apache.fineract.infrastructure.bulkimport.service.BulkImportWorkbookPopulatorService;
 import org.apache.fineract.infrastructure.bulkimport.service.BulkImportWorkbookService;
+import org.apache.fineract.infrastructure.codes.data.CodeValueData;
 import org.apache.fineract.infrastructure.core.annotation.AlternativeOperationId;
 import org.apache.fineract.infrastructure.core.api.ApiRequestParameterHelper;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -70,6 +71,7 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
 import org.apache.fineract.portfolio.client.service.ClientReadPlatformService;
 import org.apache.fineract.portfolio.client.service.ClientTemplateReadPlatformService;
+import org.apache.fineract.portfolio.customerclass.data.CustomerClassData;
 import org.apache.fineract.portfolio.loanaccount.guarantor.data.ObligeeData;
 import org.apache.fineract.portfolio.loanaccount.guarantor.service.GuarantorReadPlatformService;
 import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
@@ -164,7 +166,9 @@ public class ClientsApiResource {
             + "\n" + "\n" + "clients/1?template=true\n" + "\n" + "\n" + "clients/1?fields=id,displayName,officeName")
     @AlternativeOperationId("retrieveOne_11")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.GetClientsClientIdResponse.class)))
-    public String retrieveOne(@PathParam("clientId") @Parameter(description = "clientId") final Long clientId,
+    @ApiResponse(responseCode = "403", description = "The caller may not read this client")
+    @ApiResponse(responseCode = "404", description = "No client exists with this id")
+    public String retrieveOne(@PathParam("clientId") @Parameter(description = "Client id") final Long clientId,
             @Context final UriInfo uriInfo,
             @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") @Parameter(description = "staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly) {
         return retrieveClient(clientId, null, staffInSelectedOfficeOnly, uriInfo);
@@ -180,7 +184,9 @@ public class ClientsApiResource {
             + "Optional Fields: groupId, externalId, accountNo, staffId, mobileNo, savingsProductId, genderId, clientTypeId, clientClassificationId")
     @AlternativeOperationId("create_6")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PostClientsRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PostClientsResponse.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PostClientsResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation error, including an unknown field or a customer class that does not match legalFormId")
+    @ApiResponse(responseCode = "403", description = "The caller may not create clients, or a business rule was violated")
     public String create(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
 
         final CommandWrapper commandRequest = new CommandWrapperBuilder() //
@@ -203,8 +209,11 @@ public class ClientsApiResource {
             + "\n" + "The relationship between a client and a group must be removed through the Groups API.")
     @AlternativeOperationId("update_10")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdResponse.class)))
-    public String update(@Parameter(description = "clientId") @PathParam("clientId") final Long clientId,
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ClientsApiResourceSwagger.PutClientsClientIdResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation error")
+    @ApiResponse(responseCode = "403", description = "The caller may not update this client, or a business rule was violated")
+    @ApiResponse(responseCode = "404", description = "No client exists with this id")
+    public String update(@Parameter(description = "Client id") @PathParam("clientId") final Long clientId,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         return updateClient(clientId, null, apiRequestBodyAsJson);
     }
@@ -223,9 +232,12 @@ public class ClientsApiResource {
     @Path("{clientId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Activate a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClient", description = "Activate a Client:\n\n"
-            + "Clients can be created in a Pending state. This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
-            + "\n" + "If the client happens to be already active this API will result in an error.\n\n" + "Close a Client:\n\n"
+    @Operation(summary = "Activate a Client | Submit a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClient", description = "Submit a Client:\n\n"
+            + "Clients created as Draft (active=false) must be submitted before they can be activated. This API moves a client from Draft to Pending.\n"
+            + "\n" + "If the client is not in Draft status this API will result in an error.\n\n" + "Activate a Client:\n\n"
+            + "Clients can be activated when they are in Pending status (formally submitted). This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
+            + "\n" + "If the client happens to be already active or still in Draft this API will result in an error.\n\n"
+            + "Close a Client:\n\n"
             + "Clients can be closed if they do not have any non-closed loans/savingsAccount. This API exists to close a client .\n" + "\n"
             + "If the client have any active loans/savingsAccount this API will result in an error.\n\n" + "Reject a Client:\n\n"
             + "Clients can be rejected when client is in pending for activation status.\n" + "\n"
@@ -369,9 +381,12 @@ public class ClientsApiResource {
     @Path("/external-id/{externalId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Activate a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClientByExternalId", description = "Activate a Client:\n\n"
-            + "Clients can be created in a Pending state. This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
-            + "\n" + "If the client happens to be already active this API will result in an error.\n\n" + "Close a Client:\n\n"
+    @Operation(summary = "Activate a Client | Submit a Client | Close a Client | Reject a Client | Withdraw a Client | Reactivate a Client | UndoReject a Client | UndoWithdraw a Client | Assign a Staff | Unassign a Staff | Update Default Savings Account | Propose a Client Transfer | Withdraw a Client Transfer | Reject a Client Transfer | Accept a Client Transfer | Propose and Accept a Client Transfer", operationId = "handleCommandClientByExternalId", description = "Submit a Client:\n\n"
+            + "Clients created as Draft (active=false) must be submitted before they can be activated. This API moves a client from Draft to Pending.\n"
+            + "\n" + "If the client is not in Draft status this API will result in an error.\n\n" + "Activate a Client:\n\n"
+            + "Clients can be activated when they are in Pending status (formally submitted). This API exists to enable client activation (for when a client becomes an approved member of the financial Institution).\n"
+            + "\n" + "If the client happens to be already active or still in Draft this API will result in an error.\n\n"
+            + "Close a Client:\n\n"
             + "Clients can be closed if they do not have any non-closed loans/savingsAccount. This API exists to close a client .\n" + "\n"
             + "If the client have any active loans/savingsAccount this API will result in an error.\n\n" + "Reject a Client:\n\n"
             + "Clients can be rejected when client is in pending for activation status.\n" + "\n"
@@ -460,12 +475,41 @@ public class ClientsApiResource {
     private ClientData retrieveClientData(final Long clientId, final boolean staffInSelectedOfficeOnly, final boolean isTemplate) {
         ClientData clientData = clientReadPlatformService.retrieveOne(clientId);
         if (isTemplate) {
+            final CodeValueData title = clientData.getTitle();
+            final CodeValueData nationality = clientData.getNationality();
+            final CodeValueData customerRiskProfile = clientData.getCustomerRiskProfile();
+            final CodeValueData maritalStatus = clientData.getMaritalStatus();
+            final CustomerClassData customerClass = clientData.getCustomerClass();
             final ClientData templateData = clientTemplateReadPlatformService.retrieveTemplate(clientData.getOfficeId(),
                     staffInSelectedOfficeOnly);
             clientData = ClientData.templateOnTop(clientData, templateData);
+            clientData.setTitle(title);
+            clientData.setNationality(nationality);
+            clientData.setCustomerRiskProfile(customerRiskProfile);
+            clientData.setMaritalStatus(maritalStatus);
+            clientData.setCustomerClass(customerClass);
+            clientData.setTitleOptions(templateData.getTitleOptions());
+            clientData.setClientTitleOptions(templateData.getClientTitleOptions());
+            clientData.setNationalityOptions(templateData.getNationalityOptions());
+            clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
+            clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
+            clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
+            clientData.setContactTypeOptions(templateData.getContactTypeOptions());
             Collection<SavingsAccountData> savingAccountOptions = savingsAccountReadPlatformService.retrieveForLookup(clientId, null);
             if (savingAccountOptions != null && savingAccountOptions.size() > 0) {
                 clientData = ClientData.templateWithSavingAccountOptions(clientData, savingAccountOptions);
+                clientData.setTitle(title);
+                clientData.setNationality(nationality);
+                clientData.setCustomerRiskProfile(customerRiskProfile);
+                clientData.setMaritalStatus(maritalStatus);
+                clientData.setCustomerClass(customerClass);
+                clientData.setTitleOptions(templateData.getTitleOptions());
+                clientData.setClientTitleOptions(templateData.getClientTitleOptions());
+                clientData.setNationalityOptions(templateData.getNationalityOptions());
+                clientData.setCustomerRiskProfileOptions(templateData.getCustomerRiskProfileOptions());
+                clientData.setMaritalStatusOptions(templateData.getMaritalStatusOptions());
+                clientData.setCustomerClassOptions(templateData.getCustomerClassOptions());
+                clientData.setContactTypeOptions(templateData.getContactTypeOptions());
             }
         }
         return clientData;
@@ -487,6 +531,8 @@ public class ClientsApiResource {
         CommandWrapper commandRequest = null;
         if (CommandParameterUtil.is(commandParam, "activate")) {
             commandRequest = builder.activateClient(clientId).build();
+        } else if (CommandParameterUtil.is(commandParam, "submit")) {
+            commandRequest = builder.submitClient(clientId).build();
         } else if (CommandParameterUtil.is(commandParam, "assignStaff")) {
             commandRequest = builder.assignClientStaff(clientId).build();
         } else if (CommandParameterUtil.is(commandParam, "unassignStaff")) {
@@ -519,7 +565,7 @@ public class ClientsApiResource {
 
         if (commandRequest == null) {
             throw new UnrecognizedQueryParamException("command", commandParam,
-                    new Object[] { "activate", "unassignStaff", "assignStaff", "close", "proposeTransfer", "withdrawTransfer",
+                    new Object[] { "activate", "submit", "unassignStaff", "assignStaff", "close", "proposeTransfer", "withdrawTransfer",
                             "acceptTransfer", "rejectTransfer", "updateSavingsAccount", "reject", "withdraw", "reactivate" });
         }
 

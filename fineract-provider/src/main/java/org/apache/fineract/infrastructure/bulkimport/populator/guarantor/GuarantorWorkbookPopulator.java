@@ -91,6 +91,7 @@ public class GuarantorWorkbookPopulator extends AbstractWorkbookPopulator {
         worksheet.setColumnWidth(GuarantorConstants.ZIP_COL, TemplatePopulateImportConstants.SMALL_COL_SIZE);
         worksheet.setColumnWidth(GuarantorConstants.SAVINGS_ID_COL, TemplatePopulateImportConstants.SMALL_COL_SIZE);
         worksheet.setColumnWidth(GuarantorConstants.AMOUNT, TemplatePopulateImportConstants.SMALL_COL_SIZE);
+        worksheet.setColumnWidth(GuarantorConstants.NATIONAL_ID_NUMBER_COL, TemplatePopulateImportConstants.SMALL_COL_SIZE);
         worksheet.setColumnWidth(GuarantorConstants.LOOKUP_CLIENT_NAME_COL, TemplatePopulateImportConstants.SMALL_COL_SIZE);
         worksheet.setColumnWidth(GuarantorConstants.LOOKUP_ACCOUNT_NO_COL, TemplatePopulateImportConstants.SMALL_COL_SIZE);
         worksheet.setColumnWidth(GuarantorConstants.LOOKUP_SAVINGS_CLIENT_NAME_COL, TemplatePopulateImportConstants.SMALL_COL_SIZE);
@@ -111,6 +112,7 @@ public class GuarantorWorkbookPopulator extends AbstractWorkbookPopulator {
         writeString(GuarantorConstants.ZIP_COL, rowHeader, "Zip*");
         writeString(GuarantorConstants.SAVINGS_ID_COL, rowHeader, "Savings Account Id");
         writeString(GuarantorConstants.AMOUNT, rowHeader, "Amount");
+        writeString(GuarantorConstants.NATIONAL_ID_NUMBER_COL, rowHeader, "National ID Number");
         writeString(GuarantorConstants.LOOKUP_CLIENT_NAME_COL, rowHeader, "Lookup Client");
         writeString(GuarantorConstants.LOOKUP_ACCOUNT_NO_COL, rowHeader, "Lookup Loan Account");
         writeString(GuarantorConstants.LOOKUP_SAVINGS_CLIENT_NAME_COL, rowHeader, "Savings Lookup Client");

@@ -26,6 +26,7 @@ import org.apache.fineract.portfolio.client.data.ClientData;
 import org.apache.fineract.portfolio.client.data.ClientTimelineData;
 import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.client.domain.ClientEnumerations;
+import org.apache.fineract.portfolio.client.domain.Gender;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -43,6 +44,11 @@ public interface ClientMapper {
     @Mapping(target = "transferToOfficeName", source = "transferToOffice.name")
     @Mapping(target = "externalId", source = "externalId")
     @Mapping(target = "gender", source = "source", qualifiedByName = "clientGenderCode")
+    @Mapping(target = "title", source = "source", qualifiedByName = "clientTitleCode")
+    @Mapping(target = "nationality", source = "source", qualifiedByName = "clientNationalityCode")
+    @Mapping(target = "customerRiskProfile", source = "source", qualifiedByName = "clientCustomerRiskProfileCode")
+    @Mapping(target = "maritalStatus", source = "source", qualifiedByName = "clientMaritalStatusCode")
+    @Mapping(target = "customerClassId", source = "customerClassId")
     @Mapping(target = "imageId", source = "imageId")
     @Mapping(target = "staffId", source = "staff.id")
     @Mapping(target = "staffName", source = "staff.displayName")
@@ -61,12 +67,20 @@ public interface ClientMapper {
     @Mapping(target = "savingProductOptions", ignore = true)
     @Mapping(target = "savingAccountOptions", ignore = true)
     @Mapping(target = "genderOptions", ignore = true)
+    @Mapping(target = "titleOptions", ignore = true)
+    @Mapping(target = "clientTitleOptions", ignore = true)
+    @Mapping(target = "nationalityOptions", ignore = true)
+    @Mapping(target = "customerRiskProfileOptions", ignore = true)
+    @Mapping(target = "maritalStatusOptions", ignore = true)
+    @Mapping(target = "customerClass", ignore = true)
+    @Mapping(target = "customerClassOptions", ignore = true)
     @Mapping(target = "clientTypeOptions", ignore = true)
     @Mapping(target = "clientClassificationOptions", ignore = true)
     @Mapping(target = "clientNonPersonConstitutionOptions", ignore = true)
     @Mapping(target = "clientNonPersonMainBusinessLineOptions", ignore = true)
     @Mapping(target = "clientLegalFormOptions", ignore = true)
     @Mapping(target = "familyMemberOptions", ignore = true)
+    @Mapping(target = "contactTypeOptions", ignore = true)
     @Mapping(target = "clientNonPersonDetails", ignore = true)
     @Mapping(target = "address", ignore = true)
     @Mapping(target = "isAddressEnabled", ignore = true)
@@ -111,7 +125,45 @@ public interface ClientMapper {
 
     @Named("clientGenderCode")
     default CodeValueData clientGenderCode(Client client) {
-        final CodeValue code = client.getGender();
+        if (client.getGenderEnum() == null) {
+            return null;
+        }
+        final Gender gender = Gender.fromInt(client.getGenderEnum());
+        if (gender == null) {
+            return null;
+        }
+        return CodeValueData.instance(gender.getValue().longValue(), gender.getLabel());
+    }
+
+    @Named("clientTitleCode")
+    default CodeValueData clientTitleCode(Client client) {
+        if (client.getTitleId() == null) {
+            return null;
+        }
+        return CodeValueData.instance(client.getTitleId(), null);
+    }
+
+    @Named("clientNationalityCode")
+    default CodeValueData clientNationalityCode(Client client) {
+        final CodeValue code = client.getNationality();
+        if (code == null) {
+            return null;
+        }
+        return CodeValueData.instance(code.getId(), code.getLabel());
+    }
+
+    @Named("clientCustomerRiskProfileCode")
+    default CodeValueData clientCustomerRiskProfileCode(Client client) {
+        final CodeValue code = client.getCustomerRiskProfile();
+        if (code == null) {
+            return null;
+        }
+        return CodeValueData.instance(code.getId(), code.getLabel());
+    }
+
+    @Named("clientMaritalStatusCode")
+    default CodeValueData clientMaritalStatusCode(Client client) {
+        final CodeValue code = client.getMaritalStatus();
         if (code == null) {
             return null;
         }
@@ -132,20 +184,17 @@ public interface ClientMapper {
     default ClientTimelineData clientTimelineData(Client client) {
         if (client.isClosed()) {
             final AppUser activatedBy = client.getActivatedBy();
-            if (activatedBy != null) {
-                return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
-                        activatedBy.getUsername(), activatedBy.getFirstname(), activatedBy.getLastname(), client.getClosureDate(),
-                        client.getClosedBy().getUsername(), client.getClosedBy().getFirstname(), client.getClosedBy().getLastname());
-            } else {
-                return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(), null, null, null,
-                        client.getClosureDate(), client.getClosedBy().getUsername(), client.getClosedBy().getFirstname(),
-                        client.getClosedBy().getLastname());
-
-            }
-        } else if (client.isActive()) {
+            final AppUser closedBy = client.getClosedBy();
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
-                    client.getActivatedBy().getUsername(), client.getActivatedBy().getFirstname(), client.getActivatedBy().getLastname(),
-                    null, null, null, null);
+                    activatedBy != null ? activatedBy.getUsername() : null, activatedBy != null ? activatedBy.getFirstname() : null,
+                    activatedBy != null ? activatedBy.getLastname() : null, client.getClosureDate(),
+                    closedBy != null ? closedBy.getUsername() : null, closedBy != null ? closedBy.getFirstname() : null,
+                    closedBy != null ? closedBy.getLastname() : null);
+        } else if (client.isActive()) {
+            final AppUser activatedBy = client.getActivatedBy();
+            return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, client.getActivationDate(),
+                    activatedBy != null ? activatedBy.getUsername() : null, activatedBy != null ? activatedBy.getFirstname() : null,
+                    activatedBy != null ? activatedBy.getLastname() : null, null, null, null, null);
         } else {
             return new ClientTimelineData(client.getSubmittedOnDate(), null, null, null, null, null, null, null, null, null, null, null);
         }

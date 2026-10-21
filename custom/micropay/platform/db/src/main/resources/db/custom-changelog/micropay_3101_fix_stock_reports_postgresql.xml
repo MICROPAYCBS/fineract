@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: fix stock reports that fail on PostgreSQL (Happy Birthday, the three loan email
+  reports, TxnRunningBalances, Loan payments received (Active Loans)) and give report parameters
+  usable defaults.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/micropay/parts/3101_fix_stock_reports_postgresql.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <!-- Same SQL on both databases. -->
+    <changeSet author="micropay" id="3101-happy-birthday-report">
+        <sqlFile path="db/custom-sql/micropay/V3101__happy_birthday_report.sql"
+            splitStatements="false" stripComments="false"/>
+    </changeSet>
+
+    <!-- PostgreSQL only. MySQL SQL already has the right meaning; this port keeps it. -->
+    <changeSet author="micropay" id="3101-txn-running-balances-report" context="postgresql">
+        <sqlFile path="db/custom-sql/micropay/V3101__txn_running_balances_report.postgresql.sql"
+            splitStatements="false" stripComments="false"/>
+    </changeSet>
+
+    <!-- PostgreSQL only: the MySQL SQL of these reports is correct. -->
+    <changeSet author="micropay" id="3101-postgresql-loan-email-reports" context="postgresql">
+        <sqlFile path="db/custom-sql/micropay/V3101__loan_email_reports.postgresql.sql"
+            splitStatements="false" stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3101-postgresql-loan-payments-received-active" context="postgresql">
+        <sqlFile path="db/custom-sql/micropay/V3101__loan_payments_received_active.postgresql.sql"
+            splitStatements="false" stripComments="false"/>
+    </changeSet>
+
+    <!-- Parameter defaults. Only change values that are still the stock ones. -->
+    <changeSet author="micropay" id="3101-report-parameter-defaults">
+        <update tableName="stretchy_parameter">
+            <column name="parameter_default" value="-1"/>
+            <where>parameter_name IN ('loanOfficerIdSelectAll', 'currencyIdSelectAll', 'fundIdSelectAll',
+                'loanProductIdSelectAll', 'savingsProductIdSelectAll') AND parameter_default = '0'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_default" value="1"/>
+            <where>parameter_name IN ('OfficeIdSelectOne', 'parTypeSelect', 'obligDateTypeSelect') AND parameter_default = '0'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_default" value="n/a"/>
+            <where>parameter_name = 'SelectGLAccountNO' AND parameter_default = '0'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

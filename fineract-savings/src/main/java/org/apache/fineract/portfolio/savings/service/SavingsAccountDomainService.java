@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Set;
+import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.savings.SavingsTransactionBooleanValues;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
@@ -37,6 +38,17 @@ public interface SavingsAccountDomainService {
     SavingsAccountTransaction handleDeposit(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
             BigDecimal transactionAmount, PaymentDetail paymentDetail, boolean isAccountTransfer, boolean isRegularTransaction,
             boolean backdatedTxnsAllowedTill);
+
+    default SavingsAccountTransaction handleGlToSavings(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, GLAccount glAccount, boolean backdatedTxnsAllowedTill) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
+
+    default SavingsAccountTransaction handleSavingsToGl(SavingsAccount account, DateTimeFormatter fmt, LocalDate transactionDate,
+            BigDecimal transactionAmount, PaymentDetail paymentDetail, SavingsTransactionBooleanValues transactionBooleanValues,
+            GLAccount glAccount, boolean backdatedTxnsAllowedTill) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
     void postJournalEntries(SavingsAccount savingsAccount, Set<Long> existingTransactionIds, Set<Long> existingReversedTransactionIds,
             boolean backdatedTxnsAllowedTill);

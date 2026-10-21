@@ -31,24 +31,24 @@ public class SavingsApiSetConstants extends SavingsApiConstants {
      * These parameters will match the class level parameters of {@link SavingsProductData}. Where possible, we try to
      * get response parameters to match those of request parameters.
      */
-    protected static final Set<String> SAVINGS_PRODUCT_RESPONSE_DATA_PARAMETERS = new HashSet<>(
-            Arrays.asList(idParamName, nameParamName, shortNameParamName, descriptionParamName, "currency", digitsAfterDecimalParamName,
-                    inMultiplesOfParamName, nominalAnnualInterestRateParamName, interestCompoundingPeriodTypeParamName,
-                    interestPostingPeriodTypeParamName, interestCalculationTypeParamName, interestCalculationDaysInYearTypeParamName,
-                    minRequiredOpeningBalanceParamName, lockinPeriodFrequencyParamName, lockinPeriodFrequencyTypeParamName,
-                    withdrawalFeeAmountParamName, withdrawalFeeTypeParamName, withdrawalFeeForTransfersParamName, feeAmountParamName,
-                    feeOnMonthDayParamName, "currencyOptions", "interestCompoundingPeriodTypeOptions", "interestPostingPeriodTypeOptions",
-                    "interestCalculationTypeOptions", "interestCalculationDaysInYearTypeOptions", "lockinPeriodFrequencyTypeOptions",
-                    "withdrawalFeeTypeOptions", nominalAnnualInterestRateOverdraftParamName, minOverdraftForInterestCalculationParamName,
-                    withHoldTaxParamName, taxGroupIdParamName, isDormancyTrackingActiveParamName, daysToInactiveParamName,
-                    daysToDormancyParamName, daysToInactiveParamName, accountMappingForPaymentParamName));
+    protected static final Set<String> SAVINGS_PRODUCT_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(idParamName, nameParamName,
+            shortNameParamName, descriptionParamName, "currency", digitsAfterDecimalParamName, inMultiplesOfParamName,
+            nominalAnnualInterestRateParamName, interestCompoundingPeriodTypeParamName, interestPostingPeriodTypeParamName,
+            interestCalculationTypeParamName, interestCalculationDaysInYearTypeParamName, minRequiredOpeningBalanceParamName,
+            lockinPeriodFrequencyParamName, lockinPeriodFrequencyTypeParamName, withdrawalFeeAmountParamName, withdrawalFeeTypeParamName,
+            withdrawalFeeForTransfersParamName, feeAmountParamName, feeOnMonthDayParamName, "currencyOptions",
+            "interestCompoundingPeriodTypeOptions", "interestPostingPeriodTypeOptions", "interestCalculationTypeOptions",
+            "interestCalculationDaysInYearTypeOptions", "lockinPeriodFrequencyTypeOptions", "withdrawalFeeTypeOptions",
+            nominalAnnualInterestRateOverdraftParamName, minOverdraftForInterestCalculationParamName, withHoldTaxParamName,
+            taxGroupIdParamName, isDormancyTrackingActiveParamName, daysToInactiveParamName, daysToDormancyParamName,
+            daysToInactiveParamName, accountMappingForPaymentParamName, chargesParamName, paymentChannelsParamName));
 
     /**
      * These parameters will match the class level parameters of {@link SavingsAccountData}. Where possible, we try to
      * get response parameters to match those of request parameters.
      */
     public static final Set<String> SAVINGS_ACCOUNT_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(idParamName, accountNoParamName,
-            externalIdParamName, statusParamName, activatedOnDateParamName, staffIdParamName, clientIdParamName, "clientName",
+            externalIdParamName, statusParamName, activatedOnDateParamName, staffIdParamName, clientIdParamName, "clientName", "officeName",
             groupIdParamName, "groupName", "savingsProductId", "savingsProductName", "currency", nominalAnnualInterestRateParamName,
             interestCompoundingPeriodTypeParamName, interestCalculationTypeParamName, interestCalculationDaysInYearTypeParamName,
             minRequiredOpeningBalanceParamName, lockinPeriodFrequencyParamName, lockinPeriodFrequencyTypeParamName,

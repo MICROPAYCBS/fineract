@@ -25,10 +25,12 @@ import lombok.RequiredArgsConstructor;
 import org.apache.fineract.accounting.closure.domain.GLClosure;
 import org.apache.fineract.accounting.common.AccountingConstants.AccrualAccountsForSavings;
 import org.apache.fineract.accounting.common.AccountingConstants.FinancialActivity;
+import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.journalentry.data.ChargePaymentDTO;
 import org.apache.fineract.accounting.journalentry.data.SavingsDTO;
 import org.apache.fineract.accounting.journalentry.data.SavingsTransactionDTO;
 import org.apache.fineract.infrastructure.core.service.MathUtil;
+import org.apache.fineract.infrastructure.interbranch.service.InterBranchAccountingHelper;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.springframework.stereotype.Component;
 
@@ -37,6 +39,7 @@ import org.springframework.stereotype.Component;
 public class AccrualBasedAccountingProcessorForSavings implements AccountingProcessorForSavings {
 
     private final AccountingProcessorHelper helper;
+    private final InterBranchAccountingHelper interBranchAccountingHelper;
 
     @Override
     public void createJournalEntriesForSavings(final SavingsDTO savingsDTO) {
@@ -55,9 +58,22 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
             final List<ChargePaymentDTO> feePayments = savingsTransactionDTO.getFeePayments();
             final List<ChargePaymentDTO> penaltyPayments = savingsTransactionDTO.getPenaltyPayments();
 
-            this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            final Long homeOfficeId = savingsTransactionDTO.getOfficeId();
+            final Long servicingOfficeId = savingsTransactionDTO.getTransactionOfficeId();
+            final boolean crossBranch = this.interBranchAccountingHelper.isCrossBranch(homeOfficeId, servicingOfficeId);
+            final Office homeOffice = crossBranch ? this.helper.getOfficeById(homeOfficeId) : office;
+            final Office servicingOffice = crossBranch ? this.helper.getOfficeById(servicingOfficeId) : office;
 
-            if (savingsTransactionDTO.getTransactionType().isWithdrawal() && savingsTransactionDTO.isOverdraftTransaction()) {
+            if (crossBranch) {
+                this.interBranchAccountingHelper.validateBranchClosures(servicingOfficeId, homeOfficeId, transactionDate);
+            } else {
+                this.helper.checkForBranchClosures(latestGLClosure, transactionDate);
+            }
+
+            if (savingsTransactionDTO.getTransactionType().isGlToSavings() || savingsTransactionDTO.getTransactionType().isSavingsToGl()) {
+                postGlAccountSubstitution(savingsTransactionDTO, crossBranch, servicingOffice, homeOffice, office, currencyCode,
+                        savingsProductId, paymentTypeId, savingsId, transactionId, transactionDate, amount, overdraftAmount, isReversal);
+            } else if (savingsTransactionDTO.getTransactionType().isWithdrawal() && savingsTransactionDTO.isOverdraftTransaction()) {
                 boolean isPositive = amount.subtract(overdraftAmount).compareTo(BigDecimal.ZERO) > 0;
                 if (savingsTransactionDTO.isAccountTransfer()) {
                     this.helper.createCashBasedJournalEntriesAndReversalsForSavings(office, currencyCode,
@@ -113,7 +129,19 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
 
             /** Handle Deposits and reversals of deposits **/
             else if (savingsTransactionDTO.getTransactionType().isDeposit()) {
-                if (savingsTransactionDTO.isAccountTransfer()) {
+                if (crossBranch) {
+                    if (savingsTransactionDTO.isAccountTransfer()) {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, this.interBranchAccountingHelper.liabilityTransferAccountType(),
+                                AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    } else {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, AccrualAccountsForSavings.SAVINGS_REFERENCE.getValue(),
+                                AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    }
+                } else if (savingsTransactionDTO.isAccountTransfer()) {
                     this.helper.createCashBasedJournalEntriesAndReversalsForSavings(office, currencyCode,
                             FinancialActivity.LIABILITY_TRANSFER.getValue(), AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(),
                             savingsProductId, paymentTypeId, savingsId, transactionId, transactionDate, amount, isReversal);
@@ -133,7 +161,19 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
 
             /** Handle withdrawals and reversals of withdrawals **/
             else if (savingsTransactionDTO.getTransactionType().isWithdrawal()) {
-                if (savingsTransactionDTO.isAccountTransfer()) {
+                if (crossBranch) {
+                    if (savingsTransactionDTO.isAccountTransfer()) {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(),
+                                this.interBranchAccountingHelper.liabilityTransferAccountType(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    } else {
+                        this.interBranchAccountingHelper.createCrossBranchCashBasedJournalEntriesForSavings(servicingOffice, homeOffice,
+                                currencyCode, AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(),
+                                AccrualAccountsForSavings.SAVINGS_REFERENCE.getValue(), savingsProductId, paymentTypeId, savingsId,
+                                transactionId, transactionDate, amount, isReversal);
+                    }
+                } else if (savingsTransactionDTO.isAccountTransfer()) {
                     this.helper.createCashBasedJournalEntriesAndReversalsForSavings(office, currencyCode,
                             AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), FinancialActivity.LIABILITY_TRANSFER.getValue(),
                             savingsProductId, paymentTypeId, savingsId, transactionId, transactionDate, amount, isReversal);
@@ -280,6 +320,44 @@ public class AccrualBasedAccountingProcessorForSavings implements AccountingProc
                         AccrualAccountsForSavings.SAVINGS_REFERENCE, AccrualAccountsForSavings.INCOME_FROM_FEES, savingsProductId,
                         paymentTypeId, savingsId, transactionId, transactionDate, amount, isReversal, feePayments);
             }
+        }
+    }
+
+    private void postGlAccountSubstitution(final SavingsTransactionDTO savingsTransactionDTO, final boolean crossBranch,
+            final Office servicingOffice, final Office homeOffice, final Office office, final String currencyCode,
+            final Long savingsProductId, final Long paymentTypeId, final Long savingsId, final String transactionId,
+            final LocalDate transactionDate, final BigDecimal amount, final BigDecimal overdraftAmount, final boolean isReversal) {
+        final GLAccount explicitAccount = this.helper.getGLAccountById(savingsTransactionDTO.getGlAccountId());
+        final boolean debitExplicitAccount = savingsTransactionDTO.getTransactionType().isGlToSavings();
+        final Office postingOffice = crossBranch ? homeOffice : office;
+        if (savingsTransactionDTO.isOverdraftTransaction()) {
+            final boolean hasSavingsControlPortion = amount.subtract(overdraftAmount).compareTo(BigDecimal.ZERO) > 0;
+            postGlAccountSubstitutionLeg(crossBranch, servicingOffice, postingOffice, currencyCode, explicitAccount,
+                    AccrualAccountsForSavings.OVERDRAFT_PORTFOLIO_CONTROL.getValue(), debitExplicitAccount, savingsProductId, paymentTypeId,
+                    savingsId, transactionId, transactionDate, overdraftAmount, isReversal);
+            if (hasSavingsControlPortion) {
+                postGlAccountSubstitutionLeg(crossBranch, servicingOffice, postingOffice, currencyCode, explicitAccount,
+                        AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), debitExplicitAccount, savingsProductId, paymentTypeId,
+                        savingsId, transactionId, transactionDate, amount.subtract(overdraftAmount), isReversal);
+            }
+        } else {
+            postGlAccountSubstitutionLeg(crossBranch, servicingOffice, postingOffice, currencyCode, explicitAccount,
+                    AccrualAccountsForSavings.SAVINGS_CONTROL.getValue(), debitExplicitAccount, savingsProductId, paymentTypeId, savingsId,
+                    transactionId, transactionDate, amount, isReversal);
+        }
+    }
+
+    private void postGlAccountSubstitutionLeg(final boolean crossBranch, final Office servicingOffice, final Office homeOffice,
+            final String currencyCode, final GLAccount explicitAccount, final int contraAccountType, final boolean debitExplicitAccount,
+            final Long savingsProductId, final Long paymentTypeId, final Long savingsId, final String transactionId,
+            final LocalDate transactionDate, final BigDecimal amount, final boolean isReversal) {
+        if (crossBranch) {
+            this.interBranchAccountingHelper.createCrossBranchSavingsJournalReplacingReference(servicingOffice, homeOffice, currencyCode,
+                    explicitAccount, contraAccountType, debitExplicitAccount, savingsProductId, paymentTypeId, savingsId, transactionId,
+                    transactionDate, amount, isReversal);
+        } else {
+            this.helper.createSavingsJournalReplacingReference(homeOffice, currencyCode, explicitAccount, contraAccountType,
+                    debitExplicitAccount, savingsProductId, paymentTypeId, savingsId, transactionId, transactionDate, amount, isReversal);
         }
     }
 }

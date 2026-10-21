@@ -41,6 +41,11 @@
     <logger name="org.apache.fineract" level="${FINERACT_LOGGING_LEVEL:-INFO}"/>
     <logger name="liquibase" level="warn"/>
 
+    <!-- Logback 1.5 (Boot 4) no longer applies the janino `condition` attribute, so the old
+         if/else left the root logger with no appender and Spring's failure analysis was silent. -->
+    <root level="info">
+        <appender-ref ref="CONSOLE"/>
+    </root>
     <if condition="${jsonLoggingEnabled} == true">
         <then>
             <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
@@ -51,17 +56,9 @@
                     <appendLineSeparator>true</appendLineSeparator>
                 </layout>
             </appender>
-
             <root level="info">
                 <appender-ref ref="JSON"/>
             </root>
         </then>
-        <else>
-            <!-- See https://github.com/apache/fineract/#logging-guidelines for why by default we log only to INFO, only (WARN and) ERROR
-                 but it's still possible to override this using java -Dlogging.level.root=info -jar fineract-provider.jar, as per https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html#boot-features-custom-log-levels -->
-            <root level="info">
-                <appender-ref ref="CONSOLE"/>
-            </root>
-        </else>
     </if>
 </configuration>

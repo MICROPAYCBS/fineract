@@ -288,6 +288,11 @@ public class LoanChargeAssembler {
                 }
             break;
             default:
+                // Micropay tiered flat charges look the amount up by principal (not a percentage base)
+                if (chargeDefinition.isTiered()) {
+                    amountPercentageAppliedTo = command.hasParameter("principal") ? command.bigDecimalValueOfParameterNamed("principal")
+                            : loan.getPrincipal().getAmount();
+                }
             break;
         }
 

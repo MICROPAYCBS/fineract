@@ -19,13 +19,24 @@
 package org.apache.fineract.portfolio.savings.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.fineract.infrastructure.jobs.exception.JobExecutionException;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountData;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 class SavingsSchedularInterestPosterTest {
 
@@ -92,5 +103,24 @@ class SavingsSchedularInterestPosterTest {
 
         assertEquals(2, successfulIds.size(), "Two accounts should proceed normally");
         assertTrue(successfulIds.containsAll(List.of(1L, 3L)), "Accounts 1 and 3 should succeed independently");
+    }
+
+    @Test
+    void postInterestFailureSkipsBatchUpdate() {
+        final SavingsAccountWritePlatformService writeService = mock(SavingsAccountWritePlatformService.class);
+        final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        final SavingsSchedularInterestPoster poster = new SavingsSchedularInterestPoster(writeService, jdbcTemplate,
+                mock(SavingsAccountReadPlatformService.class), mock(PlatformSecurityContext.class));
+
+        final SavingsAccountData posted = SavingsAccountData.withClientTemplate(1L, "Posted", null, null);
+        final SavingsAccountData missingMapping = SavingsAccountData.withClientTemplate(2L, "Missing", null, null);
+        poster.setSavingAccounts(List.of(posted, missingMapping));
+
+        when(writeService.postInterest(same(posted), eq(false), isNull(), eq(false))).thenReturn(posted);
+        when(writeService.postInterest(same(missingMapping), eq(false), isNull(), eq(false)))
+                .thenThrow(new IllegalStateException("missing mapping"));
+
+        assertThrows(JobExecutionException.class, poster::postInterest);
+        verifyNoInteractions(jdbcTemplate);
     }
 }

@@ -20,6 +20,7 @@ package org.apache.fineract.infrastructure.accountnumberformat.service;
 
 import java.util.List;
 import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatData;
+import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatPreviewData;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
 
 public interface AccountNumberFormatReadPlatformService {
@@ -29,5 +30,10 @@ public interface AccountNumberFormatReadPlatformService {
     AccountNumberFormatData getAccountNumberFormat(Long id);
 
     AccountNumberFormatData retrieveTemplate(EntityAccountType entityAccountTypeForTemplate);
+
+    default AccountNumberFormatPreviewData previewAccountNumber(Integer accountType, Long officeId, String productShortName,
+            String clientTypeLabel, String formatPattern, Integer sequenceScope, Integer checkDigitAlgorithm) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 
 }

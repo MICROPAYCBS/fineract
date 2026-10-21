@@ -83,8 +83,8 @@ public class JournalEntriesApiResource {
 
     private static final Set<String> RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList("id", "officeId", "officeName", "glAccountName",
             "glAccountId", "glAccountCode", "glAccountType", "transactionDate", "entryType", "amount", "transactionId", "manualEntry",
-            "entityType", "entityId", "createdByUserId", "createdDate", "submittedOnDate", "createdByUserName", "comments", "reversed",
-            "referenceNumber", "currency", "transactionDetails"));
+            "entityType", "entityId", "createdByUserId", "createdDate", "submittedOnDate", "createdByUserName", "comments",
+            "transactionComments", "reversed", "referenceNumber", "currency", "departmentId", "departmentName", "transactionDetails"));
 
     private static final String RESOURCE_NAME_FOR_PERMISSION = "JOURNALENTRY";
 
@@ -128,7 +128,10 @@ public class JournalEntriesApiResource {
             @QueryParam("loanId") @Parameter(description = "loanId") final Long loanId,
             @QueryParam("savingsId") @Parameter(description = "savingsId") final Long savingsId,
             @QueryParam("runningBalance") @Parameter(description = "runningBalance") final boolean runningBalance,
-            @QueryParam("transactionDetails") @Parameter(description = "transactionDetails") final boolean transactionDetails) {
+            @QueryParam("transactionDetails") @Parameter(description = "transactionDetails") final boolean transactionDetails,
+            @QueryParam("departmentId") @Parameter(description = "departmentId") final Long departmentId,
+            @QueryParam("currencyCode") @Parameter(description = "currencyCode") final String currencyCode,
+            @QueryParam("createdByUserId") @Parameter(description = "createdByUserId") final Long createdByUserId) {
 
         this.context.authenticatedUser().validateHasReadPermission(RESOURCE_NAME_FOR_PERMISSION);
 
@@ -155,12 +158,13 @@ public class JournalEntriesApiResource {
         sqlValidator.validate(orderBy);
         sqlValidator.validate(sortOrder);
         final SearchParameters searchParameters = SearchParameters.builder().limit(limit).officeId(officeId).offset(offset).orderBy(orderBy)
-                .sortOrder(sortOrder).loanId(loanId).savingsId(savingsId).build();
+                .sortOrder(sortOrder).loanId(loanId).savingsId(savingsId).currencyCode(currencyCode).createdByUserId(createdByUserId)
+                .build();
         JournalEntryAssociationParametersData associationParametersData = new JournalEntryAssociationParametersData(transactionDetails,
                 runningBalance);
 
         final Page<JournalEntryData> glJournalEntries = this.journalEntryReadPlatformService.retrieveAll(searchParameters, glAccountId,
-                onlyManualEntries, fromDate, toDate, submittedOnDateFrom, submittedOnDateTo, transactionId, entityType,
+                onlyManualEntries, fromDate, toDate, submittedOnDateFrom, submittedOnDateTo, transactionId, entityType, departmentId,
                 associationParametersData);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.apiJsonSerializerService.serialize(settings, glJournalEntries, RESPONSE_DATA_PARAMETERS);
@@ -195,9 +199,11 @@ public class JournalEntriesApiResource {
     @Operation(summary = "Create \"Balanced\" Journal Entries", tags = {
             "Journal Entries" }, description = "Note: A Balanced (simple) Journal entry would have atleast one \"Debit\" and one \"Credit\" entry whose amounts are equal \n"
                     + "Compound Journal entries may have \"n\" debits and \"m\" credits where both \"m\" and \"n\" are greater than 0 and the net sum or all debits and credits are equal \n\n"
+                    + "Inter-branch Journal entries: each debit/credit line may carry its own officeId (defaults to the header officeId). "
+                    + "All lines are posted under a single transactionId; when exactly two offices are left unbalanced, bridging legs on the configured inter-branch clearing account are added automatically \n\n"
                     + "\n" + "Mandatory Fields\n" + "officeId, transactionDate\n\n" + "\ncredits- glAccountId, amount, comments\n\n "
                     + "\ndebits-  glAccountId, amount, comments\n\n " + "\n" + "Optional Fields\n"
-                    + "paymentTypeId, accountNumber, checkNumber, routingCode, receiptNumber, bankNumber")
+                    + "paymentTypeId, accountNumber, checkNumber, routingCode, receiptNumber, bankNumber, officeId (per debit/credit line)")
     @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntryCommand.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesResponse.class)))
     public String createGLJournalEntry(@Parameter(hidden = true) final String jsonRequestBody,
@@ -223,9 +229,14 @@ public class JournalEntriesApiResource {
     @Path("{transactionId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update Running balances for Journal Entries", tags = {
-            "Journal Entries" }, description = "This API calculates the running balances for office. If office ID not provided this API calculates running balances for all offices. \n"
-                    + "Mandatory Fields\n" + "officeId")
+    @Operation(summary = "Reverse journal entries or update narrations", tags = {
+            "Journal Entries" }, description = "Use command=reverse to reverse an unreversed manual journal transaction.\n"
+                    + "Use command=updateNarration to update the shared transactionComments on all unreversed manual lines "
+                    + "(does not change per-line comments).\n"
+                    + "Use command=updateLineNarrations to update per-line comments for specific entry ids in the transaction.\n"
+                    + "System-generated entries are not editable. Requires UPDATE_JOURNALENTRY permission.\n\n"
+                    + "updateNarration Mandatory Fields\n" + "transactionComments (max 500 characters)\n\n"
+                    + "updateLineNarrations Mandatory Fields\n" + "entries[{id, comments}] — each comments max 500 characters")
     @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdResponse.class)))
     public String createReversalJournalEntry(@Parameter(hidden = true) final String jsonRequestBody,
@@ -236,10 +247,39 @@ public class JournalEntriesApiResource {
             final CommandWrapper commandRequest = new CommandWrapperBuilder().reverseJournalEntry(transactionId).withJson(jsonRequestBody)
                     .build();
             result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        } else if (is(commandParam, "updateNarration")) {
+            final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryNarration(transactionId)
+                    .withJson(jsonRequestBody).build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
+        } else if (is(commandParam, "updateLineNarrations")) {
+            final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryLineNarrations(transactionId)
+                    .withJson(jsonRequestBody).build();
+            result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam);
         }
 
+        return this.apiJsonSerializerService.serialize(result);
+    }
+
+    @POST
+    @Path("entries/{journalEntryId}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Update a single journal line narration", tags = {
+            "Journal Entries" }, description = "Updates per-line comments (description) for one unreversed manual journal entry line. "
+                    + "Requires UPDATE_JOURNALENTRY permission.\n\n" + "Mandatory Fields\n" + "comments (max 500 characters)")
+    @RequestBody(content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesLineNarrationRequest.class)))
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = JournalEntriesApiResourceSwagger.PostJournalEntriesTransactionIdResponse.class)))
+    public String updateJournalEntryLineNarration(@Parameter(hidden = true) final String jsonRequestBody,
+            @PathParam("journalEntryId") @Parameter(description = "journalEntryId") final Long journalEntryId,
+            @QueryParam("command") @Parameter(description = "command") final String commandParam) {
+        if (!is(commandParam, "updateLineNarration")) {
+            throw new UnrecognizedQueryParamException("command", commandParam);
+        }
+        final CommandWrapper commandRequest = new CommandWrapperBuilder().updateJournalEntryLineNarration(journalEntryId)
+                .withJson(jsonRequestBody).build();
+        final CommandProcessingResult result = this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
         return this.apiJsonSerializerService.serialize(result);
     }
 
@@ -254,7 +294,7 @@ public class JournalEntriesApiResource {
         String transactionId = "P" + entryId;
         SearchParameters params = SearchParameters.builder().limit(limit).offset(offset).build();
         Page<JournalEntryData> entries = this.journalEntryReadPlatformService.retrieveAll(params, null, null, null, null, null, null,
-                transactionId, PortfolioProductType.PROVISIONING.getValue(), null);
+                transactionId, PortfolioProductType.PROVISIONING.getValue(), null, null);
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.apiJsonSerializerService.serialize(settings, entries, RESPONSE_DATA_PARAMETERS);
     }

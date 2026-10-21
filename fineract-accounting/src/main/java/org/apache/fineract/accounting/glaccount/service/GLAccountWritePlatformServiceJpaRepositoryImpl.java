@@ -46,6 +46,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.dao.NonTransientDataAccessException;
@@ -55,6 +56,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = GLAccountWritePlatformService.class, ignored = GLAccountWritePlatformServiceJpaRepositoryImpl.class)
 @RequiredArgsConstructor
 public class GLAccountWritePlatformServiceJpaRepositoryImpl implements GLAccountWritePlatformService {
 

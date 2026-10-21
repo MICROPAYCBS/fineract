@@ -1,0 +1,287 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.fineract.portfolio.savings.service;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import lombok.RequiredArgsConstructor;
+import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
+import org.apache.fineract.portfolio.charge.domain.Charge;
+import org.apache.fineract.portfolio.charge.domain.ChargeCalculationType;
+import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
+import org.apache.fineract.portfolio.savings.data.SavingsAccountPaymentChannelData;
+import org.apache.fineract.portfolio.savings.data.SavingsProductPaymentChannelData;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountAssembler;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountCharge;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountChargeRepositoryWrapper;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannel;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlock;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelBlockRepository;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountPaymentChannelRepository;
+import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepositoryWrapper;
+import org.apache.fineract.portfolio.savings.domain.SavingsPaymentChannelStatus;
+import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannel;
+import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannelCharge;
+import org.apache.fineract.portfolio.savings.domain.SavingsProductPaymentChannelRepository;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class SavingsAccountPaymentChannelWritePlatformService {
+
+    private final PlatformSecurityContext context;
+    private final SavingsAccountAssembler savingAccountAssembler;
+    private final SavingsAccountRepositoryWrapper savingAccountRepositoryWrapper;
+    private final SavingsAccountChargeRepositoryWrapper savingsAccountChargeRepository;
+    private final SavingsProductPaymentChannelRepository productChannelRepository;
+    private final SavingsAccountPaymentChannelRepository accountChannelRepository;
+    private final SavingsAccountPaymentChannelBlockRepository accountChannelBlockRepository;
+    private final SavingsPaymentChannelFeeHoldService feeHoldService;
+    private final SavingsProductPaymentChannelReadPlatformService productChannelReadPlatformService;
+
+    @Transactional(readOnly = true)
+    public Collection<SavingsAccountPaymentChannelData> retrieveAccountChannels(final Long savingsAccountId) {
+        this.context.authenticatedUser();
+        final SavingsAccount account = this.savingAccountRepositoryWrapper.findOneWithNotFoundDetection(savingsAccountId);
+        final Long productId = account.productId();
+        final List<SavingsProductPaymentChannel> productChannels = this.productChannelRepository.findByProductId(productId);
+        final Map<Long, SavingsAccountPaymentChannelBlock> openBlocks = new HashMap<>();
+        for (final SavingsAccountPaymentChannelBlock block : this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndUnblockedOnDateIsNull(savingsAccountId)) {
+            if (block.getProductPaymentChannel() != null && block.getProductPaymentChannel().getId() != null) {
+                openBlocks.put(block.getProductPaymentChannel().getId(), block);
+            }
+        }
+        final List<SavingsAccountPaymentChannelData> result = new ArrayList<>();
+        for (final SavingsProductPaymentChannel productChannel : productChannels) {
+            final Optional<SavingsAccountPaymentChannel> activeSub = this.accountChannelRepository
+                    .findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId,
+                            productChannel.getPaymentType().getId(), SavingsPaymentChannelStatus.ACTIVE.getValue());
+            final SavingsAccountPaymentChannelBlock block = productChannel.getId() == null ? null : openBlocks.get(productChannel.getId());
+            result.add(toAccountData(productChannel, activeSub.orElse(null), block));
+        }
+        return result;
+    }
+
+    @Transactional
+    public CommandProcessingResult subscribe(final Long savingsAccountId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final Long paymentTypeId = requirePaymentTypeId(command);
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsAccountId, false);
+
+        final SavingsProductPaymentChannel productChannel = this.productChannelRepository
+                .findByProductIdAndPaymentTypeId(account.productId(), paymentTypeId)
+                .orElseThrow(() -> validationException("paymentTypeId", paymentTypeId, "not.in.product.channel.catalog"));
+
+        if (!productChannel.isActive()) {
+            throw validationException("paymentTypeId", paymentTypeId, "channel.not.active");
+        }
+        if (!productChannel.isPremium()) {
+            throw validationException("paymentTypeId", paymentTypeId, "subscription.only.for.premium.channels");
+        }
+
+        final Optional<SavingsAccountPaymentChannel> existing = this.accountChannelRepository
+                .findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId, paymentTypeId,
+                        SavingsPaymentChannelStatus.ACTIVE.getValue());
+        if (existing.isPresent()) {
+            throw validationException("paymentTypeId", paymentTypeId, "already.subscribed");
+        }
+
+        final LocalDate today = DateUtils.getBusinessLocalDate();
+        final SavingsAccountPaymentChannel subscription = SavingsAccountPaymentChannel.subscribe(account, productChannel, today);
+
+        final DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MM yyyy");
+        for (final SavingsProductPaymentChannelCharge channelCharge : productChannel.getCharges()) {
+            final Charge chargeDefinition = channelCharge.getCharge();
+            ChargeTimeType chargeTime = null;
+            if (chargeDefinition.getChargeTimeType() != null) {
+                chargeTime = ChargeTimeType.fromInt(chargeDefinition.getChargeTimeType());
+            }
+            ChargeCalculationType chargeCalculation = null;
+            if (chargeDefinition.getChargeCalculation() != null) {
+                chargeCalculation = ChargeCalculationType.fromInt(chargeDefinition.getChargeCalculation());
+            }
+            final BigDecimal amount = channelCharge.getAmount() != null ? channelCharge.getAmount() : chargeDefinition.getAmount();
+            final SavingsAccountCharge savingsAccountCharge = SavingsAccountCharge.createNewWithoutSavingsAccount(chargeDefinition, amount,
+                    chargeTime, chargeCalculation, null, true, chargeDefinition.getFeeOnMonthDay(), chargeDefinition.feeInterval());
+            savingsAccountCharge.update(account);
+            if (chargeTime != null && (chargeTime.isWithdrawalFee() || chargeTime.isOverdraftFee())) {
+                savingsAccountCharge.bindToPaymentChannel(productChannel.getPaymentType().getId());
+            }
+            account.addCharge(fmt, savingsAccountCharge, chargeDefinition);
+            this.savingsAccountChargeRepository.save(savingsAccountCharge);
+            subscription.addLinkedCharge(savingsAccountCharge);
+        }
+
+        this.accountChannelRepository.save(subscription);
+        this.savingAccountRepositoryWrapper.saveAndFlush(account);
+
+        return new CommandProcessingResultBuilder().withEntityId(subscription.getId()).withSavingsId(savingsAccountId)
+                .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
+    }
+
+    @Transactional
+    public CommandProcessingResult unsubscribe(final Long savingsAccountId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final Long paymentTypeId = requirePaymentTypeId(command);
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsAccountId, false);
+
+        final SavingsAccountPaymentChannel subscription = this.accountChannelRepository
+                .findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId, paymentTypeId,
+                        SavingsPaymentChannelStatus.ACTIVE.getValue())
+                .orElseThrow(() -> validationException("paymentTypeId", paymentTypeId, "not.actively.subscribed"));
+
+        final LocalDate today = DateUtils.getBusinessLocalDate();
+        for (final var link : subscription.getLinkedCharges()) {
+            final SavingsAccountCharge charge = link.getSavingsAccountCharge();
+            if (charge == null || charge.isNotActive()) {
+                continue;
+            }
+            if (charge.isRecurringFee()) {
+                final LocalDate nextDueDate = charge.getNextDueDateFrom(today);
+                if (charge.isChargeIsDue(nextDueDate)) {
+                    // Period already due stays collectible. Paying or waiving it will not open another cycle.
+                    charge.endRecurrence();
+                } else {
+                    // Next cycle has not fallen due. Drop it. Payments already posted are left in place.
+                    account.inactivateCharge(charge, today);
+                }
+            } else if (charge.hasOutstanding()) {
+                charge.inactivateKeepingOutstanding(today);
+            } else {
+                charge.inactiavateCharge(today);
+            }
+            this.savingsAccountChargeRepository.save(charge);
+        }
+
+        subscription.unsubscribe(today);
+        this.accountChannelRepository.save(subscription);
+        this.savingAccountRepositoryWrapper.saveAndFlush(account);
+
+        return new CommandProcessingResultBuilder().withEntityId(subscription.getId()).withSavingsId(savingsAccountId)
+                .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
+    }
+
+    @Transactional
+    public CommandProcessingResult block(final Long savingsAccountId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final Long paymentTypeId = requirePaymentTypeId(command);
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsAccountId, false);
+        final SavingsProductPaymentChannel productChannel = requireProductChannel(account, paymentTypeId);
+
+        if (this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndProductPaymentChannel_IdAndUnblockedOnDateIsNull(savingsAccountId, productChannel.getId())
+                .isPresent()) {
+            throw validationException("paymentTypeId", paymentTypeId, "already.blocked");
+        }
+
+        final SavingsAccountPaymentChannelBlock block = SavingsAccountPaymentChannelBlock.block(account, productChannel,
+                DateUtils.getBusinessLocalDate());
+        this.accountChannelBlockRepository.saveAndFlush(block);
+
+        return new CommandProcessingResultBuilder().withEntityId(block.getId()).withSavingsId(savingsAccountId)
+                .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
+    }
+
+    @Transactional
+    public CommandProcessingResult unblock(final Long savingsAccountId, final JsonCommand command) {
+        this.context.authenticatedUser();
+        final Long paymentTypeId = requirePaymentTypeId(command);
+        final SavingsAccount account = this.savingAccountAssembler.assembleFrom(savingsAccountId, false);
+        final SavingsProductPaymentChannel productChannel = requireProductChannel(account, paymentTypeId);
+
+        final SavingsAccountPaymentChannelBlock block = this.accountChannelBlockRepository
+                .findBySavingsAccount_IdAndProductPaymentChannel_IdAndUnblockedOnDateIsNull(savingsAccountId, productChannel.getId())
+                .orElseThrow(() -> validationException("paymentTypeId", paymentTypeId, "not.blocked"));
+
+        block.setUnblockedOnDate(DateUtils.getBusinessLocalDate());
+        this.accountChannelBlockRepository.saveAndFlush(block);
+
+        this.accountChannelRepository.findFirstBySavingsAccountIdAndPaymentTypeIdAndStatusOrderByIdDesc(savingsAccountId, paymentTypeId,
+                SavingsPaymentChannelStatus.ACTIVE.getValue()).ifPresent(this.feeHoldService::skipMissedCycles);
+
+        return new CommandProcessingResultBuilder().withEntityId(block.getId()).withSavingsId(savingsAccountId)
+                .withOfficeId(account.officeId()).withClientId(account.clientId()).withGroupId(account.groupId()).build();
+    }
+
+    private SavingsAccountPaymentChannelData toAccountData(final SavingsProductPaymentChannel productChannel,
+            final SavingsAccountPaymentChannel subscription, final SavingsAccountPaymentChannelBlock block) {
+        final SavingsProductPaymentChannelData productData = this.productChannelReadPlatformService.toData(productChannel);
+        final boolean subscribed = subscription != null && subscription.isActive();
+        final boolean blocked = block != null && block.isOpen();
+        final boolean paymentTypeActive = productChannel.getPaymentType() == null
+                || !Boolean.FALSE.equals(productChannel.getPaymentType().getIsActive());
+        final boolean allowedForDeposit = paymentTypeActive && productChannel.isActive() && !blocked
+                && (!productChannel.isPremium() || subscribed);
+        EnumOptionData status = null;
+        LocalDate subscribedOn = null;
+        LocalDate unsubscribedOn = null;
+        Long subscriptionId = null;
+        if (subscription != null) {
+            final SavingsPaymentChannelStatus channelStatus = SavingsPaymentChannelStatus.fromInt(subscription.getStatus());
+            status = new EnumOptionData(channelStatus.getValue().longValue(), channelStatus.getCode(), channelStatus.name());
+            subscribedOn = subscription.getSubscribedOnDate();
+            unsubscribedOn = subscription.getUnsubscribedOnDate();
+            subscriptionId = subscription.getId();
+        }
+        return SavingsAccountPaymentChannelData.builder().id(subscriptionId).productPaymentChannelId(productData.getId())
+                .paymentTypeId(productData.getPaymentTypeId()).paymentType(productData.getPaymentType()).isPremium(productData.isPremium())
+                .isActive(productData.isActive()).name(productData.getName()).description(productData.getDescription())
+                .subscriptionStatus(status).subscribedOnDate(subscribedOn).unsubscribedOnDate(unsubscribedOn)
+                .allowedForDeposit(allowedForDeposit).blocked(blocked).blockedOnDate(blocked ? block.getBlockedOnDate() : null)
+                .charges(productData.getCharges()).build();
+    }
+
+    private SavingsProductPaymentChannel requireProductChannel(final SavingsAccount account, final Long paymentTypeId) {
+        return this.productChannelRepository.findByProductIdAndPaymentTypeId(account.productId(), paymentTypeId)
+                .orElseThrow(() -> validationException("paymentTypeId", paymentTypeId, "not.in.product.channel.catalog"));
+    }
+
+    private Long requirePaymentTypeId(final JsonCommand command) {
+        final Long paymentTypeId = command.longValueOfParameterNamed("paymentTypeId");
+        if (paymentTypeId == null) {
+            throw validationException("paymentTypeId", null, "parameter.mandatory");
+        }
+        return paymentTypeId;
+    }
+
+    private PlatformApiDataValidationException validationException(final String param, final Object value, final String code) {
+        final List<ApiParameterError> errors = new ArrayList<>();
+        final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(errors).resource("savingsaccount.paymentchannel");
+        baseDataValidator.reset().parameter(param).value(value).failWithCode(code);
+        return new PlatformApiDataValidationException(errors);
+    }
+}

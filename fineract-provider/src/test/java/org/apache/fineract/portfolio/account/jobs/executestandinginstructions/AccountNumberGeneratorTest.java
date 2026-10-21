@@ -25,6 +25,7 @@ import static org.mockito.Mockito.when;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberStructuredGenerationService;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.configuration.api.GlobalConfigurationConstants;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
@@ -48,6 +49,7 @@ import org.junit.jupiter.api.Test;
 public class AccountNumberGeneratorTest {
 
     private ConfigurationReadPlatformService configService;
+    private AccountNumberStructuredGenerationService structuredGenerationService;
     private ClientRepository clientRepo;
     private LoanRepository loanRepo;
     private SavingsAccountRepository savingsRepo;
@@ -57,12 +59,18 @@ public class AccountNumberGeneratorTest {
     @BeforeEach
     public void setup() {
         configService = mock(ConfigurationReadPlatformService.class);
+        structuredGenerationService = mock(AccountNumberStructuredGenerationService.class);
         clientRepo = mock(ClientRepository.class);
         loanRepo = mock(LoanRepository.class);
         savingsRepo = mock(SavingsAccountRepository.class);
         final WorkingCapitalLoanRepository workingCapitalLoanRepo = mock(WorkingCapitalLoanRepository.class);
 
-        generator = new AccountNumberGenerator(configService, clientRepo, loanRepo, savingsRepo, workingCapitalLoanRepo);
+        generator = new AccountNumberGenerator(configService, structuredGenerationService, clientRepo, loanRepo, savingsRepo,
+                workingCapitalLoanRepo);
+
+        GlobalConfigurationPropertyData structuredFormats = mock(GlobalConfigurationPropertyData.class);
+        when(structuredFormats.isEnabled()).thenReturn(false);
+        when(configService.retrieveGlobalConfiguration("structured-account-number-formats")).thenReturn(structuredFormats);
 
         GlobalConfigurationPropertyData accountLengthConfig = mock(GlobalConfigurationPropertyData.class);
         when(accountLengthConfig.getValue()).thenReturn(Long.valueOf("9"));
@@ -129,6 +137,40 @@ public class AccountNumberGeneratorTest {
 
         String accountNumber = generator.generate(savings, format);
         assertThat(accountNumber).isEqualTo("000000456");
+    }
+
+    @Test
+    public void testGenerateSavingsAccountNumberSkipsDuplicatePrefixedNumber() {
+        final GlobalConfigurationPropertyData accountLengthConfig = mock(GlobalConfigurationPropertyData.class);
+        when(accountLengthConfig.isEnabled()).thenReturn(true);
+        when(accountLengthConfig.getValue()).thenReturn(10L);
+        when(configService.retrieveGlobalConfiguration(GlobalConfigurationConstants.CUSTOM_ACCOUNT_NUMBER_LENGTH))
+                .thenReturn(accountLengthConfig);
+
+        final GlobalConfigurationPropertyData randomAccountConfig = mock(GlobalConfigurationPropertyData.class);
+        when(randomAccountConfig.isEnabled()).thenReturn(false);
+        when(configService.retrieveGlobalConfiguration(GlobalConfigurationConstants.RANDOM_ACCOUNT_NUMBER)).thenReturn(randomAccountConfig);
+
+        final SavingsAccount savings = mock(SavingsAccount.class);
+        final Office office = mock(Office.class);
+        final SavingsProduct product = mock(SavingsProduct.class);
+        when(savings.getId()).thenReturn(1L);
+        when(savings.office()).thenReturn(office);
+        when(office.getName()).thenReturn("Head Office");
+        when(savings.savingsProduct()).thenReturn(product);
+        when(product.getShortName()).thenReturn("CSV");
+
+        final AccountNumberFormat format = mock(AccountNumberFormat.class);
+        when(format.getPrefixEnum()).thenReturn(401);
+        when(format.getPrefixCharacter()).thenReturn("1");
+        when(format.getStructuredEnabled()).thenReturn(false);
+
+        final SavingsAccount existing = mock(SavingsAccount.class);
+        when(existing.getId()).thenReturn(50L);
+        when(savingsRepo.findSavingsAccountByAccountNumber("1000000001")).thenReturn(existing);
+
+        final String accountNumber = generator.generate(savings, format);
+        assertThat(accountNumber).isEqualTo("1000000002");
     }
 
     @Test

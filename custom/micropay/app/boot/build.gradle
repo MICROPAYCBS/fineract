@@ -1,0 +1,82 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+description = 'Micropay Fineract Application'
+
+group = 'com.micropay.fineract.app'
+
+// Runnable Fineract distribution for Micropay: upstream fineract-provider plus every
+// custom/micropay/** module. fineract-provider itself must not depend on custom modules
+// (circular), so this module is the one that assembles the deployable artifact.
+//
+//   ./gradlew :custom:micropay:app:boot:bootRun          # run locally
+//   ./gradlew :custom:micropay:app:boot:devRun           # run locally, skipping tests and quality checks
+//   ./gradlew :custom:micropay:app:boot:bootJar          # build/libs/micropay-fineract-boot-<version>.jar
+//   ./gradlew :custom:micropay:app:boot:quickBootJar     # same, skipping tests and quality checks
+//   ./gradlew :custom:micropay:app:boot:createNewTenant -PtenantIdentifier=demo
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        // Gradle 9 no longer bundles groovy-sql; tenant-tasks.gradle needs it.
+        classpath 'org.apache.groovy:groovy-sql:4.0.32'
+    }
+}
+
+apply plugin: 'org.springframework.boot'
+
+base {
+    archivesName = 'micropay-fineract-boot'
+}
+
+apply from: 'dependencies.gradle'
+apply from: 'tenant-tasks.gradle'
+apply from: 'quick-build.gradle'
+apply from: 'dev-run.gradle'
+
+springBoot {
+    mainClass = 'org.apache.fineract.ServerApplication'
+}
+
+bootRun {
+    jvmArgs = [
+        "-Dspring.output.ansi.enabled=ALWAYS"
+    ]
+}
+
+bootJar {
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    manifest {
+        attributes('Main-Class': 'org.springframework.boot.loader.launch.PropertiesLauncher', 'Implementation-Title': 'Micropay Fineract', 'Implementation-Version': project.version)
+    }
+    archiveClassifier = ''
+    doLast {
+        logger.lifecycle("Micropay JAR: {}", archiveFile.get().asFile)
+    }
+}
+
+tasks.register('quickBootJar') {
+    group = 'build'
+    description = 'Builds the Spring Boot executable JAR after compileJava, skipping tests and quality checks.'
+    dependsOn bootJar
+}
+
+// No tests or sources of its own; keep the quality tooling quiet for this assembly module.
+tasks.withType(Javadoc).configureEach { enabled = false }

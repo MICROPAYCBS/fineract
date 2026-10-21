@@ -47,6 +47,7 @@ import org.apache.fineract.infrastructure.dataqueries.domain.EntityDatatableChec
 import org.apache.fineract.infrastructure.dataqueries.domain.EntityDatatableChecksRepository;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
 import org.apache.fineract.portfolio.client.domain.LegalForm;
+import org.apache.fineract.portfolio.client.service.ClientIdentifierValidationService;
 import org.apache.fineract.validation.constraints.DateFormatValidator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -56,16 +57,19 @@ public final class ClientDataValidator {
 
     private final FromJsonHelper fromApiJsonHelper;
     private final ConfigurationReadPlatformService configurationReadPlatformService;
+    private final ClientIdentifierValidationService clientIdentifierValidationService;
     private final EntityDatatableChecksRepository entityDatatableChecksRepository;
     private final PhoneNumberValidationService phoneNumberValidationService;
 
     @Autowired
     public ClientDataValidator(final FromJsonHelper fromApiJsonHelper,
             final ConfigurationReadPlatformService configurationReadPlatformService,
+            final ClientIdentifierValidationService clientIdentifierValidationService,
             final EntityDatatableChecksRepository entityDatatableChecksRepository,
             final PhoneNumberValidationService phoneNumberValidationService) {
         this.fromApiJsonHelper = fromApiJsonHelper;
         this.configurationReadPlatformService = configurationReadPlatformService;
+        this.clientIdentifierValidationService = clientIdentifierValidationService;
         this.entityDatatableChecksRepository = entityDatatableChecksRepository;
         this.phoneNumberValidationService = phoneNumberValidationService;
     }
@@ -110,7 +114,7 @@ public final class ClientDataValidator {
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.accountNoParamName, element)) {
             final String accountNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.accountNoParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.accountNoParamName).value(accountNo).notBlank().notExceedingLengthOf(20);
+            baseDataValidator.reset().parameter(ClientApiConstants.accountNoParamName).value(accountNo).notBlank().notExceedingLengthOf(34);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.savingsProductIdParamName, element)) {
@@ -179,6 +183,64 @@ public final class ClientDataValidator {
                     .matchesRegularExpression(phoneNumberValidationService.getRegex()).notExceedingLengthOf(50);
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.taxIdentificationNumberParamName, element)) {
+            final String taxIdentificationNumber = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.taxIdentificationNumberParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.taxIdentificationNumberParamName).value(taxIdentificationNumber)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeMobileNoParamName, element)) {
+            final String alternativeMobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.alternativeMobileNoParamName,
+                    element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
+                    .matchesRegularExpression(phoneNumberValidationService.getRegex()).notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeEmailAddressParamName, element)) {
+            final String alternativeEmailAddress = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.alternativeEmailAddressParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeEmailAddressParamName).value(alternativeEmailAddress)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.subIndustryIdParamName, element)) {
+            final Long subIndustryId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.subIndustryIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.subIndustryIdParamName).value(subIndustryId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.customerClassIdParamName, element)) {
+            final Long customerClassId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.customerClassIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.customerClassIdParamName).value(customerClassId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.titleIdParamName, element)) {
+            final Long titleId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.titleIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.titleIdParamName).value(titleId).ignoreIfNull().integerGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.nationalityCountryIdParamName, element)) {
+            final Long nationalityCountryId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.nationalityCountryIdParamName,
+                    element);
+            baseDataValidator.reset().parameter(ClientApiConstants.nationalityCountryIdParamName).value(nationalityCountryId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.customerRiskProfileIdParamName, element)) {
+            final Long customerRiskProfileId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.customerRiskProfileIdParamName,
+                    element);
+            baseDataValidator.reset().parameter(ClientApiConstants.customerRiskProfileIdParamName).value(customerRiskProfileId)
+                    .ignoreIfNull().integerGreaterThanZero();
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.maritalStatusIdParamName, element)) {
+            final Long maritalStatusId = this.fromApiJsonHelper.extractLongNamed(ClientApiConstants.maritalStatusIdParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.maritalStatusIdParamName).value(maritalStatusId).ignoreIfNull()
+                    .integerGreaterThanZero();
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             if (active.booleanValue()) {
@@ -209,7 +271,7 @@ public final class ClientDataValidator {
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.genderIdParamName, element)) {
             final Integer genderId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ClientApiConstants.genderIdParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId).integerGreaterThanZero();
+            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId).isOneOfTheseValues(1, 2);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.clientTypeIdParamName, element)) {
@@ -256,6 +318,8 @@ public final class ClientDataValidator {
         List<ApiParameterError> dataValidationErrorsForClientNonPerson = getDataValidationErrorsForCreateOnClientNonPerson(
                 element.getAsJsonObject().get(ClientApiConstants.clientNonPersonDetailsParamName));
         dataValidationErrors.addAll(dataValidationErrorsForClientNonPerson);
+
+        this.clientIdentifierValidationService.validateAtLeastOneIdentifierForPersonCreate(element, legalFormId);
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);
     }
@@ -397,7 +461,7 @@ public final class ClientDataValidator {
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.accountNoParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
             final String accountNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.accountNoParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.accountNoParamName).value(accountNo).notBlank().notExceedingLengthOf(20);
+            baseDataValidator.reset().parameter(ClientApiConstants.accountNoParamName).value(accountNo).notBlank().notExceedingLengthOf(34);
         }
 
         if (isFullnameProvided(element) || isIndividualNameProvided(element)) {
@@ -467,6 +531,30 @@ public final class ClientDataValidator {
                     .matchesRegularExpression(phoneNumberValidationService.getRegex()).notExceedingLengthOf(50);
         }
 
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.taxIdentificationNumberParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String taxIdentificationNumber = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.taxIdentificationNumberParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.taxIdentificationNumberParamName).value(taxIdentificationNumber)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeMobileNoParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String alternativeMobileNo = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.alternativeMobileNoParamName,
+                    element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeMobileNoParamName).value(alternativeMobileNo).ignoreIfNull()
+                    .matchesRegularExpression(phoneNumberValidationService.getRegex()).notExceedingLengthOf(50);
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.alternativeEmailAddressParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String alternativeEmailAddress = this.fromApiJsonHelper
+                    .extractStringNamed(ClientApiConstants.alternativeEmailAddressParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.alternativeEmailAddressParamName).value(alternativeEmailAddress)
+                    .ignoreIfNull().notExceedingLengthOf(50);
+        }
+
         final Boolean active = this.fromApiJsonHelper.extractBooleanNamed(ClientApiConstants.activeParamName, element);
         if (active != null) {
             atLeastOneParameterPassedForUpdate = true;
@@ -493,7 +581,7 @@ public final class ClientDataValidator {
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.genderIdParamName, element)) {
             atLeastOneParameterPassedForUpdate = true;
             final Integer genderId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ClientApiConstants.genderIdParamName, element);
-            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId).integerGreaterThanZero();
+            baseDataValidator.reset().parameter(ClientApiConstants.genderIdParamName).value(genderId).isOneOfTheseValues(1, 2);
         }
 
         if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.clientTypeIdParamName, element)) {
@@ -531,16 +619,27 @@ public final class ClientDataValidator {
                     .validDateTimeFormatPattern();
         }
 
-        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.legalFormIdParamName, element)) {
-            atLeastOneParameterPassedForUpdate = true;
-            final Integer legalFormId = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ClientApiConstants.legalFormIdParamName,
-                    element);
-            baseDataValidator.reset().parameter(ClientApiConstants.legalFormIdParamName).value(legalFormId).notNull().inMinMaxRange(1, 2);
-        }
-
         if (this.fromApiJsonHelper.parameterExists("isStaff", element)) {
+            atLeastOneParameterPassedForUpdate = true;
             final Boolean isStaffFlag = this.fromApiJsonHelper.extractBooleanNamed("isStaff", element);
             baseDataValidator.reset().parameter("isStaff").value(isStaffFlag).notNull();
+        }
+
+        for (final String idParam : List.of(ClientApiConstants.subIndustryIdParamName, ClientApiConstants.customerClassIdParamName,
+                ClientApiConstants.titleIdParamName, ClientApiConstants.nationalityCountryIdParamName,
+                ClientApiConstants.customerRiskProfileIdParamName, ClientApiConstants.maritalStatusIdParamName)) {
+            if (this.fromApiJsonHelper.parameterExists(idParam, element)) {
+                atLeastOneParameterPassedForUpdate = true;
+                final Long id = this.fromApiJsonHelper.extractLongNamed(idParam, element);
+                baseDataValidator.reset().parameter(idParam).value(id).ignoreIfNull().longGreaterThanZero();
+            }
+        }
+
+        if (this.fromApiJsonHelper.parameterExists(ClientApiConstants.emailAddressParamName, element)) {
+            atLeastOneParameterPassedForUpdate = true;
+            final String emailAddress = this.fromApiJsonHelper.extractStringNamed(ClientApiConstants.emailAddressParamName, element);
+            baseDataValidator.reset().parameter(ClientApiConstants.emailAddressParamName).value(emailAddress).ignoreIfNull()
+                    .notExceedingLengthOf(50);
         }
 
         validateDateFormatWhenPresent(element, dataValidationErrors);

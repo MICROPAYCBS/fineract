@@ -39,6 +39,7 @@ import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepository;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.configuration.service.BackdatedTransactionValidationService;
+import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -114,6 +115,7 @@ public class LoanTransactionValidatorImpl implements LoanTransactionValidator {
     private final LoanDisbursementValidator loanDisbursementValidator;
     private final CodeValueRepository codeValueRepository;
     private final ConfigurationDomainService configurationDomainService;
+    private final ConfigurationReadPlatformService configurationReadPlatformService;
     private final BackdatedTransactionValidationService backdatedTransactionValidationService;
 
     private void throwExceptionIfValidationWarningsExist(final List<ApiParameterError> dataValidationErrors) {
@@ -1178,6 +1180,19 @@ public class LoanTransactionValidatorImpl implements LoanTransactionValidator {
                 baseDataValidator.reset().parameter(LoanTransactionApiConstants.TRANSACTION_CLASSIFICATIONID_PARAMNAME)
                         .failWithCode("code.value.classification.not.exists", "Code value does not exists in the code " + codeName);
             }
+        }
+    }
+
+    @Override
+    public void validateDirectLoanRepaymentPermitted(final LoanTransactionType repaymentTransactionType,
+            final boolean isRecoveryRepayment) {
+        if (this.configurationReadPlatformService.retrieveGlobalConfiguration("allow-direct-loan-repayments").isEnabled()) {
+            return;
+        }
+        if (repaymentTransactionType.isRepayment() || repaymentTransactionType.isDownPayment() || isRecoveryRepayment) {
+            throw new GeneralPlatformDomainRuleException("error.msg.direct.loan.repayment.not.allowed",
+                    "Direct loan repayments are not allowed. Repay the loan by transferring from the client's savings account.",
+                    repaymentTransactionType.getCode());
         }
     }
 }

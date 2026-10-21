@@ -27,7 +27,7 @@ public final class InterestRateChartApiConstants {
     public static final String INTERESTRATE_CHART_RESOURCE_NAME = "interestchart";
 
     // actions
-    public static final String summitalAction = ".summital";
+    public static final String submittalAction = ".submittal";
 
     // command
     public static final String COMMAND_UNDO_TRANSACTION = "undo";

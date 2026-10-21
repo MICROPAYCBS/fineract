@@ -99,6 +99,7 @@ import org.apache.fineract.portfolio.client.domain.Client;
 import org.apache.fineract.portfolio.common.domain.PeriodFrequencyType;
 import org.apache.fineract.portfolio.group.domain.Group;
 import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
+import org.apache.fineract.portfolio.paymenttype.domain.PaymentType;
 import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.SavingsAccountTransactionType;
 import org.apache.fineract.portfolio.savings.SavingsApiConstants;
@@ -142,7 +143,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
     @Version
     int version;
 
-    @Column(name = "account_no", length = 20, unique = true, nullable = false)
+    @Column(name = "account_no", length = 34, unique = true, nullable = false)
     protected String accountNumber;
 
     @Column(name = "external_id", nullable = true)
@@ -1127,6 +1128,13 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
     public SavingsAccountTransaction withdraw(final SavingsAccountTransactionDTO transactionDTO, final boolean applyWithdrawFee,
             final boolean backdatedTxnsAllowedTill, final Long relaxingDaysConfigForPivotDate, String refNo) {
+        return withdraw(transactionDTO, applyWithdrawFee, backdatedTxnsAllowedTill, relaxingDaysConfigForPivotDate, refNo,
+                SavingsAccountTransactionType.WITHDRAWAL);
+    }
+
+    public SavingsAccountTransaction withdraw(final SavingsAccountTransactionDTO transactionDTO, final boolean applyWithdrawFee,
+            final boolean backdatedTxnsAllowedTill, final Long relaxingDaysConfigForPivotDate, String refNo,
+            final SavingsAccountTransactionType transactionType) {
         if (!isTransactionsAllowed()) {
 
             final String defaultUserMessage = "Transaction is not allowed. Account is not active.";
@@ -1188,7 +1196,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
         final Money transactionAmountMoney = Money.of(this.currency, transactionDTO.getTransactionAmount());
         final SavingsAccountTransaction transaction = SavingsAccountTransaction.withdrawal(this, office(),
-                transactionDTO.getPaymentDetail(), transactionDTO.getTransactionDate(), transactionAmountMoney, refNo);
+                transactionDTO.getPaymentDetail(), transactionDTO.getTransactionDate(), transactionAmountMoney, transactionType, refNo);
 
         if (backdatedTxnsAllowedTill) {
             addTransactionToExisting(transaction);
@@ -1209,10 +1217,14 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
     }
 
     public BigDecimal calculateWithdrawalFee(final BigDecimal transactionAmount) {
+        return calculateWithdrawalFee(transactionAmount, null);
+    }
+
+    public BigDecimal calculateWithdrawalFee(final BigDecimal transactionAmount, final PaymentType paymentType) {
         BigDecimal result = BigDecimal.ZERO;
         if (isWithdrawalFeeApplicableForTransfer()) {
             for (SavingsAccountCharge charge : this.charges()) {
-                if (charge.isWithdrawalFee() && charge.isActive()) {
+                if (charge.isWithdrawalFee() && charge.isActive() && charge.appliesToPaymentChannel(paymentType)) {
                     result = result.add(charge.calculateWithdralFeeAmount(transactionAmount), MoneyHelper.getMathContext());
                 }
             }
@@ -1224,6 +1236,9 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
             final boolean backdatedTxnsAllowedTill, final String refNo) {
         for (SavingsAccountCharge charge : this.charges()) {
             if (charge.isWithdrawalFee() && charge.isActive()) {
+                if (!charge.appliesToPaymentChannel(paymentDetail == null ? null : paymentDetail.getPaymentType())) {
+                    continue;
+                }
 
                 if (charge.getFreeWithdrawalCount() == null) {
                     charge.setFreeWithdrawalCount(0);
@@ -2129,7 +2144,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors)
-                .resource(resourceName + SavingsApiConstants.summitalAction);
+                .resource(resourceName + SavingsApiConstants.submittalAction);
 
         validateLockinDetails(baseDataValidator);
         if (!dataValidationErrors.isEmpty()) {
@@ -2140,6 +2155,19 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
         if (DateUtils.isDateInTheFuture(submittedOn)) {
             baseDataValidator.reset().parameter(SavingsApiConstants.submittedOnDateParamName).value(submittedOn)
                     .failWithCodeNoParameterAddedToErrorCode("cannot.be.a.future.date");
+        }
+
+        if (this.product != null) {
+            final LocalDate productStartDate = this.product.getStartDate();
+            final LocalDate productCloseDate = this.product.getCloseDate();
+            if (DateUtils.isBefore(submittedOn, productStartDate)) {
+                baseDataValidator.reset().parameter(SavingsApiConstants.submittedOnDateParamName).value(submittedOn)
+                        .failWithCodeNoParameterAddedToErrorCode("cannot.be.before.savings.product.start.date");
+            }
+            if (productCloseDate != null && DateUtils.isAfter(submittedOn, productCloseDate)) {
+                baseDataValidator.reset().parameter(SavingsApiConstants.submittedOnDateParamName).value(submittedOn)
+                        .failWithCodeNoParameterAddedToErrorCode("cannot.be.after.savings.product.close.date");
+            }
         }
 
         if (this.client != null && this.client.isActivatedAfter(submittedOn)) {
@@ -2990,7 +3018,7 @@ public class SavingsAccount extends AbstractAuditableWithUTCDateTimeCustom<Long>
             }
         }
 
-        if (savingsAccountCharge.isNotActive()) {
+        if (savingsAccountCharge.isNotActive() && !savingsAccountCharge.hasOutstanding()) {
             baseDataValidator.reset().failWithCodeNoParameterAddedToErrorCode("charge.is.not.active");
             if (!dataValidationErrors.isEmpty()) {
                 throw new PlatformApiDataValidationException(dataValidationErrors);

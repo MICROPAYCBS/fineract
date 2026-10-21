@@ -189,6 +189,14 @@
         },
         {
             "default": null,
+            "name": "submittedByUsername",
+            "type": [
+                "null",
+                "string"
+            ]
+        },
+        {
+            "default": null,
             "name": "manuallyReversed",
             "type": [
                 "null",

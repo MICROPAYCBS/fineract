@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: add department filter to Income Statement and Trial Balance table reports.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/micropay/parts/3070_add_department_filter_core_accounting_table_reports.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.1.xsd">
+
+    <changeSet author="micropay" id="3070-mysql-department-filter" context="mysql">
+        <sqlFile path="db/custom-sql/micropay/V3070__core_accounting_reports_department_filter.mysql.sql"
+            splitStatements="true"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3070-postgresql-department-filter" context="postgresql">
+        <sqlFile path="db/custom-sql/micropay/V3070__core_accounting_reports_department_filter.postgresql.sql"
+            splitStatements="true"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3070-department-stretchy-parameter">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_parameter WHERE parameter_name = 'departmentIdSelectAll'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_parameter">
+            <column name="id" valueNumeric="3070"/>
+            <column name="parameter_name" value="departmentIdSelectAll"/>
+            <column name="parameter_variable" value="departmentId"/>
+            <column name="parameter_label" value="Department"/>
+            <column name="parameter_displayType" value="select"/>
+            <column name="parameter_FormatType" value="number"/>
+            <column name="parameter_default" value="-1"/>
+            <column name="special"/>
+            <column name="selectOne"/>
+            <column name="selectAll" value="Y"/>
+            <column name="parameter_sql" value="select id, department_name from m_department where active = true order by department_name"/>
+            <column name="parent_id"/>
+        </insert>
+    </changeSet>
+
+    <changeSet author="micropay" id="3070-department-report-parameters">
+        <sql>
+            INSERT INTO stretchy_report_parameter (report_id, parameter_id, report_parameter_name)
+            SELECT sr.id, 3070, 'departmentId'
+            FROM stretchy_report sr
+            WHERE sr.report_name IN ('Trial Balance Table', 'Income Statement Table')
+              AND NOT EXISTS (
+                SELECT 1 FROM stretchy_report_parameter existing
+                WHERE existing.report_id = sr.id AND existing.parameter_id = 3070
+              );
+        </sql>
+    </changeSet>
+
+</databaseChangeLog>

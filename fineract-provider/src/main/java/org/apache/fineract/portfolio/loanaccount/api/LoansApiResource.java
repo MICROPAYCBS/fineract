@@ -261,12 +261,12 @@ public class LoansApiResource {
             "interestRateFrequencyTypeOptions", "fundOptions", "repaymentStrategyOptions", "chargeOptions", "loanOfficerOptions",
             "loanPurposeOptions", "loanCollateralOptions", "chargeTemplate", "calendarOptions", "syncDisbursementWithMeeting",
             "loanCounter", "loanProductCounter", "notes", "originators", "accountLinkingOptions", "linkedAccount",
-            "interestRateDifferential", "isFloatingInterestRate", "interestRatesPeriods", "lastClosedBusinessDate",
-            LoanApiConstants.canUseForTopup, LoanApiConstants.isTopup, LoanApiConstants.loanIdToClose, LoanApiConstants.topupAmount,
-            LoanApiConstants.clientActiveLoanOptions, LoanApiConstants.datatables, LoanProductConstants.RATES_PARAM_NAME,
-            LoanApiConstants.MULTIDISBURSE_DETAILS_PARAMNAME, LoanApiConstants.EMI_AMOUNT_VARIATIONS_PARAMNAME,
-            LoanApiConstants.COLLECTION_PARAMNAME, LoanApiConstants.INTEREST_RECOGNITION_ON_DISBURSEMENT_DATE,
-            LoanApiConstants.daysInYearCustomStrategyParameterName));
+            "interestRateDifferential", "isFloatingInterestRate", "interestRatesPeriods", "lastClosedBusinessDate", "deliberateNpa",
+            "npaReasonId", "npaReason", "npaReasonNote", "deliberateNpaOnDate", LoanApiConstants.canUseForTopup, LoanApiConstants.isTopup,
+            LoanApiConstants.loanIdToClose, LoanApiConstants.topupAmount, LoanApiConstants.clientActiveLoanOptions,
+            LoanApiConstants.datatables, LoanProductConstants.RATES_PARAM_NAME, LoanApiConstants.MULTIDISBURSE_DETAILS_PARAMNAME,
+            LoanApiConstants.EMI_AMOUNT_VARIATIONS_PARAMNAME, LoanApiConstants.COLLECTION_PARAMNAME,
+            LoanApiConstants.INTEREST_RECOGNITION_ON_DISBURSEMENT_DATE, LoanApiConstants.daysInYearCustomStrategyParameterName));
 
     private static final Set<String> LOAN_APPROVAL_DATA_PARAMETERS = new HashSet<>(Arrays.asList("approvalDate", "approvalAmount"));
     private static final Set<String> GLIM_ACCOUNTS_DATA_PARAMETERS = new HashSet<>(Arrays.asList("glimId", "groupId", "clientId",
@@ -1378,6 +1378,12 @@ public class LoansApiResource {
             commandRequest = builder.applyContractTermination(resolvedLoanId).build();
         } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.UNDO_CONTRACT_TERMINATION_COMMAND)) {
             commandRequest = builder.undoContractTermination(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.ACCRUE_COMMAND)) {
+            commandRequest = builder.accrueLoan(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.MARK_AS_NPA_COMMAND)) {
+            commandRequest = builder.markAsNpa(resolvedLoanId).build();
+        } else if (CommandParameterUtil.is(commandParam, LoanApiConstants.UNDO_MARK_AS_NPA_COMMAND)) {
+            commandRequest = builder.undoMarkAsNpa(resolvedLoanId).build();
         }
 
         if (commandRequest == null) {

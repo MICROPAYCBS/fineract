@@ -1,30 +1,37 @@
 openapi: 3.0.3
 info:
   version: @VERSION@
-  title: Apache Fineract REST API
+  title: Micropay CBS API
   description: |-
-    Apache Fineract is a secure, multi-tenanted microfinance platform.
-    The goal of the Apache Fineract API is to empower developers to build apps on top of the Apache Fineract Platform.
-    The [reference app](https://cui.fineract.dev) (username: mifos, password: password) works on the same demo tenant as the interactive links in this documentation.
-    Until we complete the new REST API documentation you still have the legacy documentation available [here](https://fineract.apache.org/docs/legacy/).
-    Please check [the current Fineract documentation](https://fineract.apache.org/docs/current/) for more information.
-  contact:
-    email: dev@fineract.apache.org
+    Micropay CBS is a core banking platform. This document is the endpoint reference for applications that call the Micropay API.
+    Start with the [API basics](https://micropay-cbs-docs.vercel.app/docs/developers/api-basics).
+    Send `fineract-platform-tenantid` on every request and HTTP Basic credentials. Send `Fineract-Platform-TFA-Token` when the user does not have the `BYPASS_TWOFACTOR` permission.
+    Writes that maker-checker holds return `{ commandId, resourceId, rollbackTransaction: true }`. A held create's `resourceId` does not exist until the command is approved.
+    To retry a write safely, send an `Idempotency-Key` header with a value unique to that action and reuse it on each retry. A repeat of a finished command returns the first result with `x-served-from-cache: true`; a repeat while it is still running returns `425`. Writes that bypass the command framework, such as datatable column validation, ignore the header.
   license:
     name: Apache 2.0
     url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
 servers:
   - url: /fineract-provider/api
-  - url: https://demo.fineract.dev/fineract-provider/api
 components:
   securitySchemes:
     basicAuth:
       type: http
       scheme: basic
-    tenantid:        
+    tenantid:
       type: apiKey
-      in: header       
-      name: fineract-platform-tenantid 
+      in: header
+      name: fineract-platform-tenantid
+    twoFactor:
+      type: apiKey
+      in: header
+      name: Fineract-Platform-TFA-Token
+      description: >-
+        Two-factor access token from POST /v1/twofactor/validate.
+        Optional for users who have the BYPASS_TWOFACTOR permission.
 security:
+  - basicAuth: []
+    tenantid: []
+    twoFactor: []
   - basicAuth: []
     tenantid: []

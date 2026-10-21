@@ -50,16 +50,22 @@ public class SavingsAccountTransactionEnumData implements Serializable {
     private final boolean amountHold;
     private final boolean amountRelease;
     private final boolean accrual;
+    private final boolean glToSavings;
+    private final boolean savingsToGl;
 
     public SavingsAccountTransactionEnumData(final Long id, final String code, final String value) {
         this.id = id;
         this.code = code;
         this.value = value;
         SavingsAccountTransactionType transactionType = id == null ? null : SavingsAccountTransactionType.fromInt(id.intValue());
-        this.deposit = transactionType == SavingsAccountTransactionType.DEPOSIT;
+        this.deposit = transactionType == SavingsAccountTransactionType.DEPOSIT
+                || transactionType == SavingsAccountTransactionType.GL_TO_SAVINGS;
         this.dividendPayout = transactionType == SavingsAccountTransactionType.DIVIDEND_PAYOUT;
         this.accrual = transactionType == SavingsAccountTransactionType.ACCRUAL;
-        this.withdrawal = transactionType == SavingsAccountTransactionType.WITHDRAWAL;
+        this.withdrawal = transactionType == SavingsAccountTransactionType.WITHDRAWAL
+                || transactionType == SavingsAccountTransactionType.SAVINGS_TO_GL;
+        this.glToSavings = transactionType == SavingsAccountTransactionType.GL_TO_SAVINGS;
+        this.savingsToGl = transactionType == SavingsAccountTransactionType.SAVINGS_TO_GL;
         this.interestPosting = transactionType == SavingsAccountTransactionType.INTEREST_POSTING;
         this.feeDeduction = transactionType == SavingsAccountTransactionType.ANNUAL_FEE
                 || transactionType == SavingsAccountTransactionType.WITHDRAWAL_FEE

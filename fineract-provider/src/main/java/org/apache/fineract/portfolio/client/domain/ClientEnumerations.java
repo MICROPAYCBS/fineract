@@ -39,6 +39,9 @@ public final class ClientEnumerations {
             case INVALID:
                 optionData = new EnumOptionData(ClientStatus.INVALID.getValue().longValue(), ClientStatus.INVALID.getCode(), "Invalid");
             break;
+            case DRAFT:
+                optionData = new EnumOptionData(ClientStatus.DRAFT.getValue().longValue(), ClientStatus.DRAFT.getCode(), "Draft");
+            break;
             case PENDING:
                 optionData = new EnumOptionData(ClientStatus.PENDING.getValue().longValue(), ClientStatus.PENDING.getCode(), "Pending");
             break;
@@ -74,6 +77,25 @@ public final class ClientEnumerations {
 
     public static EnumOptionData legalForm(final LegalForm legalForm) {
         return new EnumOptionData(legalForm.getValue().longValue(), legalForm.getCode(), legalForm.toString());
+    }
+
+    public static EnumOptionData gender(final Integer genderId) {
+        return gender(Gender.fromInt(genderId));
+    }
+
+    public static EnumOptionData gender(final Gender gender) {
+        if (gender == null) {
+            return null;
+        }
+        return new EnumOptionData(gender.getValue().longValue(), gender.getCode(), gender.getLabel());
+    }
+
+    public static List<EnumOptionData> gender(final Gender[] genders) {
+        final List<EnumOptionData> optionDatas = new ArrayList<>();
+        for (final Gender gender : genders) {
+            optionDatas.add(gender(gender));
+        }
+        return optionDatas;
     }
 
     public static List<EnumOptionData> legalForm(final LegalForm[] legalForms) {

@@ -60,7 +60,8 @@ public interface JournalEntryMapper {
     @Mapping(target = "createdDate", ignore = true)
     @Mapping(target = "createdByUserId", ignore = true)
     @Mapping(target = "createdByUserName", ignore = true)
-    @Mapping(target = "comments", ignore = true)
+    @Mapping(target = "comments", source = "description")
+    @Mapping(target = "transactionComments", source = "transactionComment")
     @Mapping(target = "officeRunningBalance", ignore = true)
     @Mapping(target = "organizationRunningBalance", ignore = true)
     @Mapping(target = "runningBalanceComputed", ignore = true)
@@ -72,6 +73,8 @@ public interface JournalEntryMapper {
     @Mapping(target = "transactionDetails", ignore = true)
     @Mapping(target = "savingTransactionId", ignore = true)
     @Mapping(target = "externalAssetOwner", ignore = true)
+    @Mapping(target = "departmentId", source = "departmentId")
+    @Mapping(target = "departmentName", ignore = true)
     JournalEntryData map(JournalEntry journalEntry);
 
     @Named("entityType")

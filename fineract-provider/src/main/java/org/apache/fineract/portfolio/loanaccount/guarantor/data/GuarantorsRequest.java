@@ -55,6 +55,7 @@ public class GuarantorsRequest implements Serializable {
     private String mobileNumber;
     private String housePhoneNumber;
     private String comment;
+    private String nationalIdNumber;
     private String dob;
     private Long savingsId;
     private BigDecimal amount;

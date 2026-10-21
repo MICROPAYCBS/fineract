@@ -49,6 +49,7 @@ import org.apache.fineract.infrastructure.dataqueries.data.ResultsetColumnValueD
 import org.apache.fineract.infrastructure.dataqueries.data.ResultsetRowData;
 import org.apache.fineract.infrastructure.dataqueries.exception.DatatableNotFoundException;
 import org.jspecify.annotations.NonNull;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.DataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
@@ -56,6 +57,7 @@ import org.springframework.jdbc.support.rowset.SqlRowSetMetaData;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = GenericDataService.class, ignored = GenericDataServiceImpl.class)
 @Slf4j
 @RequiredArgsConstructor
 public class GenericDataServiceImpl implements GenericDataService {

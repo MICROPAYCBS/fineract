@@ -221,6 +221,11 @@ public class LoanAccountData {
     private Boolean inArrears;
     // TODO: avoid prefix "is"
     private Boolean isNPA;
+    private Boolean deliberateNpa;
+    private Long npaReasonId;
+    private String npaReason;
+    private String npaReasonNote;
+    private LocalDate deliberateNpaOnDate;
     private Collection<ChargeData> overdueCharges;
 
     private EnumOptionData daysInMonthType;

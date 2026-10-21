@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: human-friendly labels for the stock report parameters.
+
+  These labels used to be edited in place in the upstream changelogs
+  0002_initial_data.xml (changeSet 40-mysql) and 0003_postgresql_specific_initial_data.xml
+  (changeSet 1-postgresql). Those files are back to their upstream content; this changeset
+  applies the same label values as a plain UPDATE so the customization lives in the custom
+  module and no longer conflicts with upstream.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/micropay/parts/3106_report_parameter_labels.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="micropay" id="3106-report-parameter-labels">
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Start Date"/>
+            <where>parameter_name = 'startDateSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="End Date"/>
+            <where>parameter_name = 'endDateSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Obligation Date Type"/>
+            <where>parameter_name = 'obligDateTypeSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Branch"/>
+            <where>parameter_name = 'OfficeIdSelectOne'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="PAR Type"/>
+            <where>parameter_name = 'parTypeSelect'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Account Number"/>
+            <where>parameter_name = 'selectAccount'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Savings Product"/>
+            <where>parameter_name = 'savingsProductIdSelectAll'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Transaction ID"/>
+            <where>parameter_name = 'transactionId'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Center"/>
+            <where>parameter_name = 'selectCenterId'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="GL Account Number"/>
+            <where>parameter_name = 'SelectGLAccountNO'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="As On Date"/>
+            <where>parameter_name = 'asOnDate'</where>
+        </update>
+        <update tableName="stretchy_parameter">
+            <column name="parameter_label" value="Savings Account Status"/>
+            <where>parameter_name = 'SavingsAccountSubStatus'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

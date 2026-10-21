@@ -55,6 +55,7 @@ public class GuarantorTestBuilder {
             map.put("city", city);
             map.put("state", state);
             map.put("zip", zip);
+            map.put("nationalIdNumber", Utils.randomStringGenerator("NIN", 10));
 
         } else if (GUARANTOR_TYPE_CUSTOMER.equals(guarantorTypeId) || GUARANTOR_TYPE_GROUP.equals(guarantorTypeId)) {
             map.put("entityId", entityId);

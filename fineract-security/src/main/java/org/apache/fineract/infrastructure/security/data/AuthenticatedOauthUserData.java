@@ -62,4 +62,19 @@ public class AuthenticatedOauthUserData {
 
     @SuppressWarnings("unused")
     private boolean isTwoFactorAuthenticationRequired;
+
+    @SuppressWarnings("unused")
+    private String deliveryMethod;
+
+    @SuppressWarnings("unused")
+    private boolean totpEnabled;
+
+    @SuppressWarnings("unused")
+    private boolean totpEnrollmentRequired;
+
+    @SuppressWarnings("unused")
+    private Integer sessionIdleTimeoutMinutes;
+
+    @SuppressWarnings("unused")
+    private Integer sessionIdleWarningSeconds;
 }

@@ -18,9 +18,11 @@
  */
 package org.apache.fineract.portfolio.charge.request;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serial;
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.Accessors;
@@ -51,6 +53,14 @@ public class ChargeRequest implements Serializable {
     private Boolean enablePaymentType;
     private BigDecimal minCap;
     private BigDecimal maxCap;
+    @Schema(description = "When true, chargeTiers is required and amount, minCap, and maxCap must be omitted", example = "false")
+    private Boolean useChargeTiers;
+    /**
+     * Lookup amount bands. Must be present on this DTO — create/update re-serialize {@code ChargeRequest} into the
+     * command JSON; omitting this field drops tiers before validation.
+     */
+    @Schema(description = "Amount bands. Only the last tier may omit amountRangeTo. Requires locale. Not allowed when useChargeTiers is false.")
+    private List<ChargeTierRequest> chargeTiers;
     private Long taxGroupId;
     private Long incomeAccountId;
 

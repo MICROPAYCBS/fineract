@@ -19,7 +19,7 @@
 package org.apache.fineract.portfolio.savings.domain;
 
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.allowOverdraftParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.chargesParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.closeDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.currencyCodeParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToDormancyParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToEscheatParamName;
@@ -27,7 +27,6 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.daysToIn
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.descriptionParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.digitsAfterDecimalParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.enforceMinRequiredBalanceParamName;
-import static org.apache.fineract.portfolio.savings.SavingsApiConstants.idParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.inMultiplesOfParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCalculationDaysInYearTypeParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.interestCalculationTypeParamName;
@@ -47,22 +46,19 @@ import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalA
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.nominalAnnualInterestRateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.overdraftLimitParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.shortNameParamName;
+import static org.apache.fineract.portfolio.savings.SavingsApiConstants.startDateParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.taxGroupIdParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withHoldTaxParamName;
 import static org.apache.fineract.portfolio.savings.SavingsApiConstants.withdrawalFeeForTransfersParamName;
 
-import com.google.gson.JsonArray;
-import com.google.gson.JsonObject;
 import java.math.BigDecimal;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.fineract.accounting.common.AccountingRuleType;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.organisation.monetary.domain.MonetaryCurrency;
-import org.apache.fineract.organisation.monetary.exception.InvalidCurrencyException;
 import org.apache.fineract.portfolio.charge.domain.Charge;
-import org.apache.fineract.portfolio.charge.domain.ChargeRepositoryWrapper;
-import org.apache.fineract.portfolio.charge.exception.ChargeCannotBeAppliedToException;
+import org.apache.fineract.portfolio.charge.service.ProductChargeLinkAssembler;
 import org.apache.fineract.portfolio.savings.SavingsCompoundingInterestPeriodType;
 import org.apache.fineract.portfolio.savings.SavingsInterestCalculationDaysInYearType;
 import org.apache.fineract.portfolio.savings.SavingsInterestCalculationType;
@@ -76,12 +72,13 @@ import org.springframework.stereotype.Component;
 @Component
 public class SavingsProductAssembler {
 
-    private final ChargeRepositoryWrapper chargeRepository;
+    private final ProductChargeLinkAssembler productChargeLinkAssembler;
     private final TaxGroupRepositoryWrapper taxGroupRepository;
 
     @Autowired
-    public SavingsProductAssembler(final ChargeRepositoryWrapper chargeRepository, final TaxGroupRepositoryWrapper taxGroupRepository) {
-        this.chargeRepository = chargeRepository;
+    public SavingsProductAssembler(final ProductChargeLinkAssembler productChargeLinkAssembler,
+            final TaxGroupRepositoryWrapper taxGroupRepository) {
+        this.productChargeLinkAssembler = productChargeLinkAssembler;
         this.taxGroupRepository = taxGroupRepository;
     }
 
@@ -193,46 +190,23 @@ public class SavingsProductAssembler {
         final Long daysToDormancy = command.longValueOfParameterNamed(daysToDormancyParamName);
         final Long daysToEscheat = command.longValueOfParameterNamed(daysToEscheatParamName);
 
-        return SavingsProduct.createNew(name, shortName, description, currency, interestRate, interestCompoundingPeriodType,
-                interestPostingPeriodType, interestCalculationType, interestCalculationDaysInYearType, minRequiredOpeningBalance,
-                lockinPeriodFrequency, lockinPeriodFrequencyType, iswithdrawalFeeApplicableForTransfer, accountingRuleType, charges,
-                allowOverdraft, overdraftLimit, enforceMinRequiredBalance, minRequiredBalance, lienAllowed, maxAllowedLienLimit,
-                minBalanceForInterestCalculation, nominalAnnualInterestRateOverdraft, minOverdraftForInterestCalculation, withHoldTax,
-                taxGroup, isDormancyTrackingActive, daysToInactive, daysToDormancy, daysToEscheat);
+        final SavingsProduct product = SavingsProduct.createNew(name, shortName, description, currency, interestRate,
+                interestCompoundingPeriodType, interestPostingPeriodType, interestCalculationType, interestCalculationDaysInYearType,
+                minRequiredOpeningBalance, lockinPeriodFrequency, lockinPeriodFrequencyType, iswithdrawalFeeApplicableForTransfer,
+                accountingRuleType, charges, allowOverdraft, overdraftLimit, enforceMinRequiredBalance, minRequiredBalance, lienAllowed,
+                maxAllowedLienLimit, minBalanceForInterestCalculation, nominalAnnualInterestRateOverdraft,
+                minOverdraftForInterestCalculation, withHoldTax, taxGroup, isDormancyTrackingActive, daysToInactive, daysToDormancy,
+                daysToEscheat);
+
+        product.setStartDate(command.localDateValueOfParameterNamed(startDateParamName));
+        product.setCloseDate(command.localDateValueOfParameterNamed(closeDateParamName));
+
+        return product;
     }
 
     public Set<Charge> assembleListOfSavingsProductCharges(final JsonCommand command, final String savingsProductCurrencyCode) {
-
-        final Set<Charge> charges = new HashSet<>();
-
-        if (command.parameterExists(chargesParamName)) {
-            final JsonArray chargesArray = command.arrayOfParameterNamed(chargesParamName);
-            if (chargesArray != null) {
-                for (int i = 0; i < chargesArray.size(); i++) {
-
-                    final JsonObject jsonObject = chargesArray.get(i).getAsJsonObject();
-                    if (jsonObject.has(idParamName)) {
-                        final Long id = jsonObject.get(idParamName).getAsLong();
-
-                        final Charge charge = this.chargeRepository.findOneWithNotFoundDetection(id);
-
-                        if (!charge.isSavingsCharge()) {
-                            final String errorMessage = "Charge with identifier " + charge.getId()
-                                    + " cannot be applied to Savings product.";
-                            throw new ChargeCannotBeAppliedToException("savings.product", errorMessage, charge.getId());
-                        }
-
-                        if (!savingsProductCurrencyCode.equals(charge.getCurrencyCode())) {
-                            final String errorMessage = "Charge and Savings Product must have the same currency.";
-                            throw new InvalidCurrencyException("charge", "attach.to.savings.product", errorMessage);
-                        }
-                        charges.add(charge);
-                    }
-                }
-            }
-        }
-
-        return charges;
+        return new HashSet<>(ProductChargeLinkAssembler
+                .toCharges(this.productChargeLinkAssembler.assembleSavingsProductCharges(command, savingsProductCurrencyCode)));
     }
 
     public TaxGroup assembleTaxGroup(final JsonCommand command) {

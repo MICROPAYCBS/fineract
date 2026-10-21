@@ -38,12 +38,14 @@ import org.apache.fineract.infrastructure.security.domain.TwoFactorConfiguration
 import org.apache.fineract.infrastructure.security.domain.TwoFactorConfigurationRepository;
 import org.apache.fineract.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = TwoFactorConfigurationService.class, ignored = TwoFactorConfigurationServiceImpl.class)
 @ConditionalOnProperty("fineract.security.2fa.enabled")
 public class TwoFactorConfigurationServiceImpl implements TwoFactorConfigurationService {
 

@@ -64,5 +64,19 @@ public final class AccountNumberFormatConstants {
     public static final String PREFIX_TYPE_ENUM_COLUMN_NAME = "prefix_type_enum";
     public static final String ACCOUNT_TYPE_UNIQUE_CONSTRAINT_NAME = "account_type_enum";
     public static final String PREFIX_CHARACTER_COLUMN_NAME = "prefix_character";
+    public static final String FORMAT_PATTERN_COLUMN_NAME = "format_pattern";
+    public static final String SEQUENCE_SCOPE_ENUM_COLUMN_NAME = "sequence_scope_enum";
+    public static final String CHECK_DIGIT_ALGORITHM_ENUM_COLUMN_NAME = "check_digit_algorithm_enum";
+    public static final String STRUCTURED_ENABLED_COLUMN_NAME = "structured_enabled";
+
+    public static final String formatPatternParamName = "formatPattern";
+    public static final String sequenceScopeParamName = "sequenceScope";
+    public static final String checkDigitAlgorithmParamName = "checkDigitAlgorithm";
+    public static final String structuredEnabledParamName = "structuredEnabled";
+    public static final String sequenceScopeOptionsParamName = "sequenceScopeOptions";
+    public static final String checkDigitAlgorithmOptionsParamName = "checkDigitAlgorithmOptions";
+    public static final String segmentTokenOptionsParamName = "segmentTokenOptions";
+
+    public static final String STRUCTURED_ACCOUNT_NUMBER_FORMATS = "structured-account-number-formats";
 
 }

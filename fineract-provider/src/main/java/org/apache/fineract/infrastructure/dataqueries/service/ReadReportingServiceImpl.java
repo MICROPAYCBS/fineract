@@ -68,12 +68,14 @@ import org.openpdf.text.Document;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfWriter;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.support.rowset.SqlRowSet;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = ReadReportingService.class, ignored = ReadReportingServiceImpl.class)
 @Slf4j
 @RequiredArgsConstructor
 public class ReadReportingServiceImpl implements ReadReportingService {

@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: pre-approved limits from nightly behavioural scoring, and the scheduler job that runs it.
+  m_scoring_client_limit has no foreign key to m_client, like m_scoring_decision. The job is created inactive.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/scoring/parts/0005_behavioural_limits.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="scoring.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="scoring.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <!-- Which clients get a limit on which product, from which behavioural scorecard -->
+    <changeSet id="scoring-limit-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_limit_policy"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_limit_policy">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scorecard_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="loan_product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scoring_mode" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="staff_only" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="customer_class_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="valid_days" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_characteristic" type="VARCHAR(200)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="rounding_unit" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-limit-002" author="micropay">
+        <addUniqueConstraint tableName="m_scoring_limit_policy" columnNames="code" constraintName="uq_scoring_limit_policy_code"/>
+        <addForeignKeyConstraint baseTableName="m_scoring_limit_policy" baseColumnNames="loan_product_id"
+                                 constraintName="fk_scoring_limit_policy_product" referencedTableName="m_product_loan"
+                                 referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_scoring_limit_policy" baseColumnNames="office_id"
+                                 constraintName="fk_scoring_limit_policy_office" referencedTableName="m_office"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- The limit for each grade -->
+    <changeSet id="scoring-limit-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_limit_band"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_limit_band">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="policy_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="grade" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="multiplier" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-limit-004" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_limit_band" baseColumnNames="policy_id"
+                                 constraintName="fk_scoring_limit_band_policy" referencedTableName="m_scoring_limit_policy"
+                                 referencedColumnNames="id" onDelete="CASCADE"/>
+        <addUniqueConstraint tableName="m_scoring_limit_band" columnNames="policy_id, grade" constraintName="uq_scoring_limit_band_grade"/>
+    </changeSet>
+
+    <!-- A client's limit under a policy, one row per nightly run -->
+    <changeSet id="scoring-limit-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_client_limit"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_client_limit">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="policy_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="loan_product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="grade" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="decision_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_from" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="valid_to" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-limit-006" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_client_limit" baseColumnNames="policy_id"
+                                 constraintName="fk_scoring_client_limit_policy" referencedTableName="m_scoring_limit_policy"
+                                 referencedColumnNames="id"/>
+        <createIndex tableName="m_scoring_client_limit" indexName="idx_scoring_client_limit_client">
+            <column name="client_id"/>
+            <column name="policy_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="scoring-limit-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'SCR_BHVR'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Credit Scoring Behavioural Run"/>
+            <column name="display_name" value="Credit Scoring Behavioural Run"/>
+            <column name="cron_expression" value="0 0 3 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Credit Scoring Behavioural Run _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="SCR_BHVR"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="scoring-limit-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Scores the clients of every limit policy with its behavioural scorecard and gives each a new pre-approved limit for the policy's loan product."/>
+            <where>short_name='SCR_BHVR' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

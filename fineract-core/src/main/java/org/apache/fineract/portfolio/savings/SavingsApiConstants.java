@@ -28,7 +28,7 @@ public class SavingsApiConstants {
 
     // actions
     public static final String postInterestValidationOnClosure = "postInterestValidationOnClosure";
-    public static final String summitalAction = ".summital";
+    public static final String submittalAction = ".submittal";
     public static final String approvalAction = ".approval";
     public static final String undoApprovalAction = ".undoApproval";
     public static final String rejectAction = ".reject";
@@ -125,6 +125,7 @@ public class SavingsApiConstants {
     public static final String feeIntervalParamName = "feeInterval";
     public static final String accountingRuleParamName = "accountingRule";
     public static final String paymentTypeIdParamName = "paymentTypeId";
+    public static final String glAccountIdParamName = "glAccountId";
     public static final String transactionAccountNumberParamName = "accountNumber";
     public static final String checkNumberParamName = "checkNumber";
     public static final String routingCodeParamName = "routingCode";
@@ -157,6 +158,9 @@ public class SavingsApiConstants {
     // charges parameters
     public static final String chargeIdParamName = "chargeId";
     public static final String chargesParamName = "charges";
+    public static final String paymentChannelsParamName = "paymentChannels";
+    public static final String isPremiumParamName = "isPremium";
+    public static final String isActiveParamName = "isActive";
     public static final String savingsAccountChargeIdParamName = "savingsAccountChargeId";
     public static final String chargeNameParamName = "name";
     public static final String penaltyParamName = "penalty";
@@ -195,6 +199,9 @@ public class SavingsApiConstants {
     public static final String daysToInactiveParamName = "daysToInactive";
     public static final String daysToDormancyParamName = "daysToDormancy";
     public static final String daysToEscheatParamName = "daysToEscheat";
+
+    public static final String startDateParamName = "startDate";
+    public static final String closeDateParamName = "closeDate";
 
     public static final String datatables = "datatables";
 

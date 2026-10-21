@@ -107,6 +107,26 @@ public class AccountTransferTransaction extends AbstractPersistableCustom<Long> 
                 transactionAmount, description, paymentDetail);
     }
 
+    /**
+     * Outward savings transfer with no destination savings/loan transaction (e.g. share purchase funding).
+     */
+    public static AccountTransferTransaction savingsOutwardTransfer(final AccountTransferDetails accountTransferDetails,
+            final SavingsAccountTransaction withdrawal, final LocalDate transactionDate, final Money transactionAmount,
+            final String description) {
+        return new AccountTransferTransaction(accountTransferDetails, withdrawal, null, null, null, transactionDate, transactionAmount,
+                description, null);
+    }
+
+    /**
+     * Inward savings transfer with no source savings/loan transaction (e.g. share redemption proceeds).
+     */
+    public static AccountTransferTransaction savingsInwardTransfer(final AccountTransferDetails accountTransferDetails,
+            final SavingsAccountTransaction deposit, final LocalDate transactionDate, final Money transactionAmount,
+            final String description) {
+        return new AccountTransferTransaction(accountTransferDetails, null, deposit, null, null, transactionDate, transactionAmount,
+                description, null);
+    }
+
     public static AccountTransferTransaction loanTosavingsTransfer(final AccountTransferDetails accountTransferDetails,
             final SavingsAccountTransaction deposit, final LoanTransaction loanRefundTransaction, final LocalDate transactionDate,
             final Money transactionAmount, final String description) {

@@ -37,6 +37,7 @@ import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberManualEntryValidator;
 import org.apache.fineract.infrastructure.codes.domain.CodeValue;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -120,11 +121,15 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
     private final EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final LoanOfficerService loanOfficerService;
+    private final AccountNumberManualEntryValidator accountNumberManualEntryValidator;
     private final ExternalIdFactory externalIdFactory;
 
     private CommandProcessingResult createGroupingType(final JsonCommand command, final GroupTypes groupingType, final Long centerId) {
         try {
             final String accountNo = command.stringValueOfParameterNamed(GroupingTypesApiConstants.accountNoParamName);
+            final EntityAccountType entityAccountType = groupingType == GroupTypes.CENTER ? EntityAccountType.CENTER
+                    : EntityAccountType.GROUP;
+            this.accountNumberManualEntryValidator.validateManualAccountNumberIfStructuredModeEnabled(entityAccountType, accountNo);
             final String name = command.stringValueOfParameterNamed(GroupingTypesApiConstants.nameParamName);
             final String externalId = this.externalIdFactory.createFromCommand(command, GroupingTypesApiConstants.externalIdParamName)
                     .getValue();

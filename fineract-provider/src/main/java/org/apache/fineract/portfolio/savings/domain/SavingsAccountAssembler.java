@@ -52,6 +52,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberManualEntryValidator;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
@@ -101,6 +103,7 @@ public class SavingsAccountAssembler {
     private final JdbcTemplate jdbcTemplate;
     private final ConfigurationDomainService configurationDomainService;
     private final ExternalIdFactory externalIdFactory;
+    private final AccountNumberManualEntryValidator accountNumberManualEntryValidator;
 
     @Autowired
     public SavingsAccountAssembler(final SavingsAccountTransactionSummaryWrapper savingsAccountTransactionSummaryWrapper,
@@ -110,7 +113,8 @@ public class SavingsAccountAssembler {
             final SavingsAccountRepositoryWrapper savingsAccountRepository,
             final SavingsAccountChargeAssembler savingsAccountChargeAssembler, final FromJsonHelper fromApiJsonHelper,
             final AccountTransfersReadPlatformService accountTransfersReadPlatformService, final JdbcTemplate jdbcTemplate,
-            final ConfigurationDomainService configurationDomainService, ExternalIdFactory externalIdFactory) {
+            final ConfigurationDomainService configurationDomainService, ExternalIdFactory externalIdFactory,
+            final AccountNumberManualEntryValidator accountNumberManualEntryValidator) {
         this.savingsAccountTransactionSummaryWrapper = savingsAccountTransactionSummaryWrapper;
         this.savingsAccountTransactionDataSummaryWrapper = savingsAccountTransactionDataSummaryWrapper;
         this.clientRepository = clientRepository;
@@ -124,6 +128,7 @@ public class SavingsAccountAssembler {
         this.jdbcTemplate = jdbcTemplate;
         this.configurationDomainService = configurationDomainService;
         this.externalIdFactory = externalIdFactory;
+        this.accountNumberManualEntryValidator = accountNumberManualEntryValidator;
     }
 
     /**
@@ -135,6 +140,7 @@ public class SavingsAccountAssembler {
         final JsonElement element = command.parsedJson();
 
         final String accountNo = this.fromApiJsonHelper.extractStringNamed(accountNoParamName, element);
+        this.accountNumberManualEntryValidator.validateManualAccountNumberIfStructuredModeEnabled(EntityAccountType.SAVINGS, accountNo);
         final String externalId = this.fromApiJsonHelper.extractStringNamed(externalIdParamName, element);
         final Long productId = this.fromApiJsonHelper.extractLongNamed(productIdParamName, element);
 

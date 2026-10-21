@@ -27,6 +27,8 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.exception.ErrorHandler;
+import org.apache.fineract.infrastructure.core.monitoring.ServerExceptionReporter;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
@@ -34,6 +36,9 @@ import org.springframework.stereotype.Component;
 @Scope("singleton")
 @Slf4j
 public class DefaultExceptionMapper implements FineractExceptionMapper, ExceptionMapper<RuntimeException> {
+
+    @Autowired(required = false)
+    private ServerExceptionReporter serverExceptionReporter;
 
     @Override
     public int errorCode() {
@@ -43,6 +48,9 @@ public class DefaultExceptionMapper implements FineractExceptionMapper, Exceptio
     @Override
     public Response toResponse(RuntimeException exception) {
         log.warn("Exception occurred", ErrorHandler.findMostSpecificException(exception));
+        if (serverExceptionReporter != null) {
+            serverExceptionReporter.reportServerError(exception, SC_INTERNAL_SERVER_ERROR, null, null);
+        }
 
         return Response.status(SC_INTERNAL_SERVER_ERROR)
                 .entity(Map.of("Exception", Objects.requireNonNullElse(exception.getMessage(), "No error message available")))

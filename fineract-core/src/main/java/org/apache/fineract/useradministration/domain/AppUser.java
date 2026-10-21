@@ -155,6 +155,31 @@ public class AppUser extends AbstractPersistableCustom<Long> implements Platform
     @Column(name = "is_password_reset_enabled", nullable = false)
     private boolean passwordResetAllowed = false;
 
+    @Getter
+    @Column(name = "totp_enabled", nullable = false)
+    private boolean totpEnabled = false;
+
+    @Column(name = "totp_secret")
+    private String totpSecret;
+
+    public String getTotpSecret() {
+        return this.totpSecret;
+    }
+
+    public void stageTotpSecret(final String encryptedSecret) {
+        this.totpSecret = encryptedSecret;
+        this.totpEnabled = false;
+    }
+
+    public void confirmTotpEnrollment() {
+        this.totpEnabled = true;
+    }
+
+    public void resetTotp() {
+        this.totpSecret = null;
+        this.totpEnabled = false;
+    }
+
     public static AppUser fromJson(final Office userOffice, final Staff linkedStaff, final Set<Role> allRoles, final JsonCommand command) {
 
         final String username = command.stringValueOfParameterNamed("username");

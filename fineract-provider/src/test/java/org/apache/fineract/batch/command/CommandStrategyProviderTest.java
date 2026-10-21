@@ -84,6 +84,7 @@ import org.apache.fineract.batch.command.internal.PaySavingsAccountChargeCommand
 import org.apache.fineract.batch.command.internal.RejectLoanRescheduleCommandStrategy;
 import org.apache.fineract.batch.command.internal.StateTransitionWorkingCapitalLoanByExternalIdCommandStrategy;
 import org.apache.fineract.batch.command.internal.StateTransitionWorkingCapitalLoanCommandStrategy;
+import org.apache.fineract.batch.command.internal.SubmitClientCommandStrategy;
 import org.apache.fineract.batch.command.internal.UnknownCommandStrategy;
 import org.apache.fineract.batch.command.internal.UpdateClientCommandStrategy;
 import org.apache.fineract.batch.command.internal.UpdateDatatableEntryOneToManyCommandStrategy;
@@ -192,6 +193,8 @@ public class CommandStrategyProviderTest {
                         mock(AdjustLoanTransactionByExternalIdCommandStrategy.class)),
                 Arguments.of("clients/456?command=activate", HttpMethod.POST, "activateClientCommandStrategy",
                         mock(ActivateClientCommandStrategy.class)),
+                Arguments.of("clients/456?command=submit", HttpMethod.POST, "submitClientCommandStrategy",
+                        mock(SubmitClientCommandStrategy.class)),
                 Arguments.of("loans/123?command=approve", HttpMethod.POST, "approveLoanCommandStrategy",
                         mock(ApproveLoanCommandStrategy.class)),
                 Arguments.of("loans/123?command=disburse", HttpMethod.POST, "disburseLoanCommandStrategy",

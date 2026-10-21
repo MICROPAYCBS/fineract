@@ -30,12 +30,14 @@ import org.apache.fineract.infrastructure.security.service.PlatformSecurityConte
 import org.apache.fineract.portfolio.client.data.ClientFamilyMembersData;
 import org.apache.fineract.portfolio.client.exception.FamilyMemberNotFoundException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = ClientFamilyMembersReadPlatformService.class, ignored = ClientFamilyMembersReadPlatformServiceImpl.class)
 public class ClientFamilyMembersReadPlatformServiceImpl implements ClientFamilyMembersReadPlatformService {
 
     private final JdbcTemplate jdbcTemplate;

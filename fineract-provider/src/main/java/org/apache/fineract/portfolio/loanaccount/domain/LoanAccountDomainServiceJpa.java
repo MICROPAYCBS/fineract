@@ -67,6 +67,7 @@ import org.apache.fineract.infrastructure.event.business.domain.loan.transaction
 import org.apache.fineract.infrastructure.event.business.domain.loan.transaction.LoanTransactionRecoveryPaymentPostBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.domain.loan.transaction.LoanTransactionRecoveryPaymentPreBusinessEvent;
 import org.apache.fineract.infrastructure.event.business.service.BusinessEventNotifierService;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
 import org.apache.fineract.organisation.holiday.domain.Holiday;
 import org.apache.fineract.organisation.holiday.domain.HolidayRepository;
 import org.apache.fineract.organisation.holiday.domain.HolidayStatusType;
@@ -118,11 +119,13 @@ import org.apache.fineract.portfolio.paymentdetail.domain.PaymentDetail;
 import org.apache.fineract.portfolio.repaymentwithpostdatedchecks.data.PostDatedChecksStatus;
 import org.apache.fineract.portfolio.repaymentwithpostdatedchecks.domain.PostDatedChecks;
 import org.apache.fineract.portfolio.repaymentwithpostdatedchecks.domain.PostDatedChecksRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Service
+@ConditionalOnMissingBean(value = LoanAccountDomainService.class, ignored = LoanAccountDomainServiceJpa.class)
 @RequiredArgsConstructor
 public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
 
@@ -160,6 +163,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
     private final LoanTransactionService loanTransactionService;
     private final LoanAccountDomainServiceJpaHelper loanAccountDomainServiceJpaHelper;
     private final LoanJournalEntryPoster journalEntryPoster;
+    private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
 
     @Transactional
     @Override
@@ -241,6 +245,9 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
             newRepaymentTransaction = LoanTransaction.repaymentType(repaymentTransactionType, loan.getOffice(), repaymentAmount,
                     paymentDetail, transactionDate, txnExternalId, chargeRefundChargeType);
         }
+
+        this.crossBranchTransactionAccessService.resolveTransactionOffice(loan.getOffice())
+                .ifPresent(newRepaymentTransaction::setTransactionOffice);
 
         LocalDate recalculateFrom = null;
         if (loan.isInterestBearingAndInterestRecalculationEnabled()) {

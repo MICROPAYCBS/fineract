@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: credit scoring tables. Scorecards are versioned by code; decisions are append-only.
+  m_scoring_decision deliberately has no foreign keys to m_loan or m_client: decisions are written in their own
+  transaction while the loan approval transaction may hold the loan row, and a foreign key check would wait on it.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/scoring/parts/0001_initial_schema.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="scoring.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="scoring.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+
+    <!-- One row per scorecard version -->
+    <changeSet id="scoring-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_scorecard"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_scorecard">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="scorecard_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_points" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="activated_by" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="activated_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-002" author="micropay">
+        <createIndex tableName="m_scoring_scorecard" indexName="uq_scoring_scorecard_code_version" unique="true">
+            <column name="code"/>
+            <column name="version"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Points per characteristic bin -->
+    <changeSet id="scoring-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_scorecard_bin"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_scorecard_bin">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="scorecard_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="characteristic" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lower_bound" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="upper_bound" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="match_value" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="is_missing_bin" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="points" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_code" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-004" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_scorecard_bin" baseColumnNames="scorecard_id" constraintName="fk_scoring_bin_scorecard"
+                                 referencedTableName="m_scoring_scorecard" referencedColumnNames="id" onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Score bands to grade, PD and outcome -->
+    <changeSet id="scoring-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_grade_band"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_grade_band">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="scorecard_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="grade" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="min_score" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="max_score" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expected_pd" type="DECIMAL(9,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-006" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_grade_band" baseColumnNames="scorecard_id" constraintName="fk_scoring_band_scorecard"
+                                 referencedTableName="m_scoring_scorecard" referencedColumnNames="id" onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Knock-out and refer rules -->
+    <changeSet id="scoring-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_rule"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_rule">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="scorecard_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rule_type" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="characteristic" type="VARCHAR(150)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="operator" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="rule_value" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-008" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_rule" baseColumnNames="scorecard_id" constraintName="fk_scoring_rule_scorecard"
+                                 referencedTableName="m_scoring_scorecard" referencedColumnNames="id" onDelete="CASCADE"/>
+    </changeSet>
+
+    <!-- Scorecard and mode per loan product -->
+    <changeSet id="scoring-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_product_config"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_product_config">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="loan_product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scorecard_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scoring_mode" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-010" author="micropay">
+        <createIndex tableName="m_scoring_product_config" indexName="uq_scoring_product_config_product" unique="true">
+            <column name="loan_product_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="scoring-011" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_scoring_product_config" baseColumnNames="loan_product_id" constraintName="fk_scoring_config_product"
+                                 referencedTableName="m_product_loan" referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- Append-only scoring decisions -->
+    <changeSet id="scoring-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_scoring_decision"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_scoring_decision">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="client_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="loan_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="loan_product_id" type="BIGINT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="scoring_trigger" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scoring_mode" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scorecard_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scorecard_code" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scorecard_version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="score" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="grade" type="VARCHAR(10)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="expected_pd" type="DECIMAL(9,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="outcome" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_codes" type="VARCHAR(1000)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="rule_results" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="points_breakdown" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="inputs_snapshot" type="TEXT">
+                <constraints nullable="true"/>
+            </column>
+            <column name="created_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${scoring.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="scoring-013" author="micropay">
+        <createIndex tableName="m_scoring_decision" indexName="idx_scoring_decision_loan">
+            <column name="loan_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="scoring-014" author="micropay">
+        <createIndex tableName="m_scoring_decision" indexName="idx_scoring_decision_client">
+            <column name="client_id"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

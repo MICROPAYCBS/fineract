@@ -1,0 +1,2 @@
+# Avro schema sources: keep LF to avoid spurious Windows checkout diffs
+*.avsc text eol=lf

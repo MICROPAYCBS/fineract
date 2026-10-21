@@ -31,11 +31,14 @@ import java.util.List;
 import org.apache.fineract.infrastructure.configuration.data.GlobalConfigurationPropertyData;
 import org.apache.fineract.infrastructure.configuration.service.ConfigurationReadPlatformService;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.exception.UnsupportedParameterException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.validator.PhoneNumberValidationService;
 import org.apache.fineract.infrastructure.dataqueries.domain.EntityDatatableChecks;
 import org.apache.fineract.infrastructure.dataqueries.domain.EntityDatatableChecksRepository;
 import org.apache.fineract.portfolio.client.api.ClientApiConstants;
+import org.apache.fineract.portfolio.client.service.ClientIdentifierValidationService;
+import org.apache.fineract.portfolio.client.service.NoOpClientIdentifierValidationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,9 +67,10 @@ class ClientDataValidatorTest {
         FromJsonHelper fromApiJsonHelper = new FromJsonHelper();
         when(configurationReadPlatformService.retrieveGlobalConfiguration(anyString()))
                 .thenReturn(new GlobalConfigurationPropertyData().setEnabled(false));
+        final ClientIdentifierValidationService clientIdentifierValidationService = new NoOpClientIdentifierValidationService();
         when(phoneNumberValidationService.getRegex()).thenReturn("^\\+?[0-9]{7,15}$");
-        validator = new ClientDataValidator(fromApiJsonHelper, configurationReadPlatformService, entityDatatableChecksRepository,
-                phoneNumberValidationService);
+        validator = new ClientDataValidator(fromApiJsonHelper, configurationReadPlatformService, clientIdentifierValidationService,
+                entityDatatableChecksRepository, phoneNumberValidationService);
     }
 
     private static String validMinimalCreateJson(String dateFormat) {
@@ -78,7 +82,10 @@ class ClientDataValidatorTest {
                   "active": false,
                   "legalFormId": 1,
                   "locale": "en",
-                  "dateFormat": "%s"
+                  "dateFormat": "%s",
+                  "clientIdentifiers": [
+                    { "documentTypeId": 1, "documentKey": "CM123456", "status": "Active" }
+                  ]
                 }
                 """.formatted(dateFormat);
     }
@@ -146,75 +153,20 @@ class ClientDataValidatorTest {
     }
 
     @Test
-    void validateForCreate_withInvalidMobileNumber_throwsPlatformApiDataValidationException() {
-        String json = """
-                {
-                  "officeId": 1,
-                  "firstname": "John",
-                  "lastname": "Doe",
-                  "active": false,
-                  "legalFormId": 1,
-                  "locale": "en",
-                  "dateFormat": "dd MMMM yyyy",
-                  "mobileNo": "phone123"
-                }
-                """;
-
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validator.validateForCreate(json));
-
-        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.mobileNoParamName.equals(e.getParameterName())));
-    }
-
-    @Test
-    void validateForCreate_withValidMobileNumber_doesNotThrow() {
-        String json = """
-                {
-                  "officeId": 1,
-                  "firstname": "John",
-                  "lastname": "Doe",
-                  "active": false,
-                  "legalFormId": 1,
-                  "locale": "en",
-                  "dateFormat": "dd MMMM yyyy",
-                  "mobileNo": "+919876543210"
-                }
-                """;
-
-        assertDoesNotThrow(() -> validator.validateForCreate(json));
-    }
-
-    @Test
-    void validateForUpdate_withInvalidMobileNumber_throwsPlatformApiDataValidationException() {
+    void validateForUpdate_withLegalFormId_throwsUnsupportedParameterException() {
         String json = """
                 {
                   "firstname": "Jane",
                   "lastname": "Doe",
+                  "legalFormId": 1,
                   "locale": "en",
-                  "dateFormat": "yyyy-MM-dd",
-                  "mobileNo": "phone123"
+                  "dateFormat": "yyyy-MM-dd"
                 }
                 """;
 
-        PlatformApiDataValidationException ex = assertThrows(PlatformApiDataValidationException.class,
-                () -> validator.validateForUpdate(json));
+        UnsupportedParameterException ex = assertThrows(UnsupportedParameterException.class, () -> validator.validateForUpdate(json));
 
-        assertTrue(ex.getErrors().stream().anyMatch(e -> ClientApiConstants.mobileNoParamName.equals(e.getParameterName())));
-    }
-
-    @Test
-    void validateForUpdate_withValidMobileNumber_doesNotThrow() {
-        String json = """
-                {
-                  "firstname": "Jane",
-                  "lastname": "Doe",
-                  "locale": "en",
-                  "dateFormat": "yyyy-MM-dd",
-                  "mobileNo": "+14155552671"
-                }
-                """;
-
-        assertDoesNotThrow(() -> validator.validateForUpdate(json));
+        assertTrue(ex.getUnsupportedParameters().contains(ClientApiConstants.legalFormIdParamName));
     }
 
     @Test

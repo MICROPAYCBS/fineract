@@ -59,7 +59,7 @@ import org.apache.fineract.useradministration.domain.AppUser;
         @UniqueConstraint(columnNames = { "mobile_no" }, name = "mobile_no_UNIQUE") })
 public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
-    @Column(name = "account_no", length = 20, unique = true, nullable = false)
+    @Column(name = "account_no", length = 34, unique = true, nullable = false)
     private String accountNumber;
 
     @ManyToOne
@@ -107,6 +107,36 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "email_address", length = 254, unique = true)
     private String emailAddress;
 
+    @Column(name = "tax_identification_number", length = 50, unique = true)
+    private String taxIdentificationNumber;
+
+    @Column(name = "alternative_mobile_no", length = 50)
+    private String alternativeMobileNo;
+
+    @Column(name = "alternative_email_address", length = 50)
+    private String alternativeEmailAddress;
+
+    @Column(name = "sub_industry_id")
+    private Long subIndustryId;
+
+    @Column(name = "customer_class_id")
+    private Long customerClassId;
+
+    @Column(name = "title_id")
+    private Long titleId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "nationality_country_id")
+    private CodeValue nationality;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_risk_profile_cv_id")
+    private CodeValue customerRiskProfile;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "marital_status_cv_id")
+    private CodeValue maritalStatus;
+
     @Column(name = "is_staff", nullable = false)
     private boolean isStaff;
 
@@ -116,9 +146,8 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "gender_cv_id")
-    private CodeValue gender;
+    @Column(name = "gender_enum")
+    private Integer genderEnum;
 
     @ManyToOne
     @JoinColumn(name = "staff_id")
@@ -205,15 +234,30 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "client", orphanRemoval = true, fetch = FetchType.LAZY)
     protected Set<ClientIdentifier> identifiers = new HashSet<>();
 
+    /**
+     * Upstream-signature overload: gender arrives as a code value and is stored as its id (see {@link #genderId()}).
+     */
     public static Client instance(final AppUser currentUser, final ClientStatus status, final Office office, final Group clientParentGroup,
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
             final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
             final String emailAddress, final Staff staff, final LocalDate submittedOnDate, final Long savingsProductId,
             final Long savingsAccountId, final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType,
             final CodeValue clientClassification, final Integer legalForm, final Boolean isStaff) {
+        return instance(currentUser, status, office, clientParentGroup, accountNo, firstname, middlename, lastname, fullname,
+                activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate, savingsProductId,
+                savingsAccountId, dateOfBirth, gender != null ? gender.getId().intValue() : null, clientType, clientClassification,
+                legalForm, isStaff);
+    }
+
+    public static Client instance(final AppUser currentUser, final ClientStatus status, final Office office, final Group clientParentGroup,
+            final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
+            final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
+            final String emailAddress, final Staff staff, final LocalDate submittedOnDate, final Long savingsProductId,
+            final Long savingsAccountId, final LocalDate dateOfBirth, final Integer genderEnum, final CodeValue clientType,
+            final CodeValue clientClassification, final Integer legalForm, final Boolean isStaff) {
         return new Client(currentUser, status, office, clientParentGroup, accountNo, firstname, middlename, lastname, fullname,
                 activationDate, officeJoiningDate, externalId, mobileNo, emailAddress, staff, submittedOnDate, savingsProductId,
-                savingsAccountId, dateOfBirth, gender, clientType, clientClassification, legalForm, isStaff);
+                savingsAccountId, dateOfBirth, genderEnum, clientType, clientClassification, legalForm, isStaff);
     }
 
     protected Client() {}
@@ -222,7 +266,7 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
             final LocalDate activationDate, final LocalDate officeJoiningDate, final ExternalId externalId, final String mobileNo,
             final String emailAddress, final Staff staff, final LocalDate submittedOnDate, final Long savingsProductId,
-            final Long savingsAccountId, final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType,
+            final Long savingsAccountId, final LocalDate dateOfBirth, final Integer genderEnum, final CodeValue clientType,
             final CodeValue clientClassification, final Integer legalForm, final Boolean isStaff) {
 
         if (StringUtils.isBlank(accountNo)) {
@@ -277,8 +321,8 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.savingsProductId = savingsProductId;
         this.savingsAccountId = savingsAccountId;
 
-        if (gender != null) {
-            this.gender = gender;
+        if (genderEnum != null) {
+            this.genderEnum = genderEnum;
         }
 
         this.dateOfBirth = dateOfBirth;
@@ -286,6 +330,7 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.clientType = clientType;
         this.clientClassification = clientClassification;
         this.setLegalForm(legalForm);
+        this.isStaff = Boolean.TRUE.equals(isStaff);
 
         deriveDisplayName();
         validate();
@@ -337,6 +382,17 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
             throw new PlatformApiDataValidationException(dataValidationErrors);
         }
 
+        if (isNotPending()) {
+            final String defaultUserMessage = "Cannot activate client. Client must be in Pending status.";
+            final ApiParameterError error = ApiParameterError.parameterErrorWithValue("error.msg.clients.must.be.pending.to.activate",
+                    defaultUserMessage, ClientApiConstants.activationDateParamName, activationLocalDate.format(formatter));
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+
         this.activationDate = activationLocalDate;
         this.activatedBy = currentUser;
         this.officeJoiningDate = this.activationDate;
@@ -348,6 +404,19 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.closedBy = null;
 
         validate();
+    }
+
+    public void submit() {
+        if (isNotDraft()) {
+            final String defaultUserMessage = "Cannot submit client. Client must be in Draft status.";
+            final ApiParameterError error = ApiParameterError.generalError("error.msg.clients.must.be.draft.to.submit", defaultUserMessage);
+
+            final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
+            dataValidationErrors.add(error);
+
+            throw new PlatformApiDataValidationException(dataValidationErrors);
+        }
+        this.status = ClientStatus.PENDING.getValue();
     }
 
     public boolean isNotActive() {
@@ -380,6 +449,18 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     public boolean isPending() {
         return ClientStatus.fromInt(this.status).isPending();
+    }
+
+    public boolean isNotDraft() {
+        return !isDraft();
+    }
+
+    public boolean isDraft() {
+        return ClientStatus.fromInt(this.status).isDraft();
+    }
+
+    public boolean isDraftOrPending() {
+        return isDraft() || isPending();
     }
 
     public boolean isRejected() {
@@ -599,11 +680,11 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     }
 
     public Long genderId() {
-        Long genderId = null;
-        if (this.gender != null) {
-            genderId = this.gender.getId();
-        }
-        return genderId;
+        return this.genderEnum != null ? this.genderEnum.longValue() : null;
+    }
+
+    public Integer getGenderEnum() {
+        return this.genderEnum;
     }
 
     public Long clientTypeId() {
@@ -626,10 +707,6 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         return this.rejectionDate;
     }
 
-    public CodeValue gender() {
-        return this.gender;
-    }
-
     public CodeValue clientType() {
         return this.clientType;
     }
@@ -646,8 +723,56 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.clientClassification = clientClassification;
     }
 
-    public void updateGender(CodeValue gender) {
-        this.gender = gender;
+    public void updateGender(final CodeValue gender) {
+        updateGender(gender != null ? gender.getId().intValue() : null);
+    }
+
+    public void updateGender(final Integer genderEnum) {
+        this.genderEnum = genderEnum;
+    }
+
+    public Long titleId() {
+        return this.titleId;
+    }
+
+    public Long nationalityCountryId() {
+        Long nationalityCountryId = null;
+        if (this.nationality != null) {
+            nationalityCountryId = this.nationality.getId();
+        }
+        return nationalityCountryId;
+    }
+
+    public void updateTitle(final Long titleId) {
+        this.titleId = titleId;
+    }
+
+    public void updateNationality(CodeValue nationality) {
+        this.nationality = nationality;
+    }
+
+    public Long customerRiskProfileId() {
+        Long customerRiskProfileId = null;
+        if (this.customerRiskProfile != null) {
+            customerRiskProfileId = this.customerRiskProfile.getId();
+        }
+        return customerRiskProfileId;
+    }
+
+    public void updateCustomerRiskProfile(CodeValue customerRiskProfile) {
+        this.customerRiskProfile = customerRiskProfile;
+    }
+
+    public Long maritalStatusId() {
+        Long maritalStatusId = null;
+        if (this.maritalStatus != null) {
+            maritalStatusId = this.maritalStatus.getId();
+        }
+        return maritalStatusId;
+    }
+
+    public void updateMaritalStatus(CodeValue maritalStatus) {
+        this.maritalStatus = maritalStatus;
     }
 
     public LocalDate dateOfBirth() {

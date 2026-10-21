@@ -20,6 +20,7 @@ package org.apache.fineract.portfolio.client.service;
 
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
+import org.apache.fineract.portfolio.client.domain.Client;
 
 public interface ClientIdentifierWritePlatformService {
 
@@ -28,4 +29,8 @@ public interface ClientIdentifierWritePlatformService {
     CommandProcessingResult updateClientIdentifier(Long clientId, Long clientIdentifierId, JsonCommand command);
 
     CommandProcessingResult deleteClientIdentifier(Long clientId, Long clientIdentifierId, Long commandId);
+
+    default void addClientIdentifiers(Client client, JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
 }

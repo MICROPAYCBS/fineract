@@ -44,6 +44,7 @@ public interface LoanTransactionMapper {
     @Mapping(target = "numberOfPastInstallments", ignore = true)
     @Mapping(target = "nextInstallmentDueDate", ignore = true)
     @Mapping(target = "calculatedStartDate", ignore = true)
+    @Mapping(target = "periodicAccrualPayoff", ignore = true)
     @Mapping(target = "overpaymentPortion", ignore = true)
     @Mapping(target = "transfer", ignore = true)
     @Mapping(target = "fixedEmiAmount", ignore = true)
@@ -74,5 +75,6 @@ public interface LoanTransactionMapper {
     @Mapping(target = "accountId", ignore = true)
     @Mapping(target = "transactionAmount", ignore = true)
     @Mapping(target = "classification", expression = "java(loanTransaction.getClassification() != null ? loanTransaction.getClassification().toData() : null)")
+    @Mapping(target = "submittedByUsername", ignore = true)
     LoanTransactionData mapLoanTransaction(LoanTransaction loanTransaction);
 }

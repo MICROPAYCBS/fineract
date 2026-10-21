@@ -18,6 +18,8 @@
  */
 package org.apache.fineract.portfolio.loanproduct.domain;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.JoinColumn;
@@ -68,34 +70,46 @@ public class LoanProductConfigurableAttributes extends AbstractPersistableCustom
             LoanProductConstants.GRACE_ON_ARREARS_AGEING_PARAMETER_NAME };
 
     public static LoanProductConfigurableAttributes createFrom(JsonCommand command) {
+        final JsonObject overrides = overridesObject(command);
+        return new LoanProductConfigurableAttributes( //
+                readFlag(overrides, LoanProductConstants.amortizationTypeParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.interestTypeParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.transactionProcessingStrategyCodeParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.interestCalculationPeriodTypeParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.inArrearsToleranceParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.repaymentEveryParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.graceOnPrincipalAndInterestPaymentParamName, Boolean.TRUE), //
+                readFlag(overrides, LoanProductConstants.GRACE_ON_ARREARS_AGEING_PARAMETER_NAME, Boolean.TRUE));
+    }
 
-        final Boolean amortization = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.amortizationTypeParamName).getAsBoolean();
-        final Boolean interestMethod = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.interestTypeParamName).getAsBoolean();
-        final Boolean transactionProcessingStrategy = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.transactionProcessingStrategyCodeParamName).getAsBoolean();
-        final Boolean interestCalcPeriod = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.interestCalculationPeriodTypeParamName).getAsBoolean();
-        final Boolean arrearsTolerance = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.inArrearsToleranceParamName).getAsBoolean();
-        final Boolean repaymentEvery = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.repaymentEveryParamName).getAsBoolean();
-        final Boolean graceOnPrincipalAndInterestPayment = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.graceOnPrincipalAndInterestPaymentParamName).getAsBoolean();
-        final Boolean graceOnArrearsAging = command.parsedJson().getAsJsonObject()
-                .getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName)
-                .getAsJsonPrimitive(LoanProductConstants.GRACE_ON_ARREARS_AGEING_PARAMETER_NAME).getAsBoolean();
+    /** The allowAttributeOverrides object of the request, or null when it is absent, JSON null or not an object. */
+    public static JsonObject overridesObject(final JsonCommand command) {
+        final JsonElement element = command.parsedJson().getAsJsonObject().get(LoanProductConstants.allowAttributeOverridesParamName);
+        return element != null && element.isJsonObject() ? element.getAsJsonObject() : null;
+    }
 
-        return new LoanProductConfigurableAttributes(amortization, interestMethod, transactionProcessingStrategy, interestCalcPeriod,
-                arrearsTolerance, repaymentEvery, graceOnPrincipalAndInterestPayment, graceOnArrearsAging);
+    /** Value of one flag, or the fallback when the object or the key is missing or JSON null. */
+    public static Boolean readFlag(final JsonObject overrides, final String key, final Boolean fallback) {
+        if (overrides == null) {
+            return fallback;
+        }
+        final JsonElement value = overrides.get(key);
+        return value == null || value.isJsonNull() ? fallback : value.getAsBoolean();
+    }
+
+    public static LoanProductConfigurableAttributes copyOf(final LoanProductConfigurableAttributes other) {
+        return new LoanProductConfigurableAttributes(other.amortizationType, other.interestType, other.transactionProcessingStrategyCode,
+                other.interestCalculationPeriodType, other.inArrearsTolerance, other.repaymentEvery,
+                other.graceOnPrincipalAndInterestPayment, other.graceOnArrearsAgeing);
+    }
+
+    public boolean sameFlagsAs(final LoanProductConfigurableAttributes other) {
+        return Objects.equals(amortizationType, other.amortizationType) && Objects.equals(interestType, other.interestType)
+                && Objects.equals(transactionProcessingStrategyCode, other.transactionProcessingStrategyCode)
+                && Objects.equals(interestCalculationPeriodType, other.interestCalculationPeriodType)
+                && Objects.equals(inArrearsTolerance, other.inArrearsTolerance) && Objects.equals(repaymentEvery, other.repaymentEvery)
+                && Objects.equals(graceOnPrincipalAndInterestPayment, other.graceOnPrincipalAndInterestPayment)
+                && Objects.equals(graceOnArrearsAgeing, other.graceOnArrearsAgeing);
     }
 
     public void updateLoanProduct(final LoanProduct loanProduct) {

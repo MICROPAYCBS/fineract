@@ -31,6 +31,18 @@ public interface JournalEntryWritePlatformService {
 
     CommandProcessingResult revertJournalEntry(JsonCommand command);
 
+    default CommandProcessingResult updateJournalEntryNarration(JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
+
+    default CommandProcessingResult updateJournalEntryLineNarration(JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
+
+    default CommandProcessingResult updateJournalEntryLineNarrations(JsonCommand command) {
+        throw new UnsupportedOperationException("Provided by the Micropay service module");
+    }
+
     void createJournalEntriesForLoan(AccountingBridgeDataDTO accountingBridgeData);
 
     void createJournalEntriesForSavings(Map<String, Object> accountingBridgeData);

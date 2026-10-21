@@ -107,4 +107,6 @@ public interface LoanTransactionValidator {
     void validateLoanNotClosedOrOverpaidForTransactions(Loan loan);
 
     void validateLoanNotClosedOrOverpaidForTransactions(Loan loan, LoanTransactionType loanTransactionType);
+
+    void validateDirectLoanRepaymentPermitted(LoanTransactionType repaymentTransactionType, boolean isRecoveryRepayment);
 }

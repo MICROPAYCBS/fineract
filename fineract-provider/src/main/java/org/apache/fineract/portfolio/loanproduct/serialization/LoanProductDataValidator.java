@@ -789,9 +789,9 @@ public final class LoanProductDataValidator {
                     .extractBooleanNamed(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING, element);
             baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING).value(enableAccrualActivityPosting)
                     .ignoreIfNull().validateForBooleanValue();
-            if (!AccountingValidations.isAccrualBasedAccounting(accountingRuleType)) {
-                baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING).isOneOfTheseValues(Boolean.TRUE)
-                        .failWithCode("should be false for non accrual accounting");
+            if (Boolean.TRUE.equals(enableAccrualActivityPosting)) {
+                baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING)
+                        .value(enableAccrualActivityPosting).failWithCode("should be false for non accrual accounting");
             }
         }
 
@@ -1011,7 +1011,16 @@ public final class LoanProductDataValidator {
 
         if (this.fromApiJsonHelper.parameterExists(LoanProductConstants.allowAttributeOverridesParamName, element)) {
 
-            final JsonObject object = element.getAsJsonObject().getAsJsonObject(LoanProductConstants.allowAttributeOverridesParamName);
+            final JsonElement overrides = element.getAsJsonObject().get(LoanProductConstants.allowAttributeOverridesParamName);
+            if (overrides == null || overrides.isJsonNull()) {
+                return; // null = reset to defaults
+            }
+            if (!overrides.isJsonObject()) {
+                baseDataValidator.reset().parameter(LoanProductConstants.allowAttributeOverridesParamName)
+                        .failWithCode("must.be.an.object");
+                return;
+            }
+            final JsonObject object = overrides.getAsJsonObject();
 
             // Validate that parameter names are allowed
             Set<String> supportedConfigurableAttributes = new HashSet<>();
@@ -1807,7 +1816,7 @@ public final class LoanProductDataValidator {
                     .extractBooleanNamed(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING, element);
             baseDataValidator.reset().parameter(LoanProductConstants.ENABLE_ACCRUAL_ACTIVITY_POSTING).value(enableAccrualActivityPosting)
                     .ignoreIfNull().validateForBooleanValue();
-            actualValue = enableAccrualActivityPosting;
+            actualValue = Boolean.TRUE.equals(enableAccrualActivityPosting);
         }
         if (actualValue) {
             Integer ruleType = accountingRuleType;
@@ -1946,7 +1955,7 @@ public final class LoanProductDataValidator {
 
         validateMultiDisburseLoanData(baseDataValidator, element, loanProduct);
 
-        // validateLoanConfigurableAttributes(baseDataValidator,element);
+        validateLoanConfigurableAttributes(baseDataValidator, element);
 
         validateVariableInstallmentSettings(baseDataValidator, element);
 
@@ -2073,8 +2082,7 @@ public final class LoanProductDataValidator {
 
     private void validateChargeToIncomeAccountMappings(final DataValidatorBuilder baseDataValidator, final JsonElement element) {
         // validate for both fee and penalty charges
-        // TODO: This look faulty. Need to analyze this behaviour before changing
-        validateChargeToIncomeAccountMappings(baseDataValidator, element, true);
+        validateChargeToIncomeAccountMappings(baseDataValidator, element, false);
         validateChargeToIncomeAccountMappings(baseDataValidator, element, true);
     }
 

@@ -113,11 +113,12 @@ public class GuarantorImportHandler implements ImportHandler {
         String city = ImportHandlerUtils.readAsString(GuarantorConstants.CITY_COL, row);
         LocalDate dob = ImportHandlerUtils.readAsDate(GuarantorConstants.DOB_COL, row);
         String zip = ImportHandlerUtils.readAsString(GuarantorConstants.ZIP_COL, row);
+        String nationalIdNumber = ImportHandlerUtils.readAsString(GuarantorConstants.NATIONAL_ID_NUMBER_COL, row);
         Integer savingsId = ImportHandlerUtils.readAsInt(GuarantorConstants.SAVINGS_ID_COL, row);
         BigDecimal amount = BigDecimal.valueOf(ImportHandlerUtils.readAsDouble(GuarantorConstants.AMOUNT, row));
 
         return GuarantorData.importInstance(guarantorTypeId, clientRelationshipTypeId, entityId, firstname, lastname, addressLine1,
-                addressLine2, city, dob, zip, savingsId, amount, row.getRowNum(), loanAccountId, locale, dateFormat);
+                addressLine2, city, dob, zip, nationalIdNumber, savingsId, amount, row.getRowNum(), loanAccountId, locale, dateFormat);
     }
 
     private Count importEntity(final Workbook workbook, final List<GuarantorData> guarantors, final String dateFormat) {

@@ -63,6 +63,7 @@ import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollatera
 import org.apache.fineract.portfolio.collateralmanagement.domain.ClientCollateralManagementRepositoryWrapper;
 import org.apache.fineract.portfolio.group.data.GroupGeneralData;
 import org.apache.fineract.useradministration.domain.AppUser;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -70,6 +71,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = ClientReadPlatformService.class, ignored = ClientReadPlatformServiceImpl.class)
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ClientReadPlatformServiceImpl implements ClientReadPlatformService {

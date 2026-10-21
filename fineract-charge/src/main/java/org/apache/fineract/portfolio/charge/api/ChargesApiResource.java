@@ -133,9 +133,11 @@ public class ChargesApiResource {
     @POST
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Create/Define a Charge", operationId = "createCharge", description = "Define a new charge that can later be associated with loans and savings through their respective product definitions or directly on each account instance.")
+    @Operation(summary = "Create/Define a Charge", operationId = "createCharge", description = "Define a new charge that can later be associated with loans and savings through their respective product definitions or directly on each account instance. Set useChargeTiers true and send chargeTiers instead of amount, minCap, and maxCap for a tiered charge. Tier amounts use locale.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ChargeRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ChargesApiResourceSwagger.PostChargesResponse.class)))
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ChargesApiResourceSwagger.PostChargesResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation error, including tiers sent when useChargeTiers is false or a gap in the bands")
+    @ApiResponse(responseCode = "403", description = "The caller may not define charges, or a business rule was violated")
     public CommandProcessingResult createCharge(@Parameter(hidden = true) ChargeRequest chargeRequest) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().createCharge()
                 .withJson(toApiJsonSerializer.serialize(chargeRequest)).build();
@@ -146,10 +148,13 @@ public class ChargesApiResource {
     @Path("{chargeId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Update a Charge", operationId = "updateCharge", description = "Updates the details of a Charge.")
+    @Operation(summary = "Update a Charge", operationId = "updateCharge", description = "Updates the details of a Charge. useChargeTiers and chargeTiers follow the same rules as create.")
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ChargeRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = ChargesApiResourceSwagger.PutChargesChargeIdResponse.class)))
-    public CommandProcessingResult updateCharge(@PathParam("chargeId") @Parameter(description = "chargeId") final Long chargeId,
+    @ApiResponse(responseCode = "200", description = "OK. When maker-checker holds the command, the body is { commandId, resourceId, rollbackTransaction: true } and a held create's resourceId does not exist yet.", content = @Content(schema = @Schema(implementation = ChargesApiResourceSwagger.PutChargesChargeIdResponse.class)))
+    @ApiResponse(responseCode = "400", description = "Validation error")
+    @ApiResponse(responseCode = "403", description = "The caller may not update charges, or a business rule was violated")
+    @ApiResponse(responseCode = "404", description = "No charge exists with this id")
+    public CommandProcessingResult updateCharge(@PathParam("chargeId") @Parameter(description = "Charge id") final Long chargeId,
             @Parameter(hidden = true) ChargeRequest chargeRequest) {
         final CommandWrapper commandRequest = new CommandWrapperBuilder().updateCharge(chargeId)
                 .withJson(toApiJsonSerializer.serialize(chargeRequest)).build();

@@ -22,6 +22,9 @@ import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.domain.ExternalId;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchClientAccessReadService;
+import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
+import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.client.exception.ClientNotActiveException;
 import org.apache.fineract.portfolio.client.exception.ClientNotFoundException;
@@ -39,6 +42,8 @@ public class ClientRepositoryWrapper {
 
     private final ClientRepository repository;
     private final PlatformSecurityContext context;
+    private final CrossBranchClientAccessReadService crossBranchClientAccessReadService;
+    private final CrossBranchTransactionAccessService crossBranchTransactionAccessService;
 
     @Transactional(readOnly = true)
     public Client findOneWithNotFoundDetection(final Long id) {
@@ -80,8 +85,18 @@ public class ClientRepositoryWrapper {
         if (client.isNotActive()) {
             throw new ClientNotActiveException(client.getId());
         }
-        this.context.validateAccessRights(client.getOffice().getHierarchy());
+        try {
+            this.context.validateAccessRights(client.getOffice().getHierarchy());
+        } catch (final NoAuthorizationException e) {
+            if (!isCrossBranchClientAccessAllowedForWrite()) {
+                throw e;
+            }
+        }
         return client;
+    }
+
+    private boolean isCrossBranchClientAccessAllowedForWrite() {
+        return this.crossBranchTransactionAccessService.isCrossBranchTransactionEnabledForCurrentUser();
     }
 
     public Client getClientByAccountNumber(String accountNumber) {
@@ -94,6 +109,9 @@ public class ClientRepositoryWrapper {
 
     public Client getClientByClientIdAndHierarchy(final Long clientId, final String hierarchySearchString) {
         Client client = this.repository.fetchByClientIdAndHierarchy(clientId, hierarchySearchString, hierarchySearchString);
+        if (client == null && this.crossBranchClientAccessReadService.isCrossBranchClientAccessEnabledForCurrentUser()) {
+            client = this.repository.findById(clientId).orElse(null);
+        }
         if (client == null) {
             throw new ClientNotFoundException(clientId.toString(), "client.id");
         }

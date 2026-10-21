@@ -19,6 +19,7 @@
 package org.apache.fineract.commands.service;
 
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACCEPTTRANSFER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACCRUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACTIVATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ADJUST;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ADJUSTMENT;
@@ -83,6 +84,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_FORCE_WITHDRAWAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_FORECLOSURE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GET;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_GOODWILLCREDIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_HOLDAMOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INACTIVATE;
@@ -90,6 +92,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INTERMEDIARYSALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_INVALIDATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_MANUAL_INTEREST_REFUND_TRANSACTION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_MARKASNPA;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_MERCHANTISSUEDREFUND;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_PAY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_PAYOUTREFUND;
@@ -113,13 +116,18 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REMOVELOANOFFICER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REMOVESAVINGSOFFICER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REPAYMENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_RESETTOTP;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVERSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVERSETRANSACTION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_REVOKE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SALE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVECOLLECTIONSHEET;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SAVINGS_TO_GL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SETFRAUD;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SETTLECASHFROMCASHIER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBMIT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_SUBSCRIBE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_TRANSFERCLIENTS;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNASSIGNROLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNASSIGNSTAFF;
@@ -130,14 +138,17 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOAPPROVAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOCHARGEOFF;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDODISBURSAL;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOREJECT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOTRANSACTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOWITHDRAWAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDOWRITEOFF;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDO_REAGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNDO_REAMORTIZE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UNSUBSCRIBE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATECASHIERALLOCATION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATECHANNELLIMIT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATEDELINQUENCY;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATELOANOFFICER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_UPDATEROLE;
@@ -162,13 +173,17 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CENTER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENT;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTCONTACT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTIDENTIFIER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENTTITLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CLIENT_COLLATERAL_PRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CODE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CODEVALUE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLATERAL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COLLECTIONSHEET;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_COMPLIANCEPROFILE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONFIGURATION;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CONTACTTYPE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITBUREAU_LOANPRODUCT_MAPPING;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_CREDITREPORT;
@@ -176,6 +191,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_ACTION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_BUCKET;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DELINQUENCY_RANGE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DEPARTMENT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_DISBURSEMENTDETAIL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EMAIL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_EMAIL_CAMPAIGN;
@@ -197,9 +213,13 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GSIMACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_GUARANTOR;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_HOLIDAY;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_IDENTITYTYPE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INLINE_JOB;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTERBRANCHRULE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_INTEREST_PAUSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_JOURNALENTRY;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LEGAL_TENDER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LIKELIHOOD;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LOAN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_LOANCHARGE;
@@ -225,6 +245,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_ROLE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNTCHARGE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SAVINGSPRODUCT;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SCHEDULER;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_SHAREPRODUCT;
@@ -238,6 +259,7 @@ import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_ACCESSTOKEN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_TWOFACTOR_CONFIGURATION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USER;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_USERSESSION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WAIVECHARGE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOAN;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ENTITY_WORKINGCAPITALLOANCHARGE;
@@ -405,6 +427,206 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder addIncomeSources(final long clientId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_INCOMESOURCES;
+        this.href = "/clients/" + clientId + "/incomesources";
+        this.clientId = clientId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateIncomeSources(final long incomeSourceId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_INCOMESOURCES;
+        this.href = "/clients/" + clientId + "/incomesources";
+        this.entityId = incomeSourceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteIncomeSources(final long incomeSourceId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_INCOMESOURCES;
+        this.href = "/clients/" + clientId + "/incomesources";
+        this.entityId = incomeSourceId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateComplianceProfile(final long clientId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_COMPLIANCEPROFILE;
+        this.href = "/clients/" + clientId + "/complianceprofile";
+        this.clientId = clientId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createClientTitle() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_CLIENTTITLE;
+        this.href = "/clienttitles";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateClientTitle(final long clientTitleId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_CLIENTTITLE;
+        this.href = "/clienttitles/" + clientTitleId;
+        this.entityId = clientTitleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteClientTitle(final long clientTitleId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_CLIENTTITLE;
+        this.href = "/clienttitles/" + clientTitleId;
+        this.entityId = clientTitleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createContactType() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_CONTACTTYPE;
+        this.href = "/contacttypes";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateContactType(final long contactTypeId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_CONTACTTYPE;
+        this.href = "/contacttypes/" + contactTypeId;
+        this.entityId = contactTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteContactType(final long contactTypeId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_CONTACTTYPE;
+        this.href = "/contacttypes/" + contactTypeId;
+        this.entityId = contactTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createDepartment() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_DEPARTMENT;
+        this.href = "/departments";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateDepartment(final long departmentId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_DEPARTMENT;
+        this.href = "/departments/" + departmentId;
+        this.entityId = departmentId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteDepartment(final long departmentId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_DEPARTMENT;
+        this.href = "/departments/" + departmentId;
+        this.entityId = departmentId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createLegalTender(final String currencyCode) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_LEGAL_TENDER;
+        this.transactionId = currencyCode;
+        this.href = "/currencies/" + currencyCode + "/legal-tenders";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateLegalTender(final String currencyCode, final Long legalTenderId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_LEGAL_TENDER;
+        this.transactionId = currencyCode;
+        this.entityId = legalTenderId;
+        this.href = "/currencies/" + currencyCode + "/legal-tenders/" + legalTenderId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteLegalTender(final String currencyCode, final Long legalTenderId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_LEGAL_TENDER;
+        this.transactionId = currencyCode;
+        this.entityId = legalTenderId;
+        this.href = "/currencies/" + currencyCode + "/legal-tenders/" + legalTenderId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createIdentityType() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_IDENTITYTYPE;
+        this.href = "/identitytypes";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateIdentityType(final long identityTypeId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_IDENTITYTYPE;
+        this.href = "/identitytypes/" + identityTypeId;
+        this.entityId = identityTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteIdentityType(final long identityTypeId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_IDENTITYTYPE;
+        this.href = "/identitytypes/" + identityTypeId;
+        this.entityId = identityTypeId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createInterBranchGlRule() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_INTERBRANCHRULE;
+        this.href = "/interbranch/rules";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateInterBranchGlRule(final long ruleId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_INTERBRANCHRULE;
+        this.href = "/interbranch/rules/" + ruleId;
+        this.entityId = ruleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteInterBranchGlRule(final long ruleId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_INTERBRANCHRULE;
+        this.href = "/interbranch/rules/" + ruleId;
+        this.entityId = ruleId;
+        return this;
+    }
+
+    public CommandWrapperBuilder createClientContact(final Long clientId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_CLIENTCONTACT;
+        this.entityId = null;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "/contacts/template";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateClientContact(final Long clientId, final Long clientContactId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_CLIENTCONTACT;
+        this.entityId = clientContactId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "/contacts/" + clientContactId;
+        return this;
+    }
+
+    public CommandWrapperBuilder deleteClientContact(final Long clientId, final Long clientContactId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_CLIENTCONTACT;
+        this.entityId = clientContactId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "/contacts/" + clientContactId;
+        return this;
+    }
+
     public CommandWrapperBuilder withLoanId(final Long withLoanId) {
         this.loanId = withLoanId;
         return this;
@@ -512,6 +734,15 @@ public class CommandWrapperBuilder {
         this.entityName = ENTITY_USER;
         this.entityId = userId;
         this.href = "/users/" + userId;
+        return this;
+    }
+
+    public CommandWrapperBuilder resetUserTotp(final Long userId) {
+        this.actionName = ACTION_RESETTOTP;
+        this.entityName = ENTITY_USER;
+        this.entityId = userId;
+        this.href = "/users/" + userId + "?command=resetTotp";
+        this.json = "{}";
         return this;
     }
 
@@ -1019,6 +1250,15 @@ public class CommandWrapperBuilder {
         this.entityId = clientId;
         this.clientId = clientId;
         this.href = "/clients/" + clientId + "?command=activate&template=true";
+        return this;
+    }
+
+    public CommandWrapperBuilder submitClient(final Long clientId) {
+        this.actionName = ACTION_SUBMIT;
+        this.entityName = ENTITY_CLIENT;
+        this.entityId = clientId;
+        this.clientId = clientId;
+        this.href = "/clients/" + clientId + "?command=submit";
         return this;
     }
 
@@ -1558,6 +1798,24 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder markAsNpa(final Long loanId) {
+        this.actionName = ACTION_MARKASNPA;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "?command=markAsNpa";
+        return this;
+    }
+
+    public CommandWrapperBuilder undoMarkAsNpa(final Long loanId) {
+        this.actionName = ACTION_UNDOMARKASNPA;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "?command=undoMarkAsNpa";
+        return this;
+    }
+
     public CommandWrapperBuilder updateDisbusementDate(final Long loanId, final Long disbursementId) {
         this.actionName = ACTION_UPDATE;
         this.entityName = ENTITY_DISBURSEMENTDETAIL;
@@ -1879,6 +2137,32 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder updateJournalEntryNarration(final String transactionId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOURNALENTRY;
+        this.entityId = null;
+        this.transactionId = transactionId;
+        this.href = "/journalentries/" + transactionId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateJournalEntryLineNarration(final Long journalEntryId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOURNALENTRY;
+        this.entityId = journalEntryId;
+        this.href = "/journalentries/entries/" + journalEntryId;
+        return this;
+    }
+
+    public CommandWrapperBuilder updateJournalEntryLineNarrations(final String transactionId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_JOURNALENTRY;
+        this.entityId = null;
+        this.transactionId = transactionId;
+        this.href = "/journalentries/" + transactionId;
+        return this;
+    }
+
     public CommandWrapperBuilder updateRunningBalanceForJournalEntry() {
         this.actionName = ACTION_UPDATERUNNINGBALANCE;
         this.entityName = ENTITY_JOURNALENTRY;
@@ -2117,6 +2401,24 @@ public class CommandWrapperBuilder {
         return this;
     }
 
+    public CommandWrapperBuilder savingsAccountGlToSavings(final Long accountId) {
+        this.actionName = ACTION_GL_TO_SAVINGS;
+        this.entityName = ENTITY_SAVINGSACCOUNT;
+        this.savingsId = accountId;
+        this.entityId = null;
+        this.href = "/savingsaccounts/" + accountId + "/transactions?command=glToSavings";
+        return this;
+    }
+
+    public CommandWrapperBuilder savingsAccountSavingsToGl(final Long accountId) {
+        this.actionName = ACTION_SAVINGS_TO_GL;
+        this.entityName = ENTITY_SAVINGSACCOUNT;
+        this.savingsId = accountId;
+        this.entityId = null;
+        this.href = "/savingsaccounts/" + accountId + "/transactions?command=savingsToGl";
+        return this;
+    }
+
     public CommandWrapperBuilder undoSavingsAccountTransaction(final Long accountId, final Long transactionId) {
         this.actionName = ACTION_UNDOTRANSACTION;
         this.entityName = ENTITY_SAVINGSACCOUNT;
@@ -2222,6 +2524,46 @@ public class CommandWrapperBuilder {
         this.href = "/savingsaccounts/" + savingsAccountId + "/charges/" + savingsAccountChargeId;
         return this;
 
+    }
+
+    public CommandWrapperBuilder subscribeSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_SUBSCRIBE;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=subscribe";
+        return this;
+    }
+
+    public CommandWrapperBuilder unsubscribeSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_UNSUBSCRIBE;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=unsubscribe";
+        return this;
+    }
+
+    public CommandWrapperBuilder blockSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_BLOCK;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=block";
+        return this;
+    }
+
+    public CommandWrapperBuilder unblockSavingsAccountPaymentChannel(final Long savingsAccountId) {
+        this.actionName = ACTION_UNBLOCK;
+        this.entityName = ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=unblock";
+        return this;
+    }
+
+    public CommandWrapperBuilder updateSavingsAccountChannelLimit(final Long savingsAccountId) {
+        this.actionName = ACTION_UPDATECHANNELLIMIT;
+        this.entityName = ENTITY_SAVINGSACCOUNT;
+        this.savingsId = savingsAccountId;
+        this.href = "/savingsaccounts/" + savingsAccountId + "/paymentchannels?command=updateLimit";
+        return this;
     }
 
     public CommandWrapperBuilder deleteSavingsAccountCharge(final Long savingsAccountId, final Long savingsAccountChargeId) {
@@ -4082,6 +4424,25 @@ public class CommandWrapperBuilder {
         this.entityId = transactionId;
         this.loanId = loanId;
         this.href = "/loans/" + loanId + "/transactions/" + transactionId;
+        return this;
+    }
+
+    public CommandWrapperBuilder revokeUserSession(final Long userId, final Long sessionId) {
+        this.actionName = ACTION_REVOKE;
+        this.entityName = ENTITY_USERSESSION;
+        this.entityId = userId;
+        this.subentityId = sessionId;
+        this.href = "/users/" + userId + "/sessions/" + sessionId + "/revoke";
+        this.json = "{}";
+        return this;
+    }
+
+    public CommandWrapperBuilder accrueLoan(final Long loanId) {
+        this.actionName = ACTION_ACCRUE;
+        this.entityName = ENTITY_LOAN;
+        this.entityId = loanId;
+        this.loanId = loanId;
+        this.href = "/loans/" + loanId + "?command=accrue";
         return this;
     }
 

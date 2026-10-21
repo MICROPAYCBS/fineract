@@ -53,8 +53,8 @@ public final class ClientIdentifierCommandFromApiJsonDeserializer extends Abstra
     /**
      * The parameters supported for this command.
      */
-    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
-            Arrays.asList(DOCUMENT_TYPE_ID, DOCUMENT_KEY, STATUS, DESCRIPTION, ISSUANCE_DATE, EXPIRY_DATE, LOCALE, DATE_FORMAT));
+    private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(Arrays.asList(DOCUMENT_TYPE_ID, DOCUMENT_KEY, STATUS, DESCRIPTION,
+            DOCUMENT_DESCRIPTION, ISSUANCE_DATE, EXPIRY_DATE, LOCALE, DATE_FORMAT));
     private final FromJsonHelper fromApiJsonHelper;
 
     @Autowired
@@ -77,13 +77,16 @@ public final class ClientIdentifierCommandFromApiJsonDeserializer extends Abstra
         final JsonElement element = this.fromApiJsonHelper.parse(json);
         final Long documentTypeId = this.fromApiJsonHelper.extractLongNamed(DOCUMENT_TYPE_ID, element);
         final String documentKey = this.fromApiJsonHelper.extractStringNamed(DOCUMENT_KEY, element);
-        final String documentDescription = this.fromApiJsonHelper.extractStringNamed(DOCUMENT_DESCRIPTION, element);
+        String description = this.fromApiJsonHelper.extractStringNamed(DESCRIPTION, element);
+        if (description == null) {
+            description = this.fromApiJsonHelper.extractStringNamed(DOCUMENT_DESCRIPTION, element);
+        }
         final String statusString = this.fromApiJsonHelper.extractStringNamed(STATUS, element);
         final LocalDate issuanceDate = this.fromApiJsonHelper.extractLocalDateNamed(ISSUANCE_DATE, element);
         final LocalDate expiryDate = this.fromApiJsonHelper.extractLocalDateNamed(EXPIRY_DATE, element);
         final boolean issuanceDateParameterProvided = this.fromApiJsonHelper.parameterExists(ISSUANCE_DATE, element);
         final boolean expiryDateParameterProvided = this.fromApiJsonHelper.parameterExists(EXPIRY_DATE, element);
-        return new ClientIdentifierCommand(documentTypeId, documentKey, statusString, documentDescription, issuanceDate, expiryDate,
+        return new ClientIdentifierCommand(documentTypeId, documentKey, statusString, description, issuanceDate, expiryDate,
                 issuanceDateParameterProvided, expiryDateParameterProvided);
     }
 }

@@ -53,7 +53,7 @@ public final class OfficeCommandFromApiJsonDeserializer {
      * The parameters supported for this command.
      */
     private static final Set<String> SUPPORTED_PARAMETERS = new HashSet<>(
-            Arrays.asList(NAME, PARENT_ID, OPENING_DATE, EXTERNAL_ID, LOCALE, DATE_FORMAT));
+            Arrays.asList(NAME, PARENT_ID, OPENING_DATE, EXTERNAL_ID, LOCALE, DATE_FORMAT, "branchProfile"));
 
     private final FromJsonHelper fromApiJsonHelper;
 

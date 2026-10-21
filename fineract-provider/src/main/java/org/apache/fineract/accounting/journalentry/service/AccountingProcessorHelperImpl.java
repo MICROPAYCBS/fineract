@@ -184,6 +184,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
                     feePaid, penaltyPaid);
 
             transaction.setLoanToLoanTransfer(loanTxnDto.isLoanToLoanTransfer());
+            transaction.setTransactionOfficeId(loanTxnDto.getTransactionOfficeId());
             transaction.setChargeTaxPayments(chargeTaxPayments);
             newLoanTransactions.add(transaction);
         }
@@ -281,9 +282,11 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
                 localIsAccountTransfer = this.accountTransfersReadPlatformService.isAccountTransfer(Long.parseLong(transactionId),
                         PortfolioAccountType.SAVINGS);
             }
+            final Long glAccountId = (Long) map.get("glAccountId");
             final SavingsTransactionDTO transaction = new SavingsTransactionDTO(transactionOfficeId, paymentTypeId, transactionId,
                     transactionDate, transactionType, amount, reversed, feePayments, penaltyPayments, overdraftAmount,
-                    localIsAccountTransfer, taxPayments);
+                    localIsAccountTransfer, taxPayments, glAccountId);
+            transaction.setTransactionOfficeId((Long) map.get("transactionOfficeId"));
 
             newSavingsTransactions.add(transaction);
 
@@ -314,6 +317,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
             final BigDecimal amount = (BigDecimal) map.get("amount");
             final BigDecimal chargeAmount = (BigDecimal) map.get("chargeAmount");
             final Long paymentTypeId = (Long) map.get("paymentTypeId");
+            final boolean useSavings = map.get("useSavings") != null && Boolean.TRUE.equals(map.get("useSavings"));
 
             final List<ChargePaymentDTO> feePayments = new ArrayList<>();
             // extract charge payment details (if exists)
@@ -329,7 +333,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
                 }
             }
             final SharesTransactionDTO transaction = new SharesTransactionDTO(transactionOfficeId, paymentTypeId, transactionId,
-                    transactionDate, transactionType, transactionStatus, amount, chargeAmount, feePayments);
+                    transactionDate, transactionType, transactionStatus, amount, chargeAmount, feePayments, useSavings);
 
             newTransactions.add(transaction);
 
@@ -371,8 +375,11 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
             }
         }
 
-        return new ClientTransactionDTO(clientId, transactionOfficeId, paymentTypeId, transactionId, transactionDate, transactionType,
-                currencyCode, amount, reversed, accountingEnabled, clientChargePaymentDTOs);
+        final ClientTransactionDTO clientTransactionDTO = new ClientTransactionDTO(clientId, transactionOfficeId, paymentTypeId,
+                transactionId, transactionDate, transactionType, currencyCode, amount, reversed, accountingEnabled,
+                clientChargePaymentDTOs);
+        clientTransactionDTO.setTransactionOfficeId((Long) accountingBridgeData.get("transactionOfficeId"));
+        return clientTransactionDTO;
 
     }
 
@@ -950,7 +957,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
         createDebitJournalEntryForLoan(office, currencyCode, account, loanId, transactionId, transactionDate, amount);
     }
 
-    private void createCreditJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
+    public void createCreditJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
             final Long clientId, final Long transactionId, final LocalDate transactionDate, final BigDecimal amount) {
         final boolean manualEntry = false;
 
@@ -961,7 +968,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
         persistJournalEntry(journalEntry);
     }
 
-    private void createCreditJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
+    public void createCreditJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
             final Long savingsId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount)
             throws DataAccessException {
         final boolean manualEntry = false;
@@ -1075,7 +1082,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
         return accountMapping.getGlAccount();
     }
 
-    private void createDebitJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
+    public void createDebitJournalEntryForSavings(final Office office, final String currencyCode, final GLAccount account,
             final Long savingsId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount) {
         final boolean manualEntry = false;
         Long savingsAccountTransactionId = null;
@@ -1091,7 +1098,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
         persistJournalEntry(journalEntry);
     }
 
-    private void createDebitJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
+    public void createDebitJournalEntryForClientPayments(final Office office, final String currencyCode, final GLAccount account,
             final Long clientId, final Long transactionId, final LocalDate transactionDate, final BigDecimal amount) {
         final boolean manualEntry = false;
         String modifiedTransactionId = CLIENT_TRANSACTION_IDENTIFIER + transactionId;
@@ -1322,7 +1329,7 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
         return accountMapping.getGlAccount();
     }
 
-    private GLAccount getLinkedGLAccountForSavingsProduct(final Long savingsProductId, final int accountMappingTypeId,
+    public GLAccount getLinkedGLAccountForSavingsProduct(final Long savingsProductId, final int accountMappingTypeId,
             final Long paymentTypeId) {
         GLAccount glAccount;
         if (isOrganizationAccount(accountMappingTypeId)) {
@@ -1445,8 +1452,27 @@ public class AccountingProcessorHelperImpl implements AccountingProcessorHelper 
         }
     }
 
-    private GLAccount getGLAccountById(final Long accountId) {
+    public GLAccount getGLAccountById(final Long accountId) {
         return this.glAccountRepository.getReferenceById(accountId);
+    }
+
+    /**
+     * Posts a savings journal where one side is a concrete GL account and the other is a product mapping. When
+     * {@code debitExplicitAccount} is true the explicit account is debited and the mapped account is credited.
+     */
+    public void createSavingsJournalReplacingReference(final Office office, final String currencyCode, final GLAccount explicitAccount,
+            final int contraAccountType, final boolean debitExplicitAccount, final Long savingsProductId, final Long paymentTypeId,
+            final Long savingsId, final String transactionId, final LocalDate transactionDate, final BigDecimal amount,
+            final boolean isReversal) {
+        final boolean debitExplicit = isReversal ? !debitExplicitAccount : debitExplicitAccount;
+        final GLAccount contraAccount = getLinkedGLAccountForSavingsProduct(savingsProductId, contraAccountType, paymentTypeId);
+        if (debitExplicit) {
+            createDebitJournalEntryForSavings(office, currencyCode, explicitAccount, savingsId, transactionId, transactionDate, amount);
+            createCreditJournalEntryForSavings(office, currencyCode, contraAccount, savingsId, transactionId, transactionDate, amount);
+        } else {
+            createDebitJournalEntryForSavings(office, currencyCode, contraAccount, savingsId, transactionId, transactionDate, amount);
+            createCreditJournalEntryForSavings(office, currencyCode, explicitAccount, savingsId, transactionId, transactionDate, amount);
+        }
     }
 
     @Override

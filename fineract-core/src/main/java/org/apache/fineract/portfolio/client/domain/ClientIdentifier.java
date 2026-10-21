@@ -74,6 +74,11 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         return new ClientIdentifier(client, documentType, documentKey, status, description, issuanceDate, expiryDate);
     }
 
+    public static ClientIdentifier create(final Client client, final CodeValue documentType, final String documentKey, final String status,
+            final String description) {
+        return new ClientIdentifier(client, documentType, documentKey, status, description, null, null);
+    }
+
     protected ClientIdentifier() {
         //
     }
@@ -86,7 +91,11 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         this.description = StringUtils.defaultIfEmpty(description, null);
         this.issuanceDate = issuanceDate;
         this.expiryDate = expiryDate;
-        ClientIdentifierStatus statusEnum = ClientIdentifierStatus.valueOf(statusName.toUpperCase(Locale.ROOT));
+        // Standalone create turns a missing status into "" via stringValueOfParameterNamed; nested create passes null.
+        if (StringUtils.isBlank(statusName)) {
+            throw new IllegalStateException("Client identifier status must be validated before the entity is built");
+        }
+        ClientIdentifierStatus statusEnum = ClientIdentifierStatus.valueOf(statusName.trim().toUpperCase(Locale.ROOT));
         this.active = null;
         if (statusEnum.isActive()) {
             this.active = statusEnum.getValue();
@@ -123,24 +132,28 @@ public class ClientIdentifier extends AbstractAuditableWithUTCDateTimeCustom<Lon
         }
 
         final String statusParamName = "status";
-        if (command.isChangeInStringParameterNamed(statusParamName, ClientIdentifierStatus.fromInt(this.status).getCode())) {
-            final String newValue = command.stringValueOfParameterNamed(statusParamName);
-            actualChanges.put(statusParamName, ClientIdentifierStatus.valueOf(newValue));
-            this.status = ClientIdentifierStatus.valueOf(newValue).getValue();
+        final String newValue = command.stringValueOfParameterNamedAllowingNull(statusParamName);
+        if (StringUtils.isNotBlank(newValue)) {
+            final ClientIdentifierStatus newStatus = ClientIdentifierStatus.valueOf(newValue.trim().toUpperCase(Locale.ROOT));
+            if (!newStatus.getValue().equals(this.status)) {
+                actualChanges.put(statusParamName, newStatus);
+                this.status = newStatus.getValue();
+                this.active = newStatus.isActive() ? newStatus.getValue() : null;
+            }
         }
 
         final String issuanceDateParamName = "issuanceDate";
         if (command.isChangeInLocalDateParameterNamed(issuanceDateParamName, this.issuanceDate)) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(issuanceDateParamName);
-            actualChanges.put(issuanceDateParamName, newValue);
-            this.issuanceDate = newValue;
+            final LocalDate newIssuanceDate = command.localDateValueOfParameterNamed(issuanceDateParamName);
+            actualChanges.put(issuanceDateParamName, newIssuanceDate);
+            this.issuanceDate = newIssuanceDate;
         }
 
         final String expiryDateParamName = "expiryDate";
         if (command.isChangeInLocalDateParameterNamed(expiryDateParamName, this.expiryDate)) {
-            final LocalDate newValue = command.localDateValueOfParameterNamed(expiryDateParamName);
-            actualChanges.put(expiryDateParamName, newValue);
-            this.expiryDate = newValue;
+            final LocalDate newExpiryDate = command.localDateValueOfParameterNamed(expiryDateParamName);
+            actualChanges.put(expiryDateParamName, newExpiryDate);
+            this.expiryDate = newExpiryDate;
         }
 
         return actualChanges;

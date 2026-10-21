@@ -39,9 +39,11 @@ import org.apache.fineract.portfolio.client.domain.ClientAddress;
 import org.apache.fineract.portfolio.client.domain.ClientAddressRepository;
 import org.apache.fineract.portfolio.client.domain.ClientAddressRepositoryWrapper;
 import org.apache.fineract.portfolio.client.domain.ClientRepositoryWrapper;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 
 @Service
+@ConditionalOnMissingBean(value = AddressWritePlatformService.class, ignored = AddressWritePlatformServiceImpl.class)
 @RequiredArgsConstructor
 public class AddressWritePlatformServiceImpl implements AddressWritePlatformService {
 

@@ -30,6 +30,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_SAVE = "SAVE";
     public static final String ACTION_PERMISSIONS = "PERMISSIONS";
     public static final String ACTION_CHANGEPWD = "CHANGEPWD";
+    public static final String ACTION_RESETTOTP = "RESETTOTP";
     public static final String ACTION_RECOVERGUARANTEES = "RECOVERGUARANTEES";
     public static final String ACTION_APPROVE = "APPROVE";
     public static final String ACTION_REJECT = "REJECT";
@@ -39,6 +40,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_DISCOUNTFEE = "DISCOUNTFEE";
     public static final String ACTION_DISCOUNTFEEADJUSTMENT = "DISCOUNTFEEADJUSTMENT";
     public static final String ACTION_ACTIVATE = "ACTIVATE";
+    public static final String ACTION_SUBMIT = "SUBMIT";
     public static final String ACTION_CLOSE = "CLOSE";
     public static final String ACTION_WITHDRAW = "WITHDRAW";
     public static final String ACTION_REACTIVATE = "REACTIVATE";
@@ -46,6 +48,7 @@ public final class CommandWrapperConstants {
     public static final String ACTION_PROPOSEANDACCEPTTRANSFER = "PROPOSEANDACCEPTTRANSFER";
     public static final String ACTION_WITHDRAWTRANSFER = "WITHDRAWTRANSFER";
     public static final String ACTION_ACCEPTTRANSFER = "ACCEPTTRANSFER";
+    public static final String ACTION_ACCRUE = "ACCRUE";
     public static final String ACTION_REJECTTRANSFER = "REJECTTRANSFER";
     public static final String ACTION_UNDOREJECT = "UNDOREJECT";
     public static final String ACTION_UNDOWITHDRAWAL = "UNDOWITHDRAWAL";
@@ -72,6 +75,8 @@ public final class CommandWrapperConstants {
     public static final String ACTION_UNDO = "UNDO";
     public static final String ACTION_BOUNCE = "BOUNCE";
     public static final String ACTION_SETFRAUD = "SETFRAUD";
+    public static final String ACTION_MARKASNPA = "MARKASNPA";
+    public static final String ACTION_UNDOMARKASNPA = "UNDOMARKASNPA";
     public static final String ACTION_UNDODISBURSAL = "UNDODISBURSAL";
     public static final String ACTION_UNDOAPPROVAL = "UNDOAPPROVAL";
     public static final String ACTION_DISBURSETOSAVINGS = "DISBURSETOSAVINGS";
@@ -87,6 +92,8 @@ public final class CommandWrapperConstants {
     public static final String ACTION_DEFINEOPENINGBALANCE = "DEFINEOPENINGBALANCE";
     public static final String ACTION_DEPOSIT = "DEPOSIT";
     public static final String ACTION_WITHDRAWAL = "WITHDRAWAL";
+    public static final String ACTION_GL_TO_SAVINGS = "GLTOSAVINGS";
+    public static final String ACTION_SAVINGS_TO_GL = "SAVINGSTOGL";
     public static final String ACTION_UNDOTRANSACTION = "UNDOTRANSACTION";
     public static final String ACTION_REVERSETRANSACTION = "REVERSETRANSACTION";
     public static final String ACTION_ADJUSTTRANSACTION = "ADJUSTTRANSACTION";
@@ -94,6 +101,10 @@ public final class CommandWrapperConstants {
     public static final String ACTION_POSTINTEREST = "POSTINTEREST";
     public static final String ACTION_APPLYANNUALFEE = "APPLYANNUALFEE";
     public static final String ACTION_INACTIVATE = "INACTIVATE";
+    public static final String ACTION_SUBSCRIBE = "SUBSCRIBE";
+    public static final String ACTION_UPDATECHANNELLIMIT = "UPDATECHANNELLIMIT";
+    public static final String ACTION_UNSUBSCRIBE = "UNSUBSCRIBE";
+    public static final String ACTION_REVOKE = "REVOKE";
     public static final String ACTION_SAVECOLLECTIONSHEET = "SAVECOLLECTIONSHEET";
     public static final String ACTION_ASSOCIATECLIENTS = "ASSOCIATECLIENTS";
     public static final String ACTION_DISASSOCIATECLIENTS = "DISASSOCIATECLIENTS";
@@ -166,6 +177,15 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_CREDITBUREAU_CONFIGURATION = "CREDITBUREAU_CONFIGURATION";
     public static final String ENTITY_ADDRESS = "ADDRESS";
     public static final String ENTITY_FAMILYMEMBERS = "FAMILYMEMBERS";
+    public static final String ENTITY_INCOMESOURCES = "INCOMESOURCES";
+    public static final String ENTITY_COMPLIANCEPROFILE = "COMPLIANCEPROFILE";
+    public static final String ENTITY_CLIENTTITLE = "CLIENTTITLE";
+    public static final String ENTITY_CONTACTTYPE = "CONTACTTYPE";
+    public static final String ENTITY_DEPARTMENT = "DEPARTMENT";
+    public static final String ENTITY_LEGAL_TENDER = "LEGAL_TENDER";
+    public static final String ENTITY_IDENTITYTYPE = "IDENTITYTYPE";
+    public static final String ENTITY_INTERBRANCHRULE = "INTERBRANCHRULE";
+    public static final String ENTITY_CLIENTCONTACT = "CLIENTCONTACT";
     public static final String ENTITY_CONFIGURATION = "CONFIGURATION";
     public static final String ENTITY_PERMISSION = "PERMISSION";
     public static final String ENTITY_ROLE = "ROLE";
@@ -203,6 +223,8 @@ public final class CommandWrapperConstants {
     public static final String ENTITY_ACCOUNTTRANSFER = "ACCOUNTTRANSFER";
     public static final String ENTITY_STANDINGINSTRUCTION = "STANDINGINSTRUCTION";
     public static final String ENTITY_SAVINGSACCOUNTCHARGE = "SAVINGSACCOUNTCHARGE";
+    public static final String ENTITY_SAVINGSACCOUNTPAYMENTCHANNEL = "SAVINGSACCOUNTPAYMENTCHANNEL";
+    public static final String ENTITY_USERSESSION = "USERSESSION";
     public static final String ENTITY_FIXEDDEPOSITPRODUCT = "FIXEDDEPOSITPRODUCT";
     public static final String ENTITY_RECURRINGDEPOSITPRODUCT = "RECURRINGDEPOSITPRODUCT";
     public static final String ENTITY_CALENDAR = "CALENDAR";

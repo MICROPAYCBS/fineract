@@ -48,10 +48,12 @@ import org.apache.fineract.portfolio.savings.service.SavingsAccountDomainService
 import org.apache.fineract.portfolio.savings.service.SavingsAccountPostInterestService;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountTransfersService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnMissingBean(value = SavingsAccountDomainService.class, ignored = SavingsAccountDomainServiceJpa.class)
 public class SavingsAccountDomainServiceJpa implements SavingsAccountDomainService {
 
     private final PlatformSecurityContext context;

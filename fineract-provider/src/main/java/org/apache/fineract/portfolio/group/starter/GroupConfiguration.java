@@ -21,6 +21,7 @@ package org.apache.fineract.portfolio.group.starter;
 
 import org.apache.fineract.commands.service.CommandProcessingService;
 import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatRepositoryWrapper;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberManualEntryValidator;
 import org.apache.fineract.infrastructure.codes.domain.CodeValueRepositoryWrapper;
 import org.apache.fineract.infrastructure.codes.service.CodeValueReadPlatformService;
 import org.apache.fineract.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -94,14 +95,15 @@ public class GroupConfiguration {
             AccountNumberFormatRepositoryWrapper accountNumberFormatRepository, AccountNumberGenerator accountNumberGenerator,
             EntityDatatableChecksWritePlatformService entityDatatableChecksWritePlatformService,
             BusinessEventNotifierService businessEventNotifierService, LoanOfficerService loanOfficerService,
-            ExternalIdFactory externalIdFactory
+            AccountNumberManualEntryValidator accountNumberManualEntryValidator, ExternalIdFactory externalIdFactory
 
     ) {
         return new GroupingTypesWritePlatformServiceJpaRepositoryImpl(context, groupRepository, clientRepositoryWrapper,
                 officeRepositoryWrapper, staffRepository, noteRepository, groupLevelRepository, fromApiJsonDeserializer,
                 loanRepositoryWrapper, codeValueRepository, commandProcessingService, calendarInstanceRepository,
                 configurationDomainService, savingsAccountRepositoryWrapper, accountNumberFormatRepository, accountNumberGenerator,
-                entityDatatableChecksWritePlatformService, businessEventNotifierService, loanOfficerService, externalIdFactory
+                entityDatatableChecksWritePlatformService, businessEventNotifierService, loanOfficerService,
+                accountNumberManualEntryValidator, externalIdFactory
 
         );
     }

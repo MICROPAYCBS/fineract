@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: seed default END_OF_DAY job sequence from EOD runbook order.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/micropay/parts/3089_seed_end_of_day_job_sequence.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="3089-seed-end-of-day-sequence" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_job_sequence WHERE name = 'END_OF_DAY'</sqlCheck>
+        </preConditions>
+        <sql>
+            INSERT INTO m_job_sequence (name, description, active, created_by, created_on_utc, last_modified_by, last_modified_on_utc)
+            SELECT 'END_OF_DAY',
+                   'Default end-of-day close: advance business date, Loan COB, WC Loan COB, savings interest, GL snapshots',
+                   true,
+                   (SELECT id FROM m_appuser ORDER BY id LIMIT 1),
+                   CURRENT_TIMESTAMP,
+                   (SELECT id FROM m_appuser ORDER BY id LIMIT 1),
+                   CURRENT_TIMESTAMP
+            WHERE EXISTS (SELECT 1 FROM m_appuser);
+        </sql>
+        <sql>
+            INSERT INTO m_job_sequence_step (sequence_id, step_order, step_type, job_short_name, operation_code, enabled, stop_on_failure)
+            SELECT s.id, 1, 'OPERATION', NULL, 'ADVANCE_BUSINESS_DATE', true, true
+            FROM m_job_sequence s WHERE s.name = 'END_OF_DAY'
+              AND NOT EXISTS (SELECT 1 FROM m_job_sequence_step st WHERE st.sequence_id = s.id AND st.step_order = 1);
+        </sql>
+        <sql>
+            INSERT INTO m_job_sequence_step (sequence_id, step_order, step_type, job_short_name, operation_code, enabled, stop_on_failure)
+            SELECT s.id, 2, 'SCHEDULER_JOB', 'LA_ECOB', NULL, true, true
+            FROM m_job_sequence s WHERE s.name = 'END_OF_DAY'
+              AND NOT EXISTS (SELECT 1 FROM m_job_sequence_step st WHERE st.sequence_id = s.id AND st.step_order = 2);
+        </sql>
+        <sql>
+            INSERT INTO m_job_sequence_step (sequence_id, step_order, step_type, job_short_name, operation_code, enabled, stop_on_failure)
+            SELECT s.id, 3, 'SCHEDULER_JOB', 'WC_COB', NULL, true, true
+            FROM m_job_sequence s WHERE s.name = 'END_OF_DAY'
+              AND NOT EXISTS (SELECT 1 FROM m_job_sequence_step st WHERE st.sequence_id = s.id AND st.step_order = 3);
+        </sql>
+        <sql>
+            INSERT INTO m_job_sequence_step (sequence_id, step_order, step_type, job_short_name, operation_code, enabled, stop_on_failure)
+            SELECT s.id, 4, 'SCHEDULER_JOB', 'SA_PINT', NULL, true, true
+            FROM m_job_sequence s WHERE s.name = 'END_OF_DAY'
+              AND NOT EXISTS (SELECT 1 FROM m_job_sequence_step st WHERE st.sequence_id = s.id AND st.step_order = 4);
+        </sql>
+        <sql>
+            INSERT INTO m_job_sequence_step (sequence_id, step_order, step_type, job_short_name, operation_code, enabled, stop_on_failure)
+            SELECT s.id, 5, 'SCHEDULER_JOB', 'GLB_SNAP', NULL, true, true
+            FROM m_job_sequence s WHERE s.name = 'END_OF_DAY'
+              AND NOT EXISTS (SELECT 1 FROM m_job_sequence_step st WHERE st.sequence_id = s.id AND st.step_order = 5);
+        </sql>
+    </changeSet>
+</databaseChangeLog>

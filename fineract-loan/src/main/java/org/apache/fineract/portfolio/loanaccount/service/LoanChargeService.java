@@ -41,6 +41,7 @@ import org.apache.fineract.portfolio.charge.domain.ChargePaymentMode;
 import org.apache.fineract.portfolio.charge.domain.ChargeTimeType;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeCannotBeAddedException;
 import org.apache.fineract.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
+import org.apache.fineract.portfolio.charge.service.ChargeTierCalculator;
 import org.apache.fineract.portfolio.loanaccount.domain.Loan;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanCharge;
 import org.apache.fineract.portfolio.loanaccount.domain.LoanChargePaidBy;
@@ -413,6 +414,11 @@ public class LoanChargeService {
 
     public void populateDerivedFields(final LoanCharge loanCharge, final BigDecimal amountPercentageAppliedTo,
             final BigDecimal chargeAmount, Integer numberOfRepayments, BigDecimal loanChargeAmount) {
+        BigDecimal effectiveChargeAmount = chargeAmount;
+        if (loanCharge.getCharge() != null && loanCharge.getCharge().isTiered()) {
+            final BigDecimal base = amountPercentageAppliedTo != null ? amountPercentageAppliedTo : BigDecimal.ZERO;
+            effectiveChargeAmount = ChargeTierCalculator.resolveTierAmountOrPercentage(loanCharge.getCharge(), base);
+        }
         switch (loanCharge.getChargeCalculation()) {
             case INVALID:
                 loanCharge.setPercentage(null);
@@ -431,9 +437,9 @@ public class LoanChargeService {
                     if (numberOfRepayments == null) {
                         numberOfRepayments = loanCharge.getLoan().fetchNumberOfInstallmentsAfterExceptions();
                     }
-                    loanCharge.setAmount(chargeAmount.multiply(BigDecimal.valueOf(numberOfRepayments)));
+                    loanCharge.setAmount(effectiveChargeAmount.multiply(BigDecimal.valueOf(numberOfRepayments)));
                 } else {
-                    loanCharge.setAmount(chargeAmount);
+                    loanCharge.setAmount(effectiveChargeAmount);
                 }
                 loanCharge.setAmountOutstanding(loanCharge.getAmount());
                 loanCharge.setAmountWaived(null);
@@ -443,19 +449,23 @@ public class LoanChargeService {
             case PERCENT_OF_AMOUNT_AND_INTEREST:
             case PERCENT_OF_INTEREST:
             case PERCENT_OF_DISBURSEMENT_AMOUNT:
-                loanCharge.setPercentage(chargeAmount);
+                loanCharge.setPercentage(effectiveChargeAmount);
                 loanCharge.setAmountPercentageAppliedTo(amountPercentageAppliedTo);
                 if (loanChargeAmount.compareTo(BigDecimal.ZERO) == 0) {
                     loanChargeAmount = loanCharge.percentageOf(loanCharge.getAmountPercentageAppliedTo());
                 }
-                loanCharge.setAmount(loanCharge.minimumAndMaximumCap(loanChargeAmount));
+                if (loanCharge.getCharge() != null && loanCharge.getCharge().isTiered()) {
+                    loanCharge.setAmount(loanChargeAmount);
+                } else {
+                    loanCharge.setAmount(loanCharge.minimumAndMaximumCap(loanChargeAmount));
+                }
                 loanCharge.setAmountPaid(null);
                 loanCharge.setAmountOutstanding(loanCharge.calculateOutstanding());
                 loanCharge.setAmountWaived(null);
                 loanCharge.setAmountWrittenOff(null);
             break;
         }
-        loanCharge.setAmountOrPercentage(chargeAmount);
+        loanCharge.setAmountOrPercentage(effectiveChargeAmount);
         applyTaxIfConfigured(loanCharge);
         if (loanCharge.getLoan() != null && loanCharge.isInstalmentFee()) {
             updateInstallmentCharges(loanCharge);
@@ -509,6 +519,10 @@ public class LoanChargeService {
                     amountPercentageAppliedTo = loanTrancheDisbursementCharge.getloanDisbursementDetails().getPrincipal();
                 break;
                 default:
+                    // Micropay tiered flat charges look the amount up by loan principal
+                    if (loanCharge.getCharge() != null && loanCharge.getCharge().isTiered()) {
+                        amountPercentageAppliedTo = loanCharge.getLoan().getPrincipal().getAmount();
+                    }
                 break;
             }
         }

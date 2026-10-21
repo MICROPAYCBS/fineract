@@ -61,6 +61,7 @@ public class CommandSourceService {
     private final CommandSourceRepository commandSourceRepository;
     private final ErrorHandler errorHandler;
     private final FromJsonHelper fromApiJsonHelper;
+    private final ApprovalWorkflowHook approvalWorkflowHook;
 
     @NonNull
     public CommandSource saveInitial(CommandWrapper wrapper, JsonCommand jsonCommand, AppUser maker, String idempotencyKey) {
@@ -118,13 +119,13 @@ public class CommandSourceService {
             CommandSource commandSource, AppUser user, boolean isApprovedByChecker,
             BiConsumer<CommandSource, CommandProcessingResult> resultUpdater) {
         final CommandProcessingResult result = handler.processCommand(command);
-        validateMakerChecker(commandSource, user, isApprovedByChecker, result);
+        validateMakerChecker(commandSource, user, isApprovedByChecker, result, command);
         resultUpdater.accept(commandSource, result);
         return new CommandExecutionResult(result, saveResult(commandSource));
     }
 
     private void validateMakerChecker(CommandSource commandSource, AppUser user, boolean isApprovedByChecker,
-            CommandProcessingResult result) {
+            CommandProcessingResult result, JsonCommand command) {
         String permission = commandSource.getPermissionCode();
         boolean isMakerChecker = configurationDomainService.isMakerCheckerEnabledForTask(permission);
         if (isMakerChecker || result.isRollbackTransaction()) {
@@ -135,8 +136,11 @@ public class CommandSourceService {
                     throw new GeneralPlatformDomainRuleException("error.msg.invalid.sanitization",
                             "Maker-checker command can not be sanitized, please change the permission configuration", permission);
                 }
-
+                // Stamp office/client/loan ids from the handler result before hold. Held commands never reach the
+                // success-path updateForAudit, and the maker-checker inbox scopes by office_id for branch users.
+                commandSource.updateForAudit(result);
                 commandSource.markAsAwaitingApproval();
+                this.approvalWorkflowHook.onCommandAwaitingApproval(commandSource, command);
                 throw new RollbackTransactionNotApprovedException(commandSource.getId(), commandSource.getResourceId());
             }
         }

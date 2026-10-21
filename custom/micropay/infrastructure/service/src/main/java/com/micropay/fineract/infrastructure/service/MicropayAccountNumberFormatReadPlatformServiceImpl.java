@@ -1,0 +1,218 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package com.micropay.fineract.infrastructure.service;
+
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatData;
+import org.apache.fineract.infrastructure.accountnumberformat.data.AccountNumberFormatPreviewData;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormat;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberFormatEnumerations.AccountNumberPrefixType;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.AccountNumberSequenceScope;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.CheckDigitAlgorithm;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.EntityAccountType;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.StructuredAccountNumberFormatEnumerations;
+import org.apache.fineract.infrastructure.accountnumberformat.domain.StructuredAccountNumberRuleDefaults;
+import org.apache.fineract.infrastructure.accountnumberformat.exception.AccountNumberFormatNotFoundException;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatConstants;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberFormatReadPlatformService;
+import org.apache.fineract.infrastructure.accountnumberformat.service.AccountNumberStructuredGenerationService;
+import org.apache.fineract.infrastructure.accountnumberformat.service.StructuredAccountNumberPatternValidator;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
+import org.apache.fineract.infrastructure.core.data.EnumOptionData;
+import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.stereotype.Service;
+
+@Service
+@RequiredArgsConstructor
+public class MicropayAccountNumberFormatReadPlatformServiceImpl implements AccountNumberFormatReadPlatformService {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MicropayAccountNumberFormatReadPlatformServiceImpl.class);
+
+    private final JdbcTemplate jdbcTemplate;
+    private final AccountNumberStructuredGenerationService accountNumberStructuredGenerationService;
+
+    // data mapper
+    private final AccountNumberFormatMapper accountNumberFormatMapper = new AccountNumberFormatMapper();
+
+    private static final class AccountNumberFormatMapper implements RowMapper<AccountNumberFormatData> {
+
+        private static final String ACCOUNT_NUMBER_FORMAT_SCHEMA = """
+                anf.id as id, anf.account_type_enum as accountTypeEnum, anf.prefix_type_enum as prefixTypeEnum, anf.prefix_character as prefixCharacter,
+                anf.format_pattern as formatPattern, anf.sequence_scope_enum as sequenceScopeEnum, anf.check_digit_algorithm_enum as checkDigitAlgorithmEnum,
+                anf.structured_enabled as structuredEnabled
+                from c_account_number_format anf\s""";
+
+        AccountNumberFormatMapper() {}
+
+        public String schema() {
+            return ACCOUNT_NUMBER_FORMAT_SCHEMA;
+        }
+
+        @Override
+        public AccountNumberFormatData mapRow(final ResultSet rs, @SuppressWarnings("unused") final int rowNum) throws SQLException {
+
+            final Long id = rs.getLong("id");
+            final Integer accountTypeEnum = rs.getInt("accountTypeEnum");
+            final Integer prefixTypeEnum = JdbcSupport.getInteger(rs, "prefixTypeEnum");
+            final String prefixCharacter = rs.getString("prefixCharacter");
+            final String formatPattern = rs.getString("formatPattern");
+            final Integer sequenceScopeEnum = JdbcSupport.getInteger(rs, "sequenceScopeEnum");
+            final Integer checkDigitAlgorithmEnum = JdbcSupport.getInteger(rs, "checkDigitAlgorithmEnum");
+            final boolean structuredEnabledValue = rs.getBoolean("structuredEnabled");
+            final Boolean structuredEnabled = rs.wasNull() ? null : structuredEnabledValue;
+
+            final EnumOptionData accountNumberType = AccountNumberFormatEnumerations.entityAccountType(accountTypeEnum);
+            EnumOptionData prefixType = null;
+            if (prefixTypeEnum != null) {
+                prefixType = AccountNumberFormatEnumerations.accountNumberPrefixType(prefixTypeEnum);
+            }
+            return new AccountNumberFormatData(id, accountNumberType, prefixType, prefixCharacter, formatPattern,
+                    StructuredAccountNumberFormatEnumerations.sequenceScope(sequenceScopeEnum),
+                    StructuredAccountNumberFormatEnumerations.checkDigitAlgorithm(checkDigitAlgorithmEnum), structuredEnabled);
+        }
+    }
+
+    @Override
+    public List<AccountNumberFormatData> getAllAccountNumberFormats() {
+        String sql = "select " + this.accountNumberFormatMapper.schema();
+        return this.jdbcTemplate.query(sql, this.accountNumberFormatMapper); // NOSONAR
+    }
+
+    @Override
+    public AccountNumberFormatData getAccountNumberFormat(Long id) {
+        try {
+            final String sql = "select " + this.accountNumberFormatMapper.schema() + " where anf.id = ?";
+
+            final AccountNumberFormatData accountNumberFormatData = this.jdbcTemplate.queryForObject(sql, this.accountNumberFormatMapper, // NOSONAR
+                    new Object[] { id });
+            return accountNumberFormatData;
+        } catch (final EmptyResultDataAccessException e) {
+            throw new AccountNumberFormatNotFoundException(id, e);
+        }
+    }
+
+    @Override
+    public AccountNumberFormatData retrieveTemplate(EntityAccountType entityAccountTypeForTemplate) {
+        final List<EnumOptionData> entityAccountTypeOptions = AccountNumberFormatEnumerations.entityAccountType(EntityAccountType.values());
+
+        Map<String, List<EnumOptionData>> accountNumberPrefixTypeOptions = new HashMap<>();
+        /***
+         * If an Account type is passed in, return prefixes only for the passed in account type, else return all allowed
+         * prefixes keyed by all possible entity type
+         **/
+        if (entityAccountTypeForTemplate != null) {
+            determinePrefixTypesForAccounts(accountNumberPrefixTypeOptions, entityAccountTypeForTemplate);
+        } else {
+            for (EntityAccountType entityAccountType : EntityAccountType.values()) {
+                determinePrefixTypesForAccounts(accountNumberPrefixTypeOptions, entityAccountType);
+
+            }
+        }
+        AccountNumberFormatData templateData = new AccountNumberFormatData(entityAccountTypeOptions, accountNumberPrefixTypeOptions);
+        templateData.structuredTemplateOnTop(StructuredAccountNumberFormatEnumerations.sequenceScopeOptions(),
+                StructuredAccountNumberFormatEnumerations.checkDigitAlgorithmOptions(),
+                StructuredAccountNumberFormatEnumerations.segmentTokenOptions());
+        return templateData;
+    }
+
+    @Override
+    public AccountNumberFormatPreviewData previewAccountNumber(final Integer accountType, final Long officeId,
+            final String productShortName, final String clientTypeLabel, final String formatPattern, final Integer sequenceScope,
+            final Integer checkDigitAlgorithm) {
+        if (accountType == null || EntityAccountType.fromInt(accountType) == null) {
+            throw new PlatformApiDataValidationException(List.of(ApiParameterError.parameterErrorWithValue(
+                    "validation.msg.accountNumberFormat.accountType.invalid", "accountType must be 1 to 7.",
+                    AccountNumberFormatConstants.accountTypeParamName, accountType == null ? null : String.valueOf(accountType))));
+        }
+        final EntityAccountType entityAccountType = EntityAccountType.fromInt(accountType);
+        final AccountNumberFormat previewFormat = new AccountNumberFormat(entityAccountType, null, null);
+        if (StringUtils.isNotBlank(formatPattern)) {
+            previewFormat.setFormatPattern(formatPattern);
+            previewFormat.setStructuredEnabled(true);
+        }
+        if (sequenceScope != null) {
+            previewFormat.setSequenceScope(AccountNumberSequenceScope.fromInt(sequenceScope));
+        }
+        if (checkDigitAlgorithm != null) {
+            previewFormat.setCheckDigitAlgorithm(CheckDigitAlgorithm.fromInt(checkDigitAlgorithm));
+        }
+        final String resolvedPattern = StringUtils.isNotBlank(formatPattern) ? formatPattern
+                : StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType).getFormatPattern();
+        final AccountNumberSequenceScope resolvedScope = previewFormat.getSequenceScope() != null ? previewFormat.getSequenceScope()
+                : StructuredAccountNumberRuleDefaults.forEntityType(entityAccountType).getSequenceScope();
+        final List<ApiParameterError> patternErrors = StructuredAccountNumberPatternValidator.validate(entityAccountType, resolvedPattern,
+                resolvedScope);
+        if (!patternErrors.isEmpty()) {
+            throw new PlatformApiDataValidationException(patternErrors);
+        }
+        final String accountNumber = accountNumberStructuredGenerationService.preview(entityAccountType, officeId, productShortName,
+                clientTypeLabel, previewFormat);
+        return new AccountNumberFormatPreviewData(accountNumber, resolvedPattern, accountType);
+    }
+
+    public void determinePrefixTypesForAccounts(Map<String, List<EnumOptionData>> accountNumberPrefixTypeOptions,
+            EntityAccountType entityAccountType) {
+        Set<AccountNumberPrefixType> accountNumberPrefixTypesSet = new HashSet<>();
+        switch (entityAccountType) {
+            case CLIENT:
+                accountNumberPrefixTypesSet = AccountNumberFormatEnumerations.accountNumberPrefixesForClientAccounts;
+            break;
+            case LOAN:
+                accountNumberPrefixTypesSet = AccountNumberFormatEnumerations.accountNumberPrefixesForLoanAccounts;
+            break;
+            case SAVINGS:
+                accountNumberPrefixTypesSet = AccountNumberFormatEnumerations.accountNumberPrefixesForSavingsAccounts;
+            break;
+            case CENTER:
+                accountNumberPrefixTypesSet = AccountNumberFormatEnumerations.accountNumberPrefixesForCenters;
+            break;
+            case GROUP:
+                accountNumberPrefixTypesSet = AccountNumberFormatEnumerations.accountNumberPrefixesForGroups;
+            break;
+            case SHARES:
+            // SHARES has no prefix
+            break;
+            case WORKING_CAPITAL_LOAN:
+                accountNumberPrefixTypesSet = AccountNumberFormatEnumerations.accountNumberPrefixesForWorkingCapitalLoanAccounts;
+            break;
+        }
+
+        Object[] array = accountNumberPrefixTypesSet.toArray();
+        AccountNumberPrefixType[] accountNumberPrefixTypes = Arrays.copyOf(array, array.length, AccountNumberPrefixType[].class);
+
+        accountNumberPrefixTypeOptions.put(entityAccountType.getCode(),
+                AccountNumberFormatEnumerations.accountNumberPrefixType(accountNumberPrefixTypes));
+    }
+}
