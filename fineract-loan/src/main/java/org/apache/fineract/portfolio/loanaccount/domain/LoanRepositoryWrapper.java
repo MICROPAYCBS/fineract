@@ -51,7 +51,8 @@ public class LoanRepositoryWrapper {
                     LoanStatus.TRANSFER_IN_PROGRESS, LoanStatus.TRANSFER_ON_HOLD, LoanStatus.OVERPAID));
 
     // Every status except "never went anywhere": rejected (500), withdrawn (400) and invalid (0).
-    // Closed loans are included: an undone repayment can reopen them, and their history was posted under the current rules.
+    // Closed loans are included: an undone repayment can reopen them, and their history was posted under the current
+    // rules.
     private static final Collection<LoanStatus> PRODUCT_IN_USE_LOAN_STATUSES = List.of(LoanStatus.SUBMITTED_AND_PENDING_APPROVAL,
             LoanStatus.APPROVED, LoanStatus.ACTIVE, LoanStatus.TRANSFER_IN_PROGRESS, LoanStatus.TRANSFER_ON_HOLD,
             LoanStatus.CLOSED_OBLIGATIONS_MET, LoanStatus.CLOSED_WRITTEN_OFF, LoanStatus.CLOSED_RESCHEDULE_OUTSTANDING_AMOUNT,

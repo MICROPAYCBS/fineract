@@ -36,7 +36,6 @@ import org.apache.fineract.scoring.domain.RuleOperator;
 import org.apache.fineract.scoring.domain.Scorecard;
 import org.apache.fineract.scoring.domain.ScorecardBin;
 import org.apache.fineract.scoring.domain.ScorecardGradeBand;
-import org.apache.fineract.scoring.domain.ScorecardRepository;
 import org.apache.fineract.scoring.domain.ScorecardRule;
 import org.apache.fineract.scoring.domain.ScorecardStatus;
 import org.apache.fineract.scoring.domain.ScorecardType;
@@ -45,6 +44,7 @@ import org.apache.fineract.scoring.domain.ScoringOutcome;
 import org.apache.fineract.scoring.domain.ScoringProductConfig;
 import org.apache.fineract.scoring.domain.ScoringProductConfigRepository;
 import org.apache.fineract.scoring.domain.ScoringRuleType;
+import org.apache.fineract.scoring.domain.ScoringScorecardRepository;
 import org.apache.fineract.scoring.exception.ScorecardNotFoundException;
 import org.apache.fineract.scoring.exception.ScorecardStateException;
 import org.apache.fineract.scoring.exception.ScoringConfigurationException;
@@ -60,7 +60,7 @@ import org.springframework.transaction.annotation.Transactional;
 @ConditionalOnProperty(value = MODULE_ENABLED_PROPERTY, havingValue = "true")
 public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatformService {
 
-    private final ScorecardRepository scorecardRepository;
+    private final ScoringScorecardRepository scoringScorecardRepository;
     private final ScoringProductConfigRepository productConfigRepository;
     private final ScorecardDataValidator validator;
     private final PlatformSecurityContext context;
@@ -73,11 +73,11 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
     @Override
     public CommandProcessingResult create(final JsonCommand command) {
         final ScorecardRequest request = this.validator.validateAndParseScorecard(command.json());
-        final int version = this.scorecardRepository.findMaxVersionByCode(request.getCode()) + 1;
+        final int version = this.scoringScorecardRepository.findMaxVersionByCode(request.getCode()) + 1;
         final Scorecard scorecard = Scorecard.createDraft(request.getCode(), version, request.getName(), request.getDescription(),
                 ScorecardType.valueOf(request.getType()), request.getBasePoints());
         assembleStructure(scorecard, request);
-        this.scorecardRepository.saveAndFlush(scorecard);
+        this.scoringScorecardRepository.saveAndFlush(scorecard);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(scorecard.getId()).build();
     }
 
@@ -96,9 +96,9 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
         scorecard.setType(ScorecardType.valueOf(request.getType()));
         scorecard.setBasePoints(request.getBasePoints());
         scorecard.clearStructure();
-        this.scorecardRepository.flush();
+        this.scoringScorecardRepository.flush();
         assembleStructure(scorecard, request);
-        this.scorecardRepository.saveAndFlush(scorecard);
+        this.scoringScorecardRepository.saveAndFlush(scorecard);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(scorecardId).build();
     }
 
@@ -113,12 +113,12 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
             throw new ScorecardStateException("activated", scorecardId, scorecard.getStatus().name());
         }
         validateForActivation(scorecard);
-        this.scorecardRepository.findFirstByCodeAndStatus(scorecard.getCode(), ScorecardStatus.ACTIVE).ifPresent(previous -> {
+        this.scoringScorecardRepository.findFirstByCodeAndStatus(scorecard.getCode(), ScorecardStatus.ACTIVE).ifPresent(previous -> {
             previous.retire();
-            this.scorecardRepository.saveAndFlush(previous);
+            this.scoringScorecardRepository.saveAndFlush(previous);
         });
         scorecard.activate(this.context.authenticatedUser().getId(), DateUtils.getAuditOffsetDateTime());
-        this.scorecardRepository.saveAndFlush(scorecard);
+        this.scoringScorecardRepository.saveAndFlush(scorecard);
         return new CommandProcessingResultBuilder().withEntityId(scorecardId).build();
     }
 
@@ -129,7 +129,7 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
             throw new ScorecardStateException("retired", scorecardId, scorecard.getStatus().name());
         }
         scorecard.retire();
-        this.scorecardRepository.saveAndFlush(scorecard);
+        this.scoringScorecardRepository.saveAndFlush(scorecard);
         return new CommandProcessingResultBuilder().withEntityId(scorecardId).build();
     }
 
@@ -143,7 +143,7 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
                     loanProductId);
         }
         final ScoringMode mode = ScoringMode.valueOf(request.getMode());
-        if (mode != ScoringMode.OFF && !this.scorecardRepository.existsByCode(request.getScorecardCode())) {
+        if (mode != ScoringMode.OFF && !this.scoringScorecardRepository.existsByCode(request.getScorecardCode())) {
             throw new ScoringConfigurationException("scorecard.code.unknown", "No scorecard has code " + request.getScorecardCode(),
                     request.getScorecardCode());
         }
@@ -157,7 +157,7 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
     }
 
     private Scorecard find(final Long scorecardId) {
-        return this.scorecardRepository.findById(scorecardId).orElseThrow(() -> new ScorecardNotFoundException(scorecardId));
+        return this.scoringScorecardRepository.findById(scorecardId).orElseThrow(() -> new ScorecardNotFoundException(scorecardId));
     }
 
     private static void assembleStructure(final Scorecard scorecard, final ScorecardRequest request) {
@@ -165,10 +165,9 @@ public class ScorecardWritePlatformServiceImpl implements ScorecardWritePlatform
                 bin.getUpper(), bin.getMatchValue(), Boolean.TRUE.equals(bin.getMissing()), bin.getPoints(), bin.getReasonCode())));
         nullToEmpty(request.getGradeBands()).forEach(band -> scorecard.addGradeBand(ScorecardGradeBand.create(band.getGrade(),
                 band.getMinScore(), band.getMaxScore(), band.getExpectedPd(), ScoringOutcome.valueOf(band.getOutcome()))));
-        nullToEmpty(request.getRules())
-                .forEach(rule -> scorecard.addRule(ScorecardRule.create(ScoringRuleType.valueOf(rule.getRuleType()),
-                        rule.getCharacteristic(), rule.getOperator() == null ? null : RuleOperator.valueOf(rule.getOperator()),
-                        rule.getValue(), ScoringOutcome.valueOf(rule.getOutcome()), rule.getReasonCode())));
+        nullToEmpty(request.getRules()).forEach(rule -> scorecard.addRule(ScorecardRule.create(ScoringRuleType.valueOf(rule.getRuleType()),
+                rule.getCharacteristic(), rule.getOperator() == null ? null : RuleOperator.valueOf(rule.getOperator()), rule.getValue(),
+                ScoringOutcome.valueOf(rule.getOutcome()), rule.getReasonCode())));
     }
 
     /**

@@ -22,8 +22,8 @@ import java.util.Map;
 import org.apache.fineract.scoring.domain.Scorecard;
 
 /**
- * Turns a scorecard version and the collected inputs into a score, grade and outcome. The default implementation is
- * the in-process expert scorecard; an external model service can replace it by providing another bean.
+ * Turns a scorecard version and the collected inputs into a score, grade and outcome. The default implementation is the
+ * in-process expert scorecard; an external model service can replace it by providing another bean.
  */
 public interface ScoringEngine {
 

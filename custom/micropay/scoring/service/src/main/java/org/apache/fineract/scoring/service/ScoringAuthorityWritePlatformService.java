@@ -30,7 +30,8 @@ public interface ScoringAuthorityWritePlatformService {
     CommandProcessingResult deleteRule(Long ruleId, JsonCommand command);
 
     /**
-     * Changes the outcome of a loan's latest scoring decision, with a reason from the {@code ScoringOverrideReason} code.
+     * Changes the outcome of a loan's latest scoring decision, with a reason from the {@code ScoringOverrideReason}
+     * code.
      */
     CommandProcessingResult overrideDecision(Long decisionId, JsonCommand command);
 }

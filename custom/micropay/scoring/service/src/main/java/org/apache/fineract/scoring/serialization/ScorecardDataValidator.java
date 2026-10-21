@@ -160,8 +160,8 @@ public class ScorecardDataValidator {
         validator.reset().parameter(prefix + MIN_SCORE_PARAM).value(band.getMinScore()).notNull();
         validator.reset().parameter(prefix + MAX_SCORE_PARAM).value(band.getMaxScore()).notNull();
         validator.reset().parameter(prefix + OUTCOME_PARAM).value(band.getOutcome()).notBlank().isOneOfTheseStringValues(OUTCOMES);
-        validator.reset().parameter(prefix + EXPECTED_PD_PARAM).value(band.getExpectedPd()).ignoreIfNull().inMinAndMaxAmountRange(BigDecimal.ZERO,
-                BigDecimal.ONE);
+        validator.reset().parameter(prefix + EXPECTED_PD_PARAM).value(band.getExpectedPd()).ignoreIfNull()
+                .inMinAndMaxAmountRange(BigDecimal.ZERO, BigDecimal.ONE);
         if (band.getMinScore() != null && band.getMaxScore() != null && band.getMinScore().compareTo(band.getMaxScore()) > 0) {
             validator.reset().parameter(prefix + MIN_SCORE_PARAM).value(band.getMinScore()).failWithCode("greater.than.max.score",
                     band.getMaxScore());

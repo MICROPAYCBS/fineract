@@ -19,8 +19,8 @@
 package org.apache.fineract.scoring.domain;
 
 /**
- * ACTIVE until the next run for the same client and policy replaces it (SUPERSEDED). An ACTIVE limit still only
- * applies between its valid-from and valid-to dates.
+ * ACTIVE until the next run for the same client and policy replaces it (SUPERSEDED). An ACTIVE limit still only applies
+ * between its valid-from and valid-to dates.
  */
 public enum ScoringLimitStatus {
     ACTIVE, SUPERSEDED

@@ -103,7 +103,7 @@ The points and cut-offs below are placeholders for the credit team to set.
 }
 ```
 
-A bin matches a range `[lower, upper)`, an exact `matchValue` (text, any case) or a missing value (`"missing": true`). Reason codes list the fired rules first, then up to three characteristics that cost the most points against their best bin.
+A bin matches a range `[lower, upper)`, an exact `matchValue` (text, any case) or a missing value (`"missing": true`). Reason codes list the fired rules first, then up to three characteristics that cost the most points against their best result. A value that matches no bin scores 0, so the best result is the highest bin or 0, whichever is higher; a characteristic with only penalty bins still shows up as a reason.
 
 ## Pre-approved limits
 

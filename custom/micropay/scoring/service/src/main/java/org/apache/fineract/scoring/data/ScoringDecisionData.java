@@ -28,6 +28,6 @@ import java.util.List;
  */
 public record ScoringDecisionData(Long id, Long clientId, Long loanId, Long loanProductId, String trigger, String mode, Long scorecardId,
         String scorecardCode, Integer scorecardVersion, BigDecimal score, String grade, BigDecimal expectedPd, String outcome,
-        List<String> reasonCodes, Object ruleResults, Object pointsBreakdown, Object inputs, List<ScoringOverrideData> overrides, Long createdBy,
-        OffsetDateTime createdOn) {
+        List<String> reasonCodes, Object ruleResults, Object pointsBreakdown, Object inputs, List<ScoringOverrideData> overrides,
+        Long createdBy, OffsetDateTime createdOn) {
 }

@@ -95,7 +95,8 @@ public class ScoringAuthorityWritePlatformServiceImpl implements ScoringAuthorit
                 .orElseThrow(() -> new ScoringDecisionNotFoundException(decisionId));
         final Long loanId = decision.getLoanId();
         if (loanId == null) {
-            throw new ScoringConfigurationException("override.no.loan", "Scoring decision " + decisionId + " is not for a loan", decisionId);
+            throw new ScoringConfigurationException("override.no.loan", "Scoring decision " + decisionId + " is not for a loan",
+                    decisionId);
         }
         final Long latestId = this.decisionRepository.findFirstByLoanIdOrderByIdDesc(loanId).map(ScoringDecision::getId).orElse(null);
         if (!decisionId.equals(latestId)) {
@@ -103,7 +104,8 @@ public class ScoringAuthorityWritePlatformServiceImpl implements ScoringAuthorit
                     "Only the latest scoring decision of loan " + loanId + " can be overridden (decision " + latestId + ")", decisionId,
                     latestId);
         }
-        final List<Integer> status = this.jdbcTemplate.queryForList("SELECT loan_status_id FROM m_loan WHERE id = ?", Integer.class, loanId);
+        final List<Integer> status = this.jdbcTemplate.queryForList("SELECT loan_status_id FROM m_loan WHERE id = ?", Integer.class,
+                loanId);
         if (status.isEmpty() || status.getFirst() != LOAN_STATUS_SUBMITTED) {
             throw new ScoringConfigurationException("override.loan.not.pending.approval",
                     "Loan " + loanId + " is not awaiting approval, so its scoring decision cannot be overridden", loanId);
@@ -126,7 +128,7 @@ public class ScoringAuthorityWritePlatformServiceImpl implements ScoringAuthorit
         override.setReasonCodeValueId(request.getReasonId());
         override.setComment(request.getComment());
         this.overrideRepository.saveAndFlush(override);
-        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(override.getId()).withLoanId(loanId)
+        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(decisionId).withLoanId(loanId)
                 .withClientId(decision.getClientId()).build();
     }
 
@@ -135,8 +137,8 @@ public class ScoringAuthorityWritePlatformServiceImpl implements ScoringAuthorit
             final Long count = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM m_product_loan WHERE id = ?", Long.class,
                     request.getLoanProductId());
             if (count == null || count == 0) {
-                throw new ScoringConfigurationException("loan.product.not.found", "Loan product " + request.getLoanProductId() + " does not exist",
-                        request.getLoanProductId());
+                throw new ScoringConfigurationException("loan.product.not.found",
+                        "Loan product " + request.getLoanProductId() + " does not exist", request.getLoanProductId());
             }
         }
         rule.setTaskPermissionCode(request.getTaskPermissionCode());
@@ -164,6 +166,7 @@ public class ScoringAuthorityWritePlatformServiceImpl implements ScoringAuthorit
     }
 
     private static String join(final List<String> values) {
-        return values == null || values.isEmpty() ? null : String.join(",", values.stream().map(String::trim).map(String::toUpperCase).toList());
+        return values == null || values.isEmpty() ? null
+                : String.join(",", values.stream().map(String::trim).map(String::toUpperCase).toList());
     }
 }

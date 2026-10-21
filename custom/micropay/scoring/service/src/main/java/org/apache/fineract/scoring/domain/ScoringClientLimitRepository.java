@@ -24,7 +24,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ScoringClientLimitRepository extends JpaRepository<ScoringClientLimit, Long> {
 
-    Optional<ScoringClientLimit> findFirstByClientIdAndPolicyIdAndStatusOrderByIdDesc(Long clientId, Long policyId, ScoringLimitStatus status);
+    Optional<ScoringClientLimit> findFirstByClientIdAndPolicyIdAndStatusOrderByIdDesc(Long clientId, Long policyId,
+            ScoringLimitStatus status);
 
     List<ScoringClientLimit> findByClientIdAndStatusOrderByIdDesc(Long clientId, ScoringLimitStatus status);
 }

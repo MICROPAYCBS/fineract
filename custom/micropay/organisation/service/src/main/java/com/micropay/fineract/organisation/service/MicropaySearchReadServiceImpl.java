@@ -245,9 +245,10 @@ public class MicropaySearchReadServiceImpl implements SearchReadService {
                 and (st.id = :searchTransactionId or %s or %s or %s \
                 or %s or %s or %s \
                 or %s or %s)) \
-                order by st.id desc)""".formatted(crossBranchScope, like.apply("st.external_id"), like.apply("st.ref_no"),
-                like.apply("pd.check_number"), like.apply("pd.routing_code"), like.apply("pd.receipt_number"),
-                like.apply("atpd.check_number"), like.apply("atpd.routing_code"), like.apply("atpd.receipt_number"));
+                order by st.id desc)"""
+                .formatted(crossBranchScope, like.apply("st.external_id"), like.apply("st.ref_no"), like.apply("pd.check_number"),
+                        like.apply("pd.routing_code"), like.apply("pd.receipt_number"), like.apply("atpd.check_number"),
+                        like.apply("atpd.routing_code"), like.apply("atpd.receipt_number"));
 
         final StringBuilder sql = new StringBuilder();
 

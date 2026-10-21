@@ -102,7 +102,11 @@ project(':fineract-provider').tasks.matching { it.name in ['bootRun', 'devRun'] 
 def taskLeaf = { String name -> name.contains(':') ? name.substring(name.lastIndexOf(':') + 1) : name }
 def requestedTaskLeaves = gradle.startParameter.taskNames.collect { taskLeaf(it) }
 gradle.taskGraph.whenReady { graph ->
-    ['bootRun', 'devRun', 'bootJar'].each { name ->
+    [
+        'bootRun',
+        'devRun',
+        'bootJar'
+    ].each { name ->
         if (!requestedTaskLeaves.contains(name) || upstreamOnly) {
             return
         }

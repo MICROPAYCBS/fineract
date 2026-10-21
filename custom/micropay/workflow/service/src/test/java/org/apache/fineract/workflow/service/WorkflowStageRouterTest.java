@@ -98,8 +98,8 @@ class WorkflowStageRouterTest {
 
     @Test
     void failingApplicabilityKeepsEveryStage() {
-        final WorkflowStageRouter router = new WorkflowStageRouter(() -> List.of((source, def) -> Set.of("BRANCH_MANAGER"),
-                (source, def) -> {
+        final WorkflowStageRouter router = new WorkflowStageRouter(
+                () -> List.of((source, def) -> Set.of("BRANCH_MANAGER"), (source, def) -> {
                     throw new IllegalStateException("authority rules unavailable");
                 }));
 

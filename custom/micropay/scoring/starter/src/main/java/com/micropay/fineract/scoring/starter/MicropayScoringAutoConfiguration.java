@@ -23,8 +23,8 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.PropertySource;
 
 /**
- * Wires the Micropay credit scoring module into Fineract. Scoring reaches core only through loan business events, so
- * no upstream service is replaced.
+ * Wires the Micropay credit scoring module into Fineract. Scoring reaches core only through loan business events, so no
+ * upstream service is replaced.
  */
 @AutoConfiguration
 @ComponentScan(basePackages = { "org.apache.fineract.scoring", "com.micropay.fineract.scoring" })

@@ -48,8 +48,8 @@ class ExpertScorecardEngineTest {
     private final ExpertScorecardEngine engine = new ExpertScorecardEngine();
 
     /**
-     * A small agent scorecard: deposits, tenure and repayment history, five grades, an expired-ID knock-out, an
-     * arrears knock-out and a refer rule when income is unknown.
+     * A small agent scorecard: deposits, tenure and repayment history, five grades, an expired-ID knock-out, an arrears
+     * knock-out and a refer rule when income is unknown.
      */
     private static Scorecard agentScorecard() {
         final Scorecard scorecard = Scorecard.createDraft("AGENT", 1, "Agent scorecard", null, ScorecardType.APPLICATION,
@@ -157,6 +157,26 @@ class ExpertScorecardEngineTest {
     }
 
     @Test
+    void penaltyOnlyCharacteristicIsAnAdverseReason() {
+        final Scorecard scorecard = agentScorecard();
+        scorecard.addBin(bin(CLIENT_CURRENT_DAYS_IN_ARREARS, 1, null, -200, "IN_ARREARS"));
+        final Map<String, Object> inputs = strongAgent();
+        inputs.put(CLIENT_CURRENT_DAYS_IN_ARREARS, BigDecimal.valueOf(10));
+
+        final ScoringResult result = engine.evaluate(scorecard, inputs);
+
+        // 300 + 120 + 80 + 100 - 200 = 400; not being in arrears (no bin, 0 points) is the best
+        assertEquals(0, new BigDecimal("400").compareTo(result.score()));
+        assertEquals(List.of("IN_ARREARS"), result.reasonCodes());
+        final ScoringResult.PointsLine arrears = result.breakdown().stream()
+                .filter(line -> CLIENT_CURRENT_DAYS_IN_ARREARS.equals(line.characteristic())).findFirst().orElseThrow();
+        assertEquals(0, BigDecimal.ZERO.compareTo(arrears.maxPoints()));
+
+        inputs.put(CLIENT_CURRENT_DAYS_IN_ARREARS, BigDecimal.ZERO);
+        assertTrue(engine.evaluate(scorecard, inputs).reasonCodes().isEmpty());
+    }
+
+    @Test
     void scoreOutsideEveryBandIsReferred() {
         final Scorecard scorecard = agentScorecard();
         scorecard.setBasePoints(BigDecimal.valueOf(-100));
@@ -196,7 +216,8 @@ class ExpertScorecardEngineTest {
                 upper == null ? null : BigDecimal.valueOf(upper), null, false, BigDecimal.valueOf(points), reasonCode);
     }
 
-    private static ScorecardGradeBand band(final String grade, final int min, final int max, final String pd, final ScoringOutcome outcome) {
+    private static ScorecardGradeBand band(final String grade, final int min, final int max, final String pd,
+            final ScoringOutcome outcome) {
         return ScorecardGradeBand.create(grade, BigDecimal.valueOf(min), BigDecimal.valueOf(max), pd == null ? null : new BigDecimal(pd),
                 outcome);
     }

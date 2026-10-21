@@ -94,7 +94,8 @@ public class WorkflowInstanceProcessServiceImpl implements WorkflowInstanceProce
             return ApprovalWorkflowDecision.STAGE_RECORDED;
         }
 
-        // The next stage is the next one that applies to this command; stages skipped by authority rules are passed over.
+        // The next stage is the next one that applies to this command; stages skipped by authority rules are passed
+        // over.
         final Optional<String> nextStageCode = this.stageRouter.nextStage(definition, instance.getCurrentStageCode(), commandSource);
         if (nextStageCode.isEmpty()) {
             // Stay IN_PROGRESS until the command succeeds. TerminalStageExecutionAspect marks the instance COMPLETED

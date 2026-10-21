@@ -55,9 +55,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 
 /**
- * Reads the scoring inputs for one loan application straight from the tenant database. Plain SQL keeps the reads
- * cheap and avoids touching the loan aggregate inside the approval transaction. Every value lands in the decision's
- * input snapshot, so the result can be explained later even after the client's data changes.
+ * Reads the scoring inputs for one loan application straight from the tenant database. Plain SQL keeps the reads cheap
+ * and avoids touching the loan aggregate inside the approval transaction. Every value lands in the decision's input
+ * snapshot, so the result can be explained later even after the client's data changes.
  */
 @Component
 @RequiredArgsConstructor
@@ -114,8 +114,8 @@ public class ScoringInputCollector {
 
         final BigDecimal income = (BigDecimal) inputs.get(CLIENT_MONTHLY_INCOME);
         final BigDecimal principal = (BigDecimal) inputs.get(LOAN_PRINCIPAL);
-        inputs.put(LOAN_PRINCIPAL_TO_MONTHLY_INCOME, income == null || income.signum() <= 0 || principal == null ? null
-                : principal.divide(income, 4, RoundingMode.HALF_UP));
+        inputs.put(LOAN_PRINCIPAL_TO_MONTHLY_INCOME,
+                income == null || income.signum() <= 0 || principal == null ? null : principal.divide(income, 4, RoundingMode.HALF_UP));
 
         for (final String code : datatableCodes) {
             inputs.put(code, readDatatableValue(code, loan));
@@ -132,25 +132,32 @@ public class ScoringInputCollector {
         inputs.put(CLIENT_MONTHS_ACTIVE,
                 activationDate == null ? null : BigDecimal.valueOf(ChronoUnit.MONTHS.between(activationDate, today)));
         final Object legalForm = client.get("legal_form_enum");
-        inputs.put(CLIENT_LEGAL_FORM, legalForm == null ? null : (((Number) legalForm).intValue() == LEGAL_FORM_PERSON ? "PERSON" : "ENTITY"));
+        inputs.put(CLIENT_LEGAL_FORM,
+                legalForm == null ? null : (((Number) legalForm).intValue() == LEGAL_FORM_PERSON ? "PERSON" : "ENTITY"));
         inputs.put(CLIENT_IS_STAFF, toBoolean(client.get("is_staff")));
 
-        inputs.put(CLIENT_MONTHLY_INCOME, jdbcTemplate.queryForObject(
-                "SELECT SUM(monthly_income) FROM m_client_income_source WHERE client_id = ? AND status = 'ACTIVE'", BigDecimal.class,
-                clientId));
-        inputs.put(CLIENT_HAS_EXPIRED_ID, count("SELECT COUNT(*) FROM m_client_identifier WHERE client_id = ? AND status = ?"
-                + " AND expiry_date IS NOT NULL AND expiry_date < ?", clientId, IDENTIFIER_STATUS_ACTIVE, Date.valueOf(today)) > 0);
-        inputs.put(CLIENT_BLACKLISTED_FOR_LOANS, count("SELECT COUNT(*) FROM m_client_blacklist WHERE client_id = ? AND status = 'ACTIVE'"
-                + " AND block_loan_application = 'Y' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)", clientId,
-                Date.valueOf(today), Date.valueOf(today)) > 0);
+        inputs.put(CLIENT_MONTHLY_INCOME,
+                jdbcTemplate.queryForObject(
+                        "SELECT SUM(monthly_income) FROM m_client_income_source WHERE client_id = ? AND status = 'ACTIVE'",
+                        BigDecimal.class, clientId));
+        inputs.put(
+                CLIENT_HAS_EXPIRED_ID, count(
+                        "SELECT COUNT(*) FROM m_client_identifier WHERE client_id = ? AND status = ?"
+                                + " AND expiry_date IS NOT NULL AND expiry_date < ?",
+                        clientId, IDENTIFIER_STATUS_ACTIVE, Date.valueOf(today)) > 0);
+        inputs.put(CLIENT_BLACKLISTED_FOR_LOANS,
+                count("SELECT COUNT(*) FROM m_client_blacklist WHERE client_id = ? AND status = 'ACTIVE'"
+                        + " AND block_loan_application = 'Y' AND start_date <= ? AND (end_date IS NULL OR end_date >= ?)", clientId,
+                        Date.valueOf(today), Date.valueOf(today)) > 0);
         final Object customerClassId = client.get("customer_class_id");
         inputs.put(CLIENT_CLASS_NOT_LOAN_ELIGIBLE, customerClassId != null
                 && count("SELECT COUNT(*) FROM m_customer_class WHERE id = ? AND loan_eligible = 'N'", customerClassId) > 0);
     }
 
     private void collectLoanHistory(final LoanFacts loan, final LocalDate today, final Map<String, Object> inputs) {
-        inputs.put(CLIENT_ACTIVE_LOANS, BigDecimal.valueOf(count("SELECT COUNT(*) FROM m_loan WHERE client_id = ? AND loan_status_id = ?"
-                + " AND id <> ?", loan.clientId(), LOAN_STATUS_ACTIVE, excludedLoanId(loan))));
+        inputs.put(CLIENT_ACTIVE_LOANS,
+                BigDecimal.valueOf(count("SELECT COUNT(*) FROM m_loan WHERE client_id = ? AND loan_status_id = ?" + " AND id <> ?",
+                        loan.clientId(), LOAN_STATUS_ACTIVE, excludedLoanId(loan))));
         inputs.put(CLIENT_CLOSED_LOANS, BigDecimal.valueOf(count("SELECT COUNT(*) FROM m_loan WHERE client_id = ? AND loan_status_id = ?",
                 loan.clientId(), LOAN_STATUS_CLOSED_OBLIGATIONS_MET)));
         final BigDecimal outstanding = jdbcTemplate.queryForObject(
@@ -162,14 +169,18 @@ public class ScoringInputCollector {
                 "SELECT a.overdue_since_date_derived FROM m_loan_arrears_aging a JOIN m_loan l ON l.id = a.loan_id"
                         + " WHERE l.client_id = ? AND l.loan_status_id = ? AND a.overdue_since_date_derived IS NOT NULL",
                 (rs, rowNum) -> toLocalDate(rs.getObject(1)), loan.clientId(), LOAN_STATUS_ACTIVE);
-        inputs.put(CLIENT_CURRENT_DAYS_IN_ARREARS, BigDecimal.valueOf(
-                overdueSince.stream().mapToLong(date -> Math.max(0, ChronoUnit.DAYS.between(date, today))).max().orElse(0)));
+        inputs.put(CLIENT_CURRENT_DAYS_IN_ARREARS, BigDecimal
+                .valueOf(overdueSince.stream().mapToLong(date -> Math.max(0, ChronoUnit.DAYS.between(date, today))).max().orElse(0)));
 
         final List<Long> daysLate = jdbcTemplate.query(
                 "SELECT s.duedate, s.obligations_met_on_date FROM m_loan_repayment_schedule s JOIN m_loan l ON l.id = s.loan_id"
                         + " WHERE l.client_id = ? AND s.obligations_met_on_date IS NOT NULL AND s.obligations_met_on_date > s.duedate",
                 (rs, rowNum) -> ChronoUnit.DAYS.between(toLocalDate(rs.getObject(1)), toLocalDate(rs.getObject(2))), loan.clientId());
-        inputs.put(CLIENT_MAX_DAYS_LATE_HISTORY, BigDecimal.valueOf(daysLate.stream().mapToLong(Long::longValue).max().orElse(0)));
+        // missing, not 0, when no installment was ever paid, so a first-time borrower can score as having no history
+        final long paidInstallments = count("SELECT COUNT(*) FROM m_loan_repayment_schedule s JOIN m_loan l ON l.id = s.loan_id"
+                + " WHERE l.client_id = ? AND s.obligations_met_on_date IS NOT NULL", loan.clientId());
+        inputs.put(CLIENT_MAX_DAYS_LATE_HISTORY,
+                paidInstallments == 0 ? null : BigDecimal.valueOf(daysLate.stream().mapToLong(Long::longValue).max().orElse(0)));
     }
 
     private void collectSavings(final Long clientId, final LocalDate today, final Map<String, Object> inputs) {
@@ -181,8 +192,9 @@ public class ScoringInputCollector {
         final Date since = Date.valueOf(today.minusDays(LOOKBACK_DAYS));
         final String recentTransactions = " FROM m_savings_account_transaction t JOIN m_savings_account s ON s.id = t.savings_account_id"
                 + " WHERE s.client_id = ? AND t.is_reversed = ? AND t.transaction_date >= ?";
-        final BigDecimal deposits = jdbcTemplate.queryForObject("SELECT SUM(t.amount)" + recentTransactions + " AND t.transaction_type_enum = ?",
-                BigDecimal.class, clientId, Boolean.FALSE, since, SAVINGS_TRANSACTION_DEPOSIT);
+        final BigDecimal deposits = jdbcTemplate.queryForObject(
+                "SELECT SUM(t.amount)" + recentTransactions + " AND t.transaction_type_enum = ?", BigDecimal.class, clientId, Boolean.FALSE,
+                since, SAVINGS_TRANSACTION_DEPOSIT);
         inputs.put(SAVINGS_MONTHLY_DEPOSITS_6M,
                 deposits == null ? BigDecimal.ZERO : deposits.divide(LOOKBACK_MONTHS, 2, RoundingMode.HALF_UP));
         inputs.put(SAVINGS_TRANSACTIONS_6M,
@@ -196,8 +208,8 @@ public class ScoringInputCollector {
 
     /**
      * Reads one column of a client or loan datatable. The datatable must be registered against m_client or m_loan; the
-     * column is looked up by name in the returned row, so neither name is ever spliced into SQL unchecked. A
-     * multi-row datatable contributes its most recent row.
+     * column is looked up by name in the returned row, so neither name is ever spliced into SQL unchecked. A multi-row
+     * datatable contributes its most recent row.
      */
     private Object readDatatableValue(final String code, final LoanFacts loan) {
         final String[] parts = ScoringCharacteristics.parseDatatable(code)

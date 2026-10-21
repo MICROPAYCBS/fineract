@@ -88,8 +88,8 @@ public class ScoringAuthorityRuleApiResource {
     @RequestBody(required = true, content = @Content(schema = @Schema(implementation = ScoringAuthorityRuleRequest.class)))
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult createRule(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
-        return this.commandsSourceWritePlatformService.logCommandSource(
-                new MicropayCommandWrapperBuilder().createScoringAuthorityRule().withJson(apiRequestBodyAsJson).build());
+        return this.commandsSourceWritePlatformService
+                .logCommandSource(new MicropayCommandWrapperBuilder().createScoringAuthorityRule().withJson(apiRequestBodyAsJson).build());
     }
 
     @PUT

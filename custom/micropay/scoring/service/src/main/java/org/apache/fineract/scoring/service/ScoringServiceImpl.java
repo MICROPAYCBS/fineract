@@ -31,7 +31,6 @@ import java.util.TreeSet;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.scoring.domain.Scorecard;
 import org.apache.fineract.scoring.domain.ScorecardBin;
-import org.apache.fineract.scoring.domain.ScorecardRepository;
 import org.apache.fineract.scoring.domain.ScorecardRule;
 import org.apache.fineract.scoring.domain.ScorecardStatus;
 import org.apache.fineract.scoring.domain.ScoringDecision;
@@ -42,6 +41,7 @@ import org.apache.fineract.scoring.domain.ScoringOverride;
 import org.apache.fineract.scoring.domain.ScoringOverrideRepository;
 import org.apache.fineract.scoring.domain.ScoringProductConfig;
 import org.apache.fineract.scoring.domain.ScoringProductConfigRepository;
+import org.apache.fineract.scoring.domain.ScoringScorecardRepository;
 import org.apache.fineract.scoring.domain.ScoringTrigger;
 import org.apache.fineract.scoring.engine.ScoringEngine;
 import org.apache.fineract.scoring.engine.ScoringResult;
@@ -65,7 +65,7 @@ public class ScoringServiceImpl implements ScoringService {
     private static final Set<ScoringTrigger> RESCORING_TRIGGERS = EnumSet.of(ScoringTrigger.SUBMIT, ScoringTrigger.MANUAL);
 
     private final ScoringProductConfigRepository productConfigRepository;
-    private final ScorecardRepository scorecardRepository;
+    private final ScoringScorecardRepository scoringScorecardRepository;
     private final ScoringDecisionRepository decisionRepository;
     private final ScoringInputCollector inputCollector;
     private final ScoringEngine scoringEngine;
@@ -79,8 +79,8 @@ public class ScoringServiceImpl implements ScoringService {
 
     /**
      * Runs in its own transaction on purpose. Inputs are plain reads of committed data, so they do not wait on the
-     * caller's locks, and a failure here cannot mark the caller's loan transaction for rollback. The decision table
-     * has no foreign key to m_loan for the same reason: the insert must not wait on the loan row the caller holds.
+     * caller's locks, and a failure here cannot mark the caller's loan transaction for rollback. The decision table has
+     * no foreign key to m_loan for the same reason: the insert must not wait on the loan row the caller holds.
      */
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -90,12 +90,13 @@ public class ScoringServiceImpl implements ScoringService {
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public ScoringRun scoreAndRecord(final LoanFacts loan, final String scorecardCode, final ScoringMode mode, final ScoringTrigger trigger) {
+    public ScoringRun scoreAndRecord(final LoanFacts loan, final String scorecardCode, final ScoringMode mode,
+            final ScoringTrigger trigger) {
         return run(loan, scorecardCode, mode, trigger);
     }
 
     private ScoringRun run(final LoanFacts loan, final String scorecardCode, final ScoringMode mode, final ScoringTrigger trigger) {
-        final Scorecard scorecard = this.scorecardRepository.findFirstByCodeAndStatus(scorecardCode, ScorecardStatus.ACTIVE)
+        final Scorecard scorecard = this.scoringScorecardRepository.findFirstByCodeAndStatus(scorecardCode, ScorecardStatus.ACTIVE)
                 .orElseThrow(() -> new ScorecardNotFoundException(scorecardCode));
         final Map<String, Object> inputs = this.inputCollector.collect(loan, datatableCharacteristics(scorecard));
         final ScoringResult result = this.scoringEngine.evaluate(scorecard, inputs);
@@ -144,7 +145,7 @@ public class ScoringServiceImpl implements ScoringService {
     @Override
     @Transactional(readOnly = true)
     public ScoringResult test(final Long scorecardId, final Long loanId) {
-        final Scorecard scorecard = this.scorecardRepository.findById(scorecardId)
+        final Scorecard scorecard = this.scoringScorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ScorecardNotFoundException(scorecardId));
         final LoanFacts loan = this.inputCollector.loanFacts(loanId);
         if (loan == null || loan.clientId() == null) {
@@ -181,7 +182,8 @@ public class ScoringServiceImpl implements ScoringService {
      * text, so the snapshot serialises the same on every JDK.
      */
     private static Object jsonSafe(final Object value) {
-        if (value == null || value instanceof BigDecimal || value instanceof Number || value instanceof Boolean || value instanceof String) {
+        if (value == null || value instanceof BigDecimal || value instanceof Number || value instanceof Boolean
+                || value instanceof String) {
             return value;
         }
         return value.toString();

@@ -160,33 +160,35 @@ public class ReportsTest extends FeignIntegrationTest {
 
     @Test
     void testTrialBalanceTableReportRunsSuccessfully() {
-        ApiResponse<RunReportsResponse> response = ok(() -> fineractClient().runReports().runReportGetDataWithHttpInfo("Trial Balance Table",
-                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_currencyId", "-1")));
+        ApiResponse<RunReportsResponse> response = ok(
+                () -> fineractClient().runReports().runReportGetDataWithHttpInfo("Trial Balance Table",
+                        Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_currencyId", "-1")));
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getData().getColumnHeaders()).isNotEmpty();
     }
 
     @Test
     void testIncomeStatementTableReportRunsSuccessfully() {
-        ApiResponse<RunReportsResponse> response = ok(() -> fineractClient().runReports().runReportGetDataWithHttpInfo(
-                "Income Statement Table", Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_currencyId", "-1")));
+        ApiResponse<RunReportsResponse> response = ok(
+                () -> fineractClient().runReports().runReportGetDataWithHttpInfo("Income Statement Table",
+                        Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16", "R_currencyId", "-1")));
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getData().getColumnHeaders()).isNotEmpty();
     }
 
     @Test
     void testGeneralLedgerReportTableReportRunsSuccessfully() {
-        ApiResponse<RunReportsResponse> response = ok(() -> fineractClient().runReports().runReportGetDataWithHttpInfo(
-                "GeneralLedgerReport Table", Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_startDate", "2013-04-16",
-                        "R_GLAccountNO", "1", "R_currencyId", "-1", "R_departmentId", "-1")));
+        ApiResponse<RunReportsResponse> response = ok(() -> fineractClient().runReports()
+                .runReportGetDataWithHttpInfo("GeneralLedgerReport Table", Map.of("R_endDate", "2013-04-30", "R_officeId", "1",
+                        "R_startDate", "2013-04-16", "R_GLAccountNO", "1", "R_currencyId", "-1", "R_departmentId", "-1")));
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getData().getColumnHeaders()).isNotEmpty();
     }
 
     @Test
     void testBalanceSheetTableReportRunsSuccessfully() {
-        ApiResponse<RunReportsResponse> response = ok(() -> fineractClient().runReports().runReportGetDataWithHttpInfo("Balance Sheet Table",
-                Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_currencyId", "-1")));
+        ApiResponse<RunReportsResponse> response = ok(() -> fineractClient().runReports().runReportGetDataWithHttpInfo(
+                "Balance Sheet Table", Map.of("R_endDate", "2013-04-30", "R_officeId", "1", "R_currencyId", "-1")));
         assertThat(response.getStatusCode()).isEqualTo(200);
         assertThat(response.getData().getColumnHeaders()).isNotEmpty();
     }

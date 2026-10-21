@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.integrationtests;
 
+import com.micropay.fineract.integrationtests.MicropayCurrencyHelper;
 import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +32,6 @@ import org.apache.fineract.integrationtests.common.CommonConstants;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.charges.ChargesHelper;
 import org.apache.fineract.integrationtests.common.loans.LoanTransactionHelper;
-import com.micropay.fineract.integrationtests.MicropayCurrencyHelper;
 import org.apache.fineract.integrationtests.common.savings.SavingsAccountHelper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;

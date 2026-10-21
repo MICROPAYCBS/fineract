@@ -40,7 +40,8 @@ public record AuthorityRoute(List<StageRoute> stages) {
      * @param matchedRuleIds
      *            the rules that require the stage
      */
-    public record StageRoute(String stageCode, boolean required, String reason, List<Long> matchedRuleIds) {}
+    public record StageRoute(String stageCode, boolean required, String reason, List<Long> matchedRuleIds) {
+    }
 
     public Set<String> skipped() {
         return this.stages.stream().filter(stage -> !stage.required()).map(StageRoute::stageCode).collect(Collectors.toSet());

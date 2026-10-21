@@ -36,12 +36,12 @@ import org.apache.fineract.scoring.data.ScoringDecisionData;
 import org.apache.fineract.scoring.data.ScoringOverrideData;
 import org.apache.fineract.scoring.data.ScoringProductConfigData;
 import org.apache.fineract.scoring.domain.Scorecard;
-import org.apache.fineract.scoring.domain.ScorecardRepository;
 import org.apache.fineract.scoring.domain.ScoringDecision;
 import org.apache.fineract.scoring.domain.ScoringDecisionRepository;
 import org.apache.fineract.scoring.domain.ScoringOverride;
 import org.apache.fineract.scoring.domain.ScoringOverrideRepository;
 import org.apache.fineract.scoring.domain.ScoringProductConfigRepository;
+import org.apache.fineract.scoring.domain.ScoringScorecardRepository;
 import org.apache.fineract.scoring.exception.ScorecardNotFoundException;
 import org.apache.fineract.scoring.input.ScoringCharacteristics;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -57,7 +57,7 @@ public class ScoringReadPlatformServiceImpl implements ScoringReadPlatformServic
 
     private static final Gson GSON = new Gson();
 
-    private final ScorecardRepository scorecardRepository;
+    private final ScoringScorecardRepository scoringScorecardRepository;
     private final ScoringProductConfigRepository productConfigRepository;
     private final ScoringDecisionRepository decisionRepository;
     private final ScoringOverrideRepository overrideRepository;
@@ -66,7 +66,7 @@ public class ScoringReadPlatformServiceImpl implements ScoringReadPlatformServic
 
     @Override
     public List<ScorecardData> retrieveScorecards(final String code, final String status) {
-        return this.scorecardRepository.findAllByOrderByCodeAscVersionDesc().stream()
+        return this.scoringScorecardRepository.findAllByOrderByCodeAscVersionDesc().stream()
                 .filter(scorecard -> StringUtils.isBlank(code) || scorecard.getCode().equals(code))
                 .filter(scorecard -> StringUtils.isBlank(status) || scorecard.getStatus().name().equalsIgnoreCase(status))
                 .map(ScorecardData::from).toList();
@@ -74,17 +74,15 @@ public class ScoringReadPlatformServiceImpl implements ScoringReadPlatformServic
 
     @Override
     public ScorecardData retrieveScorecard(final Long scorecardId) {
-        final Scorecard scorecard = this.scorecardRepository.findById(scorecardId)
+        final Scorecard scorecard = this.scoringScorecardRepository.findById(scorecardId)
                 .orElseThrow(() -> new ScorecardNotFoundException(scorecardId));
         return ScorecardData.from(scorecard);
     }
 
     @Override
     public List<ScoringCharacteristicData> retrieveCharacteristics() {
-        return ScoringCharacteristics.BUILT_IN.stream()
-                .map(characteristic -> new ScoringCharacteristicData(characteristic.code(), characteristic.dataType(),
-                        characteristic.description()))
-                .toList();
+        return ScoringCharacteristics.BUILT_IN.stream().map(characteristic -> new ScoringCharacteristicData(characteristic.code(),
+                characteristic.dataType(), characteristic.description())).toList();
     }
 
     @Override
@@ -143,7 +141,8 @@ public class ScoringReadPlatformServiceImpl implements ScoringReadPlatformServic
                 decision.getTrigger().name(), decision.getMode().name(), decision.getScorecardId(), decision.getScorecardCode(),
                 decision.getScorecardVersion(), decision.getScore(), decision.getGrade(), decision.getExpectedPd(),
                 decision.getOutcome().name(), reasonCodes, parse(decision.getRuleResults()), parse(decision.getPointsBreakdown()),
-                parse(decision.getInputsSnapshot()), overrides, decision.getCreatedBy().orElse(null), decision.getCreatedDate().orElse(null));
+                parse(decision.getInputsSnapshot()), overrides, decision.getCreatedBy().orElse(null),
+                decision.getCreatedDate().orElse(null));
     }
 
     private static Object parse(final String json) {

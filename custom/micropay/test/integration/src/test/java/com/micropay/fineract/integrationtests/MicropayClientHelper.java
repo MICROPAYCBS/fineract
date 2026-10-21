@@ -56,8 +56,8 @@ public final class MicropayClientHelper {
         return ClientHelper.createClient(withDefaultIdentifierIfPerson(request));
     }
 
-    public static Integer createClient(final RequestSpecification requestSpec, final io.restassured.specification.ResponseSpecification responseSpec,
-            final PostClientsRequest request) {
+    public static Integer createClient(final RequestSpecification requestSpec,
+            final io.restassured.specification.ResponseSpecification responseSpec, final PostClientsRequest request) {
         return ClientHelper.createClient(requestSpec, responseSpec, withDefaultIdentifierIfPerson(request));
     }
 

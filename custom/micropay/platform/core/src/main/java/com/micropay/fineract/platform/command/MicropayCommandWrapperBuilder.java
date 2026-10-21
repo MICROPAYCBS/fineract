@@ -22,8 +22,8 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_DEACTIVATE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_MARKASNPA;
-import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RESETTOTP;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_OVERRIDE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RESETTOTP;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RETIRE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_REVOKE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SAVINGS_TO_GL;

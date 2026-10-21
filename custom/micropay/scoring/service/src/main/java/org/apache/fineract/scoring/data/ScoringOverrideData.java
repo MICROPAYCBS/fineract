@@ -23,6 +23,6 @@ import java.time.OffsetDateTime;
 /**
  * An override of a scoring decision. {@code effective} is true for the override that currently applies to the loan.
  */
-public record ScoringOverrideData(Long id, Long decisionId, Long loanId, String fromOutcome, String toOutcome, Long reasonId,
-        String reason, String comment, boolean effective, Long createdBy, OffsetDateTime createdOn) {
+public record ScoringOverrideData(Long id, Long decisionId, Long loanId, String fromOutcome, String toOutcome, Long reasonId, String reason,
+        String comment, boolean effective, Long createdBy, OffsetDateTime createdOn) {
 }

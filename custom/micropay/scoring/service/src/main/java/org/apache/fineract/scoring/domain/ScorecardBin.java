@@ -31,8 +31,8 @@ import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 
 /**
- * Points awarded when a characteristic falls in this bin. A bin matches either a numeric range [lower, upper), an
- * exact value ({@code matchValue}, compared as text) or a missing value ({@code missingBin}).
+ * Points awarded when a characteristic falls in this bin. A bin matches either a numeric range [lower, upper), an exact
+ * value ({@code matchValue}, compared as text) or a missing value ({@code missingBin}).
  */
 @Getter
 @Setter

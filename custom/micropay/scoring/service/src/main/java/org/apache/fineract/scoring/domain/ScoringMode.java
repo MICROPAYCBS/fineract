@@ -19,8 +19,8 @@
 package org.apache.fineract.scoring.domain;
 
 /**
- * How scoring applies to a loan product. ADVISORY records decisions without blocking anything, so a tenant can watch
- * a new scorecard before enforcing it. ENFORCED rolls back an approval whose decision is DECLINE.
+ * How scoring applies to a loan product. ADVISORY records decisions without blocking anything, so a tenant can watch a
+ * new scorecard before enforcing it. ENFORCED rolls back an approval whose decision is DECLINE.
  */
 public enum ScoringMode {
     OFF, ADVISORY, ENFORCED

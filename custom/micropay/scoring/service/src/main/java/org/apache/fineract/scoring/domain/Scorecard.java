@@ -37,8 +37,8 @@ import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDa
 
 /**
  * One version of an expert scorecard: base points, points per characteristic bin, grade bands and knock-out rules. A
- * scorecard is identified by its code; each change after activation creates a new version, so every decision points
- * at the exact version that produced it. The entity name avoids a clash with the survey module's {@code Scorecard}.
+ * scorecard is identified by its code; each change after activation creates a new version, so every decision points at
+ * the exact version that produced it. The entity name avoids a clash with the survey module's {@code Scorecard}.
  */
 @Getter
 @Setter

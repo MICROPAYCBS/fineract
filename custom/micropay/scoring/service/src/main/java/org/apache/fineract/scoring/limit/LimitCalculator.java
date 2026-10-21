@@ -32,8 +32,8 @@ import org.apache.fineract.scoring.input.ScoringCharacteristics;
  *
  * <ul>
  * <li>A DECLINE, or a grade with no band, gives zero.</li>
- * <li>Otherwise the band's multiplier times the base characteristic, capped at the band's maximum. Without a
- * multiplier or a base characteristic the maximum is the limit. A missing or negative base gives zero.</li>
+ * <li>Otherwise the band's multiplier times the base characteristic, capped at the band's maximum. Without a multiplier
+ * or a base characteristic the maximum is the limit. A missing or negative base gives zero.</li>
  * <li>The result is rounded down to the policy's rounding unit.</li>
  * </ul>
  */

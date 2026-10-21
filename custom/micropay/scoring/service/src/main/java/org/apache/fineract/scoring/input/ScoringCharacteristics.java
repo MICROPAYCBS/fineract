@@ -24,8 +24,8 @@ import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Catalogue of built-in scoring inputs. A scorecard may also use any column of a client or loan datatable with the
- * code {@code DT:<datatable>.<column>}.
+ * Catalogue of built-in scoring inputs. A scorecard may also use any column of a client or loan datatable with the code
+ * {@code DT:<datatable>.<column>}.
  */
 public final class ScoringCharacteristics {
 
@@ -69,7 +69,7 @@ public final class ScoringCharacteristics {
             new Characteristic(CLIENT_CLOSED_LOANS, "NUMBER", "Loans closed with obligations met"),
             new Characteristic(CLIENT_OUTSTANDING_PRINCIPAL, "NUMBER", "Outstanding principal on active loans"),
             new Characteristic(CLIENT_CURRENT_DAYS_IN_ARREARS, "NUMBER", "Days the oldest overdue installment on an active loan is late"),
-            new Characteristic(CLIENT_MAX_DAYS_LATE_HISTORY, "NUMBER", "Most days any paid installment was paid after its due date"),
+            new Characteristic(CLIENT_MAX_DAYS_LATE_HISTORY, "NUMBER", "Most days any paid installment was paid after its due date; missing when none was ever paid"),
             new Characteristic(SAVINGS_BALANCE, "NUMBER", "Balance of active savings accounts"),
             new Characteristic(SAVINGS_MONTHLY_DEPOSITS_6M, "NUMBER", "Deposits in the last 180 days divided by 6"),
             new Characteristic(SAVINGS_TRANSACTIONS_6M, "NUMBER", "Savings transactions in the last 180 days"),

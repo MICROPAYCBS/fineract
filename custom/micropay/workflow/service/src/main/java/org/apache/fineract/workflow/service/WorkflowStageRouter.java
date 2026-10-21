@@ -33,9 +33,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * Walks a workflow's stages in transition order and skips the stages that every {@link WorkflowStageApplicability}
- * says a held command does not need. At least one stage always applies: when every stage would be skipped, the entry
- * stage is kept, so a held command is never approved without a checker.
+ * Walks a workflow's stages in transition order and skips the stages that every {@link WorkflowStageApplicability} says
+ * a held command does not need. At least one stage always applies: when every stage would be skipped, the entry stage
+ * is kept, so a held command is never approved without a checker.
  */
 @Slf4j
 @Component
@@ -70,8 +70,8 @@ public class WorkflowStageRouter {
     }
 
     /**
-     * @return the next stage after {@code fromStageCode} that applies; empty when {@code fromStageCode} is the last stage
-     *         that applies, which makes it the terminal stage for this command
+     * @return the next stage after {@code fromStageCode} that applies; empty when {@code fromStageCode} is the last
+     *         stage that applies, which makes it the terminal stage for this command
      */
     public Optional<String> nextStage(final WorkflowDefinition definition, final String fromStageCode, final CommandSource commandSource) {
         final List<String> chain = chain(definition);

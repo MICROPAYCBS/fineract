@@ -400,8 +400,8 @@ class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImplTest {
         Mockito.doAnswer(invocation -> {
             transactions.add(postingTransaction);
             return null;
-        }).when(savingsAccountPostInterestService).postInterest(any(), any(), any(), anyBoolean(), anyBoolean(), any(), any(),
-                anyBoolean(), anyBoolean());
+        }).when(savingsAccountPostInterestService).postInterest(any(), any(), any(), anyBoolean(), anyBoolean(), any(), any(), anyBoolean(),
+                anyBoolean());
 
         service.postInterest(command);
 

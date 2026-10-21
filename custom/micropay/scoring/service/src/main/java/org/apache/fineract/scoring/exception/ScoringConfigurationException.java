@@ -21,13 +21,12 @@ package org.apache.fineract.scoring.exception;
 import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainRuleException;
 
 /**
- * A scorecard or product configuration breaks a rule, for example an unknown characteristic, overlapping grade bands
- * or a datatable that is not registered.
+ * A scorecard or product configuration breaks a rule, for example an unknown characteristic, overlapping grade bands or
+ * a datatable that is not registered.
  */
 public class ScoringConfigurationException extends AbstractPlatformDomainRuleException {
 
-    public ScoringConfigurationException(final String messageCodeSuffix, final String defaultUserMessage,
-            final Object... userMessageArgs) {
+    public ScoringConfigurationException(final String messageCodeSuffix, final String defaultUserMessage, final Object... userMessageArgs) {
         super("error.msg.scoring.configuration." + messageCodeSuffix, defaultUserMessage, userMessageArgs);
     }
 }

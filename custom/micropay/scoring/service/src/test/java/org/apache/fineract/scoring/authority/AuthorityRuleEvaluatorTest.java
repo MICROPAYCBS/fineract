@@ -38,12 +38,10 @@ class AuthorityRuleEvaluatorTest {
     private static final List<String> STAGES = List.of("CREDIT_OFFICER", "BRANCH_MANAGER", "HEAD_OF_CREDIT", "CREDIT_COMMITTEE");
     private static final BigDecimal FIVE_M = new BigDecimal("5000000");
 
-    private final List<ScoringAuthorityRule> rules = List.of(
-            rule(1L, "HEAD_OF_CREDIT", r -> r.setMinAmount(new BigDecimal("5000000.01"))),
+    private final List<ScoringAuthorityRule> rules = List.of(rule(1L, "HEAD_OF_CREDIT", r -> r.setMinAmount(new BigDecimal("5000000.01"))),
             rule(2L, "HEAD_OF_CREDIT", r -> r.setOutcomes("REFER")),
             rule(3L, "CREDIT_COMMITTEE", r -> r.setMinAmount(new BigDecimal("50000000.01"))),
-            rule(4L, "CREDIT_COMMITTEE", r -> r.setGrades("D,E")),
-            rule(5L, "CREDIT_COMMITTEE", r -> r.setOverridden(Boolean.TRUE)));
+            rule(4L, "CREDIT_COMMITTEE", r -> r.setGrades("D,E")), rule(5L, "CREDIT_COMMITTEE", r -> r.setOverridden(Boolean.TRUE)));
 
     @Test
     void smallGradeALoanNeedsOnlyStagesWithoutRules() {
@@ -129,7 +127,8 @@ class AuthorityRuleEvaluatorTest {
         return new AuthorityContext(1L, 3L, "UGX", amount, amount, grade, outcome, overridden, true);
     }
 
-    private static ScoringAuthorityRule rule(final Long id, final String stage, final java.util.function.Consumer<ScoringAuthorityRule> setup) {
+    private static ScoringAuthorityRule rule(final Long id, final String stage,
+            final java.util.function.Consumer<ScoringAuthorityRule> setup) {
         final ScoringAuthorityRule rule = new ScoringAuthorityRule();
         rule.setId(id);
         rule.setTaskPermissionCode("APPROVE_LOAN");

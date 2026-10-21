@@ -34,7 +34,8 @@ import org.apache.fineract.workflow.domain.WorkflowDefinition;
 public interface WorkflowStageApplicability {
 
     /**
-     * @return the codes of the stages of {@code definition} that the command does not need to pass; empty when all apply
+     * @return the codes of the stages of {@code definition} that the command does not need to pass; empty when all
+     *         apply
      */
     Set<String> stagesToSkip(CommandSource commandSource, WorkflowDefinition definition);
 }

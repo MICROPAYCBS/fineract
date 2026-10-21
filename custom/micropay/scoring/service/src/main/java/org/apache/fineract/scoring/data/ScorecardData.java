@@ -45,8 +45,10 @@ public record ScorecardData(Long id, String code, Integer version, String name, 
                         .map(bin -> new BinData(bin.getCharacteristic(), bin.getLower(), bin.getUpper(), bin.getMatchValue(),
                                 bin.isMissingBin(), bin.getPoints(), bin.getReasonCode()))
                         .toList(),
-                scorecard.getGradeBands().stream().map(band -> new GradeBandData(band.getGrade(), band.getMinScore(), band.getMaxScore(),
-                        band.getExpectedPd(), band.getOutcome().name())).toList(),
+                scorecard.getGradeBands().stream()
+                        .map(band -> new GradeBandData(band.getGrade(), band.getMinScore(), band.getMaxScore(), band.getExpectedPd(),
+                                band.getOutcome().name()))
+                        .toList(),
                 scorecard.getRules().stream()
                         .map(rule -> new RuleData(rule.getRuleType().name(), rule.getCharacteristic(),
                                 rule.getOperator() == null ? null : rule.getOperator().name(), rule.getValue(), rule.getOutcome().name(),

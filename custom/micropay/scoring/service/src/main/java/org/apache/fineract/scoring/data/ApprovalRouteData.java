@@ -32,8 +32,9 @@ public record ApprovalRouteData(Long loanId, String taskPermissionCode, Long wor
 
     /**
      * @param reason
-     *            NO_AUTHORITY_RULES, RULE_MATCHED, NO_RULE_MATCHED or NO_SCORING_DECISION; KEPT_AS_ENTRY_STAGE when every
-     *            stage would be skipped and the entry stage is kept
+     *            NO_AUTHORITY_RULES, RULE_MATCHED, NO_RULE_MATCHED or NO_SCORING_DECISION; KEPT_AS_ENTRY_STAGE when
+     *            every stage would be skipped and the entry stage is kept
      */
-    public record Stage(String stageCode, String name, boolean required, String reason, List<Long> matchedRuleIds) {}
+    public record Stage(String stageCode, String name, boolean required, String reason, List<Long> matchedRuleIds) {
+    }
 }

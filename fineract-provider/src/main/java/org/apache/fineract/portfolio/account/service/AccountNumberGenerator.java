@@ -155,7 +155,8 @@ public class AccountNumberGenerator implements AccountNumberGeneratorService {
     private boolean useStructuredGeneration(final AccountNumberFormat accountNumberFormat) {
         final GlobalConfigurationPropertyData structuredFormats = this.configurationReadPlatformService
                 .retrieveGlobalConfiguration("structured-account-number-formats");
-        return structuredFormats.isEnabled() && accountNumberFormat != null && Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled());
+        return structuredFormats.isEnabled() && accountNumberFormat != null
+                && Boolean.TRUE.equals(accountNumberFormat.getStructuredEnabled());
     }
 
     private String generateAccountNumber(Map<String, String> propertyMap, AccountNumberFormat accountNumberFormat) {

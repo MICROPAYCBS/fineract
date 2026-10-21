@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements. See the NOTICE file
  * distributed with this work for additional information
@@ -104,8 +104,8 @@ public class MicropayFeignClientHelper {
     }
 
     public PostClientsResponse createClientDraft(String submittedOnDate) {
-        return ok(() -> fineractClient.clients()
-                .createClient(MicropayClientHelper.withDefaultIdentifierIfPerson(ClientRequestBuilders.createPendingClient(submittedOnDate))));
+        return ok(() -> fineractClient.clients().createClient(
+                MicropayClientHelper.withDefaultIdentifierIfPerson(ClientRequestBuilders.createPendingClient(submittedOnDate))));
     }
 
     public PostClientsClientIdResponse submitClient(Long clientId) {

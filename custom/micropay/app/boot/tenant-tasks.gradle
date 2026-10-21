@@ -262,29 +262,29 @@ User '${adminUser}' cannot CREATE DATABASE. Options:
 
             try {
                 def connectionParamsList = [
-                        asJdbcString(host),
-                        asJdbcString(schemaName),
-                        asJdbcString(port),
-                        asJdbcString(schemaUsername),
-                        asJdbcString(encryptedPassword),
-                        poolInitial,
-                        poolValidation,
-                        poolRemoveAbandoned,
-                        poolRemoveAbandonedTimeout,
-                        poolLogAbandoned,
-                        poolAbandonPct,
-                        poolTestOnBorrow,
-                        poolMaxActive,
-                        poolMinIdle,
-                        poolMaxIdle,
-                        poolSuspect,
-                        poolEviction,
-                        poolMinEvictable,
-                        connectionParams,
-                        asJdbcString(masterPasswordHash)
-                    ]
-                    if (dbType == 'postgresql') {
-                        def inserted = tenantsSql.firstRow('''
+                    asJdbcString(host),
+                    asJdbcString(schemaName),
+                    asJdbcString(port),
+                    asJdbcString(schemaUsername),
+                    asJdbcString(encryptedPassword),
+                    poolInitial,
+                    poolValidation,
+                    poolRemoveAbandoned,
+                    poolRemoveAbandonedTimeout,
+                    poolLogAbandoned,
+                    poolAbandonPct,
+                    poolTestOnBorrow,
+                    poolMaxActive,
+                    poolMinIdle,
+                    poolMaxIdle,
+                    poolSuspect,
+                    poolEviction,
+                    poolMinEvictable,
+                    connectionParams,
+                    asJdbcString(masterPasswordHash)
+                ]
+                if (dbType == 'postgresql') {
+                    def inserted = tenantsSql.firstRow('''
                             INSERT INTO tenant_server_connections (
                                 schema_server, schema_name, schema_server_port, schema_username, schema_password,
                                 auto_update, pool_initial_size, pool_validation_interval, pool_remove_abandoned,
@@ -301,9 +301,9 @@ User '${adminUser}' cannot CREATE DATABASE. Options:
                                 ?, ?
                             ) RETURNING id
                             ''', connectionParamsList)
-                        connectionId = inserted.id
-                    } else {
-                        def keys = tenantsSql.executeInsert('''
+                    connectionId = inserted.id
+                } else {
+                    def keys = tenantsSql.executeInsert('''
                             INSERT INTO tenant_server_connections (
                                 schema_server, schema_name, schema_server_port, schema_username, schema_password,
                                 auto_update, pool_initial_size, pool_validation_interval, pool_remove_abandoned,
@@ -320,19 +320,19 @@ User '${adminUser}' cannot CREATE DATABASE. Options:
                                 ?, ?
                             )
                             ''', connectionParamsList)
-                        connectionId = keys[0][0]
-                    }
+                    connectionId = keys[0][0]
+                }
 
-                    tenantsSql.executeInsert('''
+                tenantsSql.executeInsert('''
                         INSERT INTO tenants (identifier, name, timezone_id, oltp_id, report_id)
                         VALUES (?, ?, ?, ?, ?)
                         ''', [
-                                asJdbcString(identifier),
-                                asJdbcString(tenantDisplayName),
-                                asJdbcString(timezoneId),
-                                connectionId,
-                                connectionId
-                            ])
+                            asJdbcString(identifier),
+                            asJdbcString(tenantDisplayName),
+                            asJdbcString(timezoneId),
+                            connectionId,
+                            connectionId
+                        ])
             } catch (GradleException ge) {
                 throw ge
             } catch (Exception e) {

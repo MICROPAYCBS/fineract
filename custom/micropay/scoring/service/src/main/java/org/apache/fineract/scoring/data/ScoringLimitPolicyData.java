@@ -26,7 +26,8 @@ public record ScoringLimitPolicyData(Long id, String code, String name, String s
         boolean staffOnly, Long officeId, Long customerClassId, Integer validDays, String baseCharacteristic, BigDecimal roundingUnit,
         List<Band> bands) {
 
-    public record Band(String grade, BigDecimal multiplier, BigDecimal maxAmount) {}
+    public record Band(String grade, BigDecimal multiplier, BigDecimal maxAmount) {
+    }
 
     public static ScoringLimitPolicyData from(final ScoringLimitPolicy policy) {
         return new ScoringLimitPolicyData(policy.getId(), policy.getCode(), policy.getName(), policy.getScorecardCode(),

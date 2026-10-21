@@ -47,8 +47,7 @@ public class ScoringStageApplicability implements WorkflowStageApplicability {
 
     @Override
     public Set<String> stagesToSkip(final CommandSource commandSource, final WorkflowDefinition definition) {
-        return route(commandSource.getLoanId(), commandSource.getCommandAsJson(), definition).map(AuthorityRoute::skipped)
-                .orElse(Set.of());
+        return route(commandSource.getLoanId(), commandSource.getCommandAsJson(), definition).map(AuthorityRoute::skipped).orElse(Set.of());
     }
 
     /**

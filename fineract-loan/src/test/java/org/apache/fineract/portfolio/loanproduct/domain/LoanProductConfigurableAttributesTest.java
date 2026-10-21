@@ -34,7 +34,8 @@ class LoanProductConfigurableAttributesTest {
     void readFlagUsesFallbackWhenKeyIsMissingOrNull() {
         assertThat(LoanProductConfigurableAttributes.readFlag(null, "interestType", Boolean.TRUE)).isTrue();
         final var overrides = JsonParser.parseString("{\"interestType\":false,\"amortizationType\":null}").getAsJsonObject();
-        assertThat(LoanProductConfigurableAttributes.readFlag(overrides, LoanProductConstants.interestTypeParamName, Boolean.TRUE)).isFalse();
+        assertThat(LoanProductConfigurableAttributes.readFlag(overrides, LoanProductConstants.interestTypeParamName, Boolean.TRUE))
+                .isFalse();
         assertThat(LoanProductConfigurableAttributes.readFlag(overrides, LoanProductConstants.amortizationTypeParamName, Boolean.TRUE))
                 .isTrue();
         assertThat(LoanProductConfigurableAttributes.readFlag(overrides, LoanProductConstants.repaymentEveryParamName, Boolean.FALSE))

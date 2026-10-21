@@ -80,11 +80,10 @@ public class CrossBranchClientVisibilityIntegrationTest extends IntegrationTest 
         clientRequest.setOfficeId(branchB.getOfficeId());
         final PostClientsResponse branchBClient = ClientHelper.createClient(clientRequest);
 
-        final FineractClient cashierClient = createCashierClient(branchA.getOfficeId(), Map.of("READ_CLIENT", true,
-                CrossBranchServicingConstants.VIEW_OTHER_BRANCH_CLIENT_PERMISSION, true));
+        final FineractClient cashierClient = createCashierClient(branchA.getOfficeId(),
+                Map.of("READ_CLIENT", true, CrossBranchServicingConstants.VIEW_OTHER_BRANCH_CLIENT_PERMISSION, true));
 
-        final GetClientsClientIdResponse retrieved = ok(
-                cashierClient.clients.retrieveOneClient(branchBClient.getClientId(), false));
+        final GetClientsClientIdResponse retrieved = ok(cashierClient.clients.retrieveOneClient(branchBClient.getClientId(), false));
 
         assertThat(retrieved.getId()).isEqualTo(branchBClient.getClientId());
         assertThat(retrieved.getOfficeId()).isEqualTo(branchB.getOfficeId());
@@ -109,7 +108,8 @@ public class CrossBranchClientVisibilityIntegrationTest extends IntegrationTest 
 
     private FineractClient createCashierClient(final Long branchOfficeId, final Map<String, Boolean> permissions) {
         final String roleName = Utils.uniqueRandomStringGenerator("TEST_ROLE_", 10);
-        final Long roleId = ok(fineractClient().roles.createRole(new PostRolesRequest().name(roleName).description("Cross-branch test role")))
+        final Long roleId = ok(
+                fineractClient().roles.createRole(new PostRolesRequest().name(roleName).description("Cross-branch test role")))
                 .getResourceId();
 
         final PutRolesRoleIdPermissionsRequest permissionsRequest = new PutRolesRoleIdPermissionsRequest();
@@ -125,8 +125,8 @@ public class CrossBranchClientVisibilityIntegrationTest extends IntegrationTest 
     }
 
     private void ensureCrossBranchServicingEnabled() {
-        final Response<GlobalConfigurationPropertyData> configResponse = Calls.executeU(fineractClient().globalConfigurations
-                .retrieveOneByName(CrossBranchServicingConstants.ENABLE_CROSS_BRANCH_SERVICING));
+        final Response<GlobalConfigurationPropertyData> configResponse = Calls.executeU(
+                fineractClient().globalConfigurations.retrieveOneByName(CrossBranchServicingConstants.ENABLE_CROSS_BRANCH_SERVICING));
         if (configResponse.code() == 404) {
             throw new AssertionError("Micropay configuration '" + CrossBranchServicingConstants.ENABLE_CROSS_BRANCH_SERVICING
                     + "' was not found. Ensure tenant migrations 3042 and 3055 have been applied.");
@@ -136,8 +136,8 @@ public class CrossBranchClientVisibilityIntegrationTest extends IntegrationTest 
                     + configResponse.code() + ").");
         }
         if (!Boolean.TRUE.equals(configResponse.body().getEnabled())) {
-            ok(fineractClient().globalConfigurations.updateConfigurationByName(
-                    CrossBranchServicingConstants.ENABLE_CROSS_BRANCH_SERVICING, new PutGlobalConfigurationsRequest().enabled(true)));
+            ok(fineractClient().globalConfigurations.updateConfigurationByName(CrossBranchServicingConstants.ENABLE_CROSS_BRANCH_SERVICING,
+                    new PutGlobalConfigurationsRequest().enabled(true)));
         }
     }
 

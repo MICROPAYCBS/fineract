@@ -30,7 +30,8 @@ public class ScoringLimitExceededException extends AbstractPlatformDomainRuleExc
     }
 
     public ScoringLimitExceededException(final Long loanId, final String policyCode) {
-        super("error.msg.scoring.limit.missing", "Loan " + loanId + " needs a current pre-approved limit under " + policyCode
-                + " and the client has none", loanId, policyCode);
+        super("error.msg.scoring.limit.missing",
+                "Loan " + loanId + " needs a current pre-approved limit under " + policyCode + " and the client has none", loanId,
+                policyCode);
     }
 }

@@ -34,14 +34,13 @@ import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.scoring.data.ScoringClientLimitData;
 import org.apache.fineract.scoring.data.ScoringLimitPolicyData;
 import org.apache.fineract.scoring.data.ScoringLimitPolicyRequest;
-import org.apache.fineract.scoring.domain.ScorecardRepository;
-import org.apache.fineract.scoring.domain.ScoringClientLimit;
 import org.apache.fineract.scoring.domain.ScoringClientLimitRepository;
 import org.apache.fineract.scoring.domain.ScoringLimitBand;
 import org.apache.fineract.scoring.domain.ScoringLimitPolicy;
 import org.apache.fineract.scoring.domain.ScoringLimitPolicyRepository;
 import org.apache.fineract.scoring.domain.ScoringLimitStatus;
 import org.apache.fineract.scoring.domain.ScoringMode;
+import org.apache.fineract.scoring.domain.ScoringScorecardRepository;
 import org.apache.fineract.scoring.exception.ScoringConfigurationException;
 import org.apache.fineract.scoring.exception.ScoringLimitPolicyNotFoundException;
 import org.apache.fineract.scoring.limit.LimitCheckService;
@@ -59,7 +58,7 @@ public class ScoringLimitPlatformServiceImpl implements ScoringLimitPlatformServ
     private final ScoringLimitPolicyDataValidator validator;
     private final ScoringLimitPolicyRepository policyRepository;
     private final ScoringClientLimitRepository limitRepository;
-    private final ScorecardRepository scorecardRepository;
+    private final ScoringScorecardRepository scoringScorecardRepository;
     private final LimitCheckService limitCheckService;
     private final JdbcTemplate jdbcTemplate;
 
@@ -129,10 +128,10 @@ public class ScoringLimitPlatformServiceImpl implements ScoringLimitPlatformServ
         final Long productCount = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM m_product_loan WHERE id = ?", Long.class,
                 request.getLoanProductId());
         if (productCount == null || productCount == 0) {
-            throw new ScoringConfigurationException("loan.product.not.found", "Loan product " + request.getLoanProductId() + " does not exist",
-                    request.getLoanProductId());
+            throw new ScoringConfigurationException("loan.product.not.found",
+                    "Loan product " + request.getLoanProductId() + " does not exist", request.getLoanProductId());
         }
-        if (!this.scorecardRepository.existsByCode(request.getScorecardCode())) {
+        if (!this.scoringScorecardRepository.existsByCode(request.getScorecardCode())) {
             throw new ScoringConfigurationException("scorecard.code.unknown", "No scorecard has code " + request.getScorecardCode(),
                     request.getScorecardCode());
         }
@@ -147,7 +146,7 @@ public class ScoringLimitPlatformServiceImpl implements ScoringLimitPlatformServ
         policy.setBaseCharacteristic(request.getBaseCharacteristic());
         policy.setRoundingUnit(request.getRoundingUnit());
         policy.getBands().clear();
-        request.getBands().forEach(band -> policy.addBand(ScoringLimitBand.create(band.getGrade().toUpperCase(), band.getMultiplier(),
-                band.getMaxAmount())));
+        request.getBands().forEach(
+                band -> policy.addBand(ScoringLimitBand.create(band.getGrade().toUpperCase(), band.getMultiplier(), band.getMaxAmount())));
     }
 }

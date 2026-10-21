@@ -49,7 +49,8 @@ public class BehaviouralScoringService {
     private final ClientLimitWriter writer;
     private final JdbcTemplate jdbcTemplate;
 
-    public record RunSummary(int policies, int scored, int failed) {}
+    public record RunSummary(int policies, int scored, int failed) {
+    }
 
     public RunSummary runAll() {
         final LocalDate today = DateUtils.getBusinessLocalDate();

@@ -66,7 +66,7 @@ import org.springframework.stereotype.Component;
 @ConditionalOnProperty(value = MODULE_ENABLED_PROPERTY, havingValue = "true")
 @Tag(name = "Credit Scorecards", description = "Build, test and activate versioned expert scorecards")
 @RequiredArgsConstructor
-public class ScorecardApiResource {
+public class ScoringScorecardApiResource {
 
     private final PlatformSecurityContext context;
     private final ScoringReadPlatformService readPlatformService;
@@ -117,8 +117,8 @@ public class ScorecardApiResource {
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult update(@PathParam("scorecardId") final Long scorecardId,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
-        final CommandWrapper commandRequest = new MicropayCommandWrapperBuilder().updateScorecard(scorecardId).withJson(apiRequestBodyAsJson)
-                .build();
+        final CommandWrapper commandRequest = new MicropayCommandWrapperBuilder().updateScorecard(scorecardId)
+                .withJson(apiRequestBodyAsJson).build();
         return this.commandsSourceWritePlatformService.logCommandSource(commandRequest);
     }
 

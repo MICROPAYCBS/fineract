@@ -50,7 +50,8 @@ public interface ScoringService {
     /**
      * A recorded decision and the inputs it was made from.
      */
-    record ScoringRun(ScoringDecision decision, Map<String, Object> inputs) {}
+    record ScoringRun(ScoringDecision decision, Map<String, Object> inputs) {
+    }
 
     /**
      * Scores a loan with any scorecard version, drafts included, without saving anything.

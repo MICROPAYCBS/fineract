@@ -91,7 +91,8 @@ public class ScoringAuthorityReadPlatformServiceImpl implements ScoringAuthority
                 if (noneRequired && i == 0) {
                     stages.add(new ApprovalRouteData.Stage(stage.stageCode(), name, true, KEPT_AS_ENTRY_STAGE, List.of()));
                 } else {
-                    stages.add(new ApprovalRouteData.Stage(stage.stageCode(), name, stage.required(), stage.reason(), stage.matchedRuleIds()));
+                    stages.add(
+                            new ApprovalRouteData.Stage(stage.stageCode(), name, stage.required(), stage.reason(), stage.matchedRuleIds()));
                 }
             }
         });

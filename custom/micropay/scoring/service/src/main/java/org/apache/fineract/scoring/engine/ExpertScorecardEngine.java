@@ -97,7 +97,9 @@ public class ExpertScorecardEngine implements ScoringEngine {
         final List<PointsLine> lines = new ArrayList<>();
         binsByCharacteristic.forEach((characteristic, bins) -> {
             final Object value = inputs.get(characteristic);
-            final BigDecimal maxPoints = bins.stream().map(ScorecardBin::getPoints).max(Comparator.naturalOrder()).orElse(BigDecimal.ZERO);
+            // a value no bin matches scores 0, so 0 is a reachable best too; without it a penalty-only characteristic never
+            // shows up among the adverse reasons
+            final BigDecimal maxPoints = bins.stream().map(ScorecardBin::getPoints).reduce(BigDecimal.ZERO, BigDecimal::max);
             final ScorecardBin matched = bins.stream().filter(bin -> matches(bin, value)).findFirst().orElse(null);
             if (matched == null) {
                 lines.add(new PointsLine(characteristic, value, BigDecimal.ZERO, maxPoints, null));

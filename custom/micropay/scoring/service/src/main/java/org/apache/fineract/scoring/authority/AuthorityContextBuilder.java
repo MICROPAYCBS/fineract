@@ -40,8 +40,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Reads what the authority rules need for one loan. Reads are plain queries of committed data, like the scoring
- * inputs, so they do not wait on the approval transaction.
+ * Reads what the authority rules need for one loan. Reads are plain queries of committed data, like the scoring inputs,
+ * so they do not wait on the approval transaction.
  */
 @Slf4j
 @Component
@@ -65,8 +65,8 @@ public class AuthorityContextBuilder {
      */
     @Transactional(readOnly = true)
     public Optional<AuthorityContext> build(final Long loanId, final String commandJson) {
-        final List<Map<String, Object>> rows = this.jdbcTemplate.queryForList(
-                "SELECT client_id, product_id, currency_code, principal_amount FROM m_loan WHERE id = ?", loanId);
+        final List<Map<String, Object>> rows = this.jdbcTemplate
+                .queryForList("SELECT client_id, product_id, currency_code, principal_amount FROM m_loan WHERE id = ?", loanId);
         if (rows.isEmpty()) {
             return Optional.empty();
         }
@@ -77,7 +77,8 @@ public class AuthorityContextBuilder {
 
         final Optional<ScoringDecision> decision = this.decisionRepository.findFirstByLoanIdOrderByIdDesc(loanId);
         final Optional<ScoringOverride> override = this.scoringService.findEffectiveOverride(loanId);
-        final ScoringOutcome outcome = override.map(ScoringOverride::getToOutcome).orElse(decision.map(ScoringDecision::getOutcome).orElse(null));
+        final ScoringOutcome outcome = override.map(ScoringOverride::getToOutcome)
+                .orElse(decision.map(ScoringDecision::getOutcome).orElse(null));
 
         return Optional.of(new AuthorityContext(loanId, productId, (String) loan.get("currency_code"), amount,
                 amount.add(otherExposure(clientId, loanId)), decision.map(ScoringDecision::getGrade).orElse(null), outcome,

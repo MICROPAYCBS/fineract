@@ -38,8 +38,8 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 /**
- * Checks a loan against the pre-approved limits of its product. Under an ENFORCED policy a loan that does not fit, or
- * a client with no current limit, is refused; under ADVISORY the breach is only logged.
+ * Checks a loan against the pre-approved limits of its product. Under an ENFORCED policy a loan that does not fit, or a
+ * client with no current limit, is refused; under ADVISORY the breach is only logged.
  */
 @Slf4j
 @Service

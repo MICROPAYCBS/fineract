@@ -33,8 +33,7 @@ class ScorecardActivationValidationTest {
 
     @Test
     void scorecardWithoutBandsCannotBeActivated() {
-        assertThrows(ScoringConfigurationException.class,
-                () -> ScorecardWritePlatformServiceImpl.validateForActivation(scorecard()));
+        assertThrows(ScoringConfigurationException.class, () -> ScorecardWritePlatformServiceImpl.validateForActivation(scorecard()));
     }
 
     @Test

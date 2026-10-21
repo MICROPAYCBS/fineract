@@ -28,9 +28,7 @@ import org.apache.fineract.infrastructure.core.exception.AbstractPlatformDomainR
 public class ScoringDeclinedException extends AbstractPlatformDomainRuleException {
 
     public ScoringDeclinedException(final Long loanId, final Long decisionId, final List<String> reasonCodes) {
-        super("error.msg.scoring.loan.declined",
-                "Loan " + loanId + " is stopped by credit scoring: decision " + decisionId + " is DECLINE (" + String.join(", ", reasonCodes)
-                        + ")",
-                loanId, decisionId, reasonCodes);
+        super("error.msg.scoring.loan.declined", "Loan " + loanId + " is stopped by credit scoring: decision " + decisionId
+                + " is DECLINE (" + String.join(", ", reasonCodes) + ")", loanId, decisionId, reasonCodes);
     }
 }

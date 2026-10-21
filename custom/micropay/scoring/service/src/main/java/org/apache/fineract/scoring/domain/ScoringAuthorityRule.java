@@ -28,9 +28,9 @@ import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
 
 /**
- * One row of the approval authority matrix: a condition under which a workflow stage is required. A stage with no
- * rules always applies; a stage with rules applies when at least one of them matches. Every condition left empty
- * matches anything, so a rule with only {@code minAmount} set requires the stage from that amount up.
+ * One row of the approval authority matrix: a condition under which a workflow stage is required. A stage with no rules
+ * always applies; a stage with rules applies when at least one of them matches. Every condition left empty matches
+ * anything, so a rule with only {@code minAmount} set requires the stage from that amount up.
  */
 @Getter
 @Setter

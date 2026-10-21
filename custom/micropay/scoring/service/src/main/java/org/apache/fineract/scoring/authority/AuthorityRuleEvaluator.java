@@ -54,8 +54,7 @@ public final class AuthorityRuleEvaluator {
             if (missingDecision) {
                 return new StageRoute(stageCode, true, AuthorityRoute.NO_DECISION, List.of());
             }
-            final List<Long> matched = stageRules.stream().filter(rule -> matches(rule, context)).map(ScoringAuthorityRule::getId)
-                    .toList();
+            final List<Long> matched = stageRules.stream().filter(rule -> matches(rule, context)).map(ScoringAuthorityRule::getId).toList();
             return matched.isEmpty() ? new StageRoute(stageCode, false, AuthorityRoute.NOT_MATCHED, List.of())
                     : new StageRoute(stageCode, true, AuthorityRoute.MATCHED, matched);
         }).toList());
@@ -65,8 +64,7 @@ public final class AuthorityRuleEvaluator {
         return (rule.getLoanProductId() == null || rule.getLoanProductId().equals(context.loanProductId()))
                 && (rule.getCurrencyCode() == null || rule.getCurrencyCode().equalsIgnoreCase(context.currencyCode()))
                 && within(context.amount(), rule.getMinAmount(), rule.getMaxAmount())
-                && within(context.exposure(), rule.getMinExposure(), rule.getMaxExposure())
-                && listed(rule.getGrades(), context.grade())
+                && within(context.exposure(), rule.getMinExposure(), rule.getMaxExposure()) && listed(rule.getGrades(), context.grade())
                 && listed(rule.getOutcomes(), context.outcome() == null ? null : context.outcome().name())
                 && (rule.getOverridden() == null || rule.getOverridden() == context.overridden());
     }

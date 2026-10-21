@@ -330,6 +330,7 @@ public class Client extends AbstractAuditableWithUTCDateTimeCustom<Long> {
         this.clientType = clientType;
         this.clientClassification = clientClassification;
         this.setLegalForm(legalForm);
+        this.isStaff = Boolean.TRUE.equals(isStaff);
 
         deriveDisplayName();
         validate();

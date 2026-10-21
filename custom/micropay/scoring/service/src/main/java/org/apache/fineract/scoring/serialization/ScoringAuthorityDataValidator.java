@@ -78,13 +78,13 @@ public class ScoringAuthorityDataValidator {
         final List<ApiParameterError> errors = new ArrayList<>();
         final DataValidatorBuilder validator = new DataValidatorBuilder(errors).resource(SCORING_AUTHORITY_RULE_RESOURCE_NAME);
 
-        validator.reset().parameter(TASK_PERMISSION_CODE_PARAM).value(request.getTaskPermissionCode()).matchesRegularExpression(CODE_PATTERN,
-                "The parameter `taskPermissionCode` must be a permission code such as APPROVE_LOAN");
+        validator.reset().parameter(TASK_PERMISSION_CODE_PARAM).value(request.getTaskPermissionCode()).matchesRegularExpression(
+                CODE_PATTERN, "The parameter `taskPermissionCode` must be a permission code such as APPROVE_LOAN");
         validator.reset().parameter(STAGE_CODE_PARAM).value(request.getStageCode()).notBlank().notExceedingLengthOf(100);
         validator.reset().parameter(DESCRIPTION_PARAM).value(request.getDescription()).ignoreIfNull().notExceedingLengthOf(500);
         validator.reset().parameter(LOAN_PRODUCT_ID_PARAM).value(request.getLoanProductId()).ignoreIfNull().longGreaterThanZero();
-        validator.reset().parameter(CURRENCY_CODE_PARAM).value(request.getCurrencyCode()).ignoreIfNull().matchesRegularExpression("[A-Za-z]{3}",
-                "The parameter `currencyCode` must be a three-letter currency code");
+        validator.reset().parameter(CURRENCY_CODE_PARAM).value(request.getCurrencyCode()).ignoreIfNull()
+                .matchesRegularExpression("[A-Za-z]{3}", "The parameter `currencyCode` must be a three-letter currency code");
         validateRange(validator, MIN_AMOUNT_PARAM, request.getMinAmount(), MAX_AMOUNT_PARAM, request.getMaxAmount());
         validateRange(validator, MIN_EXPOSURE_PARAM, request.getMinExposure(), MAX_EXPOSURE_PARAM, request.getMaxExposure());
         final List<String> grades = nullToEmpty(request.getGrades());
@@ -93,7 +93,8 @@ public class ScoringAuthorityDataValidator {
         }
         final List<String> outcomes = nullToEmpty(request.getOutcomes());
         for (int i = 0; i < outcomes.size(); i++) {
-            validator.reset().parameter(OUTCOMES_PARAM + "[" + i + "]").value(outcomes.get(i)).notBlank().isOneOfTheseStringValues(OUTCOMES);
+            validator.reset().parameter(OUTCOMES_PARAM + "[" + i + "]").value(outcomes.get(i)).notBlank()
+                    .isOneOfTheseStringValues(OUTCOMES);
         }
         if (!errors.isEmpty()) {
             throw new PlatformApiDataValidationException(errors);
