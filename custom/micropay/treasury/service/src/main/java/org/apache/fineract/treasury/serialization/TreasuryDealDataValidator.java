@@ -40,6 +40,7 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEAL_TYP
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEAL_TYPE_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFAULT_DAY_COUNT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFAULT_FREQUENCY_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFERRED_FEE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DISCOUNT_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.EXPOSURE_LIMIT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.EXTERNAL_REFERENCE_PARAM;
@@ -67,6 +68,8 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.PROCEEDS
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATING_CODE_VALUE_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATING_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.REALISED_GAIN_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.REALISED_LOSS_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.REASON_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ROLLOVER_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ROLLOVER_PRE_APPROVED_PARAM;
@@ -127,7 +130,7 @@ public class TreasuryDealDataValidator {
     /** The GL account parameters of a deal type. */
     public static final List<String> GL_PARAMS = List.of(PRINCIPAL_GL_PARAM, INTEREST_RECEIVABLE_GL_PARAM, INTEREST_PAYABLE_GL_PARAM,
             INTEREST_INCOME_GL_PARAM, INTEREST_EXPENSE_GL_PARAM, PREMIUM_GL_PARAM, DISCOUNT_GL_PARAM, FEE_INCOME_GL_PARAM,
-            FEE_EXPENSE_GL_PARAM);
+            FEE_EXPENSE_GL_PARAM, DEFERRED_FEE_GL_PARAM, REALISED_GAIN_GL_PARAM, REALISED_LOSS_GL_PARAM);
 
     private final FromJsonHelper fromApiJsonHelper;
 
