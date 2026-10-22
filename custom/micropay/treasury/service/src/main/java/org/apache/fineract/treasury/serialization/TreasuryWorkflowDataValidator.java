@@ -178,7 +178,7 @@ public class TreasuryWorkflowDataValidator {
         final Boolean referenceRule = booleanIfPresent(object, RECON_REFERENCE_RULE_PARAM, validator);
         final Boolean sameDateRule = booleanIfPresent(object, RECON_SAME_DATE_RULE_PARAM, validator);
         final Boolean windowRule = booleanIfPresent(object, RECON_WINDOW_RULE_PARAM, validator);
-        final Integer windowDays = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(RECON_WINDOW_DAYS_PARAM, object);
+        final Integer windowDays = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(RECON_WINDOW_DAYS_PARAM, object);
         if (object.has(RECON_WINDOW_DAYS_PARAM)) {
             validator.reset().parameter(RECON_WINDOW_DAYS_PARAM).value(windowDays).notNull().integerZeroOrGreater().notGreaterThanMax(31);
         }

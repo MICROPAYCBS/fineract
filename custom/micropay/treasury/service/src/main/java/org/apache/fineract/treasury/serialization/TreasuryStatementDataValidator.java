@@ -204,7 +204,7 @@ public class TreasuryStatementDataValidator {
         final String type = trimmed(object, FORMAT_TYPE_PARAM);
         final String delimiter = raw(object, DELIMITER_PARAM);
         final String decimal = trimmed(object, DECIMAL_SEPARATOR_PARAM);
-        final Integer headerRows = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(HEADER_ROWS_PARAM, object);
+        final Integer headerRows = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(HEADER_ROWS_PARAM, object);
         final String dateFormat = trimmed(object, DATE_FORMAT_PARAM);
         if (create) {
             validator.reset().parameter(CODE_PARAM).value(code).notBlank().matchesRegularExpression(CODE_PATTERN,

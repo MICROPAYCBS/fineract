@@ -95,6 +95,17 @@ class TreasuryWorkflowDataValidatorTest {
     }
 
     @Test
+    void matchingWindowNeedsNoLocale() {
+        final SettingRequest request = this.validator
+                .validateSetting("{\"currencyCode\": \"UGX\", \"reconWindowDays\": 5, \"reconSameDateRule\": false}");
+
+        assertEquals(5, request.reconWindowDays());
+        assertEquals(Boolean.FALSE, request.reconSameDateRule());
+        assertThrows(PlatformApiDataValidationException.class,
+                () -> this.validator.validateSetting("{\"currencyCode\": \"UGX\", \"reconWindowDays\": 40}"));
+    }
+
+    @Test
     void settingKnowsWhichFieldsWereSent() {
         final SettingRequest request = this.validator.validateSetting("{\"currencyCode\": \"ugx\", \"cashInTransitGlAccountId\": null}");
 
