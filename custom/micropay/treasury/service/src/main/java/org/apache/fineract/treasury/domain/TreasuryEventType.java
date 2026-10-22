@@ -32,7 +32,9 @@ public enum TreasuryEventType {
     DEAL_SETTLEMENT("DS"), //
     DEAL_ACCRUAL("DA"), //
     DEAL_CASHFLOW("DC"), //
-    DEAL_TERMINATION("DT"); //
+    DEAL_TERMINATION("DT"), //
+    DEAL_VALUATION("DV"), //
+    DEAL_IMPAIRMENT("DE"); //
 
     private final String code;
 

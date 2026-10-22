@@ -29,6 +29,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_SAME_D
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_DAYS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_RULE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ROLLOVER_WINDOW_DAYS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.STALE_PRICE_DAYS_PARAM;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -135,6 +136,10 @@ public class TreasurySettingService {
         if (request.has(ROLLOVER_WINDOW_DAYS_PARAM) && setting.getRolloverWindowDays() != request.rolloverWindowDays()) {
             setting.setRolloverWindowDays(request.rolloverWindowDays());
             changes.put(ROLLOVER_WINDOW_DAYS_PARAM, request.rolloverWindowDays());
+        }
+        if (request.has(STALE_PRICE_DAYS_PARAM) && setting.getStalePriceDays() != request.stalePriceDays()) {
+            setting.setStalePriceDays(request.stalePriceDays());
+            changes.put(STALE_PRICE_DAYS_PARAM, request.stalePriceDays());
         }
         if (setting.getId() == null || !changes.isEmpty()) {
             this.settingRepository.saveAndFlush(setting);

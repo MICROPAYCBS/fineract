@@ -23,6 +23,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABL
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +40,6 @@ import org.apache.fineract.treasury.deal.DealCalculator.Flow;
 import org.apache.fineract.treasury.deal.DealCalculator.FlowType;
 import org.apache.fineract.treasury.deal.DealClassification;
 import org.apache.fineract.treasury.deal.DealStatus;
-import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.InterestMethod;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
@@ -108,6 +108,9 @@ public class TreasuryDealLifecycleService {
     private final TreasuryReferenceDataLookup referenceDataLookup;
     private final AppUserRepositoryWrapper appUserRepository;
     private final PlatformTransactionManager transactionManager;
+    private final TreasuryPledgeService pledgeService;
+    private final TreasuryValuationService valuationService;
+    private final TreasuryEclService eclService;
 
     public record RunSummary(LocalDate closedDay, int deals, int accrued, int cashflowsSettled, int matured, int skipped) {
     }
@@ -278,6 +281,9 @@ public class TreasuryDealLifecycleService {
         if (open || deal.getAccruedToDate() == null || deal.getAccruedToDate().isBefore(deal.getMaturityDate())) {
             return false;
         }
+        this.pledgeService.releaseAll(deal, deal.getMaturityDate(), userId, "Released at maturity");
+        this.eclService.release(deal, type, deal.getMaturityDate(), userId);
+        this.valuationService.releaseAtMaturity(deal, type, userId);
         final Carrying carrying = carrying(deal, type);
         String transactionId = null;
         final List<Leg> legs = DealLifecyclePlanner.residual(carrying.unamortisedPremium(), carrying.unamortisedDiscount(),
@@ -333,6 +339,8 @@ public class TreasuryDealLifecycleService {
         accrue(deal, type, flow.getDueDate());
         if (!type.getInstrumentKind().isAsset()) {
             requireCovered(deal, amount);
+        } else if (flow.getFlowType() == FlowType.PRINCIPAL) {
+            this.pledgeService.requirePledgesCovered(deal, TreasuryPledgeService.outstanding(deal).subtract(amount));
         }
         settleFlow(deal, type, flow, amount, date, userId);
         final boolean matured = finishIfComplete(deal, type, userId);
@@ -358,6 +366,7 @@ public class TreasuryDealLifecycleService {
         final TerminateRequest request = this.validator.validateTerminate(command.json());
         final TreasuryDeal deal = settled(dealId, "be terminated");
         final TreasuryDealType type = this.dealTypeService.find(deal.getDealTypeId());
+        this.pledgeService.requireUnpledged(deal, "be terminated");
         final LocalDate date = request.transactionDate() == null ? DateUtils.getBusinessLocalDate() : request.transactionDate();
         notAfterBusinessDate(date);
         final LocalDate accruedTo = deal.getAccruedToDate() == null ? deal.getValueDate() : deal.getAccruedToDate();
@@ -376,6 +385,7 @@ public class TreasuryDealLifecycleService {
         final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(ENTITY, dealId, "settled", deal.getSettledBy(), "terminate", userId);
         accrue(deal, type, date);
+        this.eclService.release(deal, type, date, userId);
         final BigDecimal breakCost = request.breakCost() == null ? BigDecimal.ZERO : request.breakCost();
         final BigDecimal cashOut = (type.getInstrumentKind().isAsset() ? BigDecimal.ZERO : request.proceeds()).add(breakCost);
         if (cashOut.signum() > 0) {
@@ -383,8 +393,14 @@ public class TreasuryDealLifecycleService {
         }
         final DealLifecyclePlanner.Termination termination = DealLifecyclePlanner.termination(type.getInstrumentKind(),
                 carrying(deal, type), request.proceeds(), breakCost, deal.getOfficeId(), gl(deal, type));
+        // a holding at fair value leaves with its adjustment: FVTPL against realised gain or loss, FVOCI out of OCI
+        final DealValuationPlanner.Release fairValue = this.valuationService.release(deal, type);
+        final List<Leg> legs = new ArrayList<>(termination.legs());
+        legs.addAll(fairValue.legs());
+        final BigDecimal realised = termination.realisedResult().add(fairValue.realised());
         final String transactionId = this.journalPoster.post(TreasuryEventType.DEAL_TERMINATION, dealId, deal.getCurrencyCode(), date,
-                "Treasury deal " + dealId + " terminated: " + request.reason(), deal.getExternalReference(), termination.legs());
+                "Treasury deal " + dealId + " terminated: " + request.reason(), deal.getExternalReference(), legs);
+        this.valuationService.released(deal, fairValue, userId, transactionId);
         for (final TreasuryDealCashflow flow : this.cashflowRepository.findByDealIdOrderBySequenceNumberAsc(dealId)) {
             if (flow.getStatus().isOpen()) {
                 flow.setStatus(CashflowStatus.CANCELLED);
@@ -396,14 +412,17 @@ public class TreasuryDealLifecycleService {
         deal.setTerminatedOnDate(date);
         deal.setTerminationProceeds(request.proceeds());
         deal.setBreakCost(breakCost);
-        deal.setRealisedResult(termination.realisedResult());
+        deal.setRealisedResult(realised);
         deal.setCloseReason(request.reason());
         deal.setExposureAmount(BigDecimal.ZERO);
         this.dealRepository.saveAndFlush(deal);
         event(deal, TreasuryDealEventType.TERMINATED, userId, request.reason(), transactionId);
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("status", deal.getStatus().name());
-        changes.put("realisedResult", termination.realisedResult());
+        changes.put("realisedResult", realised);
+        if (fairValue.ociRecycled().signum() != 0) {
+            changes.put("ociRecycled", fairValue.ociRecycled());
+        }
         changes.put("transactionId", transactionId);
         return result(command, deal, changes);
     }
@@ -497,16 +516,7 @@ public class TreasuryDealLifecycleService {
 
     /** The deal's carrying amount from what has been posted and settled. */
     Carrying carrying(final TreasuryDeal deal, final TreasuryDealType type) {
-        final InstrumentKind kind = type.getInstrumentKind();
-        final BigDecimal principal = kind.interestMethod() == InterestMethod.DISCOUNT_YIELD
-                ? deal.getConsideration().add(deal.getInterestAccrued()).subtract(deal.getPrincipalSettled())
-                : deal.getAmount().subtract(deal.getPrincipalSettled());
-        final BigDecimal interest = kind.interestMethod() == InterestMethod.DISCOUNT_YIELD ? BigDecimal.ZERO
-                : deal.getAccruedInterestPurchased().add(deal.getInterestAccrued()).subtract(deal.getInterestSettled());
-        final BigDecimal premium = deal.getPremium().signum() > 0 ? deal.getPremium().add(deal.getAmortisationAccrued()) : BigDecimal.ZERO;
-        final BigDecimal discount = deal.getDiscount().signum() > 0 ? deal.getDiscount().subtract(deal.getAmortisationAccrued())
-                : BigDecimal.ZERO;
-        return new Carrying(principal, premium, discount, interest, deal.getFeeDeferred().subtract(deal.getFeeAmortised()));
+        return DealLifecyclePlanner.carrying(deal, type.getInstrumentKind());
     }
 
     Gl gl(final TreasuryDeal deal, final TreasuryDealType type) {

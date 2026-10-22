@@ -116,6 +116,30 @@ public class TreasuryDealType extends AbstractAuditableWithUTCDateTimeCustom<Lon
     @Column(name = "realised_loss_gl_account_id")
     private Long realisedLossGlAccountId;
 
+    /** Fair value adjustment of bills and bonds at fair value (asset; a debit or credit balance). */
+    @Column(name = "fv_adjustment_gl_account_id")
+    private Long fairValueAdjustmentGlAccountId;
+
+    /** Fair value gains of FVTPL holdings (income). */
+    @Column(name = "fv_gain_gl_account_id")
+    private Long fairValueGainGlAccountId;
+
+    /** Fair value losses of FVTPL holdings (expense). */
+    @Column(name = "fv_loss_gl_account_id")
+    private Long fairValueLossGlAccountId;
+
+    /** OCI fair value reserve of FVOCI holdings, which also holds their loss allowance (equity). */
+    @Column(name = "fv_reserve_gl_account_id")
+    private Long fairValueReserveGlAccountId;
+
+    /** Impairment (expected credit loss) expense. */
+    @Column(name = "impairment_expense_gl_account_id")
+    private Long impairmentExpenseGlAccountId;
+
+    /** Loss allowance of holdings at amortised cost (asset, used as a contra-asset). */
+    @Column(name = "ecl_allowance_gl_account_id")
+    private Long eclAllowanceGlAccountId;
+
     @Column(name = "is_active", nullable = false)
     private boolean active;
 }

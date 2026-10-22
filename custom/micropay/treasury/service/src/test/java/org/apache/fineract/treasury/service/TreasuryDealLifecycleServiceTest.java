@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -98,11 +99,14 @@ class TreasuryDealLifecycleServiceTest {
     private final TreasuryJournalPoster journalPoster = mock(TreasuryJournalPoster.class);
     private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
     private final AppUserRepositoryWrapper users = mock(AppUserRepositoryWrapper.class);
+    private final TreasuryPledgeService pledgeService = mock(TreasuryPledgeService.class);
+    private final TreasuryValuationService valuationService = mock(TreasuryValuationService.class);
+    private final TreasuryEclService eclService = mock(TreasuryEclService.class);
     private final TreasuryDealLifecycleService service = new TreasuryDealLifecycleService(this.actor,
             new TreasuryDealDataValidator(new FromJsonHelper()), this.dealRepository, this.cashflowRepository,
             mock(TreasuryDealEventRepository.class), this.accrualRepository, this.accountRepository, this.dealTypeService,
             this.dealWriteService, this.settingService, this.balanceReader, this.journalPoster, this.lookup, this.users,
-            mock(PlatformTransactionManager.class));
+            mock(PlatformTransactionManager.class), this.pledgeService, this.valuationService, this.eclService);
     private final TreasurySetting setting = new TreasurySetting();
     private final TreasuryDealType type = new TreasuryDealType();
     private final Map<Long, List<TreasuryDealCashflow>> flows = new HashMap<>();
@@ -141,6 +145,8 @@ class TreasuryDealLifecycleServiceTest {
         lenient().when(system.getId()).thenReturn(1L);
         lenient().when(this.users.fetchSystemUser()).thenReturn(system);
         lenient().when(this.actor.userId(any())).thenReturn(OPS);
+        lenient().when(this.valuationService.release(any(), any()))
+                .thenReturn(new DealValuationPlanner.Release(List.of(), BigDecimal.ZERO, BigDecimal.ZERO));
     }
 
     @AfterEach
@@ -226,6 +232,64 @@ class TreasuryDealLifecycleServiceTest {
         assertEquals(DealStatus.TERMINATED, deal.getStatus());
         assertTrue(this.flows.get(40L).stream().allMatch(f -> f.getStatus() == CashflowStatus.CANCELLED));
         assertEquals(0, deal.getExposureAmount().signum());
+    }
+
+    @Test
+    void pledgedDealCannotBeTerminatedAndMaturityReleasesItsPledges() {
+        business(VALUE.plusDays(45));
+        final TreasuryDeal deal = placement(40L);
+        doThrow(new TreasuryWorkflowException("deal", "pledged", "pledged")).when(this.pledgeService).requireUnpledged(deal,
+                "be terminated");
+
+        assertCode("deal.pledged", () -> this.service.terminate(40L, JsonCommand.from("{\"proceeds\": 1, \"reason\": \"x\"}")));
+
+        business(LocalDate.of(2027, 1, 20));
+        when(this.dealRepository.findByStatusOrderByIdAsc(DealStatus.SETTLED)).thenReturn(List.of(deal));
+        this.service.run(LocalDate.of(2027, 1, 19));
+        assertEquals(DealStatus.MATURED, deal.getStatus());
+        verify(this.pledgeService).releaseAll(deal, MATURITY, 1L, "Released at maturity");
+        verify(this.eclService).release(deal, this.type, MATURITY, 1L);
+        verify(this.valuationService).releaseAtMaturity(deal, this.type, 1L);
+    }
+
+    @Test
+    void terminationReleasesTheLossAllowanceFirst() {
+        business(VALUE.plusDays(45));
+        final TreasuryDeal deal = placement(40L);
+
+        this.service.terminate(40L, JsonCommand.from("{\"proceeds\": 507000000, \"reason\": \"Liquidity needed\"}"));
+
+        verify(this.eclService).release(deal, this.type, VALUE.plusDays(45), OPS);
+        verify(this.valuationService).released(eq(deal), any(), eq(OPS), eq("TR-DT-40"));
+    }
+
+    @Test
+    void terminationOfAHoldingAtFairValueReleasesItsAdjustmentInTheSameEntry() {
+        business(VALUE.plusDays(45));
+        final TreasuryDeal deal = placement(40L);
+        final List<Leg> release = List.of(new Leg(1L, 30L, JournalEntryType.DEBIT, new BigDecimal("100000")),
+                new Leg(1L, 40L, JournalEntryType.CREDIT, new BigDecimal("100000")));
+        when(this.valuationService.release(deal, this.type))
+                .thenReturn(new DealValuationPlanner.Release(release, new BigDecimal("-100000"), BigDecimal.ZERO));
+
+        final Map<String, Object> changes = this.service.terminate(40L, JsonCommand.from("{\"proceeds\": 507000000, \"reason\": \"Sold\"}"))
+                .getChanges();
+
+        assertEquals(new BigDecimal("-497260.27"), changes.get("realisedResult"));
+        assertEquals(new BigDecimal("-497260.27"), deal.getRealisedResult());
+        verify(this.journalPoster).post(eq(TreasuryEventType.DEAL_TERMINATION), eq(40L), eq("UGX"), eq(VALUE.plusDays(45)), anyString(),
+                any(), argThat(legs -> legs.containsAll(release) && legs.size() == 6));
+    }
+
+    @Test
+    void partialPrincipalRepaymentKeepsThePledgesCovered() {
+        business(MATURITY);
+        final TreasuryDeal deal = placement(40L);
+        final TreasuryDealCashflow principal = this.flows.get(40L).getLast();
+
+        this.service.settleCashflow(40L, JsonCommand.from("{\"cashflowId\": " + principal.getId() + ", \"amount\": 200000000}"));
+
+        verify(this.pledgeService).requirePledgesCovered(deal, new BigDecimal("300000000"));
     }
 
     @Test

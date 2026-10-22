@@ -84,6 +84,12 @@ public class TreasuryReferenceDataLookup {
         return places.isEmpty() || places.getFirst() == null ? 2 : places.getFirst();
     }
 
+    /** Name of a code value, such as a counterparty rating. */
+    public Optional<String> codeValueName(final Long codeValueId) {
+        return this.jdbcTemplate.queryForList("SELECT code_value FROM m_code_value WHERE id = ?", String.class, codeValueId).stream()
+                .findFirst();
+    }
+
     public boolean isActivePaymentType(final Long paymentTypeId) {
         final Long count = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM m_payment_type WHERE id = ? AND is_active = ?",
                 Long.class, paymentTypeId, Boolean.TRUE);

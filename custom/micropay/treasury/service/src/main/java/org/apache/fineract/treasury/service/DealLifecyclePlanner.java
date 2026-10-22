@@ -25,6 +25,7 @@ import org.apache.fineract.accounting.journalentry.domain.JournalEntryType;
 import org.apache.fineract.treasury.deal.DealCalculator.FlowType;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.InterestMethod;
+import org.apache.fineract.treasury.domain.TreasuryDeal;
 import org.apache.fineract.treasury.service.TreasuryPostingPlanner.Leg;
 
 /**
@@ -93,6 +94,22 @@ public final class DealLifecyclePlanner {
         return legs;
     }
 
+    /**
+     * The deal's carrying amount from what has been posted and settled: the amortised cost, before any fair value
+     * adjustment or loss allowance.
+     */
+    public static Carrying carrying(final TreasuryDeal deal, final InstrumentKind kind) {
+        final BigDecimal principal = kind.interestMethod() == InterestMethod.DISCOUNT_YIELD
+                ? deal.getConsideration().add(deal.getInterestAccrued()).subtract(deal.getPrincipalSettled())
+                : deal.getAmount().subtract(deal.getPrincipalSettled());
+        final BigDecimal interest = kind.interestMethod() == InterestMethod.DISCOUNT_YIELD ? BigDecimal.ZERO
+                : deal.getAccruedInterestPurchased().add(deal.getInterestAccrued()).subtract(deal.getInterestSettled());
+        final BigDecimal premium = deal.getPremium().signum() > 0 ? deal.getPremium().add(deal.getAmortisationAccrued()) : BigDecimal.ZERO;
+        final BigDecimal discount = deal.getDiscount().signum() > 0 ? deal.getDiscount().subtract(deal.getAmortisationAccrued())
+                : BigDecimal.ZERO;
+        return new Carrying(principal, premium, discount, interest, deal.getFeeDeferred().subtract(deal.getFeeAmortised()));
+    }
+
     /** What a deal is carried at, split by account, when it is terminated. */
     public record Carrying(BigDecimal principal, BigDecimal unamortisedPremium, BigDecimal unamortisedDiscount, BigDecimal interest,
             BigDecimal deferredFee) {
@@ -100,6 +117,11 @@ public final class DealLifecyclePlanner {
         /** Asset deals: principal + premium - discount + accrued interest + deferred fee. */
         public BigDecimal assetTotal() {
             return this.principal.add(this.unamortisedPremium).subtract(this.unamortisedDiscount).add(this.interest).add(this.deferredFee);
+        }
+
+        /** Clean amortised cost of a holding: principal + premium - discount (bills: their carrying amount). */
+        public BigDecimal cleanAmortisedCost() {
+            return this.principal.add(this.unamortisedPremium).subtract(this.unamortisedDiscount);
         }
 
         /** Liability deals: principal + interest payable - deferred fee. */

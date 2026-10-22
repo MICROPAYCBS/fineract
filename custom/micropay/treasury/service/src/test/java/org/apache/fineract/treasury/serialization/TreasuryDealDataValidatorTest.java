@@ -50,6 +50,22 @@ class TreasuryDealDataValidatorTest {
     }
 
     @Test
+    void dealTypeCarriesTheFairValueAndImpairmentAccounts() {
+        final Request request = this.validator.validateDealType("""
+                {"code": "bd", "name": "Bond at FVOCI", "instrumentKind": "government_bond", "principalGlAccountId": 1,
+                 "fairValueAdjustmentGlAccountId": 8, "fairValueGainGlAccountId": 9, "fairValueLossGlAccountId": 10,
+                 "fairValueReserveGlAccountId": 11, "impairmentExpenseGlAccountId": 12, "eclAllowanceGlAccountId": 13}
+                """, true);
+
+        assertEquals(8L, request.<Long>get(TreasuryDealApiConstants.FAIR_VALUE_ADJUSTMENT_GL_PARAM));
+        assertEquals(9L, request.<Long>get(TreasuryDealApiConstants.FAIR_VALUE_GAIN_GL_PARAM));
+        assertEquals(10L, request.<Long>get(TreasuryDealApiConstants.FAIR_VALUE_LOSS_GL_PARAM));
+        assertEquals(11L, request.<Long>get(TreasuryDealApiConstants.FAIR_VALUE_RESERVE_GL_PARAM));
+        assertEquals(12L, request.<Long>get(TreasuryDealApiConstants.IMPAIRMENT_EXPENSE_GL_PARAM));
+        assertEquals(13L, request.<Long>get(TreasuryDealApiConstants.ECL_ALLOWANCE_GL_PARAM));
+    }
+
+    @Test
     void dealMayBeCapturedPreApprovedForRollover() {
         final Request request = this.validator.validateDeal("""
                 {"dealTypeId": 1, "counterpartyId": 2, "settlementAccountId": 3, "tradeDate": "2026-07-18",

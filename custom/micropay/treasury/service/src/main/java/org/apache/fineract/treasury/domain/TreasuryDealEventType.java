@@ -38,5 +38,14 @@ public enum TreasuryDealEventType {
     ACCRUAL_SKIPPED, //
     MATURED, //
     TERMINATED, //
-    ROLLED_OVER; //
+    ROLLED_OVER, //
+    PLEDGED, //
+    PLEDGE_RELEASED, //
+    REVALUED, //
+    STALE_PRICE, //
+    FAIR_VALUE_RELEASED, //
+    ECL_STAGE_CHANGED, //
+    ECL_CALCULATED, //
+    ECL_SKIPPED, //
+    ECL_RELEASED; //
 }

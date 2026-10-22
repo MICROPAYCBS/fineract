@@ -22,12 +22,12 @@ import org.apache.fineract.treasury.domain.TreasurySetting;
 
 public record TreasurySettingData(Long id, String currencyCode, Long cashInTransitGlAccountId, Long floatPaymentTypeId,
         boolean allowInsufficientBalance, boolean reconReferenceRule, boolean reconSameDateRule, boolean reconWindowRule,
-        int reconWindowDays, boolean allowLimitReferral, boolean autoSettleCashflows, int rolloverWindowDays) {
+        int reconWindowDays, boolean allowLimitReferral, boolean autoSettleCashflows, int rolloverWindowDays, int stalePriceDays) {
 
     public static TreasurySettingData from(final TreasurySetting setting) {
         return new TreasurySettingData(setting.getId(), setting.getCurrencyCode(), setting.getCashInTransitGlAccountId(),
                 setting.getFloatPaymentTypeId(), setting.isAllowInsufficientBalance(), setting.isReconReferenceRule(),
                 setting.isReconSameDateRule(), setting.isReconWindowRule(), setting.getReconWindowDays(), setting.isAllowLimitReferral(),
-                setting.isAutoSettleCashflows(), setting.getRolloverWindowDays());
+                setting.isAutoSettleCashflows(), setting.getRolloverWindowDays(), setting.getStalePriceDays());
     }
 }

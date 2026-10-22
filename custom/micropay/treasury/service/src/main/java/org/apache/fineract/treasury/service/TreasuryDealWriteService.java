@@ -400,6 +400,7 @@ public class TreasuryDealWriteService {
         }
         TreasuryDealDataValidator.validateTerms(new Terms(kind, deal.getTradeDate(), deal.getValueDate(), deal.getMaturityDate(),
                 deal.getIssueDate(), deal.getAmount(), deal.getRate(), deal.getCleanPrice(), deal.getFrequency(), deal.isAmortising()));
+        TreasuryDealTypeService.requireValuationAccounts(type, deal.getClassification());
         final Priced priced = priced(deal, kind);
         deal.setConsideration(priced.consideration());
         deal.setAccruedInterestPurchased(priced.accruedInterest());

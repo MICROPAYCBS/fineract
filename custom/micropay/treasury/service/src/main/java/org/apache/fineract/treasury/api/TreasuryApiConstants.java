@@ -76,6 +76,7 @@ public final class TreasuryApiConstants {
     public static final String ALLOW_LIMIT_REFERRAL_PARAM = "allowLimitReferral";
     public static final String AUTO_SETTLE_CASHFLOWS_PARAM = "autoSettleCashflows";
     public static final String ROLLOVER_WINDOW_DAYS_PARAM = "rolloverWindowDays";
+    public static final String STALE_PRICE_DAYS_PARAM = "stalePriceDays";
 
     public static final String CLIENT_ID_PARAM = "clientId";
     public static final String SAVINGS_ACCOUNT_ID_PARAM = "savingsAccountId";
@@ -136,7 +137,7 @@ public final class TreasuryApiConstants {
     public static final Set<String> SETTING_PARAMS = Set.of(CURRENCY_CODE_PARAM, CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM,
             FLOAT_PAYMENT_TYPE_ID_PARAM, ALLOW_INSUFFICIENT_BALANCE_PARAM, RECON_REFERENCE_RULE_PARAM, RECON_SAME_DATE_RULE_PARAM,
             RECON_WINDOW_RULE_PARAM, RECON_WINDOW_DAYS_PARAM, ALLOW_LIMIT_REFERRAL_PARAM, AUTO_SETTLE_CASHFLOWS_PARAM,
-            ROLLOVER_WINDOW_DAYS_PARAM);
+            ROLLOVER_WINDOW_DAYS_PARAM, STALE_PRICE_DAYS_PARAM);
 
     public static final Set<String> AGENT_FLOAT_CREATE_PARAMS = Set.of(CLIENT_ID_PARAM, SAVINGS_ACCOUNT_ID_PARAM, TREASURY_ACCOUNT_ID_PARAM,
             MIN_FLOAT_PARAM, MAX_FLOAT_PARAM);

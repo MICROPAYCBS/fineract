@@ -1,9 +1,9 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
-- `starter`: auto-configuration, `micropay-treasury.properties`, the "Treasury Position Snapshot" job and the Liquibase changelogs.
+- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL") and the Liquibase changelogs.
 
 `fineract.module.treasury.enabled` (`FINERACT_MODULE_TREASURY_ENABLED`, default `true`) switches the whole module off.
 
@@ -93,6 +93,7 @@ The job is created inactive with a 02:45 schedule. Put it in a job sequence (`jo
 - `allowLimitReferral` (default `false`): when true, a deal above its counterparty's limit is captured and flagged for an over-limit approval instead of being refused.
 - `autoSettleCashflows` (default `true`): the accrual job settles deal cash flows on their due dates; when false they are settled with `?command=settleCashflow`.
 - `rolloverWindowDays` (default 3): how many days before its maturity a deal may be rolled over.
+- `stalePriceDays` (default 7, at most 366): a bill or bond whose latest price is older than this before the valuation is not revalued.
 
 `GET /v1/treasury/settings` lists them.
 
@@ -235,7 +236,8 @@ A type has a default day count (`ACT_365` unless set; also `ACT_360`, `THIRTY_36
 
 - asset kinds: `principalGlAccountId` and `interestReceivableGlAccountId` (asset), `interestIncomeGlAccountId` (income); bonds also `premiumGlAccountId` and `discountGlAccountId` (asset; the discount account works as a contra-asset);
 - liability kinds: `principalGlAccountId` and `interestPayableGlAccountId` (liability), `interestExpenseGlAccountId` (expense);
-- optional `feeIncomeGlAccountId` (income) and `feeExpenseGlAccountId` (expense); a deal with fees needs the fee expense account to settle.
+- optional `feeIncomeGlAccountId` (income) and `feeExpenseGlAccountId` (expense); a deal with fees needs the fee expense account to settle;
+- optional, see Holdings: `fairValueAdjustmentGlAccountId` (asset), `fairValueGainGlAccountId` (income), `fairValueLossGlAccountId` (expense), `fairValueReserveGlAccountId` (equity), `impairmentExpenseGlAccountId` (expense), `eclAllowanceGlAccountId` (asset).
 
 Code and kind cannot change; `active: false` retires a type.
 
@@ -316,6 +318,51 @@ Example: 500,000,000 placed at 12% and repaid after 45 days for 507,000,000. The
 
 `POST /v1/treasury/deals/{id}?command=rollover` with `{"rate": 11.5, "maturityDate": "2027-04-14", "capitaliseInterest": true}`, from `rolloverWindowDays` before a settled placement's, deposit's or borrowing's maturity up to the maturity date, captures a new deal: same type, counterparty and settlement account, value date the old maturity date, principal the old principal outstanding, plus the interest due at maturity when `capitaliseInterest` is true. The old deal matures as usual and pays in what it owes; the new deal settles on the same date and takes the rolled amount out, so only the part not rolled over moves cash. The old deal ends `ROLLED_OVER`, linked both ways (`rolledToDealId`, `rolledFromDealId`). The new deal needs approval like any other; it starts `APPROVED`, carrying the original approval, when the old deal was captured with `rolloverPreApproved: true`, the tenor is no longer, the amount no more than the maturity proceeds and the limit is not exceeded (its history says why). The limit check counts the old and new deal once. Bills and bonds are not rolled over: the new one is bought as a new deal. The user who settled the old deal may not roll it over.
 
+## Holdings
+
+Settled asset deals (placements, deposits, bills, bonds) are holdings: they can be pledged, bills and bonds at fair value are revalued from market prices, and those at amortised cost or FVOCI carry an IFRS 9 expected credit loss (P2.3, TR-15 to TR-17). `GET /v1/treasury/deals/{id}` shows a `holding` block (fair value adjustment, last fair value and valuation date, OCI reserve, stage and loss allowance with any manual PD, LGD or ECL, pledged and unencumbered nominal on the business date) and the `pledges`, `valuations` and `ecl` histories.
+
+### Pledges
+
+`POST /v1/treasury/deals/{id}?command=pledge` with `{"pledgeeCounterpartyId": 4, "purpose": "CENTRAL_BANK_FACILITY", "amount": 40000000, "linkedDealId": 17, "startDate": "2026-10-20", "expectedEndDate": "2026-12-31", "reason": "BoU lombard"}` pledges part of a settled asset deal's nominal (principal, or face value) to a counterparty. `purpose` is `REPO`, `BORROWING_COLLATERAL`, `CENTRAL_BANK_FACILITY` or `OTHER`; `linkedDealId`, optional, is the open borrowing the pledge secures. The start date (default the business date) runs from the deal's value date up to the business date; the expected end may not be after maturity. The pledges active on a date may not exceed the nominal outstanding.
+
+`?command=releasePledge` with `{"pledgeId": 3, "reason": "Facility repaid", "releaseDate": "2026-11-30"}` releases one; it counts up to, not including, the release date. A pledged deal cannot be terminated until its pledges are released, and a principal repayment may not take its outstanding below what is pledged (short of repaying it all). At maturity every pledge is released with a `PLEDGE_RELEASED` event.
+
+A pledge is a memo: it posts nothing. `TreasuryPledgeService.unencumberedAmount(deal, date)` (nominal outstanding less pledges active on the date) is what the liquid asset rules of phase 3 will read.
+
+### Prices
+
+`POST /v1/treasury/prices` enters one price, `{"instrumentId": "UG0000001234", "priceDate": "2026-10-30", "cleanPrice": 99.25, "source": "BOU_SECONDARY"}`, or several under `{"prices": [...]}`. Bonds are priced by `cleanPrice` (per 100); bills by `yield` (percent), or by `cleanPrice` per 100 when only a price is quoted. `source`: `MANUAL` (default), `BOU_AUCTION`, `BOU_SECONDARY`, `OTHER`. An instrument is named by its ISIN, or by the deal's external reference when it has none. The price date may not be after the business date; a price for an instrument and date already priced replaces it (who entered it is kept). `GET /v1/treasury/prices?instrumentId=&asOf=` gives the latest price on or before a date (default the business date), `GET /v1/treasury/prices/history?instrumentId=&from=&to=` the prices between two dates.
+
+### Fair value revaluation
+
+The "Treasury Valuation" job (short name `TRS_VAL`, created inactive, cron 02:35; run it after `TRS_ACCR` and before `TRS_SNAP` in a job sequence) revalues every settled bill and bond classified `FVOCI` or `FVTPL`. Holdings at `AMORTISED_COST`, and placements whatever their classification, are never revalued.
+
+- Each holding is valued as at the date its amortised cost is accrued to (the day after the closed day), from the latest price on or before the closed day. Bonds: face outstanding × clean price / 100. Bills: face / (1 + yield × days to maturity / basis), on the basis the bill was bought on, so a bill at its dealt yield is valued at exactly its amortised cost.
+- The adjustment is fair value less **clean** amortised cost (principal + premium − discount; bills their carrying amount), accrued interest excluded. It is posted cumulatively, only its change since the last valuation (`TR-DV-<deal>-<n>`, dated the closed day, recorded in `m_treasury_deal_valuation`): `FVTPL` a rise Dr fair value adjustment / Cr fair value gain, a fall Dr fair value loss / Cr fair value adjustment; `FVOCI` Dr fair value adjustment / Cr OCI reserve (the other way round for a fall). A rerun for the same day posts nothing.
+- No price, or a latest price older than the currency's `stalePriceDays` (default 7) before the closed day: the holding is not revalued and gets a `STALE_PRICE` event. The job does not fail.
+- When the holding leaves the books its adjustment goes with it. On termination, in the same `TR-DT` entry: `FVTPL` the adjustment is reversed against realised gain or loss, so the realised result is measured from fair value; `FVOCI` the adjustment is reversed against the OCI reserve, and the amount leaves OCI into profit or loss through the realised result, which is measured from amortised cost (the response shows it as `ociRecycled`). At maturity the same release is posted on the maturity date (`TR-DV-<deal>-M`).
+
+The deal type needs, for bills and bonds at fair value (checked when the deal is captured): `fairValueAdjustmentGlAccountId` (asset), `fairValueGainGlAccountId` (income) and `fairValueLossGlAccountId` (expense) for `FVTPL`, `fairValueReserveGlAccountId` (equity) for `FVOCI`, and `realisedGainGlAccountId` and `realisedLossGlAccountId`.
+
+Example: 100,000,000 face of the 14% bond above, bought at 98.50 (discount 1,500,000) and held at `FVOCI`. At the end of October 20,000 of the discount has been accreted (amortised cost 98,520,000) and the bond is quoted at 99.00: fair value 99,000,000, adjustment 480,000, Dr fair value adjustment / Cr OCI reserve 480,000. At the end of November the amortised cost is 98,545,000 and the quote 98.20: adjustment −345,000, a change of −825,000, Dr OCI reserve / Cr fair value adjustment 825,000. A bill of 1,000,000,000 face bought at 11% for 91 days and held at `FVTPL` is carried after 31 days at 982,238,966.63; at a market yield of 10.5% it is worth 983,032,588.20, a fair value gain of 793,621.57.
+
+### Expected credit losses
+
+Every settled asset deal at `AMORTISED_COST` or `FVOCI` has an IFRS 9 stage (1 when settled) and a loss allowance. `FVTPL` holdings carry none.
+
+- **ECL = EAD × PD × LGD.** EAD is the gross carrying amount at amortised cost, accrued interest (and deferred fees) included. PD and LGD, in percent, come from `PUT /v1/treasury/ecl-parameters` with `{"ratingCode": "AA-", "stage": 2, "pd12Month": 0.5, "pdLifetime": 4, "lgd": 45}` (`GET` lists them): the row of the counterparty's rating (its rating code value, else its rating text, upper case) and the deal's stage, else of `DEFAULT`. Stage 1 takes the 12-month PD, stages 2 and 3 the lifetime PD.
+- `POST /v1/treasury/deals/{id}?command=setEclStage` with `{"stage": 2, "reason": "Rating watch negative"}` moves a deal and recalculates its allowance on the business date. It may also set `manualPd`, `manualLgd` (replacing the parameter's) or `manualEcl` with `manualEclReason` (replacing the calculation); `clearOverrides: true` drops them. `?command=recalculateEcl` recalculates on demand.
+- The "Treasury ECL" job (short name `TRS_ECL`, created inactive, monthly on the 1st at 03:00) recalculates every eligible holding as at the closed day. A holding without parameters gets an `ECL_SKIPPED` event; one already calculated that day is left alone.
+- The allowance is posted cumulatively (`TR-DE-<deal>-<n>`, recorded in `m_treasury_deal_ecl`): Dr impairment expense / Cr loss allowance (`eclAllowanceGlAccountId`, an asset account used as a contra-asset); for `FVOCI` Cr OCI reserve instead, as the holding stays at fair value (IFRS 9 5.5.2). A decrease the other way round. When the deal matures or is terminated the allowance is released through impairment (`ECL_RELEASED`). The deal type needs `impairmentExpenseGlAccountId` and the allowance or reserve account.
+- Interest on stage 3 deals still accrues on the gross carrying amount; accruing on the net amount is a follow-up, and the deal's `holding.stage3InterestOnGross` flags such deals.
+
+Example: 500,000,000 placed at 12% has, after 45 days, an exposure of 507,397,260.27. With the counterparty rated AA- (12-month PD 0.5%, lifetime PD 4%, LGD 45%) the stage 1 ECL is 1,141,643.84, Dr impairment / Cr allowance; moved to stage 2 it is 9,133,150.68 (a further 7,991,506.84); back to stage 1, 7,991,506.84 is released.
+
+### Portfolio
+
+`GET /v1/treasury/portfolio?date=2026-11-30&currency=UGX` lists the settled asset deals held on the date (value date on or before it, maturity after it; both filters optional): nominal, clean amortised cost, accrued interest, gross carrying amount, fair value and its last valuation date, fair value adjustment, OCI reserve (FVOCI: adjustment plus loss allowance), stage and allowance, carrying amount (gross plus adjustment, less the allowance at amortised cost), pledged and unencumbered nominal, with totals per currency. Amounts are as last posted by the accrual, valuation and ECL; pledges are as at the date.
+
 ## Tables
 
 | Table | Holds |
@@ -338,6 +385,11 @@ Example: 500,000,000 placed at 12% and repaid after 45 days for 507,000,000. The
 | `m_treasury_deal_cashflow` | The expected principal and interest flows of each deal. |
 | `m_treasury_deal_event` | Each deal's history. |
 | `m_treasury_deal_accrual` | Each accrual run of each deal: dates, interest, amortisation, fee amortisation, journal transaction id. |
+| `m_treasury_pledge` | Pledges: deal, pledgee, purpose, linked borrowing, nominal, dates, status, who pledged and released. |
+| `m_treasury_price` | Market prices: instrument, date (unique together), clean price or yield, source, who entered it. |
+| `m_treasury_deal_valuation` | Each revaluation: valuation and price date, quote, fair value, amortised cost, adjustment and its change, journal transaction id. |
+| `m_treasury_deal_ecl` | Each ECL calculation: date, stage, trigger, exposure, PD, LGD, basis, ECL and its change, journal transaction id. |
+| `m_treasury_ecl_parameter` | PD and LGD per rating (or `DEFAULT`) and stage. |
 
 ## Permissions
 
@@ -354,6 +406,8 @@ Grouping `treasury`, each write with a `_CHECKER` variant:
 - `READ_TREASURYRECONMATCH` (also the unmatched and account reconciliation reports), `CREATE_TREASURYRECONMATCH`, `UNMATCH_TREASURYRECONMATCH`
 - `READ_TREASURYCOUNTERPARTY` (also exposure), `CREATE_TREASURYCOUNTERPARTY`, `UPDATE_TREASURYCOUNTERPARTY`, `CLOSE_TREASURYCOUNTERPARTY`
 - `READ_TREASURYDEALTYPE`, `CREATE_TREASURYDEALTYPE`, `UPDATE_TREASURYDEALTYPE`
-- `READ_TREASURYDEAL` (also the maturity calendar), `CREATE_TREASURYDEAL`, `UPDATE_TREASURYDEAL`, `APPROVE_TREASURYDEAL`, `REJECT_TREASURYDEAL`, `CONFIRM_TREASURYDEAL`, `CANCEL_TREASURYDEAL`, `SETTLE_TREASURYDEAL`, `SETTLECASHFLOW_TREASURYDEAL`, `TERMINATE_TREASURYDEAL`, `ROLLOVER_TREASURYDEAL`, and `APPROVE_TREASURYDEAL_OVERLIMIT` (no checker variant)
+- `READ_TREASURYDEAL` (also the maturity calendar), `CREATE_TREASURYDEAL`, `UPDATE_TREASURYDEAL`, `APPROVE_TREASURYDEAL`, `REJECT_TREASURYDEAL`, `CONFIRM_TREASURYDEAL`, `CANCEL_TREASURYDEAL`, `SETTLE_TREASURYDEAL`, `SETTLECASHFLOW_TREASURYDEAL`, `TERMINATE_TREASURYDEAL`, `ROLLOVER_TREASURYDEAL`, `PLEDGE_TREASURYDEAL`, `RELEASEPLEDGE_TREASURYDEAL`, `SETECLSTAGE_TREASURYDEAL`, `RECALCULATEECL_TREASURYDEAL`, and `APPROVE_TREASURYDEAL_OVERLIMIT` (no checker variant); `READ_TREASURYDEAL` also gives the portfolio
+- `READ_TREASURYPRICE`, `CREATE_TREASURYPRICE`
+- `READ_TREASURYECLPARAMETER`, `UPDATE_TREASURYECLPARAMETER`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

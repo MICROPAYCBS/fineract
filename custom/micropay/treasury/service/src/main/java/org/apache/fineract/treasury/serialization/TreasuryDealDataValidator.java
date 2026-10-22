@@ -42,13 +42,19 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFAULT_
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFAULT_FREQUENCY_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFERRED_FEE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DISCOUNT_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ECL_ALLOWANCE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.EXPOSURE_LIMIT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.EXTERNAL_REFERENCE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FAIR_VALUE_ADJUSTMENT_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FAIR_VALUE_GAIN_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FAIR_VALUE_LOSS_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FAIR_VALUE_RESERVE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEES_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_EXPENSE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_INCOME_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_METHOD_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FREQUENCY_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.IMPAIRMENT_EXPENSE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INSTRUMENT_KIND_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INTEREST_EXPENSE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INTEREST_INCOME_GL_PARAM;
@@ -130,7 +136,9 @@ public class TreasuryDealDataValidator {
     /** The GL account parameters of a deal type. */
     public static final List<String> GL_PARAMS = List.of(PRINCIPAL_GL_PARAM, INTEREST_RECEIVABLE_GL_PARAM, INTEREST_PAYABLE_GL_PARAM,
             INTEREST_INCOME_GL_PARAM, INTEREST_EXPENSE_GL_PARAM, PREMIUM_GL_PARAM, DISCOUNT_GL_PARAM, FEE_INCOME_GL_PARAM,
-            FEE_EXPENSE_GL_PARAM, DEFERRED_FEE_GL_PARAM, REALISED_GAIN_GL_PARAM, REALISED_LOSS_GL_PARAM);
+            FEE_EXPENSE_GL_PARAM, DEFERRED_FEE_GL_PARAM, REALISED_GAIN_GL_PARAM, REALISED_LOSS_GL_PARAM, FAIR_VALUE_ADJUSTMENT_GL_PARAM,
+            FAIR_VALUE_GAIN_GL_PARAM, FAIR_VALUE_LOSS_GL_PARAM, FAIR_VALUE_RESERVE_GL_PARAM, IMPAIRMENT_EXPENSE_GL_PARAM,
+            ECL_ALLOWANCE_GL_PARAM);
 
     private final FromJsonHelper fromApiJsonHelper;
 

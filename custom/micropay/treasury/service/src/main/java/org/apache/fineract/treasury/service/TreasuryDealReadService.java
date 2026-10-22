@@ -20,6 +20,7 @@ package org.apache.fineract.treasury.service;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 
+import java.math.BigDecimal;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
@@ -28,11 +29,18 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.treasury.data.TreasuryDealData;
 import org.apache.fineract.treasury.data.TreasuryMaturityData;
+import org.apache.fineract.treasury.deal.DealClassification;
+import org.apache.fineract.treasury.deal.DealStatus;
+import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.domain.TreasuryDealAccrualRepository;
 import org.apache.fineract.treasury.domain.TreasuryDealCashflowRepository;
+import org.apache.fineract.treasury.domain.TreasuryDealEclRepository;
 import org.apache.fineract.treasury.domain.TreasuryDealEventRepository;
+import org.apache.fineract.treasury.domain.TreasuryDealValuationRepository;
+import org.apache.fineract.treasury.domain.TreasuryPledgeRepository;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -47,7 +55,9 @@ import org.springframework.transaction.annotation.Transactional;
 public class TreasuryDealReadService {
 
     private static final String DEAL_SQL = """
-            SELECT d.*, t.code AS type_code, t.instrument_kind, t.direction, c.short_code AS counterparty_code, a.code AS account_code
+            SELECT d.*, t.code AS type_code, t.instrument_kind, t.direction, c.short_code AS counterparty_code, a.code AS account_code,
+                   (SELECT COALESCE(SUM(p.amount), 0) FROM m_treasury_pledge p WHERE p.deal_id = d.id AND p.start_date <= :asOf
+                    AND (p.released_on_date IS NULL OR p.released_on_date > :asOf)) AS pledged
             FROM m_treasury_deal d
             JOIN m_treasury_deal_type t ON t.id = d.deal_type_id
             JOIN m_treasury_counterparty c ON c.id = d.counterparty_id
@@ -69,13 +79,16 @@ public class TreasuryDealReadService {
     private final TreasuryDealCashflowRepository cashflowRepository;
     private final TreasuryDealEventRepository eventRepository;
     private final TreasuryDealAccrualRepository accrualRepository;
+    private final TreasuryPledgeRepository pledgeRepository;
+    private final TreasuryDealValuationRepository valuationRepository;
+    private final TreasuryDealEclRepository eclRepository;
 
     public record DealFilter(String status, Long dealTypeId, Long counterpartyId, LocalDate maturityFrom, LocalDate maturityTo) {
     }
 
     public List<TreasuryDealData> retrieveDeals(final DealFilter filter) {
         final List<String> conditions = new ArrayList<>();
-        final MapSqlParameterSource params = new MapSqlParameterSource();
+        final MapSqlParameterSource params = new MapSqlParameterSource("asOf", DateUtils.getBusinessLocalDate());
         if (StringUtils.isNotBlank(filter.status())) {
             conditions.add("d.status = :status");
             params.addValue("status", filter.status().trim().toUpperCase());
@@ -98,7 +111,7 @@ public class TreasuryDealReadService {
         }
         final String where = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
         return this.jdbcTemplate.query(DEAL_SQL + where + " ORDER BY d.maturity_date, d.id", params,
-                (rs, rowNum) -> map(rs, List.of(), List.of(), List.of()));
+                (rs, rowNum) -> map(rs, new Details(List.of(), List.of(), List.of(), List.of(), List.of(), List.of())));
     }
 
     public TreasuryDealData retrieveDeal(final Long dealId) {
@@ -115,8 +128,24 @@ public class TreasuryDealReadService {
                 .findByDealIdOrderBySequenceNumberAsc(dealId).stream().map(a -> new TreasuryDealData.Accrual(a.getSequenceNumber(),
                         a.getFromDate(), a.getToDate(), a.getInterest(), a.getAmortisation(), a.getFeeAmortisation(), a.getTransactionId()))
                 .toList();
-        final List<TreasuryDealData> rows = this.jdbcTemplate.query(DEAL_SQL + " WHERE d.id = :id", new MapSqlParameterSource("id", dealId),
-                (rs, rowNum) -> map(rs, cashflows, events, accruals));
+        final List<TreasuryDealData.Pledge> pledges = this.pledgeRepository.findByDealIdOrderByIdAsc(dealId).stream()
+                .map(p -> new TreasuryDealData.Pledge(p.getId(), p.getPledgeeCounterpartyId(), p.getPurpose().name(), p.getLinkedDealId(),
+                        p.getAmount(), p.getStartDate(), p.getExpectedEndDate(), p.getStatus().name(), p.getReason(), p.getPledgedBy(),
+                        p.getReleasedBy(), p.getReleasedOnDate(), p.getReleaseReason()))
+                .toList();
+        final List<TreasuryDealData.Valuation> valuations = this.valuationRepository.findByDealIdOrderBySequenceNumberAsc(dealId).stream()
+                .map(v -> new TreasuryDealData.Valuation(v.getSequenceNumber(), v.getValuationDate(), v.getPriceDate(), v.getCleanPrice(),
+                        v.getYieldRate(), v.getFairValue(), v.getAmortisedCost(), v.getAdjustment(), v.getAdjustmentChange(),
+                        v.getTransactionId()))
+                .toList();
+        final List<TreasuryDealData.Ecl> ecl = this.eclRepository.findByDealIdOrderBySequenceNumberAsc(dealId).stream()
+                .map(e -> new TreasuryDealData.Ecl(e.getSequenceNumber(), e.getCalculationDate(), e.getStage(), e.getTriggerType(),
+                        e.getExposure(), e.getPd(), e.getLgd(), e.getBasis(), e.getEcl(), e.getEclChange(), e.getTransactionId()))
+                .toList();
+        final Details details = new Details(cashflows, events, accruals, pledges, valuations, ecl);
+        final List<TreasuryDealData> rows = this.jdbcTemplate.query(DEAL_SQL + " WHERE d.id = :id",
+                new MapSqlParameterSource("id", dealId).addValue("asOf", DateUtils.getBusinessLocalDate()),
+                (rs, rowNum) -> map(rs, details));
         if (rows.isEmpty()) {
             throw new TreasuryWorkflowException("deal", "not.found", "Treasury deal " + dealId + " does not exist", dealId);
         }
@@ -134,8 +163,35 @@ public class TreasuryDealReadService {
                         rs.getBigDecimal("settled_amount")));
     }
 
-    private static TreasuryDealData map(final ResultSet rs, final List<TreasuryDealData.Cashflow> cashflows,
-            final List<TreasuryDealData.Event> events, final List<TreasuryDealData.Accrual> accruals) throws SQLException {
+    private record Details(List<TreasuryDealData.Cashflow> cashflows, List<TreasuryDealData.Event> events,
+            List<TreasuryDealData.Accrual> accruals, List<TreasuryDealData.Pledge> pledges, List<TreasuryDealData.Valuation> valuations,
+            List<TreasuryDealData.Ecl> ecl) {
+    }
+
+    private static TreasuryDealData.Holding holding(final ResultSet rs) throws SQLException {
+        final InstrumentKind kind = InstrumentKind.valueOf(rs.getString("instrument_kind"));
+        final DealClassification classification = DealClassification.valueOf(rs.getString("classification"));
+        final BigDecimal adjustment = rs.getBigDecimal("fv_adjustment");
+        final BigDecimal allowance = rs.getBigDecimal("ecl_allowance");
+        final BigDecimal pledged = rs.getBigDecimal("pledged");
+        final LocalDate asOf = DateUtils.getBusinessLocalDate();
+        final boolean held = kind.isAsset() && DealStatus.SETTLED.name().equals(rs.getString("status"))
+                && !asOf.isBefore(JdbcSupport.getLocalDate(rs, "value_date"))
+                && asOf.isBefore(JdbcSupport.getLocalDate(rs, "maturity_date"));
+        final BigDecimal unencumbered = held
+                ? rs.getBigDecimal("amount").subtract(rs.getBigDecimal("principal_settled")).subtract(pledged).max(BigDecimal.ZERO)
+                : BigDecimal.ZERO;
+        final int stage = rs.getInt("ecl_stage");
+        return new TreasuryDealData.Holding(TreasuryDealTypeService.revalued(kind, classification), adjustment,
+                rs.getBigDecimal("fv_last_value"), JdbcSupport.getLocalDate(rs, "fv_last_valuation_date"),
+                JdbcSupport.getLocalDate(rs, "fv_last_price_date"),
+                classification == DealClassification.FVOCI ? adjustment.add(allowance) : BigDecimal.ZERO, stage,
+                rs.getString("ecl_stage_reason"), JdbcSupport.getLocalDate(rs, "ecl_stage_date"), rs.getBigDecimal("ecl_manual_pd"),
+                rs.getBigDecimal("ecl_manual_lgd"), rs.getBigDecimal("ecl_manual_amount"), rs.getString("ecl_manual_reason"), allowance,
+                JdbcSupport.getLocalDate(rs, "ecl_calculated_on_date"), stage == 3, pledged, unencumbered);
+    }
+
+    private static TreasuryDealData map(final ResultSet rs, final Details details) throws SQLException {
         final TreasuryDealData.Lifecycle lifecycle = new TreasuryDealData.Lifecycle(JdbcSupport.getLocalDate(rs, "accrued_to_date"),
                 rs.getBigDecimal("interest_accrued"), rs.getBigDecimal("amortisation_accrued"), rs.getBigDecimal("fee_deferred"),
                 rs.getBigDecimal("fee_amortised"), rs.getBigDecimal("interest_settled"), rs.getBigDecimal("principal_settled"),
@@ -158,6 +214,7 @@ public class TreasuryDealReadService {
                 JdbcSupport.getLocalDate(rs, "confirmed_on_date"), rs.getString("confirmation_reference"),
                 JdbcSupport.getLong(rs, "settled_by"), JdbcSupport.getLocalDate(rs, "settled_on_date"),
                 rs.getString("settlement_transaction_id"), JdbcSupport.getLong(rs, "closed_by"),
-                JdbcSupport.getLocalDate(rs, "closed_on_date"), rs.getString("close_reason"), lifecycle, cashflows, events, accruals);
+                JdbcSupport.getLocalDate(rs, "closed_on_date"), rs.getString("close_reason"), lifecycle, holding(rs), details.cashflows(),
+                details.events(), details.accruals(), details.pledges(), details.valuations(), details.ecl());
     }
 }

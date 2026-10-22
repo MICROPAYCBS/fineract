@@ -80,4 +80,8 @@ public class TreasurySetting extends AbstractAuditableWithUTCDateTimeCustom<Long
     /** A deal may be rolled over from this many days before its maturity date. */
     @Column(name = "rollover_window_days", nullable = false)
     private int rolloverWindowDays = 3;
+
+    /** A price older than this many days on the valuation date is stale: the deal is not revalued. */
+    @Column(name = "stale_price_days", nullable = false)
+    private int stalePriceDays = 7;
 }

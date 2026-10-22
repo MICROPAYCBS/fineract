@@ -236,4 +236,51 @@ public class TreasuryDeal extends AbstractAuditableWithUTCDateTimeCustom<Long> {
 
     @Column(name = "rolled_over_by")
     private Long rolledOverBy;
+
+    /**
+     * Bills and bonds at fair value: fair value less amortised cost, as posted to the fair value adjustment account.
+     */
+    @Column(name = "fv_adjustment", nullable = false, precision = 19, scale = 6)
+    private BigDecimal fairValueAdjustment = BigDecimal.ZERO;
+
+    @Column(name = "fv_last_value", precision = 19, scale = 6)
+    private BigDecimal lastFairValue;
+
+    @Column(name = "fv_last_valuation_date")
+    private LocalDate lastValuationDate;
+
+    @Column(name = "fv_last_price_date")
+    private LocalDate lastPriceDate;
+
+    /** IFRS 9 stage: 1 performing, 2 significant increase in credit risk, 3 credit-impaired. */
+    @Column(name = "ecl_stage", nullable = false)
+    private int eclStage = 1;
+
+    @Column(name = "ecl_stage_reason", length = 500)
+    private String eclStageReason;
+
+    @Column(name = "ecl_stage_date")
+    private LocalDate eclStageDate;
+
+    /** Percent; replaces the parameter table's PD for this deal. */
+    @Column(name = "ecl_manual_pd", precision = 19, scale = 6)
+    private BigDecimal eclManualPd;
+
+    /** Percent; replaces the parameter table's LGD for this deal. */
+    @Column(name = "ecl_manual_lgd", precision = 19, scale = 6)
+    private BigDecimal eclManualLgd;
+
+    /** Replaces the calculated expected credit loss. */
+    @Column(name = "ecl_manual_amount", precision = 19, scale = 6)
+    private BigDecimal eclManualAmount;
+
+    @Column(name = "ecl_manual_reason", length = 500)
+    private String eclManualReason;
+
+    /** Loss allowance posted (expected credit loss). */
+    @Column(name = "ecl_allowance", nullable = false, precision = 19, scale = 6)
+    private BigDecimal eclAllowance = BigDecimal.ZERO;
+
+    @Column(name = "ecl_calculated_on_date")
+    private LocalDate eclCalculatedOnDate;
 }

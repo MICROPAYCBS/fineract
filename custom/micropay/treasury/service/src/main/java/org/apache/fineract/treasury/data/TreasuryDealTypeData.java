@@ -24,7 +24,9 @@ public record TreasuryDealTypeData(Long id, String code, String name, String ins
         String defaultDayCount, int defaultFrequency, Long principalGlAccountId, Long interestReceivableGlAccountId,
         Long interestPayableGlAccountId, Long interestIncomeGlAccountId, Long interestExpenseGlAccountId, Long premiumGlAccountId,
         Long discountGlAccountId, Long feeIncomeGlAccountId, Long feeExpenseGlAccountId, boolean active, String feeMethod,
-        String amortisationMethod, Long deferredFeeGlAccountId, Long realisedGainGlAccountId, Long realisedLossGlAccountId) {
+        String amortisationMethod, Long deferredFeeGlAccountId, Long realisedGainGlAccountId, Long realisedLossGlAccountId,
+        Long fairValueAdjustmentGlAccountId, Long fairValueGainGlAccountId, Long fairValueLossGlAccountId, Long fairValueReserveGlAccountId,
+        Long impairmentExpenseGlAccountId, Long eclAllowanceGlAccountId) {
 
     public static TreasuryDealTypeData from(final TreasuryDealType type) {
         return new TreasuryDealTypeData(type.getId(), type.getCode(), type.getName(), type.getInstrumentKind().name(),
@@ -33,6 +35,8 @@ public record TreasuryDealTypeData(Long id, String code, String name, String ins
                 type.getInterestIncomeGlAccountId(), type.getInterestExpenseGlAccountId(), type.getPremiumGlAccountId(),
                 type.getDiscountGlAccountId(), type.getFeeIncomeGlAccountId(), type.getFeeExpenseGlAccountId(), type.isActive(),
                 type.getFeeMethod().name(), type.getAmortisationMethod().name(), type.getDeferredFeeGlAccountId(),
-                type.getRealisedGainGlAccountId(), type.getRealisedLossGlAccountId());
+                type.getRealisedGainGlAccountId(), type.getRealisedLossGlAccountId(), type.getFairValueAdjustmentGlAccountId(),
+                type.getFairValueGainGlAccountId(), type.getFairValueLossGlAccountId(), type.getFairValueReserveGlAccountId(),
+                type.getImpairmentExpenseGlAccountId(), type.getEclAllowanceGlAccountId());
     }
 }

@@ -106,6 +106,16 @@ class TreasuryWorkflowDataValidatorTest {
     }
 
     @Test
+    void stalePriceDaysNeedsNoLocale() {
+        final SettingRequest request = this.validator.validateSetting("{\"currencyCode\": \"UGX\", \"stalePriceDays\": 10}");
+
+        assertEquals(10, request.stalePriceDays());
+        assertTrue(request.has("stalePriceDays"));
+        assertThrows(PlatformApiDataValidationException.class,
+                () -> this.validator.validateSetting("{\"currencyCode\": \"UGX\", \"stalePriceDays\": -1}"));
+    }
+
+    @Test
     void settingKnowsWhichFieldsWereSent() {
         final SettingRequest request = this.validator.validateSetting("{\"currencyCode\": \"ugx\", \"cashInTransitGlAccountId\": null}");
 

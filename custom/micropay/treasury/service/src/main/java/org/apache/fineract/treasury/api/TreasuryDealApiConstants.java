@@ -72,6 +72,12 @@ public final class TreasuryDealApiConstants {
     public static final String DEFERRED_FEE_GL_PARAM = "deferredFeeGlAccountId";
     public static final String REALISED_GAIN_GL_PARAM = "realisedGainGlAccountId";
     public static final String REALISED_LOSS_GL_PARAM = "realisedLossGlAccountId";
+    public static final String FAIR_VALUE_ADJUSTMENT_GL_PARAM = "fairValueAdjustmentGlAccountId";
+    public static final String FAIR_VALUE_GAIN_GL_PARAM = "fairValueGainGlAccountId";
+    public static final String FAIR_VALUE_LOSS_GL_PARAM = "fairValueLossGlAccountId";
+    public static final String FAIR_VALUE_RESERVE_GL_PARAM = "fairValueReserveGlAccountId";
+    public static final String IMPAIRMENT_EXPENSE_GL_PARAM = "impairmentExpenseGlAccountId";
+    public static final String ECL_ALLOWANCE_GL_PARAM = "eclAllowanceGlAccountId";
 
     public static final String DEAL_TYPE_ID_PARAM = "dealTypeId";
     public static final String COUNTERPARTY_ID_PARAM = "counterpartyId";
@@ -110,7 +116,8 @@ public final class TreasuryDealApiConstants {
             DEFAULT_DAY_COUNT_PARAM, DEFAULT_FREQUENCY_PARAM, PRINCIPAL_GL_PARAM, INTEREST_RECEIVABLE_GL_PARAM, INTEREST_PAYABLE_GL_PARAM,
             INTEREST_INCOME_GL_PARAM, INTEREST_EXPENSE_GL_PARAM, PREMIUM_GL_PARAM, DISCOUNT_GL_PARAM, FEE_INCOME_GL_PARAM,
             FEE_EXPENSE_GL_PARAM, ACTIVE_PARAM, FEE_METHOD_PARAM, AMORTISATION_METHOD_PARAM, DEFERRED_FEE_GL_PARAM, REALISED_GAIN_GL_PARAM,
-            REALISED_LOSS_GL_PARAM, LOCALE_PARAM);
+            REALISED_LOSS_GL_PARAM, FAIR_VALUE_ADJUSTMENT_GL_PARAM, FAIR_VALUE_GAIN_GL_PARAM, FAIR_VALUE_LOSS_GL_PARAM,
+            FAIR_VALUE_RESERVE_GL_PARAM, IMPAIRMENT_EXPENSE_GL_PARAM, ECL_ALLOWANCE_GL_PARAM, LOCALE_PARAM);
 
     public static final Set<String> DEAL_PARAMS = Set.of(DEAL_TYPE_ID_PARAM, COUNTERPARTY_ID_PARAM, SETTLEMENT_ACCOUNT_ID_PARAM,
             EXTERNAL_REFERENCE_PARAM, ISIN_PARAM, TRADE_DATE_PARAM, VALUE_DATE_PARAM, MATURITY_DATE_PARAM, ISSUE_DATE_PARAM, AMOUNT_PARAM,

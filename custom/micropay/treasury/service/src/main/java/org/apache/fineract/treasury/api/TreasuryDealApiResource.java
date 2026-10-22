@@ -31,6 +31,10 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_COUNTERPARTY_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_DEAL_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_DEAL_TYPE_RESOURCE_NAME;
+import static org.apache.fineract.treasury.api.TreasuryHoldingApiConstants.COMMAND_PLEDGE;
+import static org.apache.fineract.treasury.api.TreasuryHoldingApiConstants.COMMAND_RECALCULATE_ECL;
+import static org.apache.fineract.treasury.api.TreasuryHoldingApiConstants.COMMAND_RELEASE_PLEDGE;
+import static org.apache.fineract.treasury.api.TreasuryHoldingApiConstants.COMMAND_SET_ECL_STAGE;
 
 import com.micropay.fineract.platform.command.MicropayCommandWrapperBuilder;
 import io.swagger.v3.oas.annotations.Operation;
@@ -263,13 +267,14 @@ public class TreasuryDealApiResource {
     @Path("deals/{dealId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Act on a deal", description = "command=approve|reject|confirm|cancel|settle before settlement; settleCashflow (cashflowId, optional amount and transactionDate), terminate (proceeds, optional breakCost and transactionDate, reason) or rollover (rate, maturityDate, optional capitaliseInterest, rolloverPreApproved) after it. Other bodies: reason (reject, cancel), confirmationReference (confirm), note.")
+    @Operation(summary = "Act on a deal", description = "command=approve|reject|confirm|cancel|settle before settlement; settleCashflow (cashflowId, optional amount and transactionDate), terminate (proceeds, optional breakCost and transactionDate, reason) or rollover (rate, maturityDate, optional capitaliseInterest, rolloverPreApproved) after it. Holdings: pledge (pledgeeCounterpartyId, purpose, amount, optional linkedDealId, startDate, expectedEndDate, reason), releasePledge (pledgeId, reason, optional releaseDate), setEclStage (stage, reason, optional manualPd, manualLgd, manualEcl with manualEclReason, clearOverrides), recalculateEcl. Other bodies: reason (reject, cancel), confirmationReference (confirm), note.")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult actOnDeal(@PathParam("dealId") final Long dealId,
-            @QueryParam("command") @Parameter(description = "approve, reject, confirm, cancel, settle, settleCashflow, terminate or rollover", required = true) final String commandParam,
+            @QueryParam("command") @Parameter(description = "approve, reject, confirm, cancel, settle, settleCashflow, terminate, rollover, pledge, releasePledge, setEclStage or recalculateEcl", required = true) final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final List<String> commands = List.of(COMMAND_APPROVE, COMMAND_REJECT, COMMAND_CONFIRM, COMMAND_CANCEL, COMMAND_SETTLE,
-                COMMAND_SETTLE_CASHFLOW, COMMAND_TERMINATE, COMMAND_ROLLOVER);
+                COMMAND_SETTLE_CASHFLOW, COMMAND_TERMINATE, COMMAND_ROLLOVER, COMMAND_PLEDGE, COMMAND_RELEASE_PLEDGE, COMMAND_SET_ECL_STAGE,
+                COMMAND_RECALCULATE_ECL);
         final String matched = commandParam == null ? null
                 : commands.stream().filter(candidate -> candidate.equalsIgnoreCase(commandParam)).findFirst().orElse(null);
         if (matched == null) {
