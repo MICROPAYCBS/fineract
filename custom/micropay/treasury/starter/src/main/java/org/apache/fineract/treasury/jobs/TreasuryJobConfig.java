@@ -27,6 +27,7 @@ import org.apache.fineract.infrastructure.jobs.service.jobname.JobNameProvider;
 import org.apache.fineract.infrastructure.jobs.service.jobname.SimpleJobNameProvider;
 import org.apache.fineract.treasury.service.TreasuryDealLifecycleService;
 import org.apache.fineract.treasury.service.TreasuryEclService;
+import org.apache.fineract.treasury.service.TreasuryLiquidityRunService;
 import org.apache.fineract.treasury.service.TreasuryPositionSnapshotService;
 import org.apache.fineract.treasury.service.TreasuryValuationService;
 import org.springframework.batch.core.job.Job;
@@ -56,6 +57,7 @@ public class TreasuryJobConfig {
     private final TreasuryDealLifecycleService lifecycleService;
     private final TreasuryValuationService valuationService;
     private final TreasuryEclService eclService;
+    private final TreasuryLiquidityRunService liquidityRunService;
 
     @Bean
     public JobNameProvider treasuryJobNameProvider() {
@@ -96,6 +98,18 @@ public class TreasuryJobConfig {
     @Bean
     public Job treasuryValuationJob() {
         return new JobBuilder(TreasuryJobName.TREASURY_VALUATION.name(), jobRepository).start(treasuryValuationStep())
+                .incrementer(new RunIdIncrementer()).build();
+    }
+
+    @Bean
+    protected Step treasuryLiquidityRunStep() {
+        return new StepBuilder(TreasuryJobName.TREASURY_LIQUIDITY_RUN.name(), jobRepository)
+                .tasklet(new TreasuryLiquidityRunTasklet(liquidityRunService), transactionManager).build();
+    }
+
+    @Bean
+    public Job treasuryLiquidityRunJob() {
+        return new JobBuilder(TreasuryJobName.TREASURY_LIQUIDITY_RUN.name(), jobRepository).start(treasuryLiquidityRunStep())
                 .incrementer(new RunIdIncrementer()).build();
     }
 

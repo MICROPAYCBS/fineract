@@ -1,0 +1,967 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P3.1. The liquidity ladder: rule sets and their buckets (BOU_MDI_2004 default and active,
+  BOU_FI_2023 a draft, both with placeholder buckets), versioned behavioural assumption sets (a placeholder DEFAULT v1),
+  ladder items, stored runs and their lines, the "Treasury Liquidity Run" job and the risk and compliance permissions.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0010_liquidity_ladder.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-liquidity-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_rule_set"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_rule_set">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_default" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="last_edited_by" type="BIGINT"/>
+            <column name="activated_by" type="BIGINT"/>
+            <column name="activated_on_date" type="DATE"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_rule_set" columnNames="code, version" constraintName="uq_treasury_rule_set_code_version"/>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_bucket"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_bucket">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="rule_set_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_bucket_rule_set" references="m_treasury_rule_set(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_day" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_day" type="INT"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_bucket" columnNames="rule_set_id, code" constraintName="uq_treasury_bucket_code"/>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_assumption_set"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_assumption_set">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="last_edited_by" type="BIGINT"/>
+            <column name="activated_by" type="BIGINT"/>
+            <column name="activated_on_date" type="DATE"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_assumption_set" columnNames="code, version" constraintName="uq_treasury_assumption_set_code_version"/>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_assumption"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_assumption">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="assumption_set_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_assumption_set" references="m_treasury_assumption_set(id)"/>
+            </column>
+            <column name="assumption_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT"/>
+            <column name="bucket_code" type="VARCHAR(20)"/>
+            <column name="min_days" type="INT"/>
+            <column name="max_days" type="INT"/>
+            <column name="rate" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_ladder_item"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_ladder_item">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="direction" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_ladder_item_office" references="m_office(id)"/>
+            </column>
+            <column name="one_off_date" type="DATE"/>
+            <column name="day_of_month" type="INT"/>
+            <column name="active_from" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="active_to" type="DATE"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="last_edited_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="as_of_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT"/>
+            <column name="rule_set_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_rule_set" references="m_treasury_rule_set(id)"/>
+            </column>
+            <column name="rule_set_version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="assumption_set_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_run_assumption_set" references="m_treasury_assumption_set(id)"/>
+            </column>
+            <column name="assumption_set_version" type="INT"/>
+            <column name="beyond_horizon" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="VARCHAR(2000)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_run" indexName="idx_treasury_run_scope">
+            <column name="run_type"/>
+            <column name="as_of_date"/>
+            <column name="currency_code"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_line_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="bucket_seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bucket_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT"/>
+            <column name="product_name" type="VARCHAR(150)"/>
+            <column name="inflow" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="outflow" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="contractual" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="behavioural" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="net" type="DECIMAL(19,6)"/>
+            <column name="cumulative_gap" type="DECIMAL(19,6)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_line" indexName="idx_treasury_run_line_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Placeholder buckets until MICROPAY sends the MDI 110A layout -->
+    <changeSet id="treasury-liquidity-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_rule_set">
+            <column name="code" value="BOU_MDI_2004"/>
+            <column name="name" value="BoU MDI regulations 2004"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="effective_date" valueDate="2004-01-01"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="is_default" valueBoolean="true"/>
+            <column name="description" value="Default regime. Buckets are placeholders until the MDI 110A layout is confirmed; ratios and liquid asset rules come with P3.2."/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="code" value="ON"/>
+            <column name="label" value="Overnight (0-1 day)"/>
+            <column name="from_day" valueNumeric="0"/>
+            <column name="to_day" valueNumeric="1"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="code" value="D2_8"/>
+            <column name="label" value="2 to 8 days"/>
+            <column name="from_day" valueNumeric="2"/>
+            <column name="to_day" valueNumeric="8"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="code" value="D9_1M"/>
+            <column name="label" value="9 days to 1 month"/>
+            <column name="from_day" valueNumeric="9"/>
+            <column name="to_day" valueNumeric="30"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="code" value="M1_3"/>
+            <column name="label" value="1 to 3 months"/>
+            <column name="from_day" valueNumeric="31"/>
+            <column name="to_day" valueNumeric="91"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="code" value="M3_6"/>
+            <column name="label" value="3 to 6 months"/>
+            <column name="from_day" valueNumeric="92"/>
+            <column name="to_day" valueNumeric="182"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="6"/>
+            <column name="code" value="M6_12"/>
+            <column name="label" value="6 to 12 months"/>
+            <column name="from_day" valueNumeric="183"/>
+            <column name="to_day" valueNumeric="365"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="7"/>
+            <column name="code" value="Y1_PLUS"/>
+            <column name="label" value="Over 1 year"/>
+            <column name="from_day" valueNumeric="366"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_rule_set">
+            <column name="code" value="BOU_FI_2023"/>
+            <column name="name" value="BoU Financial Institutions (Liquidity) 2023"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="effective_date" valueDate="2023-01-01"/>
+            <column name="status" value="DRAFT"/>
+            <column name="is_default" valueBoolean="false"/>
+            <column name="description" value="Inactive until MICROPAY confirms it applies (LCR and NSFR, P3.2). Buckets are placeholders."/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="code" value="ON"/>
+            <column name="label" value="Overnight (0-1 day)"/>
+            <column name="from_day" valueNumeric="0"/>
+            <column name="to_day" valueNumeric="1"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="code" value="D2_8"/>
+            <column name="label" value="2 to 8 days"/>
+            <column name="from_day" valueNumeric="2"/>
+            <column name="to_day" valueNumeric="8"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="code" value="D9_1M"/>
+            <column name="label" value="9 days to 1 month"/>
+            <column name="from_day" valueNumeric="9"/>
+            <column name="to_day" valueNumeric="30"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="code" value="M1_3"/>
+            <column name="label" value="1 to 3 months"/>
+            <column name="from_day" valueNumeric="31"/>
+            <column name="to_day" valueNumeric="91"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="code" value="M3_6"/>
+            <column name="label" value="3 to 6 months"/>
+            <column name="from_day" valueNumeric="92"/>
+            <column name="to_day" valueNumeric="182"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="6"/>
+            <column name="code" value="M6_12"/>
+            <column name="label" value="6 to 12 months"/>
+            <column name="from_day" valueNumeric="183"/>
+            <column name="to_day" valueNumeric="365"/>
+        </insert>
+        <insert tableName="m_treasury_bucket">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="7"/>
+            <column name="code" value="Y1_PLUS"/>
+            <column name="label" value="Over 1 year"/>
+            <column name="from_day" valueNumeric="366"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_assumption_set WHERE code = 'DEFAULT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_assumption_set">
+            <column name="code" value="DEFAULT"/>
+            <column name="name" value="Placeholder behavioural assumptions"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="effective_date" valueDate="2026-01-01"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="description" value="PLACEHOLDER RATES, not MICROPAY's: replace with a new version before relying on the ladder."/>
+            <column name="activated_on_date" valueDate="2026-01-01"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="CORE_SHARE"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="rate" valueNumeric="60"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="RUN_OFF"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="ON"/>
+            <column name="rate" valueNumeric="5"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="RUN_OFF"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="D2_8"/>
+            <column name="rate" valueNumeric="5"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="RUN_OFF"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="D9_1M"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="RUN_OFF"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="M1_3"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="RUN_OFF"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="M3_6"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="RUN_OFF"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="M6_12"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="ARREARS_HAIRCUT"/>
+            <column name="source" value="LOANS"/>
+            <column name="min_days" valueNumeric="1"/>
+            <column name="max_days" valueNumeric="30"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="ARREARS_HAIRCUT"/>
+            <column name="source" value="LOANS"/>
+            <column name="min_days" valueNumeric="31"/>
+            <column name="max_days" valueNumeric="90"/>
+            <column name="rate" valueNumeric="50"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="ARREARS_HAIRCUT"/>
+            <column name="source" value="LOANS"/>
+            <column name="min_days" valueNumeric="91"/>
+            <column name="rate" valueNumeric="100"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="PREPAYMENT"/>
+            <column name="source" value="LOANS"/>
+            <column name="rate" valueNumeric="2"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="ROLLOVER"/>
+            <column name="source" value="TERM_DEPOSITS"/>
+            <column name="rate" valueNumeric="70"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="ROLLOVER"/>
+            <column name="source" value="DEALS"/>
+            <column name="rate" valueNumeric="50"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="DRAWDOWN"/>
+            <column name="source" value="COMMITMENTS"/>
+            <column name="rate" valueNumeric="80"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="FLOAT_DEMAND"/>
+            <column name="source" value="AGENT_FLOAT"/>
+            <column name="min_days" valueNumeric="30"/>
+            <column name="rate" valueNumeric="100"/>
+        </insert>
+    </changeSet>
+
+    <!-- Liquidity run after the position snapshot (02:45); inactive until set up -->
+    <changeSet id="treasury-liquidity-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_LIQ'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Treasury Liquidity Run"/>
+            <column name="display_name" value="Treasury Liquidity Run"/>
+            <column name="cron_expression" value="0 50 2 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Treasury Liquidity Run _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="TRS_LIQ"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Builds the maturity ladder of every organisation currency for the business date with the default rule set and the active assumption set, replacing that date's earlier run. Runs after Treasury Position Snapshot."/>
+            <where>short_name='TRS_LIQ' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYRULESET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYRULESET"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYRULESET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYRULESET"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYRULESET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYRULESET_CHECKER"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYRULESET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYRULESET"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYRULESET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYRULESET_CHECKER"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYRULESET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYRULESET"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYRULESET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYRULESET_CHECKER"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="DELETE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYRULESET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYRULESET"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="ACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYRULESET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYRULESET_CHECKER"/>
+            <column name="entity_name" value="TREASURYRULESET"/>
+            <column name="action_name" value="ACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYASSUMPTIONSET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYASSUMPTIONSET"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYASSUMPTIONSET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYASSUMPTIONSET"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYASSUMPTIONSET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYASSUMPTIONSET_CHECKER"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYASSUMPTIONSET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYASSUMPTIONSET"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-014" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYASSUMPTIONSET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYASSUMPTIONSET_CHECKER"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-015" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYASSUMPTIONSET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYASSUMPTIONSET"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-016" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYASSUMPTIONSET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYASSUMPTIONSET_CHECKER"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="DELETE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-017" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYASSUMPTIONSET'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYASSUMPTIONSET"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="ACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-018" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYASSUMPTIONSET_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYASSUMPTIONSET_CHECKER"/>
+            <column name="entity_name" value="TREASURYASSUMPTIONSET"/>
+            <column name="action_name" value="ACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-019" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYLADDERITEM'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYLADDERITEM"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-020" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYLADDERITEM'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYLADDERITEM"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-021" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYLADDERITEM_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYLADDERITEM_CHECKER"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-022" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYLADDERITEM'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYLADDERITEM"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-023" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYLADDERITEM_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYLADDERITEM_CHECKER"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-024" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYLADDERITEM'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYLADDERITEM"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-025" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYLADDERITEM_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYLADDERITEM_CHECKER"/>
+            <column name="entity_name" value="TREASURYLADDERITEM"/>
+            <column name="action_name" value="DELETE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-026" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYRUN'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYRUN"/>
+            <column name="entity_name" value="TREASURYRUN"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-027" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYRUN'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYRUN"/>
+            <column name="entity_name" value="TREASURYRUN"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-liquidity-perm-028" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYRUN_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYRUN_CHECKER"/>
+            <column name="entity_name" value="TREASURYRUN"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

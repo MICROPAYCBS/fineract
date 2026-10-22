@@ -1,9 +1,9 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder (phase 3: P3.1, TR-19 to TR-21). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
-- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL") and the Liquibase changelogs.
+- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run") and the Liquibase changelogs.
 
 `fineract.module.treasury.enabled` (`FINERACT_MODULE_TREASURY_ENABLED`, default `true`) switches the whole module off.
 
@@ -363,6 +363,65 @@ Example: 500,000,000 placed at 12% has, after 45 days, an exposure of 507,397,26
 
 `GET /v1/treasury/portfolio?date=2026-11-30&currency=UGX` lists the settled asset deals held on the date (value date on or before it, maturity after it; both filters optional): nominal, clean amortised cost, accrued interest, gross carrying amount, fair value and its last valuation date, fair value adjustment, OCI reserve (FVOCI: adjustment plus loss allowance), stage and allowance, carrying amount (gross plus adjustment, less the allowance at amortised cost), pledged and unencumbered nominal, with totals per currency. Amounts are as last posted by the accrual, valuation and ECL; pledges are as at the date.
 
+## Liquidity ladder
+
+The maturity ladder (P3.1, TR-19 to TR-21) puts every expected cash flow of a currency into the buckets of a rule set, contractual and behavioural, and stores the result as a run. Writes are commands in the `treasury_risk` permission grouping, with maker-checker per action.
+
+### Rule sets and buckets
+
+`/v1/treasury/rule-sets` (`GET`, `POST`, `GET/PUT/DELETE /{id}`, `POST /{id}?command=activate`). A rule set is a regulatory regime, versioned by `code`; P3.2 adds its ratios and liquid asset rules. `POST` with `{"code", "name", "effectiveDate", "description", "buckets": [{"code": "ON", "label": "Overnight", "fromDay": 0, "toDay": 1}, ...]}` creates a `DRAFT` (an existing code gets its next version; one draft per code). Buckets run from day 0 without gaps or overlaps; only the last may leave `toDay` out (open-ended). A draft is edited (`PUT`, buckets replaced) or deleted; activating it, by a user other than who created or last edited it and on or after its effective date, makes it `ACTIVE` and the code's active version `SUPERSEDED`. Active and superseded versions cannot change, except `PUT {"isDefault": true}` on an active one: the default rule set is what the nightly run uses, and it stays with the code when a new version is activated.
+
+Seeded: `BOU_MDI_2004` (active, default) and `BOU_FI_2023` (draft), both with placeholder buckets until MICROPAY sends the MDI 110A layout: `ON` 0-1 days, `D2_8` 2-8, `D9_1M` 9-30, `M1_3` 31-91, `M3_6` 92-182, `M6_12` 183-365, `Y1_PLUS` 366 and over.
+
+### Behavioural assumptions
+
+`/v1/treasury/assumptions` (same calls and life as rule sets: `DRAFT`, `ACTIVE`, `SUPERSEDED`). A set holds rows `{"type", "source", "productId", "bucketCode", "minDays", "maxDays", "rate"}`, rates in percent; a row for a product wins over a general one (no `productId`):
+
+| Type | Source | Meaning |
+| --- | --- | --- |
+| `CORE_SHARE` | `SAVINGS` | Share of a savings product's balance that stays (to the last bucket). |
+| `RUN_OFF` | `SAVINGS` | Share of the volatile rest leaving in `bucketCode`; what has not run off by the end goes to the last bucket. At most 100% per product. |
+| `ARREARS_HAIRCUT` | `LOANS` | For loans whose days in arrears fall in `minDays` to `maxDays` (open when left out): the share of every flow still owed that is not expected. Bands of a product may not overlap. |
+| `PREPAYMENT` | `LOANS` | For loans not in arrears: the share of each principal flow due after 30 days that is brought forward to the first bucket. |
+| `ROLLOVER` | `TERM_DEPOSITS`, `DEALS` | Share of a term deposit's maturity amount, or of a placement's, deposit's or borrowing's principal at maturity, expected to roll (`productId`: savings product or deal type). |
+| `DRAWDOWN` | `COMMITMENTS` | Share of an approved, undisbursed loan expected to be drawn. |
+| `FLOAT_DEMAND` | `AGENT_FLOAT` | `minDays` is the lookback (1-366) and the rate a scale (100 = history as it is, up to 1000). |
+
+A placeholder `DEFAULT` v1 is seeded active (core 60%, run-off 5/5/10/10/10/10%, haircuts 10% at 1-30 days, 50% at 31-90, 100% after, prepayment 2%, rollover 70% for term deposits and 50% for deals, drawdown 80%, float demand over 30 days): **the rates are not MICROPAY's** and must be replaced with a new version.
+
+### Ladder items
+
+`/v1/treasury/ladder-items` (`GET`, `POST`, `GET/PUT/DELETE /{id}`): configured flows such as salaries, rent and tax. `{"name": "Salaries", "direction": "OUTFLOW", "amount": 85000000, "currencyCode": "UGX", "dayOfMonth": 25, "activeFrom": "2026-01-01", "activeTo": "2026-12-31", "officeId": 1}`: either `oneOffDate` or `dayOfMonth` (the month's last day when shorter); `officeId` optional (institution-wide).
+
+### Sources
+
+Each source is a `LadderSource` bean reading upstream tables with read-only queries; nothing upstream is changed.
+
+| Source | Contractual | Behavioural |
+| --- | --- | --- |
+| `OPENING` | GL balance on the as-of date of every active bank, central bank, wallet and vault treasury account (not agent float pools), in the first bucket; it equals the GL balance of those accounts | |
+| `LOANS` | Unpaid installments of active loans: principal, and interest, fees and penalties, on their due dates (overdue in the first bucket) | arrears haircut, prepayment |
+| `TERM_DEPOSITS` | Active fixed and recurring deposits: maturity amount on the maturity date | rollover |
+| `SAVINGS` | Active demand savings: each product's balance on demand | core share and run-off |
+| `DEALS` | Open cash flows of settled treasury deals; approved and confirmed deals with their settlement on the value date. Assets in, liabilities out | rollover |
+| `AGENT_FLOAT` | | top-ups less sweeps executed over the lookback, as a daily rate over each bounded bucket |
+| `COMMITMENTS` | Approved, undisbursed loans on their expected disbursement date | drawdown |
+| `FIXED` | Ladder items to the horizon (the last bucket's end; a year past its start when open-ended) | |
+
+An office run (`officeId`) takes that office's loans and savings (by the client's or group's office), deals and treasury accounts, and its own and the institution-wide ladder items.
+
+### Runs
+
+`POST /v1/treasury/runs?type=ladder&asOfDate=2026-10-16&currency=UGX&officeId=` (or the same fields in the body; `asOfDate` defaults to the business date and may not be after it; `ruleSetId` defaults to the default rule set, `assumptionSetId` to the most recently activated active set, contractual only when there is none) builds the ladder and stores it in `m_treasury_run` with the rule set and assumption set versions used, and its lines in `m_treasury_run_line`: per bucket, source, line code and product, the contractual and behavioural amounts (inflows positive) and their total as inflow or outflow; and per bucket a `TOTAL` line with inflow, outflow, net and cumulative gap. Flows after a bounded last bucket are totalled as `beyondHorizon`. A rerun for the same type, date, currency and office replaces the earlier run. `GET /runs?type=&currency=&officeId=&from=&to=`, `GET /runs/{id}` (bucket totals, opening stock, notes) and `GET /runs/{id}/lines`.
+
+The "Treasury Liquidity Run" job (short name `TRS_LIQ`, created inactive, 02:50; after `TRS_SNAP` in a job sequence) runs every organisation currency, for the whole institution, on the business date, with the default rule set and the active assumption set.
+
+Loan, savings and deposit figures are as they stand when the run is made; a run for a past date buckets them from that date but does not rebuild past balances (treasury account balances are taken on the as-of date). Stored runs are what makes a past figure reproducible.
+
+### Worked example
+
+A savings product with 1,000,000 under the placeholder set: contractually all 1,000,000 is payable overnight. Behaviourally the core 60% (600,000) stays; of the volatile 400,000, 5% (20,000) leaves overnight, 20,000 in 2-8 days, 40,000 in each of the next four buckets, and the 200,000 not run off joins the core in the last bucket (800,000). The overnight line shows contractual -1,000,000, behavioural +980,000, total -20,000. A loan 45 days in arrears with 55,000 overdue and 55,000 due in 15 days has half of each haircut (-27,500 overnight and -27,500 in 9 days to 1 month). 3,000,000 of net agent float top-ups over 30 days is 100,000 a day: -200,000 overnight, -700,000 in 2-8 days, -2,200,000 in 9 days to 1 month.
+
 ## Tables
 
 | Table | Holds |
@@ -390,6 +449,13 @@ Example: 500,000,000 placed at 12% has, after 45 days, an exposure of 507,397,26
 | `m_treasury_deal_valuation` | Each revaluation: valuation and price date, quote, fair value, amortised cost, adjustment and its change, journal transaction id. |
 | `m_treasury_deal_ecl` | Each ECL calculation: date, stage, trigger, exposure, PD, LGD, basis, ECL and its change, journal transaction id. |
 | `m_treasury_ecl_parameter` | PD and LGD per rating (or `DEFAULT`) and stage. |
+| `m_treasury_rule_set` | Rule sets: code, version (unique together), effective date, status, default flag, who created, edited and activated. |
+| `m_treasury_bucket` | The ladder buckets of a rule set: sequence, code, label, from and to day. |
+| `m_treasury_assumption_set` | Behavioural assumption sets, versioned like rule sets. |
+| `m_treasury_assumption` | The assumption rows of a set. |
+| `m_treasury_ladder_item` | Configured fixed flows. |
+| `m_treasury_run` | Stored runs: type, as-of date, currency, office, rule set and assumption set versions, beyond-horizon total, notes. |
+| `m_treasury_run_line` | The lines of a run, and each bucket's total with its net and cumulative gap. |
 
 ## Permissions
 
@@ -409,5 +475,12 @@ Grouping `treasury`, each write with a `_CHECKER` variant:
 - `READ_TREASURYDEAL` (also the maturity calendar), `CREATE_TREASURYDEAL`, `UPDATE_TREASURYDEAL`, `APPROVE_TREASURYDEAL`, `REJECT_TREASURYDEAL`, `CONFIRM_TREASURYDEAL`, `CANCEL_TREASURYDEAL`, `SETTLE_TREASURYDEAL`, `SETTLECASHFLOW_TREASURYDEAL`, `TERMINATE_TREASURYDEAL`, `ROLLOVER_TREASURYDEAL`, `PLEDGE_TREASURYDEAL`, `RELEASEPLEDGE_TREASURYDEAL`, `SETECLSTAGE_TREASURYDEAL`, `RECALCULATEECL_TREASURYDEAL`, and `APPROVE_TREASURYDEAL_OVERLIMIT` (no checker variant); `READ_TREASURYDEAL` also gives the portfolio
 - `READ_TREASURYPRICE`, `CREATE_TREASURYPRICE`
 - `READ_TREASURYECLPARAMETER`, `UPDATE_TREASURYECLPARAMETER`
+
+Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` variant:
+
+- `READ_TREASURYRULESET`, `CREATE_TREASURYRULESET`, `UPDATE_TREASURYRULESET`, `DELETE_TREASURYRULESET`, `ACTIVATE_TREASURYRULESET`
+- `READ_TREASURYASSUMPTIONSET`, `CREATE_TREASURYASSUMPTIONSET`, `UPDATE_TREASURYASSUMPTIONSET`, `DELETE_TREASURYASSUMPTIONSET`, `ACTIVATE_TREASURYASSUMPTIONSET`
+- `READ_TREASURYLADDERITEM`, `CREATE_TREASURYLADDERITEM`, `UPDATE_TREASURYLADDERITEM`, `DELETE_TREASURYLADDERITEM`
+- `READ_TREASURYRUN`, `CREATE_TREASURYRUN`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

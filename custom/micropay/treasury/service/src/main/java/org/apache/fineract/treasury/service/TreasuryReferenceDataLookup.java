@@ -84,6 +84,10 @@ public class TreasuryReferenceDataLookup {
         return places.isEmpty() || places.getFirst() == null ? 2 : places.getFirst();
     }
 
+    public List<String> organisationCurrencies() {
+        return this.jdbcTemplate.queryForList("SELECT code FROM m_organisation_currency ORDER BY code", String.class);
+    }
+
     /** Name of a code value, such as a counterparty rating. */
     public Optional<String> codeValueName(final Long codeValueId) {
         return this.jdbcTemplate.queryForList("SELECT code_value FROM m_code_value WHERE id = ?", String.class, codeValueId).stream()
