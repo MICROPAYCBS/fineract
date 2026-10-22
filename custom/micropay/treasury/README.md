@@ -178,7 +178,10 @@ MT940 reads `:20:`, `:25:`, `:60F:`/`:60M:`, `:61:` with its `:86:` details, and
 
 - the same file (SHA-256) was imported for the account before, or any of its lines was (same dates, amount, reference and description; repeated identical lines within one file count separately);
 - an MT940 file is in another currency than the account, or mixes currencies;
+- any line is dated after the business date;
 - opening balance plus the lines is not the closing balance, or a running balance in the file does not follow from the one before (the error names the line). Balances come from the file, else from the request, else from the first and last running balances; a CSV without a balance column needs them in the request.
+
+A statement whose period overlaps an earlier statement of the account is accepted (a bank may send an interim and a final statement for the same days), and the response carries a `warning` and the `overlappingStatementIds`; lines already imported are still refused.
 
 The statement is stored `IMPORTED` with its lines `UNMATCHED`. `GET /v1/treasury/statements?accountId=&status=`, `GET /v1/treasury/statements/{id}` and `GET /v1/treasury/statements/{id}/lines?matchStatus=` list them.
 
@@ -191,7 +194,7 @@ The GL side is every journal entry on the account's GL account, office and curre
 - **Explain**: `POST /v1/treasury/statements/lines/{id}?command=explain` with `{"reasonCode": "BANK_CHARGE", "note": ".."}` settles a line without an entry. Reasons are the values of code `TreasuryReconExplanation`: `BANK_CHARGE`, `INTEREST`, `TIMING`, `BANK_ERROR` and `OTHER` (more can be added under codes). With `glAccountId` (an enabled detail account other than the treasury account's) it also books the line: money in is Dr treasury GL / Cr that account, money out the reverse, dated the line's date unless `transactionDate` is given, under `TR-SA-<match id>` and recorded in `m_treasury_posting`. That entry is tied to the line. Closed GL periods and the business date are respected.
 - **Unmatch**: `DELETE /v1/treasury/reconciliation/matches/{id}` with `{"reason": ".."}` puts the lines back to `UNMATCHED` and frees the entries; an explanation's adjusting entry is reversed on the business date (`TR-SAX-<match id>`). The match is kept as `UNMATCHED`, with who, when and why.
 
-A statement turns `RECONCILED` when none of its lines is unmatched, and back to `IMPORTED` when one is unmatched again. Matching operations lock the treasury account row, so two of them cannot tie the same entry. Under maker-checker a step is credited to its maker, and the user who imported a statement may not approve a held manual match of its lines.
+A statement turns `RECONCILED` when none of its lines is unmatched, and back to `IMPORTED` when one is unmatched again. Matching operations lock the treasury account row, so two of them cannot tie the same entry. Under maker-checker a step is credited to its maker. The user who imported a statement may not approve a held manual match of its lines, and may not post an adjusting entry from them at all (neither as maker nor as checker); matching and explaining without an entry stay open to them.
 
 ### Reports
 

@@ -35,7 +35,12 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import org.apache.fineract.client.models.JournalEntryCommand;
+import org.apache.fineract.client.models.PostRolesRequest;
+import org.apache.fineract.client.models.PostUsersRequest;
+import org.apache.fineract.client.models.PutRolesRoleIdPermissionsRequest;
 import org.apache.fineract.client.models.SingleDebitOrCreditEntryCommand;
+import org.apache.fineract.client.util.Calls;
+import org.apache.fineract.integrationtests.common.FineractClientHelper;
 import org.apache.fineract.integrationtests.common.Utils;
 import org.apache.fineract.integrationtests.common.accounting.AccountHelper;
 import org.apache.fineract.integrationtests.common.accounting.JournalEntryHelper;
@@ -52,6 +57,7 @@ public class TreasuryReconciliationIntegrationTest {
     private static final String CURRENCY = "USD";
     private static final long HEAD_OFFICE = 1L;
     private static final DateTimeFormatter CSV_DATE = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    private static final String PASSWORD = "A1b2c3d4e5f$";
 
     private RequestSpecification admin;
 
@@ -104,8 +110,13 @@ public class TreasuryReconciliationIntegrationTest {
         final long feeLine = ((Number) unmatched.getFirst().get("id")).longValue();
         assertThat(new BigDecimal(unmatched.getFirst().get("amount").toString())).isEqualByComparingTo("-15");
 
-        final Response explained = post("/statements/lines/" + feeLine + "?command=explain",
-                "{\"reasonCode\": \"BANK_CHARGE\", \"glAccountId\": " + chargesGl + ", \"note\": \"Monthly ledger fee\"}");
+        final String explanation = "{\"reasonCode\": \"BANK_CHARGE\", \"glAccountId\": " + chargesGl
+                + ", \"note\": \"Monthly ledger fee\"}";
+        // the importer may not book an adjusting entry from its own statement
+        assertThat(post("/statements/lines/" + feeLine + "?command=explain", explanation).asString())
+                .contains("importer.cannot.post.adjustment");
+        final Response explained = given().spec(userWith("EXPLAIN_TREASURYSTATEMENTLINE")).body(explanation).when()
+                .post(url("/statements/lines/" + feeLine + "?command=explain")).andReturn();
         assertThat(explained.statusCode()).as(explained.asString()).isEqualTo(200);
 
         assertThat(get("/statements/" + statement).getString("status")).isEqualTo("RECONCILED");
@@ -169,6 +180,25 @@ public class TreasuryReconciliationIntegrationTest {
         final Response response = given().spec(this.admin).when().get(url(path)).andReturn();
         assertThat(response.statusCode()).as(response.asString()).isEqualTo(200);
         return response.jsonPath();
+    }
+
+    private static RequestSpecification userWith(final String... permissions) {
+        final Long roleId = Calls
+                .ok(FineractClientHelper.getFineractClient().roles.createRole(
+                        new PostRolesRequest().name(Utils.uniqueRandomStringGenerator("TRS_ROLE_", 8)).description("Treasury test")))
+                .getResourceId();
+        final PutRolesRoleIdPermissionsRequest grant = new PutRolesRoleIdPermissionsRequest();
+        for (final String permission : permissions) {
+            grant.putPermissionsItem(permission, true);
+        }
+        Calls.ok(FineractClientHelper.getFineractClient().roles.updateRolePermissions(roleId, grant));
+        final String username = Utils.uniqueRandomStringGenerator("trs_", 8);
+        Calls.ok(FineractClientHelper.getFineractClient().users.createUser(new PostUsersRequest().username(username).password(PASSWORD)
+                .repeatPassword(PASSWORD).firstname("Treasury").lastname("Tester").email(username + "@test.example.org")
+                .officeId(HEAD_OFFICE).roles(List.of(roleId)).sendPasswordToEmail(false)));
+        final RequestSpecification spec = new RequestSpecBuilder().setContentType(ContentType.JSON).build();
+        spec.header("Authorization", "Basic " + Utils.loginIntoServerAndGetBase64EncodedAuthenticationKey(username, PASSWORD));
+        return spec;
     }
 
     private Response post(final String path, final String json) {

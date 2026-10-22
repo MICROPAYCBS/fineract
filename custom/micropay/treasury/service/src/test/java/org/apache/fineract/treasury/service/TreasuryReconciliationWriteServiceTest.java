@@ -91,11 +91,13 @@ class TreasuryReconciliationWriteServiceTest {
     private final TreasuryReconMatchRepository matchRepository = mock(TreasuryReconMatchRepository.class);
     private final TreasuryReconciliationReadService readService = mock(TreasuryReconciliationReadService.class);
     private final TreasuryJournalPoster journalPoster = mock(TreasuryJournalPoster.class);
+    private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
+    private final JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
     private final TreasuryReconciliationWriteService service = new TreasuryReconciliationWriteService(this.actor, this.context,
             new TreasuryStatementDataValidator(new FromJsonHelper()), this.accountRepository, this.formatRepository,
             this.statementRepository, this.lineRepository, this.matchRepository, mock(TreasuryReconMatchItemRepository.class),
-            this.readService, mock(TreasurySettingService.class), mock(TreasuryReferenceDataLookup.class), this.journalPoster,
-            mock(TreasuryJournalEntryRepository.class), mock(JdbcTemplate.class));
+            this.readService, mock(TreasurySettingService.class), this.lookup, this.journalPoster,
+            mock(TreasuryJournalEntryRepository.class), this.jdbcTemplate);
     private final TreasuryAccount account = new TreasuryAccount();
 
     @BeforeEach
@@ -174,6 +176,77 @@ class TreasuryReconciliationWriteServiceTest {
         verify(this.statementRepository).saveAndFlush(org.mockito.ArgumentMatchers.argThat(s -> s.getImportedBy() == MAKER
                 && s.getStatus() == TreasuryStatementStatus.IMPORTED && s.getLineCount() == 3
                 && s.getClosingBalance().compareTo(new BigDecimal("6244500")) == 0));
+    }
+
+    @Test
+    void statementDatedAfterTheBusinessDateIsRefused() {
+        ThreadLocalContextUtil.setBusinessDates(new HashMap<>(Map.of(BusinessDateType.BUSINESS_DATE, LocalDate.of(2026, 10, 15))));
+
+        assertCode("statement.future.dated", () -> this.service.importStatement(importCommand("sample.sta")));
+        verify(this.statementRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void overlappingPeriodIsAcceptedWithAWarning() {
+        when(this.lineRepository.findExistingKeys(eq(3L), anyCollection())).thenReturn(List.of());
+        when(this.statementRepository.findOverlapping(3L, LocalDate.of(2026, 10, 15), LocalDate.of(2026, 10, 16))).thenReturn(List.of(4L));
+        when(this.statementRepository.saveAndFlush(any())).thenAnswer(call -> call.getArgument(0));
+
+        final Map<String, Object> changes = this.service.importStatement(importCommand("sample.sta")).getChanges();
+        assertEquals(List.of(4L), changes.get("overlappingStatementIds"));
+        assertEquals("The period 2026-10-15 to 2026-10-16 overlaps statements [4] of this account", changes.get("warning"));
+    }
+
+    @Test
+    void importerCannotPostAnAdjustingEntry() {
+        explainSetUp(MAKER);
+
+        assertCode("reconciliation.importer.cannot.post.adjustment",
+                () -> this.service.explainLine(1L, JsonCommand.from("{\"reasonCode\": \"BANK_CHARGE\", \"glAccountId\": 77}")));
+        verify(this.journalPoster, never()).post(any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void importerCannotApproveAHeldAdjustingEntry() {
+        explainSetUp(CHECKER);
+        final AppUser checker = mock(AppUser.class);
+        when(checker.getId()).thenReturn(CHECKER);
+        when(this.context.authenticatedUser()).thenReturn(checker);
+        final String json = "{\"reasonCode\": \"BANK_CHARGE\", \"glAccountId\": 77}";
+
+        assertCode("reconciliation.importer.cannot.post.adjustment",
+                () -> this.service.explainLine(1L, JsonCommand.fromExistingCommand(1800L, json, JsonParser.parseString(json),
+                        new FromJsonHelper(), "TREASURYSTATEMENTLINE", 1L, null, null, null, null, null, null, null)));
+    }
+
+    @Test
+    void importerMayExplainWithoutPosting() {
+        explainSetUp(MAKER);
+
+        this.service.explainLine(1L, JsonCommand.from("{\"reasonCode\": \"TIMING\"}"));
+        verify(this.journalPoster, never()).post(any(), any(), any(), any(), any(), any(), any());
+        verify(this.lineRepository)
+                .save(org.mockito.ArgumentMatchers.argThat(l -> l.getMatchStatus() == TreasuryLineMatchStatus.EXPLAINED));
+    }
+
+    @Test
+    void anotherUserPostsTheAdjustingEntry() {
+        explainSetUp(IMPORTER);
+        when(this.journalPoster.post(any(), any(), any(), any(), any(), any(), any())).thenReturn("TR-SA-40");
+
+        assertEquals("TR-SA-40", this.service.explainLine(1L, JsonCommand.from("{\"reasonCode\": \"BANK_CHARGE\", \"glAccountId\": 77}"))
+                .getChanges().get("transactionId"));
+    }
+
+    /** Line 1 of statement 9, imported by {@code importer}; reason codes and GL account 77 resolve. */
+    private void explainSetUp(final long importer) {
+        final TreasuryStatementLine line = line(1L, "-5500");
+        line.setTransactionDate(LocalDate.of(2026, 10, 16));
+        when(this.lineRepository.findById(1L)).thenReturn(Optional.of(line));
+        statementImportedBy(importer);
+        lenient().when(this.jdbcTemplate.queryForList(anyString(), eq(Long.class), any(), any(), any())).thenReturn(List.of(11L));
+        lenient().when(this.lookup.findGlAccount(77L))
+                .thenReturn(Optional.of(new TreasuryReferenceDataLookup.GlAccountInfo(77L, 5, 1, false)));
     }
 
     @Test

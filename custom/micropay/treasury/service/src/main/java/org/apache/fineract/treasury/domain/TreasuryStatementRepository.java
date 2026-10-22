@@ -18,9 +18,19 @@
  */
 package org.apache.fineract.treasury.domain;
 
+import java.time.LocalDate;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TreasuryStatementRepository extends JpaRepository<TreasuryStatement, Long> {
 
     boolean existsByTreasuryAccountIdAndFileHash(Long treasuryAccountId, String fileHash);
+
+    /** Statements of the account whose period shares at least one day with the given one. */
+    @Query("SELECT s.id FROM TreasuryStatement s WHERE s.treasuryAccountId = :accountId AND s.periodFrom <= :periodTo AND s.periodTo >= :periodFrom"
+            + " ORDER BY s.id")
+    List<Long> findOverlapping(@Param("accountId") Long accountId, @Param("periodFrom") LocalDate periodFrom,
+            @Param("periodTo") LocalDate periodTo);
 }

@@ -149,6 +149,10 @@ public class TreasuryReconciliationWriteService {
         }
 
         final ParsedStatement parsed = parse(format, StatementFiles.text(request.content()));
+        if (DateUtils.isAfterBusinessDate(parsed.periodTo())) {
+            throw new TreasuryWorkflowException(STATEMENT, "future.dated", "The statement has lines dated up to " + parsed.periodTo()
+                    + ", after the business date " + DateUtils.getBusinessLocalDate(), parsed.periodTo());
+        }
         if (parsed.currencyCode() != null && !parsed.currencyCode().equals(account.getCurrencyCode())) {
             throw new TreasuryWorkflowException(STATEMENT, "currency.mismatch", "The statement is in " + parsed.currencyCode()
                     + " but treasury account " + account.getCode() + " is in " + account.getCurrencyCode(), parsed.currencyCode(),
@@ -166,6 +170,7 @@ public class TreasuryReconciliationWriteService {
                     account.getId(), existing.size(), lineNumber);
         }
 
+        final List<Long> overlapping = this.statementRepository.findOverlapping(account.getId(), parsed.periodFrom(), parsed.periodTo());
         final TreasuryStatement statement = new TreasuryStatement();
         statement.setTreasuryAccountId(account.getId());
         statement.setFormatId(format.getId());
@@ -203,6 +208,13 @@ public class TreasuryReconciliationWriteService {
         this.lineRepository.saveAll(lines);
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("lineCount", lines.size());
+        if (!overlapping.isEmpty()) {
+            // accepted: a bank may send an interim and a final statement for the same days; the lines themselves are
+            // already refused if imported before
+            changes.put("warning", "The period " + statement.getPeriodFrom() + " to " + statement.getPeriodTo() + " overlaps statements "
+                    + overlapping + " of this account");
+            changes.put("overlappingStatementIds", overlapping);
+        }
         changes.put("periodFrom", statement.getPeriodFrom().toString());
         changes.put("periodTo", statement.getPeriodTo().toString());
         changes.put("openingBalance", balances.opening());
@@ -384,6 +396,7 @@ public class TreasuryReconciliationWriteService {
         final Long reasonId = reasonCodeValueId(request.reasonCode());
         if (request.glAccountId() != null) {
             requirePostableAgainst(request.glAccountId(), account);
+            requireNotImporter(command, line.getStatementId());
         }
         final TreasuryReconMatch recon = newMatch(account, TreasuryReconMatchRule.EXPLANATION, this.actor.userId(command), request.note());
         recon.setReasonCodeValueId(reasonId);
@@ -560,6 +573,20 @@ public class TreasuryReconciliationWriteService {
                 throw new TreasuryWorkflowException(RECON, "importer.cannot.approve",
                         "The user who imported statement " + statementId + " cannot approve a match of its lines", statementId);
             }
+        }
+    }
+
+    /**
+     * The user who imported a statement may not book an adjusting entry from it, neither directly nor by approving a
+     * held explanation.
+     */
+    private void requireNotImporter(final JsonCommand command, final Long statementId) {
+        final Long importer = statement(statementId).getImportedBy();
+        final Long maker = this.actor.userId(command);
+        final Long checker = command.commandId() == null ? null : this.context.authenticatedUser().getId();
+        if (Objects.equals(importer, maker) || Objects.equals(importer, checker)) {
+            throw new TreasuryWorkflowException(RECON, "importer.cannot.post.adjustment",
+                    "The user who imported statement " + statementId + " cannot post an adjusting entry from its lines", statementId);
         }
     }
 
