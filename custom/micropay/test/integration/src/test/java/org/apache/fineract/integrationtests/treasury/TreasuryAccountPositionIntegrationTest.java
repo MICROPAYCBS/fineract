@@ -98,9 +98,9 @@ public class TreasuryAccountPositionIntegrationTest {
         postJournalEntry(treasuryGl, contraGl, "75", closedDay);
         postJournalEntry(treasuryGl, contraGl, "5", Utils.getLocalDateOfTenant());
 
-        SchedulerJobHelper.executeAndAwaitJobByShortName("TRS_PSNAP");
+        SchedulerJobHelper.executeAndAwaitJobByShortName("TRS_SNAP");
         // a second run for the same day overwrites rather than duplicates
-        SchedulerJobHelper.executeAndAwaitJobByShortName("TRS_PSNAP");
+        SchedulerJobHelper.executeAndAwaitJobByShortName("TRS_SNAP");
 
         final JsonPath position = get("/accounts/" + accountId + "/position");
         assertThat(position.getString("lastSnapshotDate")).isNotNull();

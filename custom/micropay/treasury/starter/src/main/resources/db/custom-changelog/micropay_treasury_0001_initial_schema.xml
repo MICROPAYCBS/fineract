@@ -29,6 +29,7 @@
 
     <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
     <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
 
     <!-- A place treasury cash sits, linked to one asset GL account, office and currency -->
     <changeSet id="treasury-001" author="micropay">
@@ -194,7 +195,7 @@
     <!-- Day-end snapshot job, inactive until set up; it belongs after "Update GL Balance Snapshots" in a job sequence -->
     <changeSet id="treasury-009" author="micropay">
         <preConditions onFail="MARK_RAN">
-            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_PSNAP'</sqlCheck>
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_SNAP'</sqlCheck>
         </preConditions>
         <insert tableName="job">
             <column name="name" value="Treasury Position Snapshot"/>
@@ -213,7 +214,7 @@
             <column name="is_misfired" valueBoolean="false"/>
             <column name="node_id" valueNumeric="1"/>
             <column name="is_mismatched_job" valueBoolean="true"/>
-            <column name="short_name" value="TRS_PSNAP"/>
+            <column name="short_name" value="TRS_SNAP"/>
         </insert>
     </changeSet>
 
@@ -223,7 +224,7 @@
         </preConditions>
         <update tableName="job">
             <column name="description" value="Writes the day-end position of every active treasury account for the day being closed (business date less one) and logs the accounts outside their minimum or maximum."/>
-            <where>short_name='TRS_PSNAP' AND description IS NULL</where>
+            <where>short_name='TRS_SNAP' AND description IS NULL</where>
         </update>
     </changeSet>
 

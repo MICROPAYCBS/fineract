@@ -56,7 +56,7 @@ Treasury accounts and cash positions (phase 1 of the "Treasury and Funds Managem
   "minBalance": 20000000.000000,
   "maxBalance": 500000000.000000,
   "levelStatus": "ABOVE_MAX",
-  "lastSnapshotDate": [2026, 10, 21],
+  "lastSnapshotDate": "2026-10-21",
   "lastSnapshotBalance": 498000000.000000,
   "lastSnapshotLevelStatus": "OK"
 }
@@ -71,7 +71,7 @@ Treasury accounts and cash positions (phase 1 of the "Treasury and Funds Managem
 
 ## Day-end snapshot
 
-The "Treasury Position Snapshot" job (short name `TRS_PSNAP`) writes one row per active account into `m_treasury_position_snapshot` for the day being closed, the business date less one, which is the day the "Update GL Balance Snapshots" job closes. It counts the journal entries dated that day and before. A rerun for the same day overwrites that day's rows. Accounts outside their minimum or maximum are logged as warnings and the level status is stored with the row; there are no notifications yet.
+The "Treasury Position Snapshot" job (short name `TRS_SNAP`) writes one row per active account into `m_treasury_position_snapshot` for the day being closed, the business date less one, which is the day the "Update GL Balance Snapshots" job closes. It counts the journal entries dated that day and before. A rerun for the same day overwrites that day's rows. Accounts outside their minimum or maximum are logged as warnings and the level status is stored with the row; there are no notifications yet.
 
 The job is created inactive with a 02:45 schedule. Put it in a job sequence (`jobs/sequence`) after `GLB_SNAP`, or turn it on in the scheduler.
 
