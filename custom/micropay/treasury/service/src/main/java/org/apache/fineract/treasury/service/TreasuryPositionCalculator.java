@@ -40,8 +40,16 @@ public final class TreasuryPositionCalculator {
     public record LastSnapshot(LocalDate businessDate, BigDecimal glBalance, String levelStatus) {
     }
 
+    public record ReconStatus(LocalDate lastReconciledDate, long unreconciledCount) {
+    }
+
     public static TreasuryPositionData position(final TreasuryAccountData account, final BigDecimal glBalance, final BigDecimal pendingIn,
             final BigDecimal pendingOut, final LastSnapshot lastSnapshot) {
+        return position(account, glBalance, pendingIn, pendingOut, lastSnapshot, null);
+    }
+
+    public static TreasuryPositionData position(final TreasuryAccountData account, final BigDecimal glBalance, final BigDecimal pendingIn,
+            final BigDecimal pendingOut, final LastSnapshot lastSnapshot, final ReconStatus recon) {
         final BigDecimal balance = zeroIfNull(glBalance);
         final BigDecimal in = zeroIfNull(pendingIn);
         final BigDecimal out = zeroIfNull(pendingOut);
@@ -50,7 +58,8 @@ public final class TreasuryPositionCalculator {
                 account.officeName(), account.currencyCode(), account.glAccountId(), account.glAccountCode(), balance, in, out,
                 balance.add(in).subtract(out), account.minBalance(), account.maxBalance(), levelStatus.name(),
                 lastSnapshot == null ? null : lastSnapshot.businessDate(), lastSnapshot == null ? null : lastSnapshot.glBalance(),
-                lastSnapshot == null ? null : lastSnapshot.levelStatus());
+                lastSnapshot == null ? null : lastSnapshot.levelStatus(), recon == null ? null : recon.lastReconciledDate(),
+                recon == null ? null : recon.unreconciledCount());
     }
 
     /**

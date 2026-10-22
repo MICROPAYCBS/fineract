@@ -23,11 +23,12 @@ import java.time.LocalDate;
 
 /**
  * Live position of one treasury account. {@code balance} is the GL balance (debits less credits) of the account's GL
- * account in its office and currency; {@code projectedBalance} adds transfers in transit, which the transfers of P1.2
- * fill in. The level status compares {@code balance} with the minimum and maximum.
+ * account in its office and currency; {@code projectedBalance} adds transfers in transit. The level status compares
+ * {@code balance} with the minimum and maximum. {@code lastReconciledDate} and {@code unreconciledCount} (statement
+ * lines and GL entries not matched) come from the statement reconciliation.
  */
 public record TreasuryPositionData(Long treasuryAccountId, String code, String name, String accountType, Long officeId, String officeName,
         String currencyCode, Long glAccountId, String glAccountCode, BigDecimal balance, BigDecimal pendingIn, BigDecimal pendingOut,
         BigDecimal projectedBalance, BigDecimal minBalance, BigDecimal maxBalance, String levelStatus, LocalDate lastSnapshotDate,
-        BigDecimal lastSnapshotBalance, String lastSnapshotLevelStatus) {
+        BigDecimal lastSnapshotBalance, String lastSnapshotLevelStatus, LocalDate lastReconciledDate, Long unreconciledCount) {
 }

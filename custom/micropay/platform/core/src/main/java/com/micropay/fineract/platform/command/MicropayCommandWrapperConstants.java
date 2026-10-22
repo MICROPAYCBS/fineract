@@ -73,4 +73,11 @@ public final class MicropayCommandWrapperConstants {
     public static final String ACTION_TREASURY_SEND = "SEND";
     public static final String ACTION_TREASURY_RECEIVE = "RECEIVE";
     public static final String ACTION_TREASURY_REVERSE = "REVERSE";
+    public static final String ENTITY_TREASURYSTATEMENT = "TREASURYSTATEMENT";
+    public static final String ENTITY_TREASURYSTATEMENTFORMAT = "TREASURYSTATEMENTFORMAT";
+    public static final String ENTITY_TREASURYSTATEMENTLINE = "TREASURYSTATEMENTLINE";
+    public static final String ENTITY_TREASURYRECONMATCH = "TREASURYRECONMATCH";
+    public static final String ACTION_TREASURY_AUTOMATCH = "AUTOMATCH";
+    public static final String ACTION_TREASURY_UNMATCH = "UNMATCH";
+    public static final String ACTION_TREASURY_EXPLAIN = "EXPLAIN";
 }

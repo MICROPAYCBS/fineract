@@ -1,0 +1,6 @@
+Stanbic Bank Uganda - Account statement
+Date,Value Date,Description,Reference,Debit,Credit,Balance
+15/10/2026,15/10/2026,"Opening transfer, Head Office",HO-001,,"1,000,000.00","6,000,000.00"
+15/10/2026,16/10/2026,Bank charges,CHG-77,"5,500.00",,"5,994,500.00"
+16/10/2026,16/10/2026,"Vault top-up ""Kampala""",TR-TFS-12,"250,000.00",,"5,744,500.00"
+

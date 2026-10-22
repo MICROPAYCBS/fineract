@@ -60,6 +60,7 @@ public class TreasuryAccountReadPlatformServiceImpl implements TreasuryAccountRe
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final TreasuryBalanceReader balanceReader;
+    private final TreasuryReconciliationReadService reconciliationReadService;
 
     @Override
     public List<TreasuryAccountData> retrieveAccounts(final Long officeId, final String currencyCode, final String accountType,
@@ -116,7 +117,7 @@ public class TreasuryAccountReadPlatformServiceImpl implements TreasuryAccountRe
         return accounts.stream().map(account -> {
             final Pending accountPending = pending.getOrDefault(account.id(), Pending.NONE);
             return TreasuryPositionCalculator.position(account, balances.get(account.id()), accountPending.in(), accountPending.out(),
-                    snapshots.get(account.id()));
+                    snapshots.get(account.id()), this.reconciliationReadService.reconStatus(account.id()));
         }).toList();
     }
 

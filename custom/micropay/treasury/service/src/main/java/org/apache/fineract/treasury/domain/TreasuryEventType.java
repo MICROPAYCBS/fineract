@@ -26,7 +26,9 @@ public enum TreasuryEventType {
     TRANSFER_SEND("TFS"), //
     TRANSFER_RECEIVE("TFR"), //
     TRANSFER_SEND_REVERSAL("TFSX"), //
-    TRANSFER_RECEIVE_REVERSAL("TFRX"); //
+    TRANSFER_RECEIVE_REVERSAL("TFRX"), //
+    STATEMENT_ADJUSTMENT("SA"), //
+    STATEMENT_ADJUSTMENT_REVERSAL("SAX"); //
 
     private final String code;
 

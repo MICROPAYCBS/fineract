@@ -22,6 +22,10 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_INSUFF
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.FLOAT_PAYMENT_TYPE_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_REFERENCE_RULE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_SAME_DATE_RULE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_DAYS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_RULE_PARAM;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -100,6 +104,22 @@ public class TreasurySettingService {
         if (request.has(ALLOW_INSUFFICIENT_BALANCE_PARAM) && setting.isAllowInsufficientBalance() != request.allowInsufficientBalance()) {
             setting.setAllowInsufficientBalance(request.allowInsufficientBalance());
             changes.put(ALLOW_INSUFFICIENT_BALANCE_PARAM, request.allowInsufficientBalance());
+        }
+        if (request.has(RECON_REFERENCE_RULE_PARAM) && setting.isReconReferenceRule() != request.reconReferenceRule()) {
+            setting.setReconReferenceRule(request.reconReferenceRule());
+            changes.put(RECON_REFERENCE_RULE_PARAM, request.reconReferenceRule());
+        }
+        if (request.has(RECON_SAME_DATE_RULE_PARAM) && setting.isReconSameDateRule() != request.reconSameDateRule()) {
+            setting.setReconSameDateRule(request.reconSameDateRule());
+            changes.put(RECON_SAME_DATE_RULE_PARAM, request.reconSameDateRule());
+        }
+        if (request.has(RECON_WINDOW_RULE_PARAM) && setting.isReconWindowRule() != request.reconWindowRule()) {
+            setting.setReconWindowRule(request.reconWindowRule());
+            changes.put(RECON_WINDOW_RULE_PARAM, request.reconWindowRule());
+        }
+        if (request.has(RECON_WINDOW_DAYS_PARAM) && setting.getReconWindowDays() != request.reconWindowDays()) {
+            setting.setReconWindowDays(request.reconWindowDays());
+            changes.put(RECON_WINDOW_DAYS_PARAM, request.reconWindowDays());
         }
         if (setting.getId() == null || !changes.isEmpty()) {
             this.settingRepository.saveAndFlush(setting);

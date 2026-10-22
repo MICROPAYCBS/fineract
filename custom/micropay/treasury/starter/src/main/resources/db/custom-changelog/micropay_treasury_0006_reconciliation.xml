@@ -1,0 +1,628 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P1.3. Statement import formats, imported statements and their lines, reconciliation matches
+  and their items, the auto-match settings, the explanation reasons and the reconciliation permissions.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0006_reconciliation.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-recon-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_statement_format"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_statement_format">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_treasury_statement_format_code"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="format_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="delimiter_char" type="VARCHAR(1)"/>
+            <column name="header_rows" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_format" type="VARCHAR(30)"/>
+            <column name="decimal_separator" type="VARCHAR(1)"/>
+            <column name="date_column" type="VARCHAR(100)"/>
+            <column name="value_date_column" type="VARCHAR(100)"/>
+            <column name="description_column" type="VARCHAR(100)"/>
+            <column name="reference_column" type="VARCHAR(100)"/>
+            <column name="debit_column" type="VARCHAR(100)"/>
+            <column name="credit_column" type="VARCHAR(100)"/>
+            <column name="amount_column" type="VARCHAR(100)"/>
+            <column name="balance_column" type="VARCHAR(100)"/>
+            <column name="invert_amount" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-recon-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_statement_format WHERE code = 'MT940'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_statement_format">
+            <column name="code" value="MT940"/>
+            <column name="name" value="SWIFT MT940 customer statement"/>
+            <column name="format_type" value="MT940"/>
+            <column name="header_rows" valueNumeric="0"/>
+            <column name="invert_amount" valueBoolean="false"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+            <column name="created_by" valueNumeric="1"/>
+            <column name="last_modified_on_utc" valueDate="${current_datetime}"/>
+            <column name="last_modified_by" valueNumeric="1"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_statement"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_statement">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="treasury_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_statement_account" references="m_treasury_account(id)"/>
+            </column>
+            <column name="format_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_statement_format" references="m_treasury_statement_format(id)"/>
+            </column>
+            <column name="statement_reference" type="VARCHAR(100)"/>
+            <column name="file_name" type="VARCHAR(255)"/>
+            <column name="file_hash" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="period_from" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="period_to" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opening_balance" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="closing_balance" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_count" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="imported_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="imported_on_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_statement" columnNames="treasury_account_id, file_hash"
+                             constraintName="uq_treasury_statement_account_hash"/>
+    </changeSet>
+
+    <changeSet id="treasury-recon-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_recon_match"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_recon_match">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="treasury_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_recon_match_account" references="m_treasury_account(id)"/>
+            </column>
+            <column name="match_rule" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="matched_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="matched_on_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reason_code_value_id" type="INT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_recon_match_reason" references="m_code_value(id)"/>
+            </column>
+            <column name="note" type="VARCHAR(500)"/>
+            <column name="adjustment_transaction_id" type="VARCHAR(50)"/>
+            <column name="unmatched_by" type="BIGINT"/>
+            <column name="unmatched_on_date" type="DATE"/>
+            <column name="unmatch_reason" type="VARCHAR(500)"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_recon_match" indexName="idx_treasury_recon_match_account_status">
+            <column name="treasury_account_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-recon-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_statement_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_statement_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="statement_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_statement_line_statement" references="m_treasury_statement(id)"/>
+            </column>
+            <column name="treasury_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_statement_line_account" references="m_treasury_account(id)"/>
+            </column>
+            <column name="line_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_date" type="DATE"/>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)"/>
+            <column name="reference" type="VARCHAR(150)"/>
+            <column name="running_balance" type="DECIMAL(19,6)"/>
+            <column name="line_key" type="VARCHAR(64)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="match_status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="match_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_statement_line_match" references="m_treasury_recon_match(id)"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_statement_line" columnNames="treasury_account_id, line_key"
+                             constraintName="uq_treasury_statement_line_key"/>
+        <createIndex tableName="m_treasury_statement_line" indexName="idx_treasury_statement_line_statement">
+            <column name="statement_id"/>
+            <column name="match_status"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_statement_line" indexName="idx_treasury_statement_line_account_status">
+            <column name="treasury_account_id"/>
+            <column name="match_status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-recon-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_recon_match_item"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_recon_match_item">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="match_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_recon_item_match" references="m_treasury_recon_match(id)"/>
+            </column>
+            <column name="statement_line_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_recon_item_line" references="m_treasury_statement_line(id)"/>
+            </column>
+            <column name="journal_entry_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_recon_item_entry" references="acc_gl_journal_entry(id)"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_recon_match_item" indexName="idx_treasury_recon_item_match">
+            <column name="match_id"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_recon_match_item" indexName="idx_treasury_recon_item_entry">
+            <column name="journal_entry_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-recon-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_setting" columnName="recon_window_days"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_setting">
+            <column name="recon_reference_rule" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recon_same_date_rule" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recon_window_rule" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="recon_window_days" type="INT" defaultValueNumeric="3">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="treasury-recon-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code WHERE code_name = 'TreasuryReconExplanation'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code">
+            <column name="code_name" value="TreasuryReconExplanation"/>
+            <column name="is_system_defined" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-code-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code_value cv JOIN m_code c ON cv.code_id = c.id WHERE c.code_name = 'TreasuryReconExplanation' AND cv.code_value = 'BANK_CHARGE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'TreasuryReconExplanation')"/>
+            <column name="code_value" value="BANK_CHARGE"/>
+            <column name="code_description" value="Bank charge or fee not yet booked"/>
+            <column name="order_position" valueNumeric="1"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-code-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code_value cv JOIN m_code c ON cv.code_id = c.id WHERE c.code_name = 'TreasuryReconExplanation' AND cv.code_value = 'INTEREST'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'TreasuryReconExplanation')"/>
+            <column name="code_value" value="INTEREST"/>
+            <column name="code_description" value="Interest paid or earned not yet booked"/>
+            <column name="order_position" valueNumeric="2"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-code-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code_value cv JOIN m_code c ON cv.code_id = c.id WHERE c.code_name = 'TreasuryReconExplanation' AND cv.code_value = 'TIMING'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'TreasuryReconExplanation')"/>
+            <column name="code_value" value="TIMING"/>
+            <column name="code_description" value="Timing difference that clears in a later period"/>
+            <column name="order_position" valueNumeric="3"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-code-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code_value cv JOIN m_code c ON cv.code_id = c.id WHERE c.code_name = 'TreasuryReconExplanation' AND cv.code_value = 'BANK_ERROR'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'TreasuryReconExplanation')"/>
+            <column name="code_value" value="BANK_ERROR"/>
+            <column name="code_description" value="Error by the bank, to be corrected by the bank"/>
+            <column name="order_position" valueNumeric="4"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-code-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code_value cv JOIN m_code c ON cv.code_id = c.id WHERE c.code_name = 'TreasuryReconExplanation' AND cv.code_value = 'OTHER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code_value">
+            <column name="code_id" valueComputed="(SELECT id FROM m_code WHERE code_name = 'TreasuryReconExplanation')"/>
+            <column name="code_value" value="OTHER"/>
+            <column name="code_description" value="Other reason, see the note"/>
+            <column name="order_position" valueNumeric="5"/>
+            <column name="is_active" valueBoolean="true"/>
+            <column name="is_mandatory" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYSTATEMENT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="READ_TREASURYSTATEMENT"/>
+            <column name="entity_name" value="TREASURYSTATEMENT"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYSTATEMENT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYSTATEMENT"/>
+            <column name="entity_name" value="TREASURYSTATEMENT"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYSTATEMENT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYSTATEMENT_CHECKER"/>
+            <column name="entity_name" value="TREASURYSTATEMENT"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'AUTOMATCH_TREASURYSTATEMENT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="AUTOMATCH_TREASURYSTATEMENT"/>
+            <column name="entity_name" value="TREASURYSTATEMENT"/>
+            <column name="action_name" value="AUTOMATCH"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'AUTOMATCH_TREASURYSTATEMENT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="AUTOMATCH_TREASURYSTATEMENT_CHECKER"/>
+            <column name="entity_name" value="TREASURYSTATEMENT"/>
+            <column name="action_name" value="AUTOMATCH_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYSTATEMENTFORMAT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="READ_TREASURYSTATEMENTFORMAT"/>
+            <column name="entity_name" value="TREASURYSTATEMENTFORMAT"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYSTATEMENTFORMAT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYSTATEMENTFORMAT"/>
+            <column name="entity_name" value="TREASURYSTATEMENTFORMAT"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYSTATEMENTFORMAT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYSTATEMENTFORMAT_CHECKER"/>
+            <column name="entity_name" value="TREASURYSTATEMENTFORMAT"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYSTATEMENTFORMAT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYSTATEMENTFORMAT"/>
+            <column name="entity_name" value="TREASURYSTATEMENTFORMAT"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYSTATEMENTFORMAT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYSTATEMENTFORMAT_CHECKER"/>
+            <column name="entity_name" value="TREASURYSTATEMENTFORMAT"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'EXPLAIN_TREASURYSTATEMENTLINE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="EXPLAIN_TREASURYSTATEMENTLINE"/>
+            <column name="entity_name" value="TREASURYSTATEMENTLINE"/>
+            <column name="action_name" value="EXPLAIN"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'EXPLAIN_TREASURYSTATEMENTLINE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="EXPLAIN_TREASURYSTATEMENTLINE_CHECKER"/>
+            <column name="entity_name" value="TREASURYSTATEMENTLINE"/>
+            <column name="action_name" value="EXPLAIN_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYRECONMATCH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="READ_TREASURYRECONMATCH"/>
+            <column name="entity_name" value="TREASURYRECONMATCH"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-014" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYRECONMATCH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYRECONMATCH"/>
+            <column name="entity_name" value="TREASURYRECONMATCH"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-015" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYRECONMATCH_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYRECONMATCH_CHECKER"/>
+            <column name="entity_name" value="TREASURYRECONMATCH"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-016" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UNMATCH_TREASURYRECONMATCH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UNMATCH_TREASURYRECONMATCH"/>
+            <column name="entity_name" value="TREASURYRECONMATCH"/>
+            <column name="action_name" value="UNMATCH"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-recon-perm-017" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UNMATCH_TREASURYRECONMATCH_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UNMATCH_TREASURYRECONMATCH_CHECKER"/>
+            <column name="entity_name" value="TREASURYRECONMATCH"/>
+            <column name="action_name" value="UNMATCH_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

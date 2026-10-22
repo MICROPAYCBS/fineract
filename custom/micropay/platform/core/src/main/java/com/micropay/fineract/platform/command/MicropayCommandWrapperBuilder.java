@@ -30,9 +30,12 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SCORE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBMIT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBSCRIBE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_AUTOMATCH;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_EXPLAIN;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_RECEIVE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_REVERSE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_SEND;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_UNMATCH;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNSUBSCRIBE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UPDATECHANNELLIMIT;
@@ -59,7 +62,11 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYACCOUNT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYAGENTFLOAT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYFLOATREQUEST;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYRECONMATCH;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYSETTING;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYSTATEMENT;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYSTATEMENTFORMAT;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYSTATEMENTLINE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYTRANSFER;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_USERSESSION;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_WORKFLOW_DEFINITION;
@@ -878,6 +885,59 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = ENTITY_TREASURYFLOATREQUEST;
         this.entityId = requestId;
         this.href = "/treasury/float-requests/" + requestId + "?command=" + command;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder importTreasuryStatement() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYSTATEMENT;
+        this.href = "/treasury/statements";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder automatchTreasuryStatement(final Long statementId) {
+        this.actionName = ACTION_TREASURY_AUTOMATCH;
+        this.entityName = ENTITY_TREASURYSTATEMENT;
+        this.entityId = statementId;
+        this.href = "/treasury/statements/" + statementId + "?command=automatch";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder explainTreasuryStatementLine(final Long lineId) {
+        this.actionName = ACTION_TREASURY_EXPLAIN;
+        this.entityName = ENTITY_TREASURYSTATEMENTLINE;
+        this.entityId = lineId;
+        this.href = "/treasury/statements/lines/" + lineId + "?command=explain";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTreasuryReconMatch() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYRECONMATCH;
+        this.href = "/treasury/reconciliation/matches";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder unmatchTreasuryReconMatch(final Long matchId) {
+        this.actionName = ACTION_TREASURY_UNMATCH;
+        this.entityName = ENTITY_TREASURYRECONMATCH;
+        this.entityId = matchId;
+        this.href = "/treasury/reconciliation/matches/" + matchId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTreasuryStatementFormat() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYSTATEMENTFORMAT;
+        this.href = "/treasury/statement-formats";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTreasuryStatementFormat(final Long formatId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TREASURYSTATEMENTFORMAT;
+        this.entityId = formatId;
+        this.href = "/treasury/statement-formats/" + formatId;
         return this;
     }
 }

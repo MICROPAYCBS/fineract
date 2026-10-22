@@ -50,4 +50,19 @@ public class TreasurySetting extends AbstractAuditableWithUTCDateTimeCustom<Long
     /** When false (the default), a transfer is not sent if the source GL balance is below the amount. */
     @Column(name = "allow_insufficient_balance", nullable = false)
     private boolean allowInsufficientBalance;
+
+    /** Auto-match rule (a): same amount and the statement mentions the entry's transaction id or reference. */
+    @Column(name = "recon_reference_rule", nullable = false)
+    private boolean reconReferenceRule = true;
+
+    /** Auto-match rule (b): same amount and same date. */
+    @Column(name = "recon_same_date_rule", nullable = false)
+    private boolean reconSameDateRule = true;
+
+    /** Auto-match rule (c): same amount within {@link #reconWindowDays} days, when only one entry fits. */
+    @Column(name = "recon_window_rule", nullable = false)
+    private boolean reconWindowRule = true;
+
+    @Column(name = "recon_window_days", nullable = false)
+    private int reconWindowDays = 3;
 }

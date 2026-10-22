@@ -36,6 +36,10 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.MAX_FLOAT_PA
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MIN_FLOAT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.NOTE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REASON_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_REFERENCE_RULE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_SAME_DATE_RULE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_DAYS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_RULE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REFERENCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REQUEST_TYPE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.SAVINGS_ACCOUNT_ID_PARAM;
@@ -97,7 +101,8 @@ public class TreasuryWorkflowDataValidator {
 
     /** Only the fields present are changed. */
     public record SettingRequest(String currencyCode, Set<String> parametersPassed, Long cashInTransitGlAccountId, Long floatPaymentTypeId,
-            Boolean allowInsufficientBalance) {
+            Boolean allowInsufficientBalance, Boolean reconReferenceRule, Boolean reconSameDateRule, Boolean reconWindowRule,
+            Integer reconWindowDays) {
 
         public boolean has(final String parameterName) {
             return this.parametersPassed.contains(parameterName);
@@ -170,11 +175,19 @@ public class TreasuryWorkflowDataValidator {
         if (object.has(ALLOW_INSUFFICIENT_BALANCE_PARAM)) {
             validator.reset().parameter(ALLOW_INSUFFICIENT_BALANCE_PARAM).value(allowInsufficient).notNull();
         }
+        final Boolean referenceRule = booleanIfPresent(object, RECON_REFERENCE_RULE_PARAM, validator);
+        final Boolean sameDateRule = booleanIfPresent(object, RECON_SAME_DATE_RULE_PARAM, validator);
+        final Boolean windowRule = booleanIfPresent(object, RECON_WINDOW_RULE_PARAM, validator);
+        final Integer windowDays = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(RECON_WINDOW_DAYS_PARAM, object);
+        if (object.has(RECON_WINDOW_DAYS_PARAM)) {
+            validator.reset().parameter(RECON_WINDOW_DAYS_PARAM).value(windowDays).notNull().integerZeroOrGreater().notGreaterThanMax(31);
+        }
         if (object.keySet().size() == 1) {
             validator.reset().parameter(CURRENCY_CODE_PARAM).failWithCode("no.settings.passed");
         }
         throwIfAny(errors);
-        return new SettingRequest(currencyCode.toUpperCase(), Set.copyOf(object.keySet()), inTransitGl, paymentTypeId, allowInsufficient);
+        return new SettingRequest(currencyCode.toUpperCase(), Set.copyOf(object.keySet()), inTransitGl, paymentTypeId, allowInsufficient,
+                referenceRule, sameDateRule, windowRule, windowDays);
     }
 
     public AgentFloatRequest validateAgentFloatForCreate(final String json) {
@@ -290,6 +303,14 @@ public class TreasuryWorkflowDataValidator {
             validator.reset().parameter(parameterName).value(value).failWithCode("invalid.date.format", format);
             return null;
         }
+    }
+
+    private Boolean booleanIfPresent(final JsonObject object, final String parameterName, final DataValidatorBuilder validator) {
+        final Boolean value = this.fromApiJsonHelper.extractBooleanNamed(parameterName, object);
+        if (object.has(parameterName)) {
+            validator.reset().parameter(parameterName).value(value).notNull();
+        }
+        return value;
     }
 
     private static void throwIfAny(final List<ApiParameterError> errors) {

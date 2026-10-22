@@ -51,6 +51,10 @@ public class TreasuryReferenceDataLookup {
         public boolean isAssetDetail() {
             return this.classification == GL_CLASSIFICATION_ASSET && this.usage == GL_USAGE_DETAIL;
         }
+
+        public boolean isDetail() {
+            return this.usage == GL_USAGE_DETAIL;
+        }
     }
 
     public Optional<GlAccountInfo> findGlAccount(final Long glAccountId) {

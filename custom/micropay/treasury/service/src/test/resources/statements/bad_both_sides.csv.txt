@@ -1,0 +1,2 @@
+Date,Value Date,Description,Reference,Debit,Credit,Balance
+15/10/2026,15/10/2026,Both sides,X1,10.00,20.00,
