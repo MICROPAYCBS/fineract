@@ -135,7 +135,7 @@ public class TreasuryCounterpartyService {
     @Transactional(readOnly = true)
     public TreasuryExposureData exposure(final Long counterpartyId) {
         final TreasuryCounterparty counterparty = find(counterpartyId);
-        final List<TreasuryDeal> deals = exposedDeals(counterpartyId, null);
+        final List<TreasuryDeal> deals = exposedDeals(counterpartyId);
         final BigDecimal exposure = sum(deals);
         final LimitCheck.Result result = LimitCheck.evaluate(counterparty.getExposureLimit(), counterparty.getWarningPercent(), exposure,
                 BigDecimal.ZERO);
@@ -158,12 +158,14 @@ public class TreasuryCounterpartyService {
                     counterparty.getId(), counterparty.getLimitCurrencyCode(), deal.getCurrencyCode());
         }
         return LimitCheck.evaluate(counterparty.getExposureLimit(), counterparty.getWarningPercent(),
-                sum(exposedDeals(counterparty.getId(), deal.getId())), deal.getExposureAmount());
+                sum(exposedDeals(counterparty.getId(), deal.getId(), deal.getRolledFromDealId())), deal.getExposureAmount());
     }
 
-    private List<TreasuryDeal> exposedDeals(final Long counterpartyId, final Long excludedDealId) {
+    /** The deal itself and, for a rollover, the deal it replaces are left out: they are one exposure. */
+    private List<TreasuryDeal> exposedDeals(final Long counterpartyId, final Long... excludedDealIds) {
+        final List<Long> excluded = Arrays.asList(excludedDealIds);
         return this.dealRepository.findByCounterpartyIdAndStatusIn(counterpartyId, EXPOSED).stream()
-                .filter(deal -> !Objects.equals(deal.getId(), excludedDealId))
+                .filter(deal -> deal.getId() == null || !excluded.contains(deal.getId()))
                 .filter(deal -> deal.getExposureAmount() != null && deal.getExposureAmount().signum() > 0).toList();
     }
 

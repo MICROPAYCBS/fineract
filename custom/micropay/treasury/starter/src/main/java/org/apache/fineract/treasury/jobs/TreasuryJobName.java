@@ -24,7 +24,8 @@ package org.apache.fineract.treasury.jobs;
  */
 public enum TreasuryJobName {
 
-    TREASURY_POSITION_SNAPSHOT("Treasury Position Snapshot"); //
+    TREASURY_POSITION_SNAPSHOT("Treasury Position Snapshot"), //
+    TREASURY_ACCRUAL("Treasury Accrual"); //
 
     private final String name;
 

@@ -24,6 +24,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.AGENT_FLOAT_
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_INSUFFICIENT_BALANCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_LIMIT_REFERRAL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.AMOUNT_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.AUTO_SETTLE_CASHFLOWS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CLIENT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CURRENCY_CODE_PARAM;
@@ -43,6 +44,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_RULE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REFERENCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REQUEST_TYPE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.ROLLOVER_WINDOW_DAYS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.SAVINGS_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.SETTING_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.TO_ACCOUNT_ID_PARAM;
@@ -103,7 +105,7 @@ public class TreasuryWorkflowDataValidator {
     /** Only the fields present are changed. */
     public record SettingRequest(String currencyCode, Set<String> parametersPassed, Long cashInTransitGlAccountId, Long floatPaymentTypeId,
             Boolean allowInsufficientBalance, Boolean reconReferenceRule, Boolean reconSameDateRule, Boolean reconWindowRule,
-            Integer reconWindowDays, Boolean allowLimitReferral) {
+            Integer reconWindowDays, Boolean allowLimitReferral, Boolean autoSettleCashflows, Integer rolloverWindowDays) {
 
         public boolean has(final String parameterName) {
             return this.parametersPassed.contains(parameterName);
@@ -180,6 +182,12 @@ public class TreasuryWorkflowDataValidator {
         final Boolean sameDateRule = booleanIfPresent(object, RECON_SAME_DATE_RULE_PARAM, validator);
         final Boolean windowRule = booleanIfPresent(object, RECON_WINDOW_RULE_PARAM, validator);
         final Boolean limitReferral = booleanIfPresent(object, ALLOW_LIMIT_REFERRAL_PARAM, validator);
+        final Boolean autoSettle = booleanIfPresent(object, AUTO_SETTLE_CASHFLOWS_PARAM, validator);
+        final Integer rolloverWindow = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(ROLLOVER_WINDOW_DAYS_PARAM, object);
+        if (object.has(ROLLOVER_WINDOW_DAYS_PARAM)) {
+            validator.reset().parameter(ROLLOVER_WINDOW_DAYS_PARAM).value(rolloverWindow).notNull().integerZeroOrGreater()
+                    .notGreaterThanMax(31);
+        }
         final Integer windowDays = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(RECON_WINDOW_DAYS_PARAM, object);
         if (object.has(RECON_WINDOW_DAYS_PARAM)) {
             validator.reset().parameter(RECON_WINDOW_DAYS_PARAM).value(windowDays).notNull().integerZeroOrGreater().notGreaterThanMax(31);
@@ -189,7 +197,7 @@ public class TreasuryWorkflowDataValidator {
         }
         throwIfAny(errors);
         return new SettingRequest(currencyCode.toUpperCase(), Set.copyOf(object.keySet()), inTransitGl, paymentTypeId, allowInsufficient,
-                referenceRule, sameDateRule, windowRule, windowDays, limitReferral);
+                referenceRule, sameDateRule, windowRule, windowDays, limitReferral, autoSettle, rolloverWindow);
     }
 
     public AgentFloatRequest validateAgentFloatForCreate(final String json) {

@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits (phase 2, P2.1: TR-10 to TR-13 and TR-18). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the "Treasury Position Snapshot" job and the Liquibase changelogs.
@@ -91,6 +91,8 @@ The job is created inactive with a 02:45 schedule. Put it in a job sequence (`jo
 - `allowInsufficientBalance` (default `false`): when false, a transfer is not sent if the source account's GL balance is below the amount.
 - `reconReferenceRule`, `reconSameDateRule`, `reconWindowRule` (all default `true`) and `reconWindowDays` (default 3, at most 31): the automatic matching rules of the statement reconciliation.
 - `allowLimitReferral` (default `false`): when true, a deal above its counterparty's limit is captured and flagged for an over-limit approval instead of being refused.
+- `autoSettleCashflows` (default `true`): the accrual job settles deal cash flows on their due dates; when false they are settled with `?command=settleCashflow`.
+- `rolloverWindowDays` (default 3): how many days before its maturity a deal may be rolled over.
 
 `GET /v1/treasury/settings` lists them.
 
@@ -259,7 +261,7 @@ Lifecycle, `POST /v1/treasury/deals/{id}?command=...`, each its own permission:
 | `settle` | CONFIRMED | | not the confirmer |
 | `cancel` | CAPTURED, APPROVED, CONFIRMED | `reason` | anyone with the permission |
 
-Under maker-checker a step is credited to its maker. `MATURED`, `TERMINATED` and `ROLLED_OVER` are reserved for accrual, maturity, early termination and rollover, which come next.
+Under maker-checker a step is credited to its maker. After settlement a deal ends `MATURED`, `TERMINATED` or `ROLLED_OVER`; see below.
 
 **Settlement** posts on the value date (which may not be after the business date; closed GL periods are refused) under `TR-DS-<deal id>`, all in the settlement account's office:
 
@@ -280,6 +282,39 @@ Under maker-checker a step is credited to its maker. `MATURED`, `TERMINATED` and
 ### Counterparty limits
 
 At capture, at every edit and again at approval, an asset deal is checked against its counterparty's limit. The exposure is the sum of what the counterparty's other approved, confirmed and settled asset deals add (principal, or face value for bills and bonds) plus the new deal. Borrowings from the counterparty and balances in treasury accounts held with it are not counted. At or above `warningPercent` the response carries a `warning` and the deal's history a `LIMIT_WARNING`. Above the limit the deal is refused, unless the currency's `allowLimitReferral` setting is on: then it is captured with `limitExceeded` and a `LIMIT_EXCEEDED` event, and its approver needs `APPROVE_TREASURYDEAL_OVERLIMIT`. A limit in another currency than the deal is refused until FX rates are available.
+
+### Accrual, cash flows and maturity
+
+The "Treasury Accrual" job (short name `TRS_ACCR`, created inactive, cron 02:30; run it before the position snapshot in a job sequence) takes every `SETTLED` deal through the closed business day, the business date less one, as the snapshot does. Interest for a date covers the days from the value date up to, not including, it, so the run for the 15th takes a deal to the 16th, posted on the 15th.
+
+- Each run works out what the deal has earned **cumulatively** up to the date and posts the difference from what was posted before, as one journal entry `TR-DA-<deal>-<n>`, recorded in `m_treasury_deal_accrual`. A rerun for the same date posts nothing; rounding never drifts; at maturity the totals are exactly the schedule's.
+- Each deal runs in its own transaction. A closed GL period, or anything else that stops one deal, is logged and that deal is skipped; the rest carry on and the job does not fail.
+
+What accrues:
+
+- **Placements, deposits**: interest on the principal outstanding by the deal's day count, the scheduled amount for periods ended. Dr interest receivable / Cr interest income. **Borrowings**: Dr interest expense / Cr interest payable.
+- **Treasury bills**: the bill is carried at its price for the days still to run at the dealt yield, on the basis used at purchase, so it grows from the consideration to face exactly at maturity. Dr principal (bills) / Cr interest income.
+- **Bonds**: coupon income is the coupons fallen due plus the coupon accrued on the date, less the accrued interest bought: Dr interest receivable / Cr interest income. Premium or discount (bonds at `AMORTISED_COST` or `FVOCI`) is amortised through the premium or discount account against interest income, by effective interest (the default) or straight-line, the deal type's `amortisationMethod`. Effective interest works by coupon period: the yield per period prices the remaining flows at the dirty purchase price (the first period counted by the fraction still to run, ICMA), the amortised cost on each coupon date is the remaining flows at that yield, and each period's change is spread evenly by days within it. `FVTPL` bonds are not amortised; what is left is released at maturity.
+- **Fees**: a deal type with `feeMethod: AMORTISE` (needs `deferredFeeGlAccountId`, an asset, and `feeExpenseGlAccountId`) defers fees at settlement, Dr deferred fee / Cr settlement account, and the job amortises them to fee expense, straight-line or in proportion to the interest earned (`amortisationMethod`). `EXPENSE_IMMEDIATELY` (the default, and what deals settled before this release used) expenses them at settlement.
+
+**Cash flows** due by the closed day are then settled, unless the currency's `autoSettleCashflows` is off (`TR-DC-<cashflow>-<n>`, dated the due date):
+
+- interest or coupon received: Dr settlement account / Cr interest receivable; principal or face back: Dr settlement account / Cr principal (a bill's principal has grown to face by then);
+- borrowings: Dr interest payable or principal / Cr settlement account. A payment the settlement account cannot cover (and `allowInsufficientBalance` is off) is not made: the deal gets a `CASHFLOW_BREACH` event and the flow stays open for the next run.
+
+`POST /v1/treasury/deals/{id}?command=settleCashflow` with `{"cashflowId": 812, "amount": 14000000, "transactionDate": "2027-01-14"}` settles one by hand, on or after its due date (it accrues the deal to the due date first): when automatic settlement is off, or the amount paid differs. A smaller amount leaves the rest open and the flow `PARTIAL`.
+
+When every cash flow is settled the deal is `MATURED` (or `ROLLED_OVER`), its exposure is zero, and anything left of a premium, discount or deferred fee is released on the maturity date. Exposure falls as principal comes back. The maturity calendar shows each flow's status (`EXPECTED`, `PARTIAL`, `SETTLED`, `CANCELLED`) and the amount settled.
+
+### Early termination
+
+`POST /v1/treasury/deals/{id}?command=terminate` with `{"transactionDate": "2026-11-30", "proceeds": 507000000, "breakCost": 0, "reason": "Liquidity needed"}` ends a settled deal on a date from its last accrual up to the business date and before maturity. It accrues to that date, then takes the whole carrying amount off the books (`TR-DT-<deal>`): principal, unamortised premium or discount, accrued interest and deferred fees against the proceeds, the difference to the deal type's `realisedGainGlAccountId` (income) or `realisedLossGlAccountId` (expense), both required to terminate. A break cost is paid out on top: Dr realised loss / Cr settlement account. For borrowings it is an early repayment: Dr principal and interest payable / Cr settlement account for the amount paid. Open cash flows are `CANCELLED`, the deal `TERMINATED`, with the realised result stored. The user who settled the deal may not terminate it. Only whole deals are terminated; partial disposals are a follow-up.
+
+Example: 500,000,000 placed at 12% and repaid after 45 days for 507,000,000. The accrued interest is 7,397,260.27, so the carrying amount is 507,397,260.27 and the realised loss 397,260.27: Dr settlement 507,000,000, Dr realised loss 397,260.27, Cr principal 500,000,000, Cr interest receivable 7,397,260.27.
+
+### Rollover
+
+`POST /v1/treasury/deals/{id}?command=rollover` with `{"rate": 11.5, "maturityDate": "2027-04-14", "capitaliseInterest": true}`, from `rolloverWindowDays` before a settled placement's, deposit's or borrowing's maturity up to the maturity date, captures a new deal: same type, counterparty and settlement account, value date the old maturity date, principal the old principal outstanding, plus the interest due at maturity when `capitaliseInterest` is true. The old deal matures as usual and pays in what it owes; the new deal settles on the same date and takes the rolled amount out, so only the part not rolled over moves cash. The old deal ends `ROLLED_OVER`, linked both ways (`rolledToDealId`, `rolledFromDealId`). The new deal needs approval like any other; it starts `APPROVED`, carrying the original approval, when the old deal was captured with `rolloverPreApproved: true`, the tenor is no longer, the amount no more than the maturity proceeds and the limit is not exceeded (its history says why). The limit check counts the old and new deal once. Bills and bonds are not rolled over: the new one is bought as a new deal. The user who settled the old deal may not roll it over.
 
 ## Tables
 
@@ -302,6 +337,7 @@ At capture, at every edit and again at approval, an asset deal is checked agains
 | `m_treasury_deal` | Deals: terms, computed consideration and settlement split, exposure, status and who took each step. |
 | `m_treasury_deal_cashflow` | The expected principal and interest flows of each deal. |
 | `m_treasury_deal_event` | Each deal's history. |
+| `m_treasury_deal_accrual` | Each accrual run of each deal: dates, interest, amortisation, fee amortisation, journal transaction id. |
 
 ## Permissions
 
@@ -318,6 +354,6 @@ Grouping `treasury`, each write with a `_CHECKER` variant:
 - `READ_TREASURYRECONMATCH` (also the unmatched and account reconciliation reports), `CREATE_TREASURYRECONMATCH`, `UNMATCH_TREASURYRECONMATCH`
 - `READ_TREASURYCOUNTERPARTY` (also exposure), `CREATE_TREASURYCOUNTERPARTY`, `UPDATE_TREASURYCOUNTERPARTY`, `CLOSE_TREASURYCOUNTERPARTY`
 - `READ_TREASURYDEALTYPE`, `CREATE_TREASURYDEALTYPE`, `UPDATE_TREASURYDEALTYPE`
-- `READ_TREASURYDEAL` (also the maturity calendar), `CREATE_TREASURYDEAL`, `UPDATE_TREASURYDEAL`, `APPROVE_TREASURYDEAL`, `REJECT_TREASURYDEAL`, `CONFIRM_TREASURYDEAL`, `CANCEL_TREASURYDEAL`, `SETTLE_TREASURYDEAL`, and `APPROVE_TREASURYDEAL_OVERLIMIT` (no checker variant)
+- `READ_TREASURYDEAL` (also the maturity calendar), `CREATE_TREASURYDEAL`, `UPDATE_TREASURYDEAL`, `APPROVE_TREASURYDEAL`, `REJECT_TREASURYDEAL`, `CONFIRM_TREASURYDEAL`, `CANCEL_TREASURYDEAL`, `SETTLE_TREASURYDEAL`, `SETTLECASHFLOW_TREASURYDEAL`, `TERMINATE_TREASURYDEAL`, `ROLLOVER_TREASURYDEAL`, and `APPROVE_TREASURYDEAL_OVERLIMIT` (no checker variant)
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

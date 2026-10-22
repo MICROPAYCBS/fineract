@@ -24,7 +24,10 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_CLOS
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_CONFIRM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_REJECT;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_ROLLOVER;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_SETTLE;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_SETTLE_CASHFLOW;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.COMMAND_TERMINATE;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_COUNTERPARTY_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_DEAL_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_DEAL_TYPE_RESOURCE_NAME;
@@ -260,17 +263,20 @@ public class TreasuryDealApiResource {
     @Path("deals/{dealId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Approve, reject, confirm, cancel or settle a deal", description = "command=approve|reject|confirm|cancel|settle. Body: reason (reject, cancel), confirmationReference (confirm), note.")
+    @Operation(summary = "Act on a deal", description = "command=approve|reject|confirm|cancel|settle before settlement; settleCashflow (cashflowId, optional amount and transactionDate), terminate (proceeds, optional breakCost and transactionDate, reason) or rollover (rate, maturityDate, optional capitaliseInterest, rolloverPreApproved) after it. Other bodies: reason (reject, cancel), confirmationReference (confirm), note.")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult actOnDeal(@PathParam("dealId") final Long dealId,
-            @QueryParam("command") @Parameter(description = "approve, reject, confirm, cancel or settle", required = true) final String commandParam,
+            @QueryParam("command") @Parameter(description = "approve, reject, confirm, cancel, settle, settleCashflow, terminate or rollover", required = true) final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
-        final List<String> commands = List.of(COMMAND_APPROVE, COMMAND_REJECT, COMMAND_CONFIRM, COMMAND_CANCEL, COMMAND_SETTLE);
-        if (commandParam == null || !commands.contains(commandParam.toLowerCase(Locale.ROOT))) {
+        final List<String> commands = List.of(COMMAND_APPROVE, COMMAND_REJECT, COMMAND_CONFIRM, COMMAND_CANCEL, COMMAND_SETTLE,
+                COMMAND_SETTLE_CASHFLOW, COMMAND_TERMINATE, COMMAND_ROLLOVER);
+        final String matched = commandParam == null ? null
+                : commands.stream().filter(candidate -> candidate.equalsIgnoreCase(commandParam)).findFirst().orElse(null);
+        if (matched == null) {
             throw new UnrecognizedQueryParamException("command", commandParam, commands.toArray());
         }
-        return command(TREASURY_DEAL_RESOURCE_NAME, commandParam.toUpperCase(Locale.ROOT), dealId,
-                "/treasury/deals/" + dealId + "?command=" + commandParam.toLowerCase(Locale.ROOT), apiRequestBodyAsJson);
+        return command(TREASURY_DEAL_RESOURCE_NAME, matched.toUpperCase(Locale.ROOT), dealId,
+                "/treasury/deals/" + dealId + "?command=" + matched, apiRequestBodyAsJson);
     }
 
     private CommandProcessingResult command(final String entity, final String action, final Long entityId, final String href,

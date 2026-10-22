@@ -70,12 +70,20 @@ public class TreasuryJournalPoster {
      */
     public String post(final TreasuryEventType eventType, final Long eventId, final String currencyCode, final LocalDate transactionDate,
             final String description, final String reference, final List<Leg> legs) {
+        return post(eventType, eventId, transactionId(eventType, eventId), currencyCode, transactionDate, description, reference, legs);
+    }
+
+    /**
+     * Like {@link #post(TreasuryEventType, Long, String, LocalDate, String, String, List)} under a transaction id of
+     * the caller's, for events that post more than once (accruals, cash flows).
+     */
+    public String post(final TreasuryEventType eventType, final Long eventId, final String transactionId, final String currencyCode,
+            final LocalDate transactionDate, final String description, final String reference, final List<Leg> legs) {
         if (!TreasuryPostingPlanner.isBalancedPerOffice(legs)) {
             throw new IllegalStateException("Treasury posting " + eventType + " " + eventId + " does not balance per office: "
                     + TreasuryPostingPlanner.netPerOffice(legs));
         }
         validateDate(transactionDate, legs);
-        final String transactionId = transactionId(eventType, eventId);
         for (final Leg leg : legs) {
             final Office office = this.officeRepository.findOneWithNotFoundDetection(leg.officeId());
             final GLAccount glAccount = this.glAccountRepository.findOneWithNotFoundDetection(leg.glAccountId());

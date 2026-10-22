@@ -29,6 +29,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+import org.apache.fineract.treasury.deal.CashflowStatus;
 import org.apache.fineract.treasury.deal.DealCalculator.FlowType;
 
 /**
@@ -65,4 +66,24 @@ public class TreasuryDealCashflow extends AbstractPersistableCustom<Long> {
 
     @Column(name = "principal_outstanding", nullable = false, precision = 19, scale = 6)
     private BigDecimal principalOutstanding;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private CashflowStatus status = CashflowStatus.EXPECTED;
+
+    @Column(name = "settled_amount", nullable = false, precision = 19, scale = 6)
+    private BigDecimal settledAmount = BigDecimal.ZERO;
+
+    @Column(name = "settled_on_date")
+    private LocalDate settledOnDate;
+
+    @Column(name = "settlement_count", nullable = false)
+    private int settlementCount;
+
+    @Column(name = "transaction_id", length = 50)
+    private String transactionId;
+
+    public BigDecimal remaining() {
+        return this.amount.subtract(this.settledAmount);
+    }
 }

@@ -27,8 +27,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractAuditableWithUTCDateTimeCustom;
+import org.apache.fineract.treasury.deal.AmortisationMethod;
 import org.apache.fineract.treasury.deal.DayCount;
 import org.apache.fineract.treasury.deal.DealDirection;
+import org.apache.fineract.treasury.deal.FeeMethod;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.InterestMethod;
 
@@ -94,6 +96,25 @@ public class TreasuryDealType extends AbstractAuditableWithUTCDateTimeCustom<Lon
 
     @Column(name = "fee_expense_gl_account_id")
     private Long feeExpenseGlAccountId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fee_method", nullable = false, length = 30)
+    private FeeMethod feeMethod = FeeMethod.EXPENSE_IMMEDIATELY;
+
+    /** How bond premiums and discounts, and deferred fees, are amortised. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "amortisation_method", nullable = false, length = 30)
+    private AmortisationMethod amortisationMethod = AmortisationMethod.EFFECTIVE_INTEREST;
+
+    /** Asset account holding fees deferred under {@link FeeMethod#AMORTISE}. */
+    @Column(name = "deferred_fee_gl_account_id")
+    private Long deferredFeeGlAccountId;
+
+    @Column(name = "realised_gain_gl_account_id")
+    private Long realisedGainGlAccountId;
+
+    @Column(name = "realised_loss_gl_account_id")
+    private Long realisedLossGlAccountId;
 
     @Column(name = "is_active", nullable = false)
     private boolean active;

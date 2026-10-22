@@ -20,12 +20,15 @@ package org.apache.fineract.treasury.service;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ACTIVE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.AMORTISATION_METHOD_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.CODE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFAULT_DAY_COUNT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFAULT_FREQUENCY_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DEFERRED_FEE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.DISCOUNT_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_EXPENSE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_INCOME_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_METHOD_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INSTRUMENT_KIND_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INTEREST_EXPENSE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INTEREST_INCOME_GL_PARAM;
@@ -35,6 +38,8 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INTEREST
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.NAME_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.PREMIUM_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.PRINCIPAL_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.REALISED_GAIN_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.REALISED_LOSS_GL_PARAM;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -49,6 +54,7 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.treasury.data.TreasuryDealTypeData;
 import org.apache.fineract.treasury.deal.DayCount;
 import org.apache.fineract.treasury.deal.DealDirection;
+import org.apache.fineract.treasury.deal.FeeMethod;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.InterestMethod;
 import org.apache.fineract.treasury.domain.TreasuryDealType;
@@ -167,6 +173,19 @@ public class TreasuryDealTypeService {
         gl(request, DISCOUNT_GL_PARAM, type::getDiscountGlAccountId, type::setDiscountGlAccountId, changes);
         gl(request, FEE_INCOME_GL_PARAM, type::getFeeIncomeGlAccountId, type::setFeeIncomeGlAccountId, changes);
         gl(request, FEE_EXPENSE_GL_PARAM, type::getFeeExpenseGlAccountId, type::setFeeExpenseGlAccountId, changes);
+        gl(request, DEFERRED_FEE_GL_PARAM, type::getDeferredFeeGlAccountId, type::setDeferredFeeGlAccountId, changes);
+        gl(request, REALISED_GAIN_GL_PARAM, type::getRealisedGainGlAccountId, type::setRealisedGainGlAccountId, changes);
+        gl(request, REALISED_LOSS_GL_PARAM, type::getRealisedLossGlAccountId, type::setRealisedLossGlAccountId, changes);
+        if (request.has(FEE_METHOD_PARAM) && request.get(FEE_METHOD_PARAM) != null
+                && type.getFeeMethod() != request.get(FEE_METHOD_PARAM)) {
+            type.setFeeMethod(request.get(FEE_METHOD_PARAM));
+            changes.put(FEE_METHOD_PARAM, type.getFeeMethod().name());
+        }
+        if (request.has(AMORTISATION_METHOD_PARAM) && request.get(AMORTISATION_METHOD_PARAM) != null
+                && type.getAmortisationMethod() != request.get(AMORTISATION_METHOD_PARAM)) {
+            type.setAmortisationMethod(request.get(AMORTISATION_METHOD_PARAM));
+            changes.put(AMORTISATION_METHOD_PARAM, type.getAmortisationMethod().name());
+        }
         if (request.has(ACTIVE_PARAM) && request.get(ACTIVE_PARAM) != null && type.isActive() != request.<Boolean>get(ACTIVE_PARAM)) {
             type.setActive(request.<Boolean>get(ACTIVE_PARAM));
             changes.put(ACTIVE_PARAM, type.isActive());
@@ -193,7 +212,11 @@ public class TreasuryDealTypeService {
         account(PREMIUM_GL_PARAM, type.getPremiumGlAccountId(), ASSET, bond);
         account(DISCOUNT_GL_PARAM, type.getDiscountGlAccountId(), ASSET, bond);
         account(FEE_INCOME_GL_PARAM, type.getFeeIncomeGlAccountId(), INCOME, false);
-        account(FEE_EXPENSE_GL_PARAM, type.getFeeExpenseGlAccountId(), EXPENSE, false);
+        final boolean amortiseFees = type.getFeeMethod() == FeeMethod.AMORTISE;
+        account(FEE_EXPENSE_GL_PARAM, type.getFeeExpenseGlAccountId(), EXPENSE, amortiseFees);
+        account(DEFERRED_FEE_GL_PARAM, type.getDeferredFeeGlAccountId(), ASSET, amortiseFees);
+        account(REALISED_GAIN_GL_PARAM, type.getRealisedGainGlAccountId(), INCOME, false);
+        account(REALISED_LOSS_GL_PARAM, type.getRealisedLossGlAccountId(), EXPENSE, false);
     }
 
     private void account(final String parameter, final Long glAccountId, final int classification, final boolean required) {

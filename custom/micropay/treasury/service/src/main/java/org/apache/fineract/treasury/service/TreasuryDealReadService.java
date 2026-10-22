@@ -30,6 +30,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
 import org.apache.fineract.treasury.data.TreasuryDealData;
 import org.apache.fineract.treasury.data.TreasuryMaturityData;
+import org.apache.fineract.treasury.domain.TreasuryDealAccrualRepository;
 import org.apache.fineract.treasury.domain.TreasuryDealCashflowRepository;
 import org.apache.fineract.treasury.domain.TreasuryDealEventRepository;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
@@ -55,7 +56,7 @@ public class TreasuryDealReadService {
 
     /** Cash flows of deals that are neither rejected nor cancelled. */
     private static final String MATURITY_SQL = """
-            SELECT f.due_date, f.flow_type, f.amount, d.id AS deal_id, d.currency_code, d.status, t.code AS type_code, t.instrument_kind,
+            SELECT f.id AS cashflow_id, f.status AS cashflow_status, f.settled_amount, f.due_date, f.flow_type, f.amount, d.id AS deal_id, d.currency_code, d.status, t.code AS type_code, t.instrument_kind,
                    t.direction, c.short_code AS counterparty_code
             FROM m_treasury_deal_cashflow f
             JOIN m_treasury_deal d ON d.id = f.deal_id
@@ -67,6 +68,7 @@ public class TreasuryDealReadService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final TreasuryDealCashflowRepository cashflowRepository;
     private final TreasuryDealEventRepository eventRepository;
+    private final TreasuryDealAccrualRepository accrualRepository;
 
     public record DealFilter(String status, Long dealTypeId, Long counterpartyId, LocalDate maturityFrom, LocalDate maturityTo) {
     }
@@ -96,20 +98,25 @@ public class TreasuryDealReadService {
         }
         final String where = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
         return this.jdbcTemplate.query(DEAL_SQL + where + " ORDER BY d.maturity_date, d.id", params,
-                (rs, rowNum) -> map(rs, List.of(), List.of()));
+                (rs, rowNum) -> map(rs, List.of(), List.of(), List.of()));
     }
 
     public TreasuryDealData retrieveDeal(final Long dealId) {
         final List<TreasuryDealData.Cashflow> cashflows = this.cashflowRepository.findByDealIdOrderBySequenceNumberAsc(dealId).stream()
-                .map(f -> new TreasuryDealData.Cashflow(f.getSequenceNumber(), f.getFlowType().name(), f.getPeriodStart(), f.getPeriodEnd(),
-                        f.getDueDate(), f.getAmount(), f.getPrincipalOutstanding()))
+                .map(f -> new TreasuryDealData.Cashflow(f.getId(), f.getSequenceNumber(), f.getFlowType().name(), f.getPeriodStart(),
+                        f.getPeriodEnd(), f.getDueDate(), f.getAmount(), f.getPrincipalOutstanding(), f.getStatus().name(),
+                        f.getSettledAmount(), f.getSettledOnDate(), f.getTransactionId()))
                 .toList();
         final List<TreasuryDealData.Event> events = this.eventRepository.findByDealIdOrderByIdAsc(dealId).stream()
                 .map(e -> new TreasuryDealData.Event(e.getEventType().name(), e.getBusinessDate(), e.getUserId(), e.getNote(),
                         e.getTransactionId()))
                 .toList();
+        final List<TreasuryDealData.Accrual> accruals = this.accrualRepository
+                .findByDealIdOrderBySequenceNumberAsc(dealId).stream().map(a -> new TreasuryDealData.Accrual(a.getSequenceNumber(),
+                        a.getFromDate(), a.getToDate(), a.getInterest(), a.getAmortisation(), a.getFeeAmortisation(), a.getTransactionId()))
+                .toList();
         final List<TreasuryDealData> rows = this.jdbcTemplate.query(DEAL_SQL + " WHERE d.id = :id", new MapSqlParameterSource("id", dealId),
-                (rs, rowNum) -> map(rs, cashflows, events));
+                (rs, rowNum) -> map(rs, cashflows, events, accruals));
         if (rows.isEmpty()) {
             throw new TreasuryWorkflowException("deal", "not.found", "Treasury deal " + dealId + " does not exist", dealId);
         }
@@ -123,11 +130,19 @@ public class TreasuryDealReadService {
                 (rs, rowNum) -> new TreasuryMaturityData(JdbcSupport.getLocalDate(rs, "due_date"), rs.getLong("deal_id"),
                         rs.getString("type_code"), rs.getString("instrument_kind"), rs.getString("direction"),
                         rs.getString("counterparty_code"), rs.getString("currency_code"), rs.getString("flow_type"),
-                        rs.getBigDecimal("amount"), rs.getString("status")));
+                        rs.getBigDecimal("amount"), rs.getString("status"), rs.getLong("cashflow_id"), rs.getString("cashflow_status"),
+                        rs.getBigDecimal("settled_amount")));
     }
 
     private static TreasuryDealData map(final ResultSet rs, final List<TreasuryDealData.Cashflow> cashflows,
-            final List<TreasuryDealData.Event> events) throws SQLException {
+            final List<TreasuryDealData.Event> events, final List<TreasuryDealData.Accrual> accruals) throws SQLException {
+        final TreasuryDealData.Lifecycle lifecycle = new TreasuryDealData.Lifecycle(JdbcSupport.getLocalDate(rs, "accrued_to_date"),
+                rs.getBigDecimal("interest_accrued"), rs.getBigDecimal("amortisation_accrued"), rs.getBigDecimal("fee_deferred"),
+                rs.getBigDecimal("fee_amortised"), rs.getBigDecimal("interest_settled"), rs.getBigDecimal("principal_settled"),
+                JdbcSupport.getLocalDate(rs, "matured_on_date"), JdbcSupport.getLocalDate(rs, "terminated_on_date"),
+                rs.getBigDecimal("termination_proceeds"), rs.getBigDecimal("break_cost"), rs.getBigDecimal("realised_result"),
+                rs.getBoolean("rollover_pre_approved"), JdbcSupport.getLong(rs, "rolled_from_deal_id"),
+                JdbcSupport.getLong(rs, "rolled_to_deal_id"));
         return new TreasuryDealData(rs.getLong("id"), rs.getLong("deal_type_id"), rs.getString("type_code"),
                 rs.getString("instrument_kind"), rs.getString("direction"), rs.getLong("counterparty_id"),
                 rs.getString("counterparty_code"), rs.getLong("settlement_account_id"), rs.getString("account_code"),
@@ -143,6 +158,6 @@ public class TreasuryDealReadService {
                 JdbcSupport.getLocalDate(rs, "confirmed_on_date"), rs.getString("confirmation_reference"),
                 JdbcSupport.getLong(rs, "settled_by"), JdbcSupport.getLocalDate(rs, "settled_on_date"),
                 rs.getString("settlement_transaction_id"), JdbcSupport.getLong(rs, "closed_by"),
-                JdbcSupport.getLocalDate(rs, "closed_on_date"), rs.getString("close_reason"), cashflows, events);
+                JdbcSupport.getLocalDate(rs, "closed_on_date"), rs.getString("close_reason"), lifecycle, cashflows, events, accruals);
     }
 }

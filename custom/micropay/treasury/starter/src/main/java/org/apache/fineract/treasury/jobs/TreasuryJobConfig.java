@@ -25,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.jobs.service.jobname.JobNameData;
 import org.apache.fineract.infrastructure.jobs.service.jobname.JobNameProvider;
 import org.apache.fineract.infrastructure.jobs.service.jobname.SimpleJobNameProvider;
+import org.apache.fineract.treasury.service.TreasuryDealLifecycleService;
 import org.apache.fineract.treasury.service.TreasuryPositionSnapshotService;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -38,8 +39,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
- * The day-end treasury position snapshot. It belongs after the GL balance snapshot in a job sequence, so both close the
- * same day.
+ * The day-end treasury jobs: the deal accrual, then the position snapshot. The snapshot belongs after the GL balance
+ * snapshot in a job sequence, so both close the same day; the accrual belongs before both, so the day's accruals and
+ * cash flows are in the balances they read.
  */
 @Configuration
 @RequiredArgsConstructor
@@ -49,6 +51,7 @@ public class TreasuryJobConfig {
     private final JobRepository jobRepository;
     private final PlatformTransactionManager transactionManager;
     private final TreasuryPositionSnapshotService snapshotService;
+    private final TreasuryDealLifecycleService lifecycleService;
 
     @Bean
     public JobNameProvider treasuryJobNameProvider() {
@@ -65,6 +68,18 @@ public class TreasuryJobConfig {
     @Bean
     public Job treasuryPositionSnapshotJob() {
         return new JobBuilder(TreasuryJobName.TREASURY_POSITION_SNAPSHOT.name(), jobRepository).start(treasuryPositionSnapshotStep())
+                .incrementer(new RunIdIncrementer()).build();
+    }
+
+    @Bean
+    protected Step treasuryAccrualStep() {
+        return new StepBuilder(TreasuryJobName.TREASURY_ACCRUAL.name(), jobRepository)
+                .tasklet(new TreasuryAccrualTasklet(lifecycleService), transactionManager).build();
+    }
+
+    @Bean
+    public Job treasuryAccrualJob() {
+        return new JobBuilder(TreasuryJobName.TREASURY_ACCRUAL.name(), jobRepository).start(treasuryAccrualStep())
                 .incrementer(new RunIdIncrementer()).build();
     }
 }

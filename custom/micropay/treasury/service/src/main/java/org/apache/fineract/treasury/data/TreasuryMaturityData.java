@@ -22,8 +22,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * A cash flow falling due: {@code direction} ASSET is money we receive, LIABILITY money we pay.
+ * A cash flow falling due: {@code direction} ASSET is money we receive, LIABILITY money we pay. {@code status} is the
+ * deal's; {@code cashflowStatus} (EXPECTED, PARTIAL, SETTLED, CANCELLED) and {@code settledAmount} the flow's.
  */
 public record TreasuryMaturityData(LocalDate dueDate, Long dealId, String dealTypeCode, String instrumentKind, String direction,
-        String counterpartyShortCode, String currencyCode, String flowType, BigDecimal amount, String status) {
+        String counterpartyShortCode, String currencyCode, String flowType, BigDecimal amount, String status, Long cashflowId,
+        String cashflowStatus, BigDecimal settledAmount) {
 }

@@ -34,10 +34,25 @@ public record TreasuryDealData(Long id, Long dealTypeId, String dealTypeCode, St
         BigDecimal exposureAmount, boolean limitExceeded, String status, String notes, Long capturedBy, Long approvedBy,
         LocalDate approvedOnDate, Long confirmedBy, LocalDate confirmedOnDate, String confirmationReference, Long settledBy,
         LocalDate settledOnDate, String settlementTransactionId, Long closedBy, LocalDate closedOnDate, String closeReason,
-        List<Cashflow> cashflows, List<Event> events) {
+        Lifecycle lifecycle, List<Cashflow> cashflows, List<Event> events, List<Accrual> accruals) {
 
-    public record Cashflow(int sequence, String flowType, LocalDate periodStart, LocalDate periodEnd, LocalDate dueDate, BigDecimal amount,
-            BigDecimal principalOutstanding) {
+    /**
+     * After settlement: what has been accrued (interest for the days before {@code accruedToDate}), amortised and
+     * settled, and how the deal ended.
+     */
+    public record Lifecycle(LocalDate accruedToDate, BigDecimal interestAccrued, BigDecimal amortisationAccrued, BigDecimal feeDeferred,
+            BigDecimal feeAmortised, BigDecimal interestSettled, BigDecimal principalSettled, LocalDate maturedOnDate,
+            LocalDate terminatedOnDate, BigDecimal terminationProceeds, BigDecimal breakCost, BigDecimal realisedResult,
+            boolean rolloverPreApproved, Long rolledFromDealId, Long rolledToDealId) {
+    }
+
+    public record Accrual(int sequence, LocalDate fromDate, LocalDate toDate, BigDecimal interest, BigDecimal amortisation,
+            BigDecimal feeAmortisation, String transactionId) {
+    }
+
+    public record Cashflow(Long id, int sequence, String flowType, LocalDate periodStart, LocalDate periodEnd, LocalDate dueDate,
+            BigDecimal amount, BigDecimal principalOutstanding, String status, BigDecimal settledAmount, LocalDate settledOnDate,
+            String transactionId) {
     }
 
     public record Event(String eventType, LocalDate businessDate, Long userId, String note, String transactionId) {

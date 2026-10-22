@@ -31,5 +31,12 @@ public enum TreasuryDealEventType {
     REJECTED, //
     CONFIRMED, //
     CANCELLED, //
-    SETTLED; //
+    SETTLED, //
+    CASHFLOW_SETTLED, //
+    CASHFLOW_PARTIAL, //
+    CASHFLOW_BREACH, //
+    ACCRUAL_SKIPPED, //
+    MATURED, //
+    TERMINATED, //
+    ROLLED_OVER; //
 }

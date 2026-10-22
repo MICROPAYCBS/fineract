@@ -39,6 +39,9 @@ public final class TreasuryDealApiConstants {
     public static final String COMMAND_CONFIRM = "confirm";
     public static final String COMMAND_REJECT = "reject";
     public static final String COMMAND_SETTLE = "settle";
+    public static final String COMMAND_SETTLE_CASHFLOW = "settleCashflow";
+    public static final String COMMAND_TERMINATE = "terminate";
+    public static final String COMMAND_ROLLOVER = "rollover";
 
     public static final String NAME_PARAM = "name";
     public static final String SHORT_CODE_PARAM = "shortCode";
@@ -64,6 +67,11 @@ public final class TreasuryDealApiConstants {
     public static final String FEE_INCOME_GL_PARAM = "feeIncomeGlAccountId";
     public static final String FEE_EXPENSE_GL_PARAM = "feeExpenseGlAccountId";
     public static final String ACTIVE_PARAM = "active";
+    public static final String FEE_METHOD_PARAM = "feeMethod";
+    public static final String AMORTISATION_METHOD_PARAM = "amortisationMethod";
+    public static final String DEFERRED_FEE_GL_PARAM = "deferredFeeGlAccountId";
+    public static final String REALISED_GAIN_GL_PARAM = "realisedGainGlAccountId";
+    public static final String REALISED_LOSS_GL_PARAM = "realisedLossGlAccountId";
 
     public static final String DEAL_TYPE_ID_PARAM = "dealTypeId";
     public static final String COUNTERPARTY_ID_PARAM = "counterpartyId";
@@ -84,6 +92,12 @@ public final class TreasuryDealApiConstants {
     public static final String CLASSIFICATION_PARAM = "classification";
     public static final String NOTES_PARAM = "notes";
     public static final String CONFIRMATION_REFERENCE_PARAM = "confirmationReference";
+    public static final String ROLLOVER_PRE_APPROVED_PARAM = "rolloverPreApproved";
+    public static final String CASHFLOW_ID_PARAM = "cashflowId";
+    public static final String TRANSACTION_DATE_PARAM = "transactionDate";
+    public static final String PROCEEDS_PARAM = "proceeds";
+    public static final String BREAK_COST_PARAM = "breakCost";
+    public static final String CAPITALISE_INTEREST_PARAM = "capitaliseInterest";
     public static final String REASON_PARAM = "reason";
     public static final String NOTE_PARAM = "note";
     public static final String DATE_FORMAT_PARAM = "dateFormat";
@@ -95,7 +109,8 @@ public final class TreasuryDealApiConstants {
     public static final Set<String> DEAL_TYPE_PARAMS = Set.of(CODE_PARAM, NAME_PARAM, INSTRUMENT_KIND_PARAM, INTEREST_METHOD_PARAM,
             DEFAULT_DAY_COUNT_PARAM, DEFAULT_FREQUENCY_PARAM, PRINCIPAL_GL_PARAM, INTEREST_RECEIVABLE_GL_PARAM, INTEREST_PAYABLE_GL_PARAM,
             INTEREST_INCOME_GL_PARAM, INTEREST_EXPENSE_GL_PARAM, PREMIUM_GL_PARAM, DISCOUNT_GL_PARAM, FEE_INCOME_GL_PARAM,
-            FEE_EXPENSE_GL_PARAM, ACTIVE_PARAM, LOCALE_PARAM);
+            FEE_EXPENSE_GL_PARAM, ACTIVE_PARAM, FEE_METHOD_PARAM, AMORTISATION_METHOD_PARAM, DEFERRED_FEE_GL_PARAM, REALISED_GAIN_GL_PARAM,
+            REALISED_LOSS_GL_PARAM, LOCALE_PARAM);
 
     public static final Set<String> DEAL_PARAMS = Set.of(DEAL_TYPE_ID_PARAM, COUNTERPARTY_ID_PARAM, SETTLEMENT_ACCOUNT_ID_PARAM,
             EXTERNAL_REFERENCE_PARAM, ISIN_PARAM, TRADE_DATE_PARAM, VALUE_DATE_PARAM, MATURITY_DATE_PARAM, ISSUE_DATE_PARAM, AMOUNT_PARAM,
@@ -104,4 +119,13 @@ public final class TreasuryDealApiConstants {
 
     /** Body of approve, reject, confirm, cancel and settle. */
     public static final Set<String> DEAL_ACTION_PARAMS = Set.of(CONFIRMATION_REFERENCE_PARAM, REASON_PARAM, NOTE_PARAM, LOCALE_PARAM);
+
+    public static final Set<String> SETTLE_CASHFLOW_PARAMS = Set.of(CASHFLOW_ID_PARAM, AMOUNT_PARAM, TRANSACTION_DATE_PARAM, NOTE_PARAM,
+            DATE_FORMAT_PARAM, LOCALE_PARAM);
+
+    public static final Set<String> TERMINATE_PARAMS = Set.of(TRANSACTION_DATE_PARAM, PROCEEDS_PARAM, BREAK_COST_PARAM, REASON_PARAM,
+            NOTE_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+
+    public static final Set<String> ROLLOVER_PARAMS = Set.of(RATE_PARAM, MATURITY_DATE_PARAM, CAPITALISE_INTEREST_PARAM,
+            EXTERNAL_REFERENCE_PARAM, ROLLOVER_PRE_APPROVED_PARAM, NOTE_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
 }

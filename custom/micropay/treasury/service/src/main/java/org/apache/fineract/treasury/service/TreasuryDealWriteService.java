@@ -35,6 +35,7 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ISSUE_DA
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.MATURITY_DATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.NOTES_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ROLLOVER_PRE_APPROVED_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.SETTLEMENT_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TRADE_DATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.VALUE_DATE_PARAM;
@@ -53,6 +54,7 @@ import org.apache.fineract.treasury.deal.DealClassification;
 import org.apache.fineract.treasury.deal.DealPricer;
 import org.apache.fineract.treasury.deal.DealPricer.Priced;
 import org.apache.fineract.treasury.deal.DealStatus;
+import org.apache.fineract.treasury.deal.FeeMethod;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.LimitCheck;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
@@ -149,6 +151,31 @@ public class TreasuryDealWriteService {
         limitEvent(deal, limit, userId);
         changes.put("consideration", deal.getConsideration());
         return result(command, deal, changes);
+    }
+
+    /**
+     * Captures a deal built by a rollover: priced, limit-checked, scheduled and recorded like any capture. A deal over
+     * the limit is refused or flagged as at capture.
+     */
+    TreasuryDeal captureRolledDeal(final TreasuryDeal draft, final Long userId, final Map<String, Object> changes) {
+        draft.setStatus(DealStatus.CAPTURED);
+        draft.setCapturedBy(userId);
+        final List<Flow> flows = price(draft);
+        final LimitCheck.Result limit = checkLimit(draft, changes);
+        this.dealRepository.saveAndFlush(draft);
+        saveFlows(draft, flows);
+        event(draft, TreasuryDealEventType.CAPTURED, userId, "Rolled over from deal " + draft.getRolledFromDealId(), null);
+        limitEvent(draft, limit, userId);
+        return draft;
+    }
+
+    /** Records a pre-approved rollover: the new deal carries the original approval. */
+    void approveRolledDeal(final TreasuryDeal deal, final Long approvedBy, final String reason) {
+        deal.setStatus(DealStatus.APPROVED);
+        deal.setApprovedBy(approvedBy);
+        deal.setApprovedOnDate(DateUtils.getBusinessLocalDate());
+        this.dealRepository.saveAndFlush(deal);
+        event(deal, TreasuryDealEventType.APPROVED, approvedBy, reason, null);
     }
 
     // ---------- lifecycle ----------
@@ -265,11 +292,13 @@ public class TreasuryDealWriteService {
                 DealSettlementPlanner.legs(type.getInstrumentKind(), priced, deal.getFees(), account.getOfficeId(),
                         account.getGlAccountId(),
                         new DealGlAccounts(type.getPrincipalGlAccountId(), type.getInterestReceivableGlAccountId(),
-                                type.getPremiumGlAccountId(), type.getDiscountGlAccountId(), type.getFeeExpenseGlAccountId())));
+                                type.getPremiumGlAccountId(), type.getDiscountGlAccountId(), feeAccount(type))));
         deal.setStatus(DealStatus.SETTLED);
         deal.setSettledBy(userId);
         deal.setSettledOnDate(DateUtils.getBusinessLocalDate());
         deal.setSettlementTransactionId(transactionId);
+        deal.setAccruedToDate(deal.getValueDate());
+        deal.setFeeDeferred(type.getFeeMethod() == FeeMethod.AMORTISE ? deal.getFees() : BigDecimal.ZERO);
         this.dealRepository.saveAndFlush(deal);
         event(deal, TreasuryDealEventType.SETTLED, userId, action.note(), transactionId);
         final Map<String, Object> changes = new LinkedHashMap<>();
@@ -331,6 +360,9 @@ public class TreasuryDealWriteService {
         }
         if (request.has(CLASSIFICATION_PARAM) && request.get(CLASSIFICATION_PARAM) != null) {
             deal.setClassification(request.get(CLASSIFICATION_PARAM));
+        }
+        if (request.has(ROLLOVER_PRE_APPROVED_PARAM) && request.get(ROLLOVER_PRE_APPROVED_PARAM) != null) {
+            deal.setRolloverPreApproved(request.<Boolean>get(ROLLOVER_PRE_APPROVED_PARAM));
         }
         if (request.has(NOTES_PARAM)) {
             deal.setNotes(request.get(NOTES_PARAM));
@@ -428,11 +460,16 @@ public class TreasuryDealWriteService {
                 userId, "Limit utilisation " + result.utilisation() + "%, exposure " + result.exposureAfter().toPlainString(), null);
     }
 
+    /** Fees are expensed, or deferred to be amortised by the accrual job. */
+    private static Long feeAccount(final TreasuryDealType type) {
+        return type.getFeeMethod() == FeeMethod.AMORTISE ? type.getDeferredFeeGlAccountId() : type.getFeeExpenseGlAccountId();
+    }
+
     private static void requireAccounts(final TreasuryDealType type, final Priced priced, final BigDecimal fees) {
         if (priced.premium().signum() > 0 && type.getPremiumGlAccountId() == null
                 || priced.discount().signum() > 0 && type.getDiscountGlAccountId() == null
                 || priced.accruedInterest().signum() > 0 && type.getInterestReceivableGlAccountId() == null
-                || fees != null && fees.signum() > 0 && type.getFeeExpenseGlAccountId() == null) {
+                || fees != null && fees.signum() > 0 && feeAccount(type) == null) {
             throw new TreasuryWorkflowException(ENTITY, "deal.type.gl.account.missing",
                     "Deal type " + type.getCode()
                             + " lacks a GL account this settlement needs (premium, discount, interest receivable or fee expense)",

@@ -172,4 +172,68 @@ public class TreasuryDeal extends AbstractAuditableWithUTCDateTimeCustom<Long> {
     /** Reason of a rejection or cancellation. */
     @Column(name = "close_reason", length = 500)
     private String closeReason;
+
+    /** Interest, amortisation and fee amortisation are posted up to, not including, this date. */
+    @Column(name = "accrued_to_date")
+    private LocalDate accruedToDate;
+
+    /** Interest (or bill discount) posted to income or expense so far. */
+    @Column(name = "interest_accrued", nullable = false, precision = 19, scale = 6)
+    private BigDecimal interestAccrued = BigDecimal.ZERO;
+
+    /**
+     * Bonds: change of the clean carrying amount posted so far (discount accreted positive, premium amortised
+     * negative).
+     */
+    @Column(name = "amortisation_accrued", nullable = false, precision = 19, scale = 6)
+    private BigDecimal amortisationAccrued = BigDecimal.ZERO;
+
+    /** Fees deferred at settlement; zero when they were expensed. */
+    @Column(name = "fee_deferred", nullable = false, precision = 19, scale = 6)
+    private BigDecimal feeDeferred = BigDecimal.ZERO;
+
+    @Column(name = "fee_amortised", nullable = false, precision = 19, scale = 6)
+    private BigDecimal feeAmortised = BigDecimal.ZERO;
+
+    /** Interest or coupons received (asset deals) or paid (liability deals). */
+    @Column(name = "interest_settled", nullable = false, precision = 19, scale = 6)
+    private BigDecimal interestSettled = BigDecimal.ZERO;
+
+    /** Principal or face value received back (asset deals) or repaid (liability deals). */
+    @Column(name = "principal_settled", nullable = false, precision = 19, scale = 6)
+    private BigDecimal principalSettled = BigDecimal.ZERO;
+
+    @Column(name = "matured_on_date")
+    private LocalDate maturedOnDate;
+
+    @Column(name = "terminated_by")
+    private Long terminatedBy;
+
+    @Column(name = "terminated_on_date")
+    private LocalDate terminatedOnDate;
+
+    @Column(name = "termination_proceeds", precision = 19, scale = 6)
+    private BigDecimal terminationProceeds;
+
+    @Column(name = "break_cost", precision = 19, scale = 6)
+    private BigDecimal breakCost;
+
+    /** Termination gain (positive) or loss (negative). */
+    @Column(name = "realised_result", precision = 19, scale = 6)
+    private BigDecimal realisedResult;
+
+    /**
+     * May roll over into a new deal that starts approved (same counterparty, tenor and amount not above this one's).
+     */
+    @Column(name = "rollover_pre_approved", nullable = false)
+    private boolean rolloverPreApproved;
+
+    @Column(name = "rolled_from_deal_id")
+    private Long rolledFromDealId;
+
+    @Column(name = "rolled_to_deal_id")
+    private Long rolledToDealId;
+
+    @Column(name = "rolled_over_by")
+    private Long rolledOverBy;
 }

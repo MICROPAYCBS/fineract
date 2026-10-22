@@ -30,4 +30,6 @@ public interface TreasuryDealRepository extends JpaRepository<TreasuryDeal, Long
     long countByCounterpartyIdAndStatusIn(Long counterpartyId, Collection<DealStatus> statuses);
 
     long countByDealTypeIdAndStatusIn(Long dealTypeId, Collection<DealStatus> statuses);
+
+    List<TreasuryDeal> findByStatusOrderByIdAsc(DealStatus status);
 }

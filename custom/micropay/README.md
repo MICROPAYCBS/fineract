@@ -30,7 +30,7 @@ possible. What could not be moved out of upstream directories is tracked as the
 | `savings/service` | Replacement savings/deposit/share services (payment channels, GL-to-savings, legal tender, share purchase from savings). |
 | `security/service` | Replacement `AppUser*`, `AuditReadPlatformService`, `TwoFactorService`, `TwoFactorConfigurationService`; organisation-wide audit access. |
 | `workflow/service`, `workflow/starter` | Approval workflow engine (definitions, instances, stage authorization) and its changelogs. |
-| `treasury/service`, `treasury/starter` | Treasury accounts (bank, central bank, wallet, vault, agent float pool), live cash positions from the GL, the day-end position snapshot job, funding transfers with cash in transit, agent float top-ups and sweeps, bank and wallet statement reconciliation (CSV and MT940 import, automatic and manual matching), and counterparties, deal types and deals (placements, deposits, T-bills, bonds, borrowings) with counterparty limits; see [treasury/README.md](treasury/README.md). |
+| `treasury/service`, `treasury/starter` | Treasury accounts (bank, central bank, wallet, vault, agent float pool), live cash positions from the GL, the day-end position snapshot job, funding transfers with cash in transit, agent float top-ups and sweeps, bank and wallet statement reconciliation (CSV and MT940 import, automatic and manual matching), and counterparties, deal types and deals (placements, deposits, T-bills, bonds, borrowings) with counterparty limits, daily accrual, maturity, early termination and rollover; see [treasury/README.md](treasury/README.md). |
 | `app/boot` | Runnable artifact (`bootRun`, `bootJar`, `quickBootJar`, `createNewTenant`). No sources of its own. |
 
 ## How the modules plug in

@@ -20,6 +20,7 @@ package org.apache.fineract.treasury.service;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_INSUFFICIENT_BALANCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_LIMIT_REFERRAL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.AUTO_SETTLE_CASHFLOWS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.FLOAT_PAYMENT_TYPE_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
@@ -27,6 +28,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_REFERE
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_SAME_DATE_RULE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_DAYS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.RECON_WINDOW_RULE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.ROLLOVER_WINDOW_DAYS_PARAM;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -125,6 +127,14 @@ public class TreasurySettingService {
         if (request.has(ALLOW_LIMIT_REFERRAL_PARAM) && setting.isAllowLimitReferral() != request.allowLimitReferral()) {
             setting.setAllowLimitReferral(request.allowLimitReferral());
             changes.put(ALLOW_LIMIT_REFERRAL_PARAM, request.allowLimitReferral());
+        }
+        if (request.has(AUTO_SETTLE_CASHFLOWS_PARAM) && setting.isAutoSettleCashflows() != request.autoSettleCashflows()) {
+            setting.setAutoSettleCashflows(request.autoSettleCashflows());
+            changes.put(AUTO_SETTLE_CASHFLOWS_PARAM, request.autoSettleCashflows());
+        }
+        if (request.has(ROLLOVER_WINDOW_DAYS_PARAM) && setting.getRolloverWindowDays() != request.rolloverWindowDays()) {
+            setting.setRolloverWindowDays(request.rolloverWindowDays());
+            changes.put(ROLLOVER_WINDOW_DAYS_PARAM, request.rolloverWindowDays());
         }
         if (setting.getId() == null || !changes.isEmpty()) {
             this.settingRepository.saveAndFlush(setting);

@@ -29,7 +29,10 @@ public enum TreasuryEventType {
     TRANSFER_RECEIVE_REVERSAL("TFRX"), //
     STATEMENT_ADJUSTMENT("SA"), //
     STATEMENT_ADJUSTMENT_REVERSAL("SAX"), //
-    DEAL_SETTLEMENT("DS"); //
+    DEAL_SETTLEMENT("DS"), //
+    DEAL_ACCRUAL("DA"), //
+    DEAL_CASHFLOW("DC"), //
+    DEAL_TERMINATION("DT"); //
 
     private final String code;
 

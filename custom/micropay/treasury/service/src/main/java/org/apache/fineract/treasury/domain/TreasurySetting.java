@@ -72,4 +72,12 @@ public class TreasurySetting extends AbstractAuditableWithUTCDateTimeCustom<Long
      */
     @Column(name = "allow_limit_referral", nullable = false)
     private boolean allowLimitReferral;
+
+    /** When true (the default) the accrual job settles deal cash flows on their due dates. */
+    @Column(name = "auto_settle_cashflows", nullable = false)
+    private boolean autoSettleCashflows = true;
+
+    /** A deal may be rolled over from this many days before its maturity date. */
+    @Column(name = "rollover_window_days", nullable = false)
+    private int rolloverWindowDays = 3;
 }

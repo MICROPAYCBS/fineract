@@ -19,8 +19,12 @@
 package org.apache.fineract.treasury.serialization;
 
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ACTIVE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.AMORTISATION_METHOD_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.AMORTISING_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.AMOUNT_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.BREAK_COST_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.CAPITALISE_INTEREST_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.CASHFLOW_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.CLASSIFICATION_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.CLEAN_PRICE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.CODE_PARAM;
@@ -42,6 +46,7 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.EXTERNAL
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEES_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_EXPENSE_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_INCOME_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FEE_METHOD_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.FREQUENCY_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INSTRUMENT_KIND_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.INTEREST_EXPENSE_GL_PARAM;
@@ -58,13 +63,19 @@ import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.NOTES_PA
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.NOTE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.PREMIUM_GL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.PRINCIPAL_GL_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.PROCEEDS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATING_CODE_VALUE_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.RATING_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.REASON_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ROLLOVER_PARAMS;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.ROLLOVER_PRE_APPROVED_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.SETTLEMENT_ACCOUNT_ID_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.SETTLE_CASHFLOW_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.SHORT_CODE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TERMINATE_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TRADE_DATE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TRANSACTION_DATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_COUNTERPARTY_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_DEAL_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryDealApiConstants.TREASURY_DEAL_TYPE_RESOURCE_NAME;
@@ -91,8 +102,10 @@ import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.exception.InvalidJsonException;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.treasury.deal.AmortisationMethod;
 import org.apache.fineract.treasury.deal.DayCount;
 import org.apache.fineract.treasury.deal.DealClassification;
+import org.apache.fineract.treasury.deal.FeeMethod;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.InterestMethod;
 import org.apache.fineract.treasury.domain.TreasuryCounterpartyType;
@@ -199,6 +212,11 @@ public class TreasuryDealDataValidator {
         final String method = text(object, INTEREST_METHOD_PARAM);
         final String dayCount = text(object, DEFAULT_DAY_COUNT_PARAM);
         final Integer frequency = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(DEFAULT_FREQUENCY_PARAM, object);
+        final String feeMethod = text(object, FEE_METHOD_PARAM);
+        final String amortisationMethod = text(object, AMORTISATION_METHOD_PARAM);
+        v.reset().parameter(FEE_METHOD_PARAM).value(upper(feeMethod)).ignoreIfNull().isOneOfTheseStringValues(names(FeeMethod.values()));
+        v.reset().parameter(AMORTISATION_METHOD_PARAM).value(upper(amortisationMethod)).ignoreIfNull()
+                .isOneOfTheseStringValues(names(AmortisationMethod.values()));
         if (create) {
             v.reset().parameter(CODE_PARAM).value(code).notBlank().matchesRegularExpression(CODE_PATTERN,
                     "The parameter `code` may hold letters, digits, - and _ only, 50 at most");
@@ -238,6 +256,8 @@ public class TreasuryDealDataValidator {
             values.put(gl, this.fromApiJsonHelper.extractLongNamed(gl, object));
         }
         values.put(ACTIVE_PARAM, this.fromApiJsonHelper.extractBooleanNamed(ACTIVE_PARAM, object));
+        values.put(FEE_METHOD_PARAM, feeMethod == null ? null : FeeMethod.valueOf(upper(feeMethod)));
+        values.put(AMORTISATION_METHOD_PARAM, amortisationMethod == null ? null : AmortisationMethod.valueOf(upper(amortisationMethod)));
         return new Request(Set.copyOf(object.keySet()), values);
     }
 
@@ -284,6 +304,7 @@ public class TreasuryDealDataValidator {
         }
         values.put(FREQUENCY_PARAM, frequency);
         values.put(AMORTISING_PARAM, this.fromApiJsonHelper.extractBooleanNamed(AMORTISING_PARAM, object));
+        values.put(ROLLOVER_PRE_APPROVED_PARAM, this.fromApiJsonHelper.extractBooleanNamed(ROLLOVER_PRE_APPROVED_PARAM, object));
         final String classification = text(object, CLASSIFICATION_PARAM);
         v.reset().parameter(CLASSIFICATION_PARAM).value(upper(classification)).ignoreIfNull()
                 .isOneOfTheseStringValues(names(DealClassification.values()));
@@ -353,6 +374,65 @@ public class TreasuryDealDataValidator {
             }
         }
         throwIfAny(errors);
+    }
+
+    public record SettleCashflowRequest(Long cashflowId, BigDecimal amount, LocalDate transactionDate, String note) {
+    }
+
+    public record TerminateRequest(LocalDate transactionDate, BigDecimal proceeds, BigDecimal breakCost, String reason, String note) {
+    }
+
+    public record RolloverRequest(BigDecimal rate, LocalDate maturityDate, boolean capitaliseInterest, String externalReference,
+            boolean rolloverPreApproved, String note) {
+    }
+
+    /** {@code amount} defaults to what is left of the cash flow, {@code transactionDate} to the business date. */
+    public SettleCashflowRequest validateSettleCashflow(final String json) {
+        final JsonObject object = parse(json, SETTLE_CASHFLOW_PARAMS);
+        final List<ApiParameterError> errors = new ArrayList<>();
+        final DataValidatorBuilder v = new DataValidatorBuilder(errors).resource(TREASURY_DEAL_RESOURCE_NAME);
+        final Long cashflowId = this.fromApiJsonHelper.extractLongNamed(CASHFLOW_ID_PARAM, object);
+        final BigDecimal amount = amount(object, AMOUNT_PARAM, v);
+        final LocalDate date = date(object, TRANSACTION_DATE_PARAM, v);
+        v.reset().parameter(CASHFLOW_ID_PARAM).value(cashflowId).notNull().longGreaterThanZero();
+        v.reset().parameter(AMOUNT_PARAM).value(amount).ignoreIfNull().positiveAmount();
+        v.reset().parameter(NOTE_PARAM).value(text(object, NOTE_PARAM)).ignoreIfNull().notExceedingLengthOf(1000);
+        throwIfAny(errors);
+        return new SettleCashflowRequest(cashflowId, amount, date, text(object, NOTE_PARAM));
+    }
+
+    public TerminateRequest validateTerminate(final String json) {
+        final JsonObject object = parse(json, TERMINATE_PARAMS);
+        final List<ApiParameterError> errors = new ArrayList<>();
+        final DataValidatorBuilder v = new DataValidatorBuilder(errors).resource(TREASURY_DEAL_RESOURCE_NAME);
+        final LocalDate date = date(object, TRANSACTION_DATE_PARAM, v);
+        final BigDecimal proceeds = amount(object, PROCEEDS_PARAM, v);
+        final BigDecimal breakCost = amount(object, BREAK_COST_PARAM, v);
+        v.reset().parameter(PROCEEDS_PARAM).value(proceeds).notNull().zeroOrPositiveAmount();
+        v.reset().parameter(BREAK_COST_PARAM).value(breakCost).ignoreIfNull().zeroOrPositiveAmount();
+        v.reset().parameter(REASON_PARAM).value(text(object, REASON_PARAM)).notBlank().notExceedingLengthOf(500);
+        v.reset().parameter(NOTE_PARAM).value(text(object, NOTE_PARAM)).ignoreIfNull().notExceedingLengthOf(1000);
+        throwIfAny(errors);
+        return new TerminateRequest(date, proceeds, breakCost, text(object, REASON_PARAM), text(object, NOTE_PARAM));
+    }
+
+    public RolloverRequest validateRollover(final String json) {
+        final JsonObject object = parse(json, ROLLOVER_PARAMS);
+        final List<ApiParameterError> errors = new ArrayList<>();
+        final DataValidatorBuilder v = new DataValidatorBuilder(errors).resource(TREASURY_DEAL_RESOURCE_NAME);
+        final BigDecimal rate = amount(object, RATE_PARAM, v);
+        final LocalDate maturity = date(object, MATURITY_DATE_PARAM, v);
+        v.reset().parameter(RATE_PARAM).value(rate).notNull().zeroOrPositiveAmount();
+        v.reset().parameter(MATURITY_DATE_PARAM).value(maturity).notNull();
+        v.reset().parameter(EXTERNAL_REFERENCE_PARAM).value(text(object, EXTERNAL_REFERENCE_PARAM)).ignoreIfNull()
+                .notExceedingLengthOf(100);
+        v.reset().parameter(NOTE_PARAM).value(text(object, NOTE_PARAM)).ignoreIfNull().notExceedingLengthOf(1000);
+        throwIfAny(errors);
+        return new RolloverRequest(rate, maturity,
+                Boolean.TRUE.equals(this.fromApiJsonHelper.extractBooleanNamed(CAPITALISE_INTEREST_PARAM, object)),
+                text(object, EXTERNAL_REFERENCE_PARAM),
+                Boolean.TRUE.equals(this.fromApiJsonHelper.extractBooleanNamed(ROLLOVER_PRE_APPROVED_PARAM, object)),
+                text(object, NOTE_PARAM));
     }
 
     public ActionRequest validateAction(final String json) {
