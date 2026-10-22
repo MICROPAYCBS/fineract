@@ -35,6 +35,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -161,11 +163,17 @@ public class TreasuryCounterpartyService {
                 sum(exposedDeals(counterparty.getId(), deal.getId(), deal.getRolledFromDealId())), deal.getExposureAmount());
     }
 
-    /** The deal itself and, for a rollover, the deal it replaces are left out: they are one exposure. */
+    /**
+     * The given deals (the deal itself and, for a rollover, the deal it replaces) are left out, and so is any deal
+     * rolled into a deal that still counts: until the old deal matures they are one exposure, counted by the new deal.
+     */
     private List<TreasuryDeal> exposedDeals(final Long counterpartyId, final Long... excludedDealIds) {
         final List<Long> excluded = Arrays.asList(excludedDealIds);
-        return this.dealRepository.findByCounterpartyIdAndStatusIn(counterpartyId, EXPOSED).stream()
-                .filter(deal -> deal.getId() == null || !excluded.contains(deal.getId()))
+        final List<TreasuryDeal> open = this.dealRepository.findByCounterpartyIdAndStatusIn(counterpartyId, EXPOSED).stream()
+                .filter(deal -> deal.getId() == null || !excluded.contains(deal.getId())).toList();
+        final Set<Long> replaced = open.stream().map(TreasuryDeal::getRolledFromDealId).filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        return open.stream().filter(deal -> !replaced.contains(deal.getId()))
                 .filter(deal -> deal.getExposureAmount() != null && deal.getExposureAmount().signum() > 0).toList();
     }
 
