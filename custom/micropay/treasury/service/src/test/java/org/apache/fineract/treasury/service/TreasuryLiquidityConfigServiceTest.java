@@ -44,11 +44,14 @@ import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenantConnection;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.treasury.domain.TreasuryAssetClassRuleRepository;
 import org.apache.fineract.treasury.domain.TreasuryAssumptionRepository;
 import org.apache.fineract.treasury.domain.TreasuryAssumptionSet;
 import org.apache.fineract.treasury.domain.TreasuryAssumptionSetRepository;
 import org.apache.fineract.treasury.domain.TreasuryBucket;
 import org.apache.fineract.treasury.domain.TreasuryBucketRepository;
+import org.apache.fineract.treasury.domain.TreasuryRatioComponentRepository;
+import org.apache.fineract.treasury.domain.TreasuryRatioDefinitionRepository;
 import org.apache.fineract.treasury.domain.TreasuryRuleSet;
 import org.apache.fineract.treasury.domain.TreasuryRuleSetRepository;
 import org.apache.fineract.treasury.domain.TreasuryRun;
@@ -85,7 +88,8 @@ class TreasuryLiquidityConfigServiceTest {
     private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
     private final TreasuryLiquidityDataValidator validator = new TreasuryLiquidityDataValidator(new FromJsonHelper());
     private final TreasuryRuleSetService ruleSetService = new TreasuryRuleSetService(this.validator, this.actor, this.ruleSets,
-            this.buckets);
+            this.buckets, mock(TreasuryRatioDefinitionRepository.class), mock(TreasuryRatioComponentRepository.class),
+            mock(TreasuryAssetClassRuleRepository.class));
     private final TreasuryAssumptionSetService assumptionSetService = new TreasuryAssumptionSetService(this.validator, this.actor,
             this.assumptionSets, mock(TreasuryAssumptionRepository.class));
     private final List<TreasuryRuleSet> savedSets = new ArrayList<>();
@@ -220,11 +224,14 @@ class TreasuryLiquidityConfigServiceTest {
                 LocalDate.of(2026, 10, 25), new BigDecimal("-400")));
         final TreasuryLiquidityRunService service = new TreasuryLiquidityRunService(this.validator, this.actor, this.ruleSetService,
                 this.assumptionSetService, this.runs, this.runLines, this.lookup, List.of(opening, items),
-                mock(NamedParameterJdbcTemplate.class), mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class));
+                mock(NamedParameterJdbcTemplate.class), mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class),
+                mock(TreasuryRatioRunService.class));
         final TreasuryRun earlier = new TreasuryRun();
         earlier.setId(70L);
+        earlier.setRunType(RunType.LADDER);
         final TreasuryRun otherOffice = new TreasuryRun();
         otherOffice.setId(71L);
+        otherOffice.setRunType(RunType.LADDER);
         otherOffice.setOfficeId(2L);
         when(this.runs.findByRunTypeAndAsOfDateAndCurrencyCode(RunType.LADDER, LocalDate.of(2026, 10, 16), "UGX"))
                 .thenReturn(List.of(earlier, otherOffice));

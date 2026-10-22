@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder (phase 3: P3.1, TR-19 to TR-21). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run") and the Liquibase changelogs.
@@ -422,6 +422,47 @@ Loan, savings and deposit figures are as they stand when the run is made; a run 
 
 A savings product with 1,000,000 under the placeholder set: contractually all 1,000,000 is payable overnight. Behaviourally the core 60% (600,000) stays; of the volatile 400,000, 5% (20,000) leaves overnight, 20,000 in 2-8 days, 40,000 in each of the next four buckets, and the 200,000 not run off joins the core in the last bucket (800,000). The overnight line shows contractual -1,000,000, behavioural +980,000, total -20,000. A loan 45 days in arrears with 55,000 overdue and 55,000 due in 15 days has half of each haircut (-27,500 overnight and -27,500 in 9 days to 1 month). 3,000,000 of net agent float top-ups over 30 days is 100,000 a day: -200,000 overnight, -700,000 in 2-8 days, -2,200,000 in 9 days to 1 month.
 
+## Liquidity ratios and the regulatory return
+
+P3.2 (TR-22, TR-23, TR-28, TR-29) adds ratios and asset classes to rule set versions, RATIOS and RETURN runs, and return submission.
+
+### Ratios, components and asset classes
+
+They are part of a rule set version: set while it is a `DRAFT` (in `POST`/`PUT /rule-sets` as `ratios` and `assetClasses`, or with `PUT /rule-sets/{id}/ratios` and `PUT /rule-sets/{id}/asset-classes`, each replacing the list), immutable once active. `POST /rule-sets` with `copyFromId` starts a new version as a copy of another (buckets, ratios and asset classes), anything sent replacing what is copied. `GET /rule-sets/{id}/ratios` and `/asset-classes` read them.
+
+- **Ratio**: `{"code", "name", "direction": "MIN" | "MAX", "limit", "warning", "inReturn", "numeratorLabel", "denominatorLabel", "description", "components": [...]}`. The result is numerator / denominator in percent. MIN: below the limit `BREACH`, below the warning `WARNING`, else `OK`; MAX the other way round; no denominator is a `BREACH`. `inReturn` puts the ratio in the regulatory return.
+- **Component**: `{"part": "NUMERATOR" | "DENOMINATOR", "type", "label", "sign" (1 or -1), "weight" (percent, default 100)}` and by type:
+  - `GL_ACCOUNT`: `glAccountId`, or `glCodePrefix`, or `glCodeFrom` and `glCodeTo` (inclusive); the natural balance (debit for assets and expenses, credit for the rest) of the entries to the as-of date, in the currency, of the office when the run has one.
+  - `ASSET_CLASS`: `assetClass`, one of the rule set's.
+  - `LADDER_METRIC`: `ladderMetric` (`INFLOWS`, `OUTFLOWS`, `NET_OUTFLOWS`: outflows less inflows, inflows counting up to 75% of outflows) over the buckets ending within `metricDays` (default 30) of the ladder run, opening stock left out.
+- **Asset class**: `{"code", "label", "liquid", "accountTypes": [...], "instrumentKinds": [...], "dealTypeIds": [...], "maxMaturityDays", "haircut"}`. Treasury accounts of the types count at their GL balance; settled asset deals of the kinds or types held on the date at their carrying amount (amortised cost with accrued interest, plus the fair value adjustment, less the loss allowance at amortised cost). A deal maturing more than `maxMaturityDays` after the as-of date is excluded; of the others, the share of the nominal pledged on the date (P2.3) is excluded. The haircut then applies. An account type or instrument kind belongs to one class at most.
+
+A component's eligible amount is `sign x (source - excluded) x (100 - haircut)% x weight%`.
+
+Seeded placeholders, **to map to your chart of accounts** (the GL components use the default chart's code prefixes):
+
+- both rule sets' asset classes: `CASH` (vaults), `BOU_BALANCE` (central bank), `BANK_BALANCE_DEMAND` (banks), `WALLET` (mobile wallets), `PLACEMENT` (placements and deposits placed within 91 days), `TBILL` (within 91 days), all 0% haircut; `GOVT_BOND` with a 10% haircut;
+- `BOU_MDI_2004`: `LIQUID_ASSETS_TO_DEPOSITS` (the liquid asset classes over deposit liabilities, GL codes `2000*`; minimum 15%, warning 17%, in the return), `CASH_RESERVE` (BoU balances over deposits; 8%, warning 9%, placeholder), `ADVANCES_TO_DEPOSITS` (GL codes `1100*` over deposits; maximum 80%, warning 75%, placeholder);
+- `BOU_FI_2023` (draft): `LIQUID_ASSETS_TO_DEPOSITS` at 20%, `LCR` (liquid asset classes over the ladder's 30-day net outflows, 100%) and `NSFR` (equity `3*` at 100% and deposits at 90% over assets `1*` at 65%, 100%), simplified placeholders.
+
+### Runs and the return
+
+`POST /runs?type=ratios&asOfDate=&currency=&officeId=` computes the ratios from a ladder run (`sourceRunId`, else the scope's ladder run, else a new one) and stores each ratio (numerator, denominator, result, limit, status) and each component (reference, source amount, pledged and maturity exclusions, haircut, weight, sign, eligible amount) with the ladder run, rule set and assumption versions, and a JSON snapshot of the ratios and asset classes used. `GET /runs/{id}` shows them. Everything is read back from what was stored, so a run reads the same after the configuration changes.
+
+`POST /runs?type=return` builds the return from a ratios run (`sourceRunId`, the scope's, or a new one): for each ratio `inReturn`, A its numerator components and total (liquid assets), B its denominator components and total (deposit liabilities), C the ratio, the limit and the status. `GET /runs/{id}/return` (JSON) or `?format=csv`. **The layout is provisional (MDI 110A style), pending MICROPAY's Q7.** The CSV has the run's fixed fields (run, date, currency, office, rule set and assumption versions, ratios and ladder run) and the stored lines; it does not change on submission.
+
+`POST /runs/{id}?command=submit` (`SUBMIT_TREASURYRUN`, maker-checker capable; not by who made the return) marks a return `SUBMITTED`. A run replaces the scope's earlier run of its type and whatever was computed from it (a new ladder drops the scope's ratios and return); once a return of the scope is submitted, every run of the scope is locked and nothing can replace it.
+
+The "Treasury Liquidity Run" job (`TRS_LIQ`) now computes the ratios after the ladder when the rule set has any.
+
+### Reports
+
+Table reports (category Accounting, parameter `asOn`) over the stored institution runs of a date: "Treasury Maturity Ladder" (every ladder line with each bucket's net and cumulative gap), "Treasury Liquidity Ratios" and "Treasury Regulatory Liquidity Return". Each needs its `READ_<report name>` permission.
+
+### Worked example
+
+Cash in vaults of 2,500 and a government bond class carried at 300,000, of which 50,000 matures after the cut-off and 25,000 of the rest is pledged: the bond class counts (300,000 - 75,000) x 90% = 202,500. With deposit liabilities of 1,000,000, liquid assets to deposits is 205,000 / 1,000,000 = 20.50%: `OK` against the 15% minimum and the 17% warning. The return shows A1 cash 2,500, A2 bonds 202,500, total 205,000; B1 deposits 1,000,000; C1 20.50, C2 15.00, C3 OK.
+
 ## Tables
 
 | Table | Holds |
@@ -456,6 +497,12 @@ A savings product with 1,000,000 under the placeholder set: contractually all 1,
 | `m_treasury_ladder_item` | Configured fixed flows. |
 | `m_treasury_run` | Stored runs: type, as-of date, currency, office, rule set and assumption set versions, beyond-horizon total, notes. |
 | `m_treasury_run_line` | The lines of a run, and each bucket's total with its net and cumulative gap. |
+| `m_treasury_ratio_definition` | The ratios of a rule set version. |
+| `m_treasury_ratio_component` | The numerator and denominator components of a ratio. |
+| `m_treasury_asset_class_rule` | The asset classes of a rule set version: account types, instrument kinds, deal types, cut-off, haircut. |
+| `m_treasury_run_ratio` | Each ratio of a RATIOS run as computed. |
+| `m_treasury_run_component` | Each component of a ratio of a run: source, exclusions, haircut, weight, eligible amount. |
+| `m_treasury_run_return_line` | The lines of a RETURN run. |
 
 ## Permissions
 
@@ -481,6 +528,7 @@ Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` var
 - `READ_TREASURYRULESET`, `CREATE_TREASURYRULESET`, `UPDATE_TREASURYRULESET`, `DELETE_TREASURYRULESET`, `ACTIVATE_TREASURYRULESET`
 - `READ_TREASURYASSUMPTIONSET`, `CREATE_TREASURYASSUMPTIONSET`, `UPDATE_TREASURYASSUMPTIONSET`, `DELETE_TREASURYASSUMPTIONSET`, `ACTIVATE_TREASURYASSUMPTIONSET`
 - `READ_TREASURYLADDERITEM`, `CREATE_TREASURYLADDERITEM`, `UPDATE_TREASURYLADDERITEM`, `DELETE_TREASURYLADDERITEM`
-- `READ_TREASURYRUN`, `CREATE_TREASURYRUN`
+- `READ_TREASURYRUN` (also the return), `CREATE_TREASURYRUN`, `SUBMIT_TREASURYRUN`
+- reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

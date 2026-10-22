@@ -24,18 +24,31 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 /**
- * A stored run with its bucket totals; {@code lines} only from {@code GET /runs/{id}/lines}.
+ * A stored run: LADDER runs with their bucket totals (every line from {@code GET /runs/{id}/lines}), RATIOS runs with
+ * their ratios and components.
  *
  * @param opening
- *            the opening stock of liquid treasury accounts, part of the first bucket
+ *            LADDER: the opening stock of liquid treasury accounts, part of the first bucket
+ * @param sourceRunId
+ *            RATIOS: the ladder run; RETURN: the ratios run
  */
 public record TreasuryRunData(Long id, String runType, LocalDate asOfDate, String currencyCode, Long officeId, Long ruleSetId,
         int ruleSetVersion, Long assumptionSetId, Integer assumptionSetVersion, String status, String notes, BigDecimal opening,
-        BigDecimal beyondHorizon, Long createdBy, OffsetDateTime createdOnUtc, List<Line> buckets) {
+        BigDecimal beyondHorizon, Long sourceRunId, Long submittedBy, LocalDate submittedOnDate, Long createdBy,
+        OffsetDateTime createdOnUtc, List<Line> buckets, List<Ratio> ratios) {
 
     /** A line: a source line in a bucket, or (source TOTAL) the bucket's totals with its net and cumulative gap. */
     public record Line(int bucketSeq, String bucketCode, String source, String lineCode, Long productId, String productName,
             BigDecimal inflow, BigDecimal outflow, BigDecimal contractual, BigDecimal behavioural, BigDecimal net,
             BigDecimal cumulativeGap) {
+    }
+
+    public record Ratio(int seq, String code, String name, String direction, BigDecimal numerator, BigDecimal denominator,
+            BigDecimal result, BigDecimal limit, BigDecimal warning, String status, boolean inReturn, List<Component> components) {
+    }
+
+    public record Component(String part, int seq, String type, String label, String reference, BigDecimal sourceAmount,
+            BigDecimal excludedPledged, BigDecimal excludedMaturity, BigDecimal haircut, BigDecimal weight, int sign,
+            BigDecimal eligibleAmount) {
     }
 }

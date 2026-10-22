@@ -22,6 +22,7 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ACT
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ACTIVE_FROM_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ACTIVE_TO_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.AMOUNT_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ASSET_CLASSES_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ASSUMPTIONS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ASSUMPTION_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ASSUMPTION_SET_ID_PARAM;
@@ -31,6 +32,7 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.BUC
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.BUCKET_CODE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.BUCKET_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.CODE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.COPY_FROM_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.CURRENCY_CODE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.DATE_FORMAT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.DAY_OF_MONTH_PARAM;
@@ -49,10 +51,12 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.OFF
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ONE_OFF_DATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.PRODUCT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RATE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RATIOS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RUN_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SOURCE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SOURCE_RUN_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TO_DAY_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TREASURY_ASSUMPTION_SET_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TREASURY_LADDER_ITEM_RESOURCE_NAME;
@@ -114,7 +118,8 @@ public class TreasuryLiquidityDataValidator {
     private final FromJsonHelper fromApiJsonHelper;
 
     public record RuleSetRequest(Set<String> parametersPassed, String code, String name, LocalDate effectiveDate, String description,
-            Boolean isDefault, List<Bucket> buckets) {
+            Boolean isDefault, List<Bucket> buckets, Long copyFromId, List<RatioConfigParser.RatioSpec> ratios,
+            List<RatioConfigParser.AssetClassSpec> assetClasses) {
 
         public boolean has(final String parameter) {
             return this.parametersPassed.contains(parameter);
@@ -137,7 +142,8 @@ public class TreasuryLiquidityDataValidator {
         }
     }
 
-    public record RunRequest(RunType type, LocalDate asOfDate, String currencyCode, Long officeId, Long ruleSetId, Long assumptionSetId) {
+    public record RunRequest(RunType type, LocalDate asOfDate, String currencyCode, Long officeId, Long ruleSetId, Long assumptionSetId,
+            Long sourceRunId) {
     }
 
     // ---------- rule sets ----------
@@ -153,10 +159,15 @@ public class TreasuryLiquidityDataValidator {
                     "The parameter `code` may hold letters, digits, - and _ only, 50 at most");
             v.reset().parameter(NAME_PARAM).value(text(object, NAME_PARAM)).notBlank().notExceedingLengthOf(150);
             v.reset().parameter(EFFECTIVE_DATE_PARAM).value(effective).notNull();
-            v.reset().parameter(BUCKETS_PARAM).value(object.get(BUCKETS_PARAM)).notNull();
+            if (!object.has(COPY_FROM_ID_PARAM)) {
+                v.reset().parameter(BUCKETS_PARAM).value(object.get(BUCKETS_PARAM)).notNull();
+            }
         } else {
             if (object.has(CODE_PARAM)) {
                 v.reset().parameter(CODE_PARAM).failWithCode("cannot.be.changed");
+            }
+            if (object.has(COPY_FROM_ID_PARAM)) {
+                v.reset().parameter(COPY_FROM_ID_PARAM).failWithCode("only.on.create");
             }
             if (object.has(NAME_PARAM)) {
                 v.reset().parameter(NAME_PARAM).value(text(object, NAME_PARAM)).notBlank().notExceedingLengthOf(150);
@@ -165,7 +176,15 @@ public class TreasuryLiquidityDataValidator {
                 v.reset().anyOfNotNull();
             }
         }
+        final Long copyFrom = this.fromApiJsonHelper.extractLongNamed(COPY_FROM_ID_PARAM, object);
+        v.reset().parameter(COPY_FROM_ID_PARAM).value(copyFrom).ignoreIfNull().longGreaterThanZero();
         v.reset().parameter(DESCRIPTION_PARAM).value(text(object, DESCRIPTION_PARAM)).ignoreIfNull().notExceedingLengthOf(1000);
+        final List<RatioConfigParser.RatioSpec> ratios = object.has(RATIOS_PARAM)
+                ? RatioConfigParser.ratios(this.fromApiJsonHelper, object.get(RATIOS_PARAM), v)
+                : null;
+        final List<RatioConfigParser.AssetClassSpec> assetClasses = object.has(ASSET_CLASSES_PARAM)
+                ? RatioConfigParser.assetClasses(this.fromApiJsonHelper, object.get(ASSET_CLASSES_PARAM), v)
+                : null;
         final Boolean isDefault = object.has(IS_DEFAULT_PARAM) ? this.fromApiJsonHelper.extractBooleanNamed(IS_DEFAULT_PARAM, object)
                 : null;
         if (create && isDefault != null) {
@@ -184,7 +203,7 @@ public class TreasuryLiquidityDataValidator {
             }
         }
         return new RuleSetRequest(Set.copyOf(object.keySet()), code, text(object, NAME_PARAM), effective, text(object, DESCRIPTION_PARAM),
-                isDefault, buckets);
+                isDefault, buckets, copyFrom, ratios, assetClasses);
     }
 
     private List<Bucket> buckets(final JsonElement element, final DataValidatorBuilder v) {
@@ -430,6 +449,8 @@ public class TreasuryLiquidityDataValidator {
         final Long office = this.fromApiJsonHelper.extractLongNamed(OFFICE_ID_PARAM, object);
         final Long ruleSet = this.fromApiJsonHelper.extractLongNamed(RULE_SET_ID_PARAM, object);
         final Long assumptionSet = this.fromApiJsonHelper.extractLongNamed(ASSUMPTION_SET_ID_PARAM, object);
+        final Long sourceRun = this.fromApiJsonHelper.extractLongNamed(SOURCE_RUN_ID_PARAM, object);
+        v.reset().parameter(SOURCE_RUN_ID_PARAM).value(sourceRun).ignoreIfNull().longGreaterThanZero();
         v.reset().parameter(TYPE_PARAM).value(type).ignoreIfNull().isOneOfTheseStringValues(names(RunType.values()));
         v.reset().parameter(CURRENCY_CODE_PARAM).value(currency).notBlank().matchesRegularExpression("^[A-Z]{3}$",
                 "The parameter `currencyCode` is a three-letter code");
@@ -437,7 +458,8 @@ public class TreasuryLiquidityDataValidator {
         v.reset().parameter(RULE_SET_ID_PARAM).value(ruleSet).ignoreIfNull().longGreaterThanZero();
         v.reset().parameter(ASSUMPTION_SET_ID_PARAM).value(assumptionSet).ignoreIfNull().longGreaterThanZero();
         throwIfAny(errors);
-        return new RunRequest(type == null ? RunType.LADDER : RunType.valueOf(type), asOf, currency, office, ruleSet, assumptionSet);
+        return new RunRequest(type == null ? RunType.LADDER : RunType.valueOf(type), asOf, currency, office, ruleSet, assumptionSet,
+                sourceRun);
     }
 
     public void validateActivate(final String json) {

@@ -1,0 +1,880 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P3.2. Ratios with their components and asset classes per rule set version (placeholders seeded
+  on BOU_MDI_2004 and BOU_FI_2023 v1), RATIOS and RETURN runs with their stored results, return submission, and the
+  "Treasury Maturity Ladder", "Treasury Liquidity Ratios" and "Treasury Regulatory Liquidity Return" table reports.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0011_ratios_return.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="treasury-ratios-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_ratio_definition"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_ratio_definition">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="rule_set_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_ratio_rule_set" references="m_treasury_rule_set(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="direction" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_value" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="warning_value" type="DECIMAL(19,6)"/>
+            <column name="in_return" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numerator_label" type="VARCHAR(150)"/>
+            <column name="denominator_label" type="VARCHAR(150)"/>
+            <column name="description" type="VARCHAR(1000)"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_ratio_definition" columnNames="rule_set_id, code" constraintName="uq_treasury_ratio_code"/>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_ratio_component"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_ratio_component">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="ratio_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_ratio_component_ratio" references="m_treasury_ratio_definition(id)"/>
+            </column>
+            <column name="part" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="component_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gl_account_id" type="BIGINT"/>
+            <column name="gl_code_prefix" type="VARCHAR(45)"/>
+            <column name="gl_code_from" type="VARCHAR(45)"/>
+            <column name="gl_code_to" type="VARCHAR(45)"/>
+            <column name="asset_class" type="VARCHAR(50)"/>
+            <column name="ladder_metric" type="VARCHAR(30)"/>
+            <column name="metric_days" type="INT"/>
+            <column name="sign" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="weight" type="DECIMAL(19,6)" defaultValueNumeric="100">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_ratio_component" indexName="idx_treasury_ratio_component_ratio">
+            <column name="ratio_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_asset_class_rule"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_asset_class_rule">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="rule_set_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_asset_class_rule_set" references="m_treasury_rule_set(id)"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_liquid" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="account_types" type="VARCHAR(200)"/>
+            <column name="instrument_kinds" type="VARCHAR(200)"/>
+            <column name="deal_type_ids" type="VARCHAR(200)"/>
+            <column name="max_maturity_days" type="INT"/>
+            <column name="haircut" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_asset_class_rule" columnNames="rule_set_id, code" constraintName="uq_treasury_asset_class_code"/>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_run" columnName="source_run_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_run">
+            <column name="source_run_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_run_source" references="m_treasury_run(id)"/>
+            </column>
+            <column name="submitted_by" type="BIGINT"/>
+            <column name="submitted_on_date" type="DATE"/>
+            <column name="config_snapshot" type="TEXT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_ratio"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_ratio">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_ratio_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="direction" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numerator" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="denominator" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="result" type="DECIMAL(19,6)"/>
+            <column name="limit_value" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="warning_value" type="DECIMAL(19,6)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="in_return" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="numerator_label" type="VARCHAR(150)"/>
+            <column name="denominator_label" type="VARCHAR(150)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_ratio" indexName="idx_treasury_run_ratio_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_component"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_component">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_component_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="ratio_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="part" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="component_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference" type="VARCHAR(200)"/>
+            <column name="source_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="excluded_pledged" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="excluded_maturity" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="haircut" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="weight" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sign" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eligible_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_run_component" indexName="idx_treasury_run_component_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_return_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_return_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_return_line_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="section" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(200)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)"/>
+            <column name="value_text" type="VARCHAR(50)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_return_line" indexName="idx_treasury_run_return_line_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Placeholder ratios and asset classes: map the GL components to MICROPAY's chart of accounts -->
+    <changeSet id="treasury-ratios-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_asset_class_rule WHERE rule_set_id = (SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="CASH"/>
+            <column name="label" value="Cash in vaults"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="VAULT"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="BOU_BALANCE"/>
+            <column name="label" value="Balances with Bank of Uganda"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="CENTRAL_BANK"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="BANK_BALANCE_DEMAND"/>
+            <column name="label" value="Demand balances with banks"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="BANK"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="WALLET"/>
+            <column name="label" value="Mobile money wallets"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="MOBILE_WALLET"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="PLACEMENT"/>
+            <column name="label" value="Placements maturing within 91 days"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="instrument_kinds" value="MONEY_MARKET_PLACEMENT,FIXED_DEPOSIT_PLACED"/>
+            <column name="max_maturity_days" valueNumeric="91"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="TBILL"/>
+            <column name="label" value="Treasury bills maturing within 91 days"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="instrument_kinds" value="TREASURY_BILL"/>
+            <column name="max_maturity_days" valueNumeric="91"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="code" value="GOVT_BOND"/>
+            <column name="label" value="Government bonds (after haircut)"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="instrument_kinds" value="GOVERNMENT_BOND"/>
+            <column name="haircut" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_definition">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="code" value="LIQUID_ASSETS_TO_DEPOSITS"/>
+            <column name="name" value="Liquid assets to total deposits"/>
+            <column name="direction" value="MIN"/>
+            <column name="limit_value" valueNumeric="15"/>
+            <column name="warning_value" valueNumeric="17"/>
+            <column name="in_return" valueBoolean="true"/>
+            <column name="numerator_label" value="Liquid assets"/>
+            <column name="denominator_label" value="Deposit liabilities"/>
+            <column name="description" value="Placeholder components: map the deposit liabilities to your chart of accounts."/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Cash in vaults"/>
+            <column name="asset_class" value="CASH"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Balances with Bank of Uganda"/>
+            <column name="asset_class" value="BOU_BALANCE"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Demand balances with banks"/>
+            <column name="asset_class" value="BANK_BALANCE_DEMAND"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Mobile money wallets"/>
+            <column name="asset_class" value="WALLET"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Placements maturing within 91 days"/>
+            <column name="asset_class" value="PLACEMENT"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="6"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Treasury bills maturing within 91 days"/>
+            <column name="asset_class" value="TBILL"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="7"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Government bonds (after haircut)"/>
+            <column name="asset_class" value="GOVT_BOND"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="DENOMINATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Deposit liabilities (placeholder: map to your chart of accounts)"/>
+            <column name="gl_code_prefix" value="2000"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_definition">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="code" value="CASH_RESERVE"/>
+            <column name="name" value="Cash reserve with Bank of Uganda"/>
+            <column name="direction" value="MIN"/>
+            <column name="limit_value" valueNumeric="8"/>
+            <column name="warning_value" valueNumeric="9"/>
+            <column name="in_return" valueBoolean="false"/>
+            <column name="numerator_label" value="Balances with Bank of Uganda"/>
+            <column name="denominator_label" value="Deposit liabilities"/>
+            <column name="description" value="Placeholder requirement and components, to confirm with MICROPAY."/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'CASH_RESERVE')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Balances with Bank of Uganda"/>
+            <column name="asset_class" value="BOU_BALANCE"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'CASH_RESERVE')"/>
+            <column name="part" value="DENOMINATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Deposit liabilities (placeholder: map to your chart of accounts)"/>
+            <column name="gl_code_prefix" value="2000"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_definition">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_MDI_2004' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="code" value="ADVANCES_TO_DEPOSITS"/>
+            <column name="name" value="Advances to deposits"/>
+            <column name="direction" value="MAX"/>
+            <column name="limit_value" valueNumeric="80"/>
+            <column name="warning_value" valueNumeric="75"/>
+            <column name="in_return" valueBoolean="false"/>
+            <column name="numerator_label" value="Gross loans and advances"/>
+            <column name="denominator_label" value="Deposit liabilities"/>
+            <column name="description" value="Placeholder maximum and components, configurable: map the loans and deposits to your chart of accounts."/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'ADVANCES_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Gross loans (placeholder: map to your chart of accounts)"/>
+            <column name="gl_code_prefix" value="1100"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_MDI_2004' AND s.version = 1 AND r.code = 'ADVANCES_TO_DEPOSITS')"/>
+            <column name="part" value="DENOMINATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Deposit liabilities (placeholder: map to your chart of accounts)"/>
+            <column name="gl_code_prefix" value="2000"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_asset_class_rule WHERE rule_set_id = (SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="CASH"/>
+            <column name="label" value="Cash in vaults"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="VAULT"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="BOU_BALANCE"/>
+            <column name="label" value="Balances with Bank of Uganda"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="CENTRAL_BANK"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="BANK_BALANCE_DEMAND"/>
+            <column name="label" value="Demand balances with banks"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="BANK"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="WALLET"/>
+            <column name="label" value="Mobile money wallets"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="account_types" value="MOBILE_WALLET"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="PLACEMENT"/>
+            <column name="label" value="Placements maturing within 91 days"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="instrument_kinds" value="MONEY_MARKET_PLACEMENT,FIXED_DEPOSIT_PLACED"/>
+            <column name="max_maturity_days" valueNumeric="91"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="TBILL"/>
+            <column name="label" value="Treasury bills maturing within 91 days"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="instrument_kinds" value="TREASURY_BILL"/>
+            <column name="max_maturity_days" valueNumeric="91"/>
+            <column name="haircut" valueNumeric="0"/>
+        </insert>
+        <insert tableName="m_treasury_asset_class_rule">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="code" value="GOVT_BOND"/>
+            <column name="label" value="Government bonds (after haircut)"/>
+            <column name="is_liquid" valueBoolean="true"/>
+            <column name="instrument_kinds" value="GOVERNMENT_BOND"/>
+            <column name="haircut" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_definition">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="code" value="LIQUID_ASSETS_TO_DEPOSITS"/>
+            <column name="name" value="Liquid assets to total deposits"/>
+            <column name="direction" value="MIN"/>
+            <column name="limit_value" valueNumeric="20"/>
+            <column name="warning_value" valueNumeric="22"/>
+            <column name="in_return" valueBoolean="true"/>
+            <column name="numerator_label" value="Liquid assets"/>
+            <column name="denominator_label" value="Deposit liabilities"/>
+            <column name="description" value="Placeholder: map the deposit liabilities to your chart of accounts."/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Cash in vaults"/>
+            <column name="asset_class" value="CASH"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Balances with Bank of Uganda"/>
+            <column name="asset_class" value="BOU_BALANCE"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Demand balances with banks"/>
+            <column name="asset_class" value="BANK_BALANCE_DEMAND"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Mobile money wallets"/>
+            <column name="asset_class" value="WALLET"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Placements maturing within 91 days"/>
+            <column name="asset_class" value="PLACEMENT"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="6"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Treasury bills maturing within 91 days"/>
+            <column name="asset_class" value="TBILL"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="7"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Government bonds (after haircut)"/>
+            <column name="asset_class" value="GOVT_BOND"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LIQUID_ASSETS_TO_DEPOSITS')"/>
+            <column name="part" value="DENOMINATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Deposit liabilities (placeholder: map to your chart of accounts)"/>
+            <column name="gl_code_prefix" value="2000"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_definition">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="code" value="LCR"/>
+            <column name="name" value="Liquidity coverage ratio (simplified)"/>
+            <column name="direction" value="MIN"/>
+            <column name="limit_value" valueNumeric="100"/>
+            <column name="warning_value" valueNumeric="110"/>
+            <column name="in_return" valueBoolean="false"/>
+            <column name="numerator_label" value="High-quality liquid assets"/>
+            <column name="denominator_label" value="Net cash outflows over 30 days"/>
+            <column name="description" value="Simplified placeholder: liquid asset classes over the ladder's 30-day net outflows (inflows capped at 75%)."/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Cash in vaults"/>
+            <column name="asset_class" value="CASH"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Balances with Bank of Uganda"/>
+            <column name="asset_class" value="BOU_BALANCE"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Demand balances with banks"/>
+            <column name="asset_class" value="BANK_BALANCE_DEMAND"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Mobile money wallets"/>
+            <column name="asset_class" value="WALLET"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Placements maturing within 91 days"/>
+            <column name="asset_class" value="PLACEMENT"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="6"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Treasury bills maturing within 91 days"/>
+            <column name="asset_class" value="TBILL"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="7"/>
+            <column name="component_type" value="ASSET_CLASS"/>
+            <column name="label" value="Government bonds (after haircut)"/>
+            <column name="asset_class" value="GOVT_BOND"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'LCR')"/>
+            <column name="part" value="DENOMINATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="LADDER_METRIC"/>
+            <column name="label" value="Net outflows over 30 days (ladder)"/>
+            <column name="ladder_metric" value="NET_OUTFLOWS"/>
+            <column name="metric_days" valueNumeric="30"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_definition">
+            <column name="rule_set_id" valueComputed="(SELECT id FROM m_treasury_rule_set WHERE code = 'BOU_FI_2023' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="code" value="NSFR"/>
+            <column name="name" value="Net stable funding ratio (simplified)"/>
+            <column name="direction" value="MIN"/>
+            <column name="limit_value" valueNumeric="100"/>
+            <column name="warning_value" valueNumeric="105"/>
+            <column name="in_return" valueBoolean="false"/>
+            <column name="numerator_label" value="Available stable funding"/>
+            <column name="denominator_label" value="Required stable funding"/>
+            <column name="description" value="Simplified placeholder: weighted GL groups; replace with the regulator's factors."/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'NSFR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Equity (placeholder, 100%)"/>
+            <column name="gl_code_prefix" value="3"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'NSFR')"/>
+            <column name="part" value="NUMERATOR"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Deposits (placeholder, 90%)"/>
+            <column name="gl_code_prefix" value="2000"/>
+            <column name="weight" valueNumeric="90"/>
+        </insert>
+        <insert tableName="m_treasury_ratio_component">
+            <column name="ratio_id" valueComputed="(SELECT r.id FROM m_treasury_ratio_definition r JOIN m_treasury_rule_set s ON s.id = r.rule_set_id WHERE s.code = 'BOU_FI_2023' AND s.version = 1 AND r.code = 'NSFR')"/>
+            <column name="part" value="DENOMINATOR"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="component_type" value="GL_ACCOUNT"/>
+            <column name="label" value="Assets (placeholder, 65%)"/>
+            <column name="gl_code_prefix" value="1"/>
+            <column name="weight" valueNumeric="65"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-report-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Maturity Ladder'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Maturity Ladder"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, r.id AS run_id, l.bucket_seq AS bucket_seq, l.bucket_code AS bucket, l.source, l.line_code AS line, l.product_name AS product, l.contractual, l.behavioural, l.inflow, l.outflow, l.net, l.cumulative_gap FROM m_treasury_run r JOIN m_treasury_run_line l ON l.run_id = r.id WHERE r.run_type = 'LADDER' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' ORDER BY r.currency_code, l.bucket_seq, l.source, l.line_code, l.id"/>
+            <column name="description" value="The institution maturity ladder runs of a date: every line per bucket, with each bucket's net and cumulative gap."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Maturity Ladder')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Maturity Ladder"/>
+            <column name="entity_name" value="Treasury Maturity Ladder"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-report-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Liquidity Ratios'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Liquidity Ratios"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, r.id AS run_id, x.code, x.name, x.direction, x.numerator, x.denominator, x.result, x.limit_value, x.warning_value, x.status FROM m_treasury_run r JOIN m_treasury_run_ratio x ON x.run_id = r.id WHERE r.run_type = 'RATIOS' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' ORDER BY r.currency_code, x.seq"/>
+            <column name="description" value="The institution liquidity ratios of a date: numerator, denominator, result, limit and status."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Liquidity Ratios')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Liquidity Ratios"/>
+            <column name="entity_name" value="Treasury Liquidity Ratios"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-report-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Regulatory Liquidity Return'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Regulatory Liquidity Return"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, r.id AS run_id, r.status AS run_status, l.section, l.line_code AS line, l.label, l.amount, l.value_text FROM m_treasury_run r JOIN m_treasury_run_return_line l ON l.run_id = r.id WHERE r.run_type = 'RETURN' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' ORDER BY r.currency_code, l.seq"/>
+            <column name="description" value="The institution regulatory liquidity return of a date in the provisional MDI 110A layout."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Regulatory Liquidity Return')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Regulatory Liquidity Return"/>
+            <column name="entity_name" value="Treasury Regulatory Liquidity Return"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-job-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Builds the maturity ladder of every organisation currency for the business date with the default rule set and the active assumption set, then computes the rule set's ratios from it, replacing that date's earlier runs unless a return of the date has been submitted. Runs after Treasury Position Snapshot."/>
+            <where>short_name='TRS_LIQ'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SUBMIT_TREASURYRUN'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="SUBMIT_TREASURYRUN"/>
+            <column name="entity_name" value="TREASURYRUN"/>
+            <column name="action_name" value="SUBMIT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-ratios-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SUBMIT_TREASURYRUN_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="SUBMIT_TREASURYRUN_CHECKER"/>
+            <column name="entity_name" value="TREASURYRUN"/>
+            <column name="action_name" value="SUBMIT_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

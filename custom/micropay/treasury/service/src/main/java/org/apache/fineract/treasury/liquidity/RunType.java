@@ -23,5 +23,7 @@ package org.apache.fineract.treasury.liquidity;
  */
 public enum RunType {
 
-    LADDER; //
+    LADDER, //
+    RATIOS, //
+    RETURN; //
 }

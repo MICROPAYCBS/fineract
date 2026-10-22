@@ -18,21 +18,26 @@
  */
 package org.apache.fineract.treasury.data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import org.apache.fineract.treasury.domain.TreasuryBucket;
-import org.apache.fineract.treasury.domain.TreasuryRuleSet;
 
 public record TreasuryRuleSetData(Long id, String code, String name, int version, LocalDate effectiveDate, String status, boolean isDefault,
-        String description, Long createdBy, Long lastEditedBy, Long activatedBy, LocalDate activatedOnDate, List<BucketData> buckets) {
+        String description, Long createdBy, Long lastEditedBy, Long activatedBy, LocalDate activatedOnDate, List<BucketData> buckets,
+        List<RatioData> ratios, List<AssetClassData> assetClasses) {
 
     public record BucketData(int seq, String code, String label, int fromDay, Integer toDay) {
     }
 
-    public static TreasuryRuleSetData from(final TreasuryRuleSet set, final List<TreasuryBucket> buckets) {
-        return new TreasuryRuleSetData(set.getId(), set.getCode(), set.getName(), set.getVersion(), set.getEffectiveDate(),
-                set.getStatus().name(), set.isDefaultSet(), set.getDescription(), set.getCreatedBy(), set.getLastEditedBy(),
-                set.getActivatedBy(), set.getActivatedOnDate(), buckets.stream()
-                        .map(b -> new BucketData(b.getSequenceNumber(), b.getCode(), b.getLabel(), b.getFromDay(), b.getToDay())).toList());
+    public record RatioData(int seq, String code, String name, String direction, BigDecimal limit, BigDecimal warning, boolean inReturn,
+            String numeratorLabel, String denominatorLabel, String description, List<ComponentData> components) {
+    }
+
+    public record ComponentData(String part, int seq, String type, String label, Long glAccountId, String glCodePrefix, String glCodeFrom,
+            String glCodeTo, String assetClass, String ladderMetric, Integer metricDays, int sign, BigDecimal weight) {
+    }
+
+    public record AssetClassData(String code, String label, boolean liquid, List<String> accountTypes, List<String> instrumentKinds,
+            List<Long> dealTypeIds, Integer maxMaturityDays, BigDecimal haircut) {
     }
 }

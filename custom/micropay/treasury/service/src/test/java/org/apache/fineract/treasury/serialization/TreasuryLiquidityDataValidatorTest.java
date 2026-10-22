@@ -178,7 +178,7 @@ class TreasuryLiquidityDataValidatorTest {
     void runReadsItsFieldsAndDefaultsToALadder() {
         final RunRequest run = this.validator.validateRun(
                 "{\"type\": \"ladder\", \"asOfDate\": \"2026-10-16\", \"currencyCode\": \"ugx\", \"officeId\": 2, \"ruleSetId\": 3, \"assumptionSetId\": 4}");
-        assertEquals(new RunRequest(RunType.LADDER, LocalDate.of(2026, 10, 16), "UGX", 2L, 3L, 4L), run);
+        assertEquals(new RunRequest(RunType.LADDER, LocalDate.of(2026, 10, 16), "UGX", 2L, 3L, 4L, null), run);
         assertEquals(RunType.LADDER, this.validator.validateRun("{\"currencyCode\": \"UGX\"}").type());
         assertEquals(List.of("type", "currencyCode"), parameters(() -> this.validator.validateRun("{\"type\": \"STRESS\"}")));
         assertThrows(UnsupportedParameterException.class, () -> this.validator.validateActivate("{\"force\": true}"));

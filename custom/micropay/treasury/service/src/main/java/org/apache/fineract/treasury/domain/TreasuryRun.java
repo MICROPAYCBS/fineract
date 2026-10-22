@@ -80,6 +80,20 @@ public class TreasuryRun extends AbstractPersistableCustom<Long> {
     @Column(name = "notes", length = 2000)
     private String notes;
 
+    /** RATIOS: the ladder run it is computed from; RETURN: the ratios run. */
+    @Column(name = "source_run_id")
+    private Long sourceRunId;
+
+    @Column(name = "submitted_by")
+    private Long submittedBy;
+
+    @Column(name = "submitted_on_date")
+    private LocalDate submittedOnDate;
+
+    /** RATIOS: the ratios, components and asset classes as they were configured, as JSON. */
+    @Column(name = "config_snapshot")
+    private String configSnapshot;
+
     @Column(name = "created_by")
     private Long createdBy;
 

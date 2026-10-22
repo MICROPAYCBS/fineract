@@ -26,4 +26,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface TreasuryRunRepository extends JpaRepository<TreasuryRun, Long> {
 
     List<TreasuryRun> findByRunTypeAndAsOfDateAndCurrencyCode(RunType runType, LocalDate asOfDate, String currencyCode);
+
+    List<TreasuryRun> findByAsOfDateAndCurrencyCode(LocalDate asOfDate, String currencyCode);
+
+    List<TreasuryRun> findBySourceRunId(Long sourceRunId);
 }

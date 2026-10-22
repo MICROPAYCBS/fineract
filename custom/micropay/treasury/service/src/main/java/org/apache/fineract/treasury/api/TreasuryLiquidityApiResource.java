@@ -20,6 +20,7 @@ package org.apache.fineract.treasury.api;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.COMMAND_ACTIVATE;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.COMMAND_SUBMIT;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TREASURY_ASSUMPTION_SET_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TREASURY_LADDER_ITEM_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TREASURY_RULE_SET_RESOURCE_NAME;
@@ -46,6 +47,7 @@ import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -59,6 +61,7 @@ import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamE
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.treasury.data.TreasuryAssumptionSetData;
 import org.apache.fineract.treasury.data.TreasuryLadderItemData;
+import org.apache.fineract.treasury.data.TreasuryReturnData;
 import org.apache.fineract.treasury.data.TreasuryRuleSetData;
 import org.apache.fineract.treasury.data.TreasuryRunData;
 import org.apache.fineract.treasury.service.TreasuryAssumptionSetService;
@@ -259,18 +262,58 @@ public class TreasuryLiquidityApiResource {
         return command(TREASURY_LADDER_ITEM_RESOURCE_NAME, "DELETE", id, "/treasury/ladder-items/" + id, "{}");
     }
 
+    @GET
+    @Path("rule-sets/{id}/ratios")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "The ratios of a rule set version with their components")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreasuryRuleSetData.RatioData.class))))
+    public List<TreasuryRuleSetData.RatioData> retrieveRatios(@PathParam("id") final Long id) {
+        this.context.authenticatedUser().validateHasReadPermission(TREASURY_RULE_SET_RESOURCE_NAME);
+        return this.ruleSetService.retrieveOne(id).ratios();
+    }
+
+    @PUT
+    @Path("rule-sets/{id}/ratios")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Replace the ratios of a draft rule set", description = "{\"ratios\": [{code, name, direction (MIN, MAX), limit, warning, inReturn, numeratorLabel, denominatorLabel, components: [{part, type (GL_ACCOUNT, ASSET_CLASS, LADDER_METRIC), label, glAccountId | glCodePrefix | glCodeFrom and glCodeTo, assetClass, ladderMetric, metricDays, sign, weight}]}]}")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    public CommandProcessingResult updateRatios(@PathParam("id") final Long id, @Parameter(hidden = true) final String body) {
+        return command(TREASURY_RULE_SET_RESOURCE_NAME, "UPDATE", id, "/treasury/rule-sets/" + id + "/ratios", body);
+    }
+
+    @GET
+    @Path("rule-sets/{id}/asset-classes")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "The asset classes of a rule set version")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreasuryRuleSetData.AssetClassData.class))))
+    public List<TreasuryRuleSetData.AssetClassData> retrieveAssetClasses(@PathParam("id") final Long id) {
+        this.context.authenticatedUser().validateHasReadPermission(TREASURY_RULE_SET_RESOURCE_NAME);
+        return this.ruleSetService.retrieveOne(id).assetClasses();
+    }
+
+    @PUT
+    @Path("rule-sets/{id}/asset-classes")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Replace the asset classes of a draft rule set", description = "{\"assetClasses\": [{code, label, liquid, accountTypes, instrumentKinds, dealTypeIds, maxMaturityDays, haircut}]}")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    public CommandProcessingResult updateAssetClasses(@PathParam("id") final Long id, @Parameter(hidden = true) final String body) {
+        return command(TREASURY_RULE_SET_RESOURCE_NAME, "UPDATE", id, "/treasury/rule-sets/" + id + "/asset-classes", body);
+    }
+
     // ---------- runs ----------
 
     @POST
     @Path("runs")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Run the ladder", description = "type=ladder, asOfDate (default the business date), currency, optional officeId, ruleSetId (default rule set), assumptionSetId (active set); as query parameters or in the body. A rerun for the same type, date, currency and office replaces the earlier run")
+    @Operation(summary = "Run the ladder, the ratios or the return", description = "type=ladder|ratios|return, asOfDate (default the business date), currency, optional officeId, ruleSetId (default rule set), assumptionSetId (active set), sourceRunId (ratios: the ladder run; return: the ratios run; by default the scope's, built when missing); as query parameters or in the body. A rerun for the same type, date, currency and office replaces the earlier run and what was computed from it, unless a return of the scope has been submitted")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult createRun(@QueryParam("type") final String type, @QueryParam("asOfDate") final String asOfDate,
             @QueryParam("currency") final String currency, @QueryParam("officeId") final Long officeId,
             @QueryParam("ruleSetId") final Long ruleSetId, @QueryParam("assumptionSetId") final Long assumptionSetId,
-            @Parameter(hidden = true) final String body) {
+            @QueryParam("sourceRunId") final Long sourceRunId, @Parameter(hidden = true) final String body) {
         final JsonObject json = StringUtils.isBlank(body) ? new JsonObject() : object(body);
         put(json, "type", type);
         put(json, "asOfDate", asOfDate);
@@ -283,6 +326,9 @@ public class TreasuryLiquidityApiResource {
         }
         if (assumptionSetId != null) {
             json.addProperty("assumptionSetId", assumptionSetId);
+        }
+        if (sourceRunId != null) {
+            json.addProperty("sourceRunId", sourceRunId);
         }
         return command(TREASURY_RUN_RESOURCE_NAME, "CREATE", null, "/treasury/runs", json.toString());
     }
@@ -317,6 +363,34 @@ public class TreasuryLiquidityApiResource {
     public List<TreasuryRunData.Line> retrieveRunLines(@PathParam("id") final Long id) {
         this.context.authenticatedUser().validateHasReadPermission(TREASURY_RUN_RESOURCE_NAME);
         return this.runService.retrieveLines(id);
+    }
+
+    @POST
+    @Path("runs/{id}")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Submit a return", description = "command=submit; the return and the runs of its scope are then locked")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    public CommandProcessingResult actOnRun(@PathParam("id") final Long id, @QueryParam("command") final String commandParam,
+            @Parameter(hidden = true) final String body) {
+        if (!COMMAND_SUBMIT.equalsIgnoreCase(commandParam)) {
+            throw new UnrecognizedQueryParamException("command", commandParam, new Object[] { COMMAND_SUBMIT });
+        }
+        return command(TREASURY_RUN_RESOURCE_NAME, "SUBMIT", id, "/treasury/runs/" + id + "?command=submit", body);
+    }
+
+    @GET
+    @Path("runs/{id}/return")
+    @Produces({ MediaType.APPLICATION_JSON, "text/csv" })
+    @Operation(summary = "A stored regulatory return", description = "format=json (default) or csv; the layout is provisional (MICROPAY Q7). Read from the stored run, so it is the same every time")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TreasuryReturnData.class)))
+    public Response retrieveReturn(@PathParam("id") final Long id, @QueryParam("format") final String format) {
+        this.context.authenticatedUser().validateHasReadPermission(TREASURY_RUN_RESOURCE_NAME);
+        if ("csv".equalsIgnoreCase(StringUtils.trimToEmpty(format))) {
+            return Response.ok(this.runService.retrieveReturnCsv(id), "text/csv")
+                    .header("Content-Disposition", "attachment; filename=\"treasury-return-" + id + ".csv\"").build();
+        }
+        return Response.ok(this.runService.retrieveReturn(id), MediaType.APPLICATION_JSON).build();
     }
 
     private CommandProcessingResult command(final String entity, final String action, final Long entityId, final String href,

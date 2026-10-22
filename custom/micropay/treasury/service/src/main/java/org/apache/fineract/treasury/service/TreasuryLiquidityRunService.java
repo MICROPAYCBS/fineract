@@ -34,6 +34,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.treasury.data.TreasuryReturnData;
 import org.apache.fineract.treasury.data.TreasuryRunData;
 import org.apache.fineract.treasury.domain.TreasuryAssumptionSet;
 import org.apache.fineract.treasury.domain.TreasuryRuleSet;
@@ -41,6 +42,7 @@ import org.apache.fineract.treasury.domain.TreasuryRun;
 import org.apache.fineract.treasury.domain.TreasuryRunLine;
 import org.apache.fineract.treasury.domain.TreasuryRunLineRepository;
 import org.apache.fineract.treasury.domain.TreasuryRunRepository;
+import org.apache.fineract.treasury.domain.TreasurySegregation;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.liquidity.Assumptions;
 import org.apache.fineract.treasury.liquidity.Bucket;
@@ -63,11 +65,21 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Liquidity runs. A LADDER run asks every {@link LadderSource} for its flows as of a date, in a currency, for an office
- * or the whole institution, buckets them with a rule set's buckets and the assumptions of an assumption set, and stores
- * the lines with the rule set and assumption set versions used. A rerun for the same type, date, currency and scope
- * replaces the earlier run. The "Treasury Liquidity Run" job runs every organisation currency for the business date
- * with the default rule set and the active assumption set.
+ * Liquidity runs, stored with the rule set and assumption set versions they used.
+ *
+ * <ul>
+ * <li>LADDER: every {@link LadderSource}'s flows as of a date, in a currency, for an office or the whole institution,
+ * bucketed with the rule set's buckets and the assumptions.</li>
+ * <li>RATIOS: the rule set's ratios from a ladder run (the one given, else the scope's, else a new one) and the GL;
+ * each ratio with its components, exclusions, haircuts and status, and the configuration used as a snapshot.</li>
+ * <li>RETURN: the regulatory return's lines from a ratios run (given, the scope's, or a new one).</li>
+ * </ul>
+ *
+ * <p>
+ * A run for a type, date, currency and scope replaces the earlier one of that type and what was computed from it,
+ * unless a return of the scope has been SUBMITTED (with {@code ?command=submit}): the scope's runs are then locked. The
+ * "Treasury Liquidity Run" job runs the ladder and the ratios of every organisation currency for the business date.
+ * </p>
  */
 @Slf4j
 @Service
@@ -77,6 +89,7 @@ public class TreasuryLiquidityRunService {
 
     static final String ENTITY = "run";
     static final String COMPLETED = "COMPLETED";
+    static final String SUBMITTED = "SUBMITTED";
 
     private final TreasuryLiquidityDataValidator validator;
     private final TreasuryActor actor;
@@ -89,6 +102,7 @@ public class TreasuryLiquidityRunService {
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final AppUserRepositoryWrapper appUserRepository;
     private final PlatformTransactionManager transactionManager;
+    private final TreasuryRatioRunService ratioRunService;
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
@@ -105,23 +119,49 @@ public class TreasuryLiquidityRunService {
             throw new TreasuryWorkflowException(ENTITY, "office.not.found", "Office " + request.officeId() + " does not exist",
                     request.officeId());
         }
-        final TreasuryRuleSet ruleSet = request.ruleSetId() == null ? this.ruleSetService.defaultRuleSet()
-                : active(this.ruleSetService.find(request.ruleSetId()));
-        final Optional<TreasuryAssumptionSet> assumptionSet = request.assumptionSetId() == null ? this.assumptionSetService.activeSet()
-                : Optional.of(active(this.assumptionSetService.find(request.assumptionSetId())));
-        final TreasuryRun run = ladder(asOf, request.currencyCode(), request.officeId(), ruleSet, assumptionSet,
-                this.actor.userId(command));
+        final Long userId = this.actor.userId(command);
+        final TreasuryRun run = switch (request.type()) {
+            case LADDER -> ladder(asOf, request.currencyCode(), request.officeId(), ruleSet(request.ruleSetId()),
+                    assumptionSet(request.assumptionSetId()), userId);
+            case RATIOS -> ratios(ladderFor(request, asOf, userId), userId);
+            case RETURN -> returnRun(ratiosFor(request, asOf, userId), userId);
+        };
         final Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("type", run.getRunType().name());
         changes.put("asOfDate", run.getAsOfDate());
+        final TreasuryRuleSet ruleSet = this.ruleSetService.find(run.getRuleSetId());
         changes.put("ruleSet", ruleSet.getCode() + " v" + ruleSet.getVersion());
-        changes.put("assumptionSet", assumptionSet.map(s -> s.getCode() + " v" + s.getVersion()).orElse(null));
+        changes.put("assumptionSetVersion", run.getAssumptionSetVersion());
+        if (run.getSourceRunId() != null) {
+            changes.put("sourceRunId", run.getSourceRunId());
+        }
         if (run.getNotes() != null) {
             changes.put("notes", run.getNotes());
         }
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(run.getId()).with(changes).build();
     }
 
-    /** The job: every organisation currency, the whole institution, the business date. */
+    /** Submits a return: it and every run of its scope are then locked. Not by who made the return. */
+    @Transactional
+    public CommandProcessingResult submit(final Long runId, final JsonCommand command) {
+        this.validator.validateActivate(command.json());
+        final TreasuryRun run = find(runId);
+        if (run.getRunType() != RunType.RETURN || !COMPLETED.equals(run.getStatus())) {
+            throw new TreasuryWorkflowException(ENTITY, "not.submittable",
+                    "Only a completed return can be submitted; run " + runId + " is a " + run.getStatus() + " " + run.getRunType(), runId);
+        }
+        final Long userId = this.actor.userId(command);
+        TreasurySegregation.requireDifferentUser(ENTITY, runId, "made", run.getCreatedBy(), "submit", userId);
+        run.setStatus(SUBMITTED);
+        run.setSubmittedBy(userId);
+        run.setSubmittedOnDate(DateUtils.getBusinessLocalDate());
+        this.runRepository.saveAndFlush(run);
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        changes.put("status", SUBMITTED);
+        return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(runId).with(changes).build();
+    }
+
+    /** The job: every organisation currency, the whole institution, the business date; the ladder, then the ratios. */
     public int runForBusinessDate() {
         final LocalDate asOf = DateUtils.getBusinessLocalDate();
         final TransactionTemplate template = new TransactionTemplate(this.transactionManager);
@@ -129,8 +169,14 @@ public class TreasuryLiquidityRunService {
         int runs = 0;
         for (final String currency : this.referenceDataLookup.organisationCurrencies()) {
             try {
-                template.execute(status -> ladder(asOf, currency, null, this.ruleSetService.defaultRuleSet(),
-                        this.assumptionSetService.activeSet(), systemUserId));
+                template.execute(status -> {
+                    final TreasuryRun ladder = ladder(asOf, currency, null, this.ruleSetService.defaultRuleSet(),
+                            this.assumptionSetService.activeSet(), systemUserId);
+                    if (this.ratioRunService.hasRatios(ladder.getRuleSetId())) {
+                        ratios(ladder, systemUserId);
+                    }
+                    return ladder;
+                });
                 runs++;
             } catch (RuntimeException e) {
                 log.error("Treasury liquidity run for {} on {} failed: {}", currency, asOf, e.getMessage());
@@ -151,31 +197,15 @@ public class TreasuryLiquidityRunService {
             flows.addAll(source.flows(context));
         }
         final LadderBuilder.Ladder ladder = LadderBuilder.build(context, flows);
-        for (final TreasuryRun earlier : this.runRepository.findByRunTypeAndAsOfDateAndCurrencyCode(RunType.LADDER, asOf, currency)) {
-            if (Objects.equals(earlier.getOfficeId(), officeId)) {
-                this.lineRepository.deleteByRunId(earlier.getId());
-                this.runRepository.delete(earlier);
-            }
-        }
-        this.runRepository.flush();
-        final TreasuryRun run = new TreasuryRun();
-        run.setRunType(RunType.LADDER);
-        run.setAsOfDate(asOf);
-        run.setCurrencyCode(currency);
-        run.setOfficeId(officeId);
-        run.setRuleSetId(ruleSet.getId());
-        run.setRuleSetVersion(ruleSet.getVersion());
-        run.setAssumptionSetId(assumptionSet.map(TreasuryAssumptionSet::getId).orElse(null));
-        run.setAssumptionSetVersion(assumptionSet.map(TreasuryAssumptionSet::getVersion).orElse(null));
-        run.setStatus(COMPLETED);
-        run.setBeyondHorizon(ladder.beyondHorizon());
+        replace(RunType.LADDER, asOf, currency, officeId);
         final List<String> notes = new ArrayList<>(context.warnings());
         if (assumptionSet.isEmpty()) {
             notes.add("No active assumption set: contractual flows only");
         }
-        run.setNotes(notes.isEmpty() ? null : String.join("; ", notes).substring(0, Math.min(2000, String.join("; ", notes).length())));
-        run.setCreatedBy(userId);
-        run.setCreatedOnUtc(DateUtils.getAuditOffsetDateTime());
+        final TreasuryRun run = newRun(RunType.LADDER, asOf, currency, officeId, ruleSet.getId(), ruleSet.getVersion(),
+                assumptionSet.map(TreasuryAssumptionSet::getId).orElse(null),
+                assumptionSet.map(TreasuryAssumptionSet::getVersion).orElse(null), null, notes, userId);
+        run.setBeyondHorizon(ladder.beyondHorizon());
         this.runRepository.saveAndFlush(run);
         for (final LadderBuilder.Line line : ladder.lines()) {
             this.lineRepository.save(line(run, line.bucket(), line.source(), line.lineCode(), line.productId(), line.productName(),
@@ -186,6 +216,128 @@ public class TreasuryLiquidityRunService {
                     total.contractual(), total.behavioural(), total.net(), total.cumulativeGap()));
         }
         this.lineRepository.flush();
+        return run;
+    }
+
+    TreasuryRun ratios(final TreasuryRun ladderRun, final Long userId) {
+        replace(RunType.RATIOS, ladderRun.getAsOfDate(), ladderRun.getCurrencyCode(), ladderRun.getOfficeId());
+        final TreasuryRun run = newRun(RunType.RATIOS, ladderRun.getAsOfDate(), ladderRun.getCurrencyCode(), ladderRun.getOfficeId(),
+                ladderRun.getRuleSetId(), ladderRun.getRuleSetVersion(), ladderRun.getAssumptionSetId(),
+                ladderRun.getAssumptionSetVersion(), ladderRun.getId(), List.of(), userId);
+        this.runRepository.saveAndFlush(run);
+        this.ratioRunService.computeRatios(run, ladderRun, this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
+        this.runRepository.saveAndFlush(run);
+        return run;
+    }
+
+    TreasuryRun returnRun(final TreasuryRun ratiosRun, final Long userId) {
+        replace(RunType.RETURN, ratiosRun.getAsOfDate(), ratiosRun.getCurrencyCode(), ratiosRun.getOfficeId());
+        final TreasuryRun run = newRun(RunType.RETURN, ratiosRun.getAsOfDate(), ratiosRun.getCurrencyCode(), ratiosRun.getOfficeId(),
+                ratiosRun.getRuleSetId(), ratiosRun.getRuleSetVersion(), ratiosRun.getAssumptionSetId(),
+                ratiosRun.getAssumptionSetVersion(), ratiosRun.getId(), List.of(), userId);
+        this.runRepository.saveAndFlush(run);
+        this.ratioRunService.buildReturn(run, ratiosRun);
+        return run;
+    }
+
+    /** The ladder run a ratios run is computed from: the one given, else the scope's, else a new one. */
+    private TreasuryRun ladderFor(final RunRequest request, final LocalDate asOf, final Long userId) {
+        if (request.sourceRunId() != null) {
+            return source(request.sourceRunId(), RunType.LADDER, request, asOf);
+        }
+        final Optional<TreasuryRun> existing = inScope(asOf, request.currencyCode(), request.officeId()).stream()
+                .filter(r -> r.getRunType() == RunType.LADDER).findFirst();
+        if (existing.isPresent()) {
+            if (request.ruleSetId() != null && !request.ruleSetId().equals(existing.get().getRuleSetId())) {
+                throw new TreasuryWorkflowException(ENTITY, "ladder.rule.set.differs", "The ladder run of the scope uses rule set "
+                        + existing.get().getRuleSetId() + "; run the ladder again with rule set " + request.ruleSetId() + " first",
+                        existing.get().getId());
+            }
+            return existing.get();
+        }
+        return ladder(asOf, request.currencyCode(), request.officeId(), ruleSet(request.ruleSetId()),
+                assumptionSet(request.assumptionSetId()), userId);
+    }
+
+    private TreasuryRun ratiosFor(final RunRequest request, final LocalDate asOf, final Long userId) {
+        if (request.sourceRunId() != null) {
+            return source(request.sourceRunId(), RunType.RATIOS, request, asOf);
+        }
+        final Optional<TreasuryRun> existing = inScope(asOf, request.currencyCode(), request.officeId()).stream()
+                .filter(r -> r.getRunType() == RunType.RATIOS).findFirst();
+        return existing.isPresent() ? existing.get() : ratios(ladderFor(request, asOf, userId), userId);
+    }
+
+    private TreasuryRun source(final Long runId, final RunType type, final RunRequest request, final LocalDate asOf) {
+        final TreasuryRun run = find(runId);
+        if (run.getRunType() != type || !run.getAsOfDate().equals(asOf) || !run.getCurrencyCode().equals(request.currencyCode())
+                || !Objects.equals(run.getOfficeId(), request.officeId())) {
+            throw new TreasuryWorkflowException(ENTITY, "source.run.invalid", "Run " + runId + " is not a " + type + " run of " + asOf
+                    + ", " + request.currencyCode() + (request.officeId() == null ? ", institution" : ", office " + request.officeId()),
+                    runId);
+        }
+        return run;
+    }
+
+    /**
+     * Before a run of the type: refused when a return of the scope is SUBMITTED; else the scope's earlier run of the
+     * type goes, with whatever was computed from it.
+     */
+    private void replace(final RunType type, final LocalDate asOf, final String currency, final Long officeId) {
+        final List<TreasuryRun> scope = inScope(asOf, currency, officeId);
+        final Optional<TreasuryRun> submitted = scope.stream().filter(r -> SUBMITTED.equals(r.getStatus())).findFirst();
+        if (submitted.isPresent()) {
+            throw new TreasuryWorkflowException(ENTITY, "locked", "Return " + submitted.get().getId() + " of " + asOf + " in " + currency
+                    + " has been submitted; the runs it rests on cannot be replaced", submitted.get().getId());
+        }
+        for (final TreasuryRun earlier : scope) {
+            if (earlier.getRunType() == type) {
+                delete(earlier);
+            }
+        }
+        this.runRepository.flush();
+    }
+
+    private void delete(final TreasuryRun run) {
+        for (final TreasuryRun dependent : this.runRepository.findBySourceRunId(run.getId())) {
+            delete(dependent);
+        }
+        this.lineRepository.deleteByRunId(run.getId());
+        this.lineRepository.flush();
+        this.ratioRunService.deleteRun(run.getId());
+        this.runRepository.delete(run);
+        this.runRepository.flush();
+    }
+
+    private List<TreasuryRun> inScope(final LocalDate asOf, final String currency, final Long officeId) {
+        final List<TreasuryRun> runs = new ArrayList<>(this.runRepository.findByAsOfDateAndCurrencyCode(asOf, currency));
+        for (final TreasuryRun run : this.runRepository.findByRunTypeAndAsOfDateAndCurrencyCode(RunType.LADDER, asOf, currency)) {
+            if (runs.stream().noneMatch(r -> Objects.equals(r.getId(), run.getId()))) {
+                runs.add(run);
+            }
+        }
+        return runs.stream().filter(r -> Objects.equals(r.getOfficeId(), officeId)).toList();
+    }
+
+    private static TreasuryRun newRun(final RunType type, final LocalDate asOf, final String currency, final Long officeId,
+            final Long ruleSetId, final int ruleSetVersion, final Long assumptionSetId, final Integer assumptionSetVersion,
+            final Long sourceRunId, final List<String> notes, final Long userId) {
+        final TreasuryRun run = new TreasuryRun();
+        run.setRunType(type);
+        run.setAsOfDate(asOf);
+        run.setCurrencyCode(currency);
+        run.setOfficeId(officeId);
+        run.setRuleSetId(ruleSetId);
+        run.setRuleSetVersion(ruleSetVersion);
+        run.setAssumptionSetId(assumptionSetId);
+        run.setAssumptionSetVersion(assumptionSetVersion);
+        run.setSourceRunId(sourceRunId);
+        run.setStatus(COMPLETED);
+        run.setBeyondHorizon(BigDecimal.ZERO);
+        final String joined = String.join("; ", notes);
+        run.setNotes(joined.isEmpty() ? null : joined.substring(0, Math.min(2000, joined.length())));
+        run.setCreatedBy(userId);
+        run.setCreatedOnUtc(DateUtils.getAuditOffsetDateTime());
         return run;
     }
 
@@ -217,12 +369,12 @@ public class TreasuryLiquidityRunService {
             params.addValue("to", to);
         }
         sql.append(" ORDER BY as_of_date DESC, id DESC");
-        return this.jdbcTemplate.queryForList(sql.toString(), params, Long.class).stream().map(id -> data(find(id), false)).toList();
+        return this.jdbcTemplate.queryForList(sql.toString(), params, Long.class).stream().map(id -> data(find(id))).toList();
     }
 
     @Transactional(readOnly = true)
     public TreasuryRunData retrieveRun(final Long runId) {
-        return data(find(runId), false);
+        return data(find(runId));
     }
 
     @Transactional(readOnly = true)
@@ -231,14 +383,38 @@ public class TreasuryLiquidityRunService {
         return this.lineRepository.findByRunIdOrderByBucketSeqAscIdAsc(runId).stream().map(TreasuryLiquidityRunService::line).toList();
     }
 
-    private TreasuryRunData data(final TreasuryRun run, final boolean allLines) {
+    @Transactional(readOnly = true)
+    public TreasuryReturnData retrieveReturn(final Long runId) {
+        final TreasuryRun run = returnRun(runId);
+        return this.ratioRunService.returnData(run,
+                run.getSourceRunId() == null ? null : this.runRepository.findById(run.getSourceRunId()).orElse(null));
+    }
+
+    @Transactional(readOnly = true)
+    public String retrieveReturnCsv(final Long runId) {
+        final TreasuryRun run = returnRun(runId);
+        return TreasuryRatioRunService.csv(retrieveReturn(runId), this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
+    }
+
+    private TreasuryRun returnRun(final Long runId) {
+        final TreasuryRun run = find(runId);
+        if (run.getRunType() != RunType.RETURN) {
+            throw new TreasuryWorkflowException(ENTITY, "not.a.return", "Run " + runId + " is a " + run.getRunType() + " run, not a return",
+                    runId);
+        }
+        return run;
+    }
+
+    private TreasuryRunData data(final TreasuryRun run) {
         final List<TreasuryRunLine> lines = this.lineRepository.findByRunIdOrderByBucketSeqAscIdAsc(run.getId());
         final BigDecimal opening = lines.stream().filter(l -> l.getSource() == LadderSourceCode.OPENING)
                 .map(l -> l.getContractual().add(l.getBehavioural())).reduce(BigDecimal.ZERO, BigDecimal::add);
         return new TreasuryRunData(run.getId(), run.getRunType().name(), run.getAsOfDate(), run.getCurrencyCode(), run.getOfficeId(),
                 run.getRuleSetId(), run.getRuleSetVersion(), run.getAssumptionSetId(), run.getAssumptionSetVersion(), run.getStatus(),
-                run.getNotes(), opening, run.getBeyondHorizon(), run.getCreatedBy(), run.getCreatedOnUtc(), lines.stream()
-                        .filter(l -> allLines || l.getSource() == LadderSourceCode.TOTAL).map(TreasuryLiquidityRunService::line).toList());
+                run.getNotes(), opening, run.getBeyondHorizon(), run.getSourceRunId(), run.getSubmittedBy(), run.getSubmittedOnDate(),
+                run.getCreatedBy(), run.getCreatedOnUtc(),
+                lines.stream().filter(l -> l.getSource() == LadderSourceCode.TOTAL).map(TreasuryLiquidityRunService::line).toList(),
+                run.getRunType() == RunType.RATIOS ? this.ratioRunService.ratios(run.getId()) : List.of());
     }
 
     private static TreasuryRunData.Line line(final TreasuryRunLine l) {
@@ -265,6 +441,14 @@ public class TreasuryLiquidityRunService {
         line.setNet(net);
         line.setCumulativeGap(cumulative);
         return line;
+    }
+
+    private TreasuryRuleSet ruleSet(final Long ruleSetId) {
+        return ruleSetId == null ? this.ruleSetService.defaultRuleSet() : active(this.ruleSetService.find(ruleSetId));
+    }
+
+    private Optional<TreasuryAssumptionSet> assumptionSet(final Long setId) {
+        return setId == null ? this.assumptionSetService.activeSet() : Optional.of(active(this.assumptionSetService.find(setId)));
     }
 
     private TreasuryRun find(final Long runId) {

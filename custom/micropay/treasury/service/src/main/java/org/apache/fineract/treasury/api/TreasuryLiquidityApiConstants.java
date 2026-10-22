@@ -64,11 +64,22 @@ public final class TreasuryLiquidityApiConstants {
     public static final String RULE_SET_ID_PARAM = "ruleSetId";
     public static final String ASSUMPTION_SET_ID_PARAM = "assumptionSetId";
     public static final String NOTE_PARAM = "note";
+    public static final String COMMAND_SUBMIT = "submit";
+    public static final String COPY_FROM_ID_PARAM = "copyFromId";
+    public static final String RATIOS_PARAM = "ratios";
+    public static final String ASSET_CLASSES_PARAM = "assetClasses";
+    public static final String SOURCE_RUN_ID_PARAM = "sourceRunId";
     public static final String DATE_FORMAT_PARAM = "dateFormat";
     public static final String LOCALE_PARAM = "locale";
 
     public static final Set<String> RULE_SET_PARAMS = Set.of(CODE_PARAM, NAME_PARAM, EFFECTIVE_DATE_PARAM, DESCRIPTION_PARAM,
-            IS_DEFAULT_PARAM, BUCKETS_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+            IS_DEFAULT_PARAM, BUCKETS_PARAM, COPY_FROM_ID_PARAM, RATIOS_PARAM, ASSET_CLASSES_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+    public static final Set<String> RATIO_PARAMS = Set.of("code", "name", "direction", "limit", "warning", "inReturn", "numeratorLabel",
+            "denominatorLabel", "description", "components");
+    public static final Set<String> COMPONENT_PARAMS = Set.of("part", "type", "label", "glAccountId", "glCodePrefix", "glCodeFrom",
+            "glCodeTo", "assetClass", "ladderMetric", "metricDays", "sign", "weight");
+    public static final Set<String> ASSET_CLASS_PARAMS = Set.of("code", "label", "liquid", "accountTypes", "instrumentKinds", "dealTypeIds",
+            "maxMaturityDays", "haircut");
     public static final Set<String> BUCKET_PARAMS = Set.of(CODE_PARAM, LABEL_PARAM, FROM_DAY_PARAM, TO_DAY_PARAM);
     public static final Set<String> ASSUMPTION_SET_PARAMS = Set.of(CODE_PARAM, NAME_PARAM, EFFECTIVE_DATE_PARAM, DESCRIPTION_PARAM,
             ASSUMPTIONS_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
@@ -77,6 +88,6 @@ public final class TreasuryLiquidityApiConstants {
     public static final Set<String> LADDER_ITEM_PARAMS = Set.of(NAME_PARAM, DIRECTION_PARAM, AMOUNT_PARAM, CURRENCY_CODE_PARAM,
             OFFICE_ID_PARAM, ONE_OFF_DATE_PARAM, DAY_OF_MONTH_PARAM, ACTIVE_FROM_PARAM, ACTIVE_TO_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
     public static final Set<String> RUN_PARAMS = Set.of(TYPE_PARAM, AS_OF_DATE_PARAM, CURRENCY_CODE_PARAM, OFFICE_ID_PARAM,
-            RULE_SET_ID_PARAM, ASSUMPTION_SET_ID_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+            RULE_SET_ID_PARAM, ASSUMPTION_SET_ID_PARAM, SOURCE_RUN_ID_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
     public static final Set<String> ACTIVATE_PARAMS = Set.of(NOTE_PARAM, LOCALE_PARAM);
 }
