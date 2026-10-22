@@ -36,4 +36,6 @@ public interface TreasuryAgentFloatWritePlatformService {
     CommandProcessingResult executeFloatRequest(Long requestId, JsonCommand command);
 
     CommandProcessingResult cancelFloatRequest(Long requestId, JsonCommand command);
+
+    CommandProcessingResult reverseFloatRequest(Long requestId, JsonCommand command);
 }

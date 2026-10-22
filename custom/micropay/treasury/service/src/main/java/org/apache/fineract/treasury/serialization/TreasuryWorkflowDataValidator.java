@@ -35,6 +35,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.LOCALE_PARAM
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MAX_FLOAT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MIN_FLOAT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.NOTE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.REASON_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REFERENCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.REQUEST_TYPE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.SAVINGS_ACCOUNT_ID_PARAM;
@@ -89,9 +90,9 @@ public class TreasuryWorkflowDataValidator {
     }
 
     /** Body of a workflow step; both fields are optional. */
-    public record ActionRequest(LocalDate transactionDate, String note) {
+    public record ActionRequest(LocalDate transactionDate, String note, String reason) {
 
-        public static final ActionRequest EMPTY = new ActionRequest(null, null);
+        public static final ActionRequest EMPTY = new ActionRequest(null, null, null);
     }
 
     /** Only the fields present are changed. */
@@ -147,8 +148,10 @@ public class TreasuryWorkflowDataValidator {
         final LocalDate transactionDate = date(object, TRANSACTION_DATE_PARAM, validator);
         final String note = trimmed(object, NOTE_PARAM);
         validator.reset().parameter(NOTE_PARAM).value(note).ignoreIfNull().notExceedingLengthOf(500);
+        final String reason = trimmed(object, REASON_PARAM);
+        validator.reset().parameter(REASON_PARAM).value(reason).ignoreIfNull().notExceedingLengthOf(500);
         throwIfAny(errors);
-        return new ActionRequest(transactionDate, note);
+        return new ActionRequest(transactionDate, note, reason);
     }
 
     public SettingRequest validateSetting(final String json) {

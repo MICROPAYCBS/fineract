@@ -24,7 +24,9 @@ package org.apache.fineract.treasury.domain;
 public enum TreasuryEventType {
 
     TRANSFER_SEND("TFS"), //
-    TRANSFER_RECEIVE("TFR"); //
+    TRANSFER_RECEIVE("TFR"), //
+    TRANSFER_SEND_REVERSAL("TFSX"), //
+    TRANSFER_RECEIVE_REVERSAL("TFRX"); //
 
     private final String code;
 

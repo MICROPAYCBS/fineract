@@ -31,6 +31,7 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBMIT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBSCRIBE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_RECEIVE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_REVERSE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_SEND;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNSUBSCRIBE;
@@ -805,6 +806,10 @@ public class MicropayCommandWrapperBuilder {
         return treasuryTransferStep(transferId, ACTION_CANCEL, "cancel");
     }
 
+    public MicropayCommandWrapperBuilder reverseTreasuryTransfer(final Long transferId) {
+        return treasuryTransferStep(transferId, ACTION_TREASURY_REVERSE, "reverse");
+    }
+
     private MicropayCommandWrapperBuilder treasuryTransferStep(final Long transferId, final String action, final String command) {
         this.actionName = action;
         this.entityName = ENTITY_TREASURYTRANSFER;
@@ -862,6 +867,10 @@ public class MicropayCommandWrapperBuilder {
 
     public MicropayCommandWrapperBuilder cancelTreasuryFloatRequest(final Long requestId) {
         return treasuryFloatRequestStep(requestId, ACTION_CANCEL, "cancel");
+    }
+
+    public MicropayCommandWrapperBuilder reverseTreasuryFloatRequest(final Long requestId) {
+        return treasuryFloatRequestStep(requestId, ACTION_TREASURY_REVERSE, "reverse");
     }
 
     private MicropayCommandWrapperBuilder treasuryFloatRequestStep(final Long requestId, final String action, final String command) {

@@ -32,4 +32,6 @@ public interface TreasuryTransferWritePlatformService {
     CommandProcessingResult receiveTransfer(Long transferId, JsonCommand command);
 
     CommandProcessingResult cancelTransfer(Long transferId, JsonCommand command);
+
+    CommandProcessingResult reverseTransfer(Long transferId, JsonCommand command);
 }

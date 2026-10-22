@@ -38,6 +38,7 @@ public final class TreasuryApiConstants {
     public static final String COMMAND_RECEIVE = "receive";
     public static final String COMMAND_CANCEL = "cancel";
     public static final String COMMAND_EXECUTE = "execute";
+    public static final String COMMAND_REVERSE = "reverse";
 
     /** Prefix of the journal transaction ids treasury posts, followed by the event and its id. */
     public static final String TRANSACTION_ID_PREFIX = "TR";
@@ -50,6 +51,7 @@ public final class TreasuryApiConstants {
     public static final String REFERENCE_PARAM = "reference";
     public static final String DESCRIPTION_PARAM = "description";
     public static final String NOTE_PARAM = "note";
+    public static final String REASON_PARAM = "reason";
     public static final String DATE_FORMAT_PARAM = "dateFormat";
     public static final String LOCALE_PARAM = "locale";
 
@@ -87,7 +89,8 @@ public final class TreasuryApiConstants {
             TRANSFER_DATE_PARAM, REFERENCE_PARAM, DESCRIPTION_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
 
     /** Body of approve, send, receive, cancel and execute; every field is optional. */
-    public static final Set<String> ACTION_PARAMS = Set.of(TRANSACTION_DATE_PARAM, NOTE_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+    public static final Set<String> ACTION_PARAMS = Set.of(TRANSACTION_DATE_PARAM, NOTE_PARAM, REASON_PARAM, DATE_FORMAT_PARAM,
+            LOCALE_PARAM);
 
     public static final Set<String> SETTING_PARAMS = Set.of(CURRENCY_CODE_PARAM, CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM,
             FLOAT_PAYMENT_TYPE_ID_PARAM, ALLOW_INSUFFICIENT_BALANCE_PARAM);

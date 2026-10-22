@@ -26,7 +26,8 @@ public enum TreasuryFloatRequestStatus {
     REQUESTED, //
     APPROVED, //
     EXECUTED, //
-    CANCELLED; //
+    CANCELLED, //
+    REVERSED; //
 
     public boolean canApprove() {
         return this == REQUESTED;
@@ -38,5 +39,10 @@ public enum TreasuryFloatRequestStatus {
 
     public boolean canCancel() {
         return this == REQUESTED || this == APPROVED;
+    }
+
+    /** An executed request is undone by undoing its savings transaction. */
+    public boolean canReverse() {
+        return this == EXECUTED;
     }
 }

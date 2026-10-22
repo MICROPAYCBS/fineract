@@ -72,4 +72,5 @@ public final class MicropayCommandWrapperConstants {
     /** Upstream's {@code ACTION_SEND} is lower case; treasury permissions are SEND_TREASURYTRANSFER. */
     public static final String ACTION_TREASURY_SEND = "SEND";
     public static final String ACTION_TREASURY_RECEIVE = "RECEIVE";
+    public static final String ACTION_TREASURY_REVERSE = "REVERSE";
 }

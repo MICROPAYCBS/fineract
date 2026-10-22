@@ -117,6 +117,7 @@ public class TreasuryTransferReadPlatformService {
                 JdbcSupport.getLong(rs, "sent_by"), sentOn, rs.getString("send_transaction_id"), JdbcSupport.getLong(rs, "received_by"),
                 JdbcSupport.getLocalDate(rs, "received_on_date"), rs.getString("receive_transaction_id"),
                 JdbcSupport.getLong(rs, "cancelled_by"), JdbcSupport.getLocalDate(rs, "cancelled_on_date"), rs.getString("note"),
+                JdbcSupport.getLong(rs, "reversed_by"), JdbcSupport.getLocalDate(rs, "reversed_on_date"), rs.getString("reversal_reason"),
                 daysInTransit);
     }
 }

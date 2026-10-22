@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -62,6 +63,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -255,6 +257,103 @@ class TreasuryTransferWorkflowTest {
         assertEquals(TreasuryTransferStatus.CANCELLED, transfer.getStatus());
         assertEquals(BUSINESS_DATE, transfer.getCancelledOnDate());
         assertEquals("Wrong amount", transfer.getNote());
+    }
+
+    @Test
+    void senderCannotReceive() {
+        final TreasuryTransfer transfer = transfer(TreasuryTransferStatus.SENT, 200L);
+        transfer.setSentBy(SENDER);
+        transfer.setSentOnDate(BUSINESS_DATE);
+        actAs(SENDER);
+
+        final TreasuryWorkflowException exception = assertThrows(TreasuryWorkflowException.class,
+                () -> this.service.receiveTransfer(transfer.getId(), command("{}")));
+        assertEquals("error.msg.treasury.transfer.same.user", exception.getGlobalisationMessageCode());
+    }
+
+    @Test
+    void reversingAReceivedTransferReversesReceiveThenSend() {
+        final TreasuryTransfer transfer = received();
+        when(this.journalPoster.reverse(any(), any(), anyString(), any(), anyString()))
+                .thenAnswer(call -> TreasuryJournalPoster.transactionId(call.getArgument(0), call.getArgument(1)));
+        actAs(REQUESTER);
+
+        this.service.reverseTransfer(transfer.getId(), command("{\"reason\": \"Duplicate of transfer 6\"}"));
+
+        final InOrder order = inOrder(this.journalPoster);
+        order.verify(this.journalPoster).reverse(eq(TreasuryEventType.TRANSFER_RECEIVE_REVERSAL), eq(7L), eq("TR-TFR-7"), eq(BUSINESS_DATE),
+                anyString());
+        order.verify(this.journalPoster).reverse(eq(TreasuryEventType.TRANSFER_SEND_REVERSAL), eq(7L), eq("TR-TFS-7"), eq(BUSINESS_DATE),
+                anyString());
+        assertEquals(TreasuryTransferStatus.REVERSED, transfer.getStatus());
+        assertEquals("Duplicate of transfer 6", transfer.getReversalReason());
+        assertEquals(REQUESTER, transfer.getReversedBy());
+        assertEquals(BUSINESS_DATE, transfer.getReversedOnDate());
+    }
+
+    @Test
+    void reversingASentTransferReversesOnlyTheSend() {
+        final TreasuryTransfer transfer = transfer(TreasuryTransferStatus.SENT, 200L);
+        transfer.setSentOnDate(BUSINESS_DATE.minusDays(1));
+        transfer.setSendTransactionId("TR-TFS-7");
+        when(this.journalPoster.reverse(any(), any(), anyString(), any(), anyString())).thenReturn("TR-TFSX-7");
+        actAs(SENDER);
+
+        this.service.reverseTransfer(transfer.getId(), command("{\"reason\": \"Bank rejected it\"}"));
+
+        verify(this.journalPoster).reverse(eq(TreasuryEventType.TRANSFER_SEND_REVERSAL), eq(7L), eq("TR-TFS-7"), eq(BUSINESS_DATE),
+                anyString());
+        verify(this.journalPoster, never()).reverse(eq(TreasuryEventType.TRANSFER_RECEIVE_REVERSAL), any(), any(), any(), any());
+        assertEquals(TreasuryTransferStatus.REVERSED, transfer.getStatus());
+    }
+
+    @Test
+    void reversalNeedsAReason() {
+        final TreasuryTransfer transfer = received();
+        actAs(REQUESTER);
+
+        final TreasuryWorkflowException exception = assertThrows(TreasuryWorkflowException.class,
+                () -> this.service.reverseTransfer(transfer.getId(), command("{}")));
+        assertEquals("error.msg.treasury.transfer.reversal.reason.required", exception.getGlobalisationMessageCode());
+    }
+
+    @Test
+    void receiverCannotReverse() {
+        final TreasuryTransfer transfer = received();
+        actAs(SENDER);
+
+        assertThrows(TreasuryWorkflowException.class, () -> this.service.reverseTransfer(transfer.getId(), command("{\"reason\": \"x\"}")));
+        verify(this.journalPoster, never()).reverse(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void unsentTransferCannotBeReversed() {
+        final TreasuryTransfer transfer = transfer(TreasuryTransferStatus.APPROVED, 200L);
+
+        final TreasuryWorkflowException exception = assertThrows(TreasuryWorkflowException.class,
+                () -> this.service.reverseTransfer(transfer.getId(), command("{\"reason\": \"x\"}")));
+        assertEquals("error.msg.treasury.transfer.invalid.status", exception.getGlobalisationMessageCode());
+    }
+
+    @Test
+    void reversalCannotPrecedeTheLastStep() {
+        final TreasuryTransfer transfer = received();
+        actAs(REQUESTER);
+
+        assertThrows(TreasuryWorkflowException.class,
+                () -> this.service.reverseTransfer(transfer.getId(), command("{\"reason\": \"x\", \"transactionDate\": \"2026-10-14\"}")));
+    }
+
+    /** Received on the 15th by the sender role user. */
+    private TreasuryTransfer received() {
+        final TreasuryTransfer transfer = transfer(TreasuryTransferStatus.RECEIVED, 200L);
+        transfer.setSentBy(APPROVER + 10);
+        transfer.setSentOnDate(BUSINESS_DATE.minusDays(2));
+        transfer.setSendTransactionId("TR-TFS-7");
+        transfer.setReceivedBy(SENDER);
+        transfer.setReceivedOnDate(BUSINESS_DATE.minusDays(1));
+        transfer.setReceiveTransactionId("TR-TFR-7");
+        return transfer;
     }
 
     private List<Leg> postedLegs(final TreasuryEventType eventType, final LocalDate date) {

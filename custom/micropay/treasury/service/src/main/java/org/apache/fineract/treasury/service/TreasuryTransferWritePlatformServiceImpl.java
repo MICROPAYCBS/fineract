@@ -159,6 +159,8 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
         final ActionRequest action = this.validator.validateAction(TREASURY_TRANSFER_RESOURCE_NAME, command.json());
         final TreasuryTransfer transfer = find(transferId);
         requireStep(transfer, transfer.getStatus().canReceive(), "received");
+        final Long userId = currentUserId();
+        TreasurySegregation.requireDifferentUser(ENTITY, transferId, "sent", transfer.getSentBy(), "receive", userId);
         final TreasuryAccount from = account(transfer.getFromAccountId());
         final TreasuryAccount to = activeAccount(transfer.getToAccountId());
         final LocalDate receiveDate = stepDate(action, transfer.getSentOnDate(), "send date");
@@ -169,7 +171,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
                 receiveDate, description(transfer, "received"), transfer.getReference(), legs);
 
         transfer.setStatus(TreasuryTransferStatus.RECEIVED);
-        transfer.setReceivedBy(currentUserId());
+        transfer.setReceivedBy(userId);
         transfer.setReceivedOnDate(receiveDate);
         transfer.setReceiveTransactionId(transactionId);
         note(transfer, action);
@@ -177,6 +179,46 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("status", transfer.getStatus().name());
         changes.put("transactionId", transactionId);
+        return result(command, transfer, changes);
+    }
+
+    /**
+     * Undoes a sent or received transfer by reversing its postings, the receive first, each under its own transaction
+     * id. The user who took the last step may not reverse it, and a reason is required.
+     */
+    @Override
+    @Transactional
+    public CommandProcessingResult reverseTransfer(final Long transferId, final JsonCommand command) {
+        final ActionRequest action = this.validator.validateAction(TREASURY_TRANSFER_RESOURCE_NAME, command.json());
+        final TreasuryTransfer transfer = find(transferId);
+        requireStep(transfer, transfer.getStatus().canReverse(), "reversed");
+        if (action.reason() == null) {
+            throw new TreasuryWorkflowException(ENTITY, "reversal.reason.required",
+                    "A reason is required to reverse transfer " + transferId, transferId);
+        }
+        final boolean received = transfer.getStatus() == TreasuryTransferStatus.RECEIVED;
+        final Long userId = currentUserId();
+        TreasurySegregation.requireDifferentUser(ENTITY, transferId, received ? "received" : "sent",
+                received ? transfer.getReceivedBy() : transfer.getSentBy(), "reverse", userId);
+        final LocalDate date = stepDate(action, received ? transfer.getReceivedOnDate() : transfer.getSentOnDate(),
+                received ? "receive date" : "send date");
+
+        final String description = description(transfer, "reversed: " + action.reason());
+        final Map<String, Object> changes = new LinkedHashMap<>();
+        if (received) {
+            changes.put("receiveReversalTransactionId", this.journalPoster.reverse(TreasuryEventType.TRANSFER_RECEIVE_REVERSAL, transferId,
+                    transfer.getReceiveTransactionId(), date, description));
+        }
+        changes.put("sendReversalTransactionId", this.journalPoster.reverse(TreasuryEventType.TRANSFER_SEND_REVERSAL, transferId,
+                transfer.getSendTransactionId(), date, description));
+
+        transfer.setStatus(TreasuryTransferStatus.REVERSED);
+        transfer.setReversedBy(userId);
+        transfer.setReversedOnDate(date);
+        transfer.setReversalReason(action.reason());
+        note(transfer, action);
+        this.transferRepository.saveAndFlush(transfer);
+        changes.put("status", transfer.getStatus().name());
         return result(command, transfer, changes);
     }
 

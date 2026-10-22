@@ -57,6 +57,14 @@ class TreasuryWorkflowStatusTest {
     }
 
     @Test
+    void onlyPostedStepsCanBeReversed() {
+        assertEquals(Set.of(TreasuryTransferStatus.SENT, TreasuryTransferStatus.RECEIVED), matching(TreasuryTransferStatus::canReverse));
+        assertTrue(TreasuryFloatRequestStatus.EXECUTED.canReverse());
+        assertFalse(TreasuryFloatRequestStatus.APPROVED.canReverse());
+        assertFalse(TreasuryFloatRequestStatus.REVERSED.canReverse());
+    }
+
+    @Test
     void sameUserCannotTakeTwoStepsInARow() {
         final TreasuryWorkflowException exception = assertThrows(TreasuryWorkflowException.class,
                 () -> TreasurySegregation.requireDifferentUser("transfer", 5L, "requested", 7L, "approve", 7L));

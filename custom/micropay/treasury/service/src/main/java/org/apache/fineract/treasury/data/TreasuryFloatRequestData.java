@@ -23,5 +23,6 @@ import java.time.LocalDate;
 
 public record TreasuryFloatRequestData(Long id, Long agentFloatId, Long clientId, Long savingsAccountId, String requestType,
         BigDecimal amount, String status, Long requestedBy, Long approvedBy, LocalDate approvedOnDate, Long executedBy,
-        LocalDate executedOnDate, Long savingsTransactionId, Long cancelledBy, LocalDate cancelledOnDate, String note) {
+        LocalDate executedOnDate, Long savingsTransactionId, Long cancelledBy, LocalDate cancelledOnDate, String note, Long reversedBy,
+        LocalDate reversedOnDate, String reversalReason) {
 }

@@ -143,6 +143,7 @@ public class TreasuryAgentFloatReadPlatformService {
                 JdbcSupport.getLong(rs, "requested_by"), JdbcSupport.getLong(rs, "approved_by"),
                 JdbcSupport.getLocalDate(rs, "approved_on_date"), JdbcSupport.getLong(rs, "executed_by"),
                 JdbcSupport.getLocalDate(rs, "executed_on_date"), JdbcSupport.getLong(rs, "savings_transaction_id"),
-                JdbcSupport.getLong(rs, "cancelled_by"), JdbcSupport.getLocalDate(rs, "cancelled_on_date"), rs.getString("note"));
+                JdbcSupport.getLong(rs, "cancelled_by"), JdbcSupport.getLocalDate(rs, "cancelled_on_date"), rs.getString("note"),
+                JdbcSupport.getLong(rs, "reversed_by"), JdbcSupport.getLocalDate(rs, "reversed_on_date"), rs.getString("reversal_reason"));
     }
 }

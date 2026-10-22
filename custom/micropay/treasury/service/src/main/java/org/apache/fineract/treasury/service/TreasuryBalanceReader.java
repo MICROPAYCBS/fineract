@@ -145,6 +145,7 @@ public class TreasuryBalanceReader {
             FROM m_treasury_transfer tr
             WHERE tr.to_account_id IN (:ids) AND tr.sent_on_date <= :asOf
               AND (tr.received_on_date IS NULL OR tr.received_on_date > :asOf)
+              AND (tr.reversed_on_date IS NULL OR tr.reversed_on_date > :asOf)
             GROUP BY tr.to_account_id
             """;
 }

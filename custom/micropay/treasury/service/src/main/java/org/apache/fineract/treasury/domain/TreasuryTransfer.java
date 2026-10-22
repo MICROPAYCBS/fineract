@@ -105,4 +105,13 @@ public class TreasuryTransfer extends AbstractAuditableWithUTCDateTimeCustom<Lon
 
     @Column(name = "note", length = 500)
     private String note;
+
+    @Column(name = "reversed_by")
+    private Long reversedBy;
+
+    @Column(name = "reversed_on_date")
+    private LocalDate reversedOnDate;
+
+    @Column(name = "reversal_reason", length = 500)
+    private String reversalReason;
 }

@@ -28,7 +28,8 @@ public enum TreasuryTransferStatus {
     APPROVED, //
     SENT, //
     RECEIVED, //
-    CANCELLED; //
+    CANCELLED, //
+    REVERSED; //
 
     public boolean canApprove() {
         return this == REQUESTED;
@@ -44,5 +45,10 @@ public enum TreasuryTransferStatus {
 
     public boolean canCancel() {
         return this == REQUESTED || this == APPROVED;
+    }
+
+    /** A sent or received transfer is undone by reversing its postings. */
+    public boolean canReverse() {
+        return this == SENT || this == RECEIVED;
     }
 }

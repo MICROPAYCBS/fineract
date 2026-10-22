@@ -31,12 +31,14 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepositoryWrapper;
 import org.apache.fineract.accounting.journalentry.domain.JournalEntry;
 import org.apache.fineract.accounting.journalentry.domain.JournalEntryRepository;
+import org.apache.fineract.accounting.journalentry.domain.JournalEntryType;
 import org.apache.fineract.accounting.journalentry.exception.JournalEntryInvalidException;
 import org.apache.fineract.accounting.journalentry.exception.JournalEntryInvalidException.GlJournalEntryInvalidReason;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.organisation.office.domain.Office;
 import org.apache.fineract.organisation.office.domain.OfficeRepositoryWrapper;
 import org.apache.fineract.treasury.domain.TreasuryEventType;
+import org.apache.fineract.treasury.domain.TreasuryJournalEntryRepository;
 import org.apache.fineract.treasury.domain.TreasuryPosting;
 import org.apache.fineract.treasury.domain.TreasuryPostingRepository;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
@@ -57,6 +59,7 @@ public class TreasuryJournalPoster {
     private final JournalEntryRepository journalEntryRepository;
     private final GLClosureRepository glClosureRepository;
     private final TreasuryPostingRepository postingRepository;
+    private final TreasuryJournalEntryRepository treasuryJournalEntryRepository;
 
     public static String transactionId(final TreasuryEventType eventType, final Long eventId) {
         return TRANSACTION_ID_PREFIX + "-" + eventType.code() + "-" + eventId;
@@ -84,13 +87,49 @@ public class TreasuryJournalPoster {
             this.journalEntryRepository.save(JournalEntry.createNew(office, null, glAccount, currencyCode, transactionId, false,
                     transactionDate, leg.type(), leg.amount(), description, null, null, reference, null, null, null, null));
         }
+        record(eventType, eventId, transactionId);
+        return transactionId;
+    }
+
+    /**
+     * Reverses every unreversed entry of a treasury journal transaction as upstream journal reversal does: an opposite
+     * entry for each, under a new transaction id, with the original marked reversed and linked to its mirror. The
+     * reversal is dated {@code transactionDate}, not the original date, so it never lands in a closed period.
+     *
+     * @return the reversal's transaction id
+     */
+    public String reverse(final TreasuryEventType reversalType, final Long eventId, final String originalTransactionId,
+            final LocalDate transactionDate, final String description) {
+        final List<JournalEntry> originals = this.treasuryJournalEntryRepository.findUnreversedByTransactionId(originalTransactionId);
+        if (originals.isEmpty()) {
+            throw new TreasuryWorkflowException("posting", "nothing.to.reverse",
+                    "Journal transaction " + originalTransactionId + " has no unreversed treasury entries", originalTransactionId);
+        }
+        final List<Leg> mirror = originals.stream().map(entry -> new Leg(entry.getOffice().getId(), entry.getGlAccount().getId(),
+                entry.isDebitEntry() ? JournalEntryType.CREDIT : JournalEntryType.DEBIT, entry.getAmount())).toList();
+        validateDate(transactionDate, mirror);
+        final String transactionId = transactionId(reversalType, eventId);
+        for (final JournalEntry original : originals) {
+            final JournalEntry reversal = JournalEntry.createNew(original.getOffice(), null, original.getGlAccount(),
+                    original.getCurrencyCode(), transactionId, false, transactionDate,
+                    original.isDebitEntry() ? JournalEntryType.CREDIT : JournalEntryType.DEBIT, original.getAmount(), description, null,
+                    null, original.getReferenceNumber(), null, null, null, null);
+            this.journalEntryRepository.save(reversal);
+            original.setReversed(true);
+            original.setReversalJournalEntry(reversal);
+            this.journalEntryRepository.save(original);
+        }
+        record(reversalType, eventId, transactionId);
+        return transactionId;
+    }
+
+    private void record(final TreasuryEventType eventType, final Long eventId, final String transactionId) {
         final TreasuryPosting posting = new TreasuryPosting();
         posting.setEventType(eventType);
         posting.setEventId(eventId);
         posting.setTransactionId(transactionId);
         posting.setCreatedOnUtc(DateUtils.getAuditOffsetDateTime());
         this.postingRepository.save(posting);
-        return transactionId;
     }
 
     private void validateDate(final LocalDate transactionDate, final List<Leg> legs) {

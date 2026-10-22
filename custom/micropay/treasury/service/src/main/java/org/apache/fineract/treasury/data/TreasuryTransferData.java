@@ -28,5 +28,5 @@ public record TreasuryTransferData(Long id, Long fromAccountId, String fromAccou
         String toAccountCode, Long toOfficeId, BigDecimal amount, String currencyCode, LocalDate transferDate, String reference,
         String description, String status, Long requestedBy, Long approvedBy, LocalDate approvedOnDate, Long sentBy, LocalDate sentOnDate,
         String sendTransactionId, Long receivedBy, LocalDate receivedOnDate, String receiveTransactionId, Long cancelledBy,
-        LocalDate cancelledOnDate, String note, Long daysInTransit) {
+        LocalDate cancelledOnDate, String note, Long reversedBy, LocalDate reversedOnDate, String reversalReason, Long daysInTransit) {
 }

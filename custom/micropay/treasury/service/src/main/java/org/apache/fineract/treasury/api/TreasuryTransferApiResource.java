@@ -21,6 +21,7 @@ package org.apache.fineract.treasury.api;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_APPROVE;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_CANCEL;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_RECEIVE;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_REVERSE;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_SEND;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.TREASURY_SETTING_RESOURCE_NAME;
@@ -121,10 +122,10 @@ public class TreasuryTransferApiResource {
     @Path("transfers/{transferId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Approve, send, receive or cancel a transfer", description = "command=approve|send|receive|cancel; optional body {\"transactionDate\": \"2026-10-16\", \"note\": \"...\"}. Send posts the source to cash in transit and receive posts cash in transit to the destination.")
+    @Operation(summary = "Approve, send, receive or cancel a transfer", description = "command=approve|send|receive|cancel|reverse; optional body {\"transactionDate\": \"2026-10-16\", \"note\": \"...\"}. Send posts the source to cash in transit and receive posts cash in transit to the destination. Reverse (a sent or received transfer, with a reason) reverses those postings.")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult actOnTransfer(@PathParam("transferId") final Long transferId,
-            @QueryParam("command") @Parameter(description = "approve, send, receive or cancel", required = true) final String commandParam,
+            @QueryParam("command") @Parameter(description = "approve, send, receive, cancel or reverse", required = true) final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final MicropayCommandWrapperBuilder builder = new MicropayCommandWrapperBuilder();
         if (COMMAND_APPROVE.equalsIgnoreCase(commandParam)) {
@@ -135,9 +136,11 @@ public class TreasuryTransferApiResource {
             builder.receiveTreasuryTransfer(transferId);
         } else if (COMMAND_CANCEL.equalsIgnoreCase(commandParam)) {
             builder.cancelTreasuryTransfer(transferId);
+        } else if (COMMAND_REVERSE.equalsIgnoreCase(commandParam)) {
+            builder.reverseTreasuryTransfer(transferId);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam,
-                    new Object[] { COMMAND_APPROVE, COMMAND_SEND, COMMAND_RECEIVE, COMMAND_CANCEL });
+                    new Object[] { COMMAND_APPROVE, COMMAND_SEND, COMMAND_RECEIVE, COMMAND_CANCEL, COMMAND_REVERSE });
         }
         final CommandWrapper wrapper = builder.withJson(body(apiRequestBodyAsJson)).build();
         return this.commandsSourceWritePlatformService.logCommandSource(wrapper);

@@ -22,6 +22,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_APPR
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_CANCEL;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_CLOSE;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_EXECUTE;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.COMMAND_REVERSE;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.TREASURY_AGENT_FLOAT_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.TREASURY_FLOAT_REQUEST_RESOURCE_NAME;
@@ -173,10 +174,10 @@ public class TreasuryAgentFloatApiResource {
     @Path("float-requests/{requestId}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Approve, execute or cancel a request", description = "command=approve|execute|cancel; optional body {\"transactionDate\": \"2026-10-16\", \"note\": \"...\"}. Execute makes the savings deposit (top-up) or withdrawal (sweep).")
+    @Operation(summary = "Approve, execute or cancel a request", description = "command=approve|execute|cancel|reverse; optional body {\"transactionDate\": \"2026-10-16\", \"note\": \"...\"}. Execute makes the savings deposit (top-up) or withdrawal (sweep); reverse (with a reason) undoes that savings transaction.")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult actOnRequest(@PathParam("requestId") final Long requestId,
-            @QueryParam("command") @Parameter(description = "approve, execute or cancel", required = true) final String commandParam,
+            @QueryParam("command") @Parameter(description = "approve, execute, cancel or reverse", required = true) final String commandParam,
             @Parameter(hidden = true) final String apiRequestBodyAsJson) {
         final MicropayCommandWrapperBuilder builder = new MicropayCommandWrapperBuilder();
         if (COMMAND_APPROVE.equalsIgnoreCase(commandParam)) {
@@ -185,9 +186,11 @@ public class TreasuryAgentFloatApiResource {
             builder.executeTreasuryFloatRequest(requestId);
         } else if (COMMAND_CANCEL.equalsIgnoreCase(commandParam)) {
             builder.cancelTreasuryFloatRequest(requestId);
+        } else if (COMMAND_REVERSE.equalsIgnoreCase(commandParam)) {
+            builder.reverseTreasuryFloatRequest(requestId);
         } else {
             throw new UnrecognizedQueryParamException("command", commandParam,
-                    new Object[] { COMMAND_APPROVE, COMMAND_EXECUTE, COMMAND_CANCEL });
+                    new Object[] { COMMAND_APPROVE, COMMAND_EXECUTE, COMMAND_CANCEL, COMMAND_REVERSE });
         }
         return this.commandsSourceWritePlatformService
                 .logCommandSource(builder.withJson(TreasuryTransferApiResource.body(apiRequestBodyAsJson)).build());

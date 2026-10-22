@@ -229,6 +229,41 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
         return requestResult(command, floatRequest, agentFloat, changes);
     }
 
+    /**
+     * Undoes an executed top-up or sweep with the upstream savings undo, which reverses the savings transaction and its
+     * journal entries and applies upstream's own checks (account active, product allows changes, pivot date). The user
+     * who executed it may not reverse it, and a reason is required.
+     */
+    @Override
+    @Transactional
+    public CommandProcessingResult reverseFloatRequest(final Long requestId, final JsonCommand command) {
+        final ActionRequest action = this.validator.validateAction(TREASURY_FLOAT_REQUEST_RESOURCE_NAME, command.json());
+        final TreasuryFloatRequest floatRequest = findRequest(requestId);
+        requireStep(floatRequest, floatRequest.getStatus().canReverse(), "reversed");
+        if (action.reason() == null) {
+            throw new TreasuryWorkflowException(REQUEST_ENTITY, "reversal.reason.required",
+                    "A reason is required to reverse float request " + requestId, requestId);
+        }
+        if (action.transactionDate() != null) {
+            throw new TreasuryWorkflowException(REQUEST_ENTITY, "reversal.date.not.supported",
+                    "A float request reversal undoes the savings transaction on its own date; leave out transactionDate", requestId);
+        }
+        final Long userId = currentUserId();
+        TreasurySegregation.requireDifferentUser(REQUEST_ENTITY, requestId, "executed", floatRequest.getExecutedBy(), "reverse", userId);
+        final TreasuryAgentFloat agentFloat = findFloat(floatRequest.getAgentFloatId());
+
+        this.savingsAccountWritePlatformService.undoTransaction(agentFloat.getSavingsAccountId(), floatRequest.getSavingsTransactionId(),
+                false);
+
+        floatRequest.setStatus(TreasuryFloatRequestStatus.REVERSED);
+        floatRequest.setReversedBy(userId);
+        floatRequest.setReversedOnDate(DateUtils.getBusinessLocalDate());
+        floatRequest.setReversalReason(action.reason());
+        note(floatRequest, action);
+        this.requestRepository.saveAndFlush(floatRequest);
+        return requestResult(command, floatRequest, agentFloat, Map.of("status", floatRequest.getStatus().name()));
+    }
+
     @Override
     @Transactional
     public CommandProcessingResult cancelFloatRequest(final Long requestId, final JsonCommand command) {
