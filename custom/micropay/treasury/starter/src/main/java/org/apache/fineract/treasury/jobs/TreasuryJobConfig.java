@@ -27,6 +27,7 @@ import org.apache.fineract.infrastructure.jobs.service.jobname.JobNameProvider;
 import org.apache.fineract.infrastructure.jobs.service.jobname.SimpleJobNameProvider;
 import org.apache.fineract.treasury.service.TreasuryDealLifecycleService;
 import org.apache.fineract.treasury.service.TreasuryEclService;
+import org.apache.fineract.treasury.service.TreasuryLimitEngine;
 import org.apache.fineract.treasury.service.TreasuryLiquidityRunService;
 import org.apache.fineract.treasury.service.TreasuryPositionSnapshotService;
 import org.apache.fineract.treasury.service.TreasuryValuationService;
@@ -58,6 +59,7 @@ public class TreasuryJobConfig {
     private final TreasuryValuationService valuationService;
     private final TreasuryEclService eclService;
     private final TreasuryLiquidityRunService liquidityRunService;
+    private final TreasuryLimitEngine limitEngine;
 
     @Bean
     public JobNameProvider treasuryJobNameProvider() {
@@ -110,6 +112,18 @@ public class TreasuryJobConfig {
     @Bean
     public Job treasuryLiquidityRunJob() {
         return new JobBuilder(TreasuryJobName.TREASURY_LIQUIDITY_RUN.name(), jobRepository).start(treasuryLiquidityRunStep())
+                .incrementer(new RunIdIncrementer()).build();
+    }
+
+    @Bean
+    protected Step treasuryLimitsStep() {
+        return new StepBuilder(TreasuryJobName.TREASURY_LIMITS.name(), jobRepository)
+                .tasklet(new TreasuryLimitsTasklet(limitEngine), transactionManager).build();
+    }
+
+    @Bean
+    public Job treasuryLimitsJob() {
+        return new JobBuilder(TreasuryJobName.TREASURY_LIMITS.name(), jobRepository).start(treasuryLimitsStep())
                 .incrementer(new RunIdIncrementer()).build();
     }
 

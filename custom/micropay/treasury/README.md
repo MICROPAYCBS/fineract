@@ -1,9 +1,9 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, and limits with a breach log (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
-- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run") and the Liquibase changelogs.
+- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run", "Treasury Limits") and the Liquibase changelogs.
 
 `fineract.module.treasury.enabled` (`FINERACT_MODULE_TREASURY_ENABLED`, default `true`) switches the whole module off.
 
@@ -74,7 +74,7 @@ Treasury accounts and cash positions, funding transfers with an in-transit state
 
 ## Day-end snapshot
 
-The "Treasury Position Snapshot" job (short name `TRS_SNAP`) writes one row per active account into `m_treasury_position_snapshot` for the day being closed, the business date less one, which is the day the "Update GL Balance Snapshots" job closes. It counts the journal entries dated that day and before. A rerun for the same day overwrites that day's rows. Accounts outside their minimum or maximum are logged as warnings and the level status is stored with the row; there are no notifications yet.
+The "Treasury Position Snapshot" job (short name `TRS_SNAP`) writes one row per active account into `m_treasury_position_snapshot` for the day being closed, the business date less one, which is the day the "Update GL Balance Snapshots" job closes. It counts the journal entries dated that day and before. A rerun for the same day overwrites that day's rows. Accounts outside their minimum or maximum are logged as warnings and the level status is stored with the row. An active `ACCOUNT_BALANCE` limit with its own levels logs those breaches and notifies (see Limits and the breach log).
 
 The job is created inactive with a 02:45 schedule. Put it in a job sequence (`jobs/sequence`) after `GLB_SNAP`, or turn it on in the scheduler.
 
@@ -463,6 +463,69 @@ Table reports (category Accounting, parameter `asOn`) over the stored institutio
 
 Cash in vaults of 2,500 and a government bond class carried at 300,000, of which 50,000 matures after the cut-off and 25,000 of the rest is pledged: the bond class counts (300,000 - 75,000) x 90% = 202,500. With deposit liabilities of 1,000,000, liquid assets to deposits is 205,000 / 1,000,000 = 20.50%: `OK` against the 15% minimum and the 17% warning. The return shows A1 cash 2,500, A2 bonds 202,500, total 205,000; B1 deposits 1,000,000; C1 20.50, C2 15.00, C3 OK.
 
+## Limits and the breach log
+
+P3.3 (TR-24, TR-25) adds limits over the liquidity runs, concentrations, counterparty exposure and account balances, a log of their breaches with acknowledgement, comments and resolution, and in-app notifications.
+
+### Limits
+
+`POST /treasury/limits` creates a limit, `INACTIVE`; `PUT /treasury/limits/{id}` changes any field but the code (the fields sent are laid over the limit, a JSON null clears one, and the whole limit is checked again); `POST /treasury/limits/{id}?command=activate|deactivate`. Each create, update, activation and deactivation is a version kept in the limit's history (`GET /treasury/limits/{id}`), and every breach keeps the limit version and the levels it was compared with. Create, update and activate can each be put under maker-checker; the maker is credited.
+
+- `metric` and what it observes:
+  - `RATIO`: a ratio of the scope's RATIOS run, `metricKey` its code; `PERCENT`.
+  - `BUCKET_GAP`: a bucket's `gapType` `CUMULATIVE` (default) or `NET` gap of the scope's LADDER run, `metricKey` the bucket code; `AMOUNT`, or `PERCENT` of the `gapBasis` `TOTAL_OUTFLOWS` (every bucket's outflows) or `DEPOSIT_OUTFLOWS` (the savings and term deposit lines).
+  - `DEPOSITOR_CONCENTRATION`: the `topN` (default 1) largest depositors' share of deposits; `PERCENT`.
+  - `FUNDING_CONCENTRATION`: the `topN` (default 1) largest funding counterparties' share of borrowings; `PERCENT`.
+  - `COUNTERPARTY_EXPOSURE`: each counterparty's exposure, as the deal capture check computes it; `PERCENT` of its exposure limit, or `AMOUNT`.
+  - `ACCOUNT_BALANCE`: each treasury account's GL balance; `AMOUNT`.
+  - More metrics (the FX position in P4.1) are added as a value of the enum with an evaluator bean.
+- `scopeType`: `INSTITUTION` or `CURRENCY` (the institution's runs and data; `CURRENCY` needs `currencyCode`), `OFFICE` (`scopeId`, the office's runs and data), `COUNTERPARTY` or `ACCOUNT` (`scopeId`). Each metric allows the scopes that make sense for it.
+- `currencyCode`: the limit applies to that currency only; every currency without it. Needed for an `AMOUNT`.
+- Levels: `comparison` `MIN` (the value must stay at or above them) or `MAX`, `hardLevel`, optional `warningLevel` (above the hard level for `MIN`, below it for `MAX`), `unit` (`PERCENT`, `AMOUNT`; `DAYS` is reserved for later metrics). Or `useOwnLevels: true` for `RATIO` (the ratio's own direction, limit and warning), `COUNTERPARTY_EXPOSURE` (the counterparty's own exposure limit and warning percentage) or `ACCOUNT_BALANCE` (the account's own minimum and maximum balances).
+- `effectiveFrom`, `effectiveTo`: the as-of dates it applies to. `notifyRoleId`: the role whose users are notified. `description`.
+
+A value on a level has not crossed it: `MIN` is a `WARNING` below the warning level and `HARD` below the hard level, `MAX` above them.
+
+### Evaluations
+
+An evaluation reads the active limits that apply to an as-of date, a currency and a scope (the institution, or an office: an office's limits apply to the office's evaluations, every other limit to the institution's), observes each one (one observation per subject: the scope, or each counterparty or account) and stores itself with one line per observation (`GET /treasury/limit-evaluations`, `/{id}`). Evaluations are added, never replaced, and also run on a scope whose return has been submitted.
+
+- every LADDER run evaluates the scope's `BUCKET_GAP` limits and every RATIOS run its `RATIO` limits as it is made (the run's `changes` carry `limitEvaluationId` and `limitBreaches`), including those of the "Treasury Liquidity Run" job;
+- deal capture, edit, rollover and approval evaluate the counterparty's active `COUNTERPARTY_EXPOSURE` limits with the capture check's result, the exposure with the deal: a deal at the warning level or referred for an over-limit approval writes or updates the counterparty's breach, and so does a refused deal, in a transaction of its own (`DEAL_REQUEST` when it had no id yet). The capture check itself is unchanged;
+- `POST /treasury/limits?command=evaluate` (`EVALUATE_TREASURYLIMIT`) evaluates every metric: `runId` (its scope, with the ladder or ratios run it belongs with), or `asOfDate` (default the business date), `currency` and `officeId` (none for the institution) with that scope's latest ladder and ratios runs;
+- the "Treasury Limits" job (short name `TRS_LIM`, created inactive, cron 02:55; after `TRS_LIQ` in a job sequence) evaluates every metric for the business date, every organisation currency, the institution and each office with an active limit.
+
+What is observed:
+
+- ratios and gaps are read back from the stored runs, so they evaluate the same afterwards;
+- deposits are the current balances of active savings, fixed and recurring deposit accounts per client or group, as the ladder reads them (related parties are not grouped);
+- borrowings are the principal outstanding of settled liability deals valued on or before the as-of date, per counterparty;
+- counterparty exposure is today's, over the asset deals approved, confirmed or settled: with `useOwnLevels` the level is the capture check's outcome (`WARNING`, or `HARD` when `EXCEEDED`), so the deal check and the evaluation agree;
+- account balances are the GL balances on the as-of date, as the position snapshot reads them. With `useOwnLevels` below the minimum or above the maximum is a `HARD` breach. The position snapshot job still stores its level status and logs; only the limit writes account breaches, so nothing is alerted twice.
+
+### The breach log
+
+`GET /treasury/breaches` (filters `status`, `metric`, `limitId`, `level`, `currency`, `scopeType`, `scopeId`, `from`, `to`), `GET /treasury/breaches/{id}` with its comments.
+
+- one breach is kept open (`OPEN` or `ACKNOWLEDGED`) per limit, subject and currency: seeing it again adds an occurrence, moves `lastSeenOn` and records the value, the source (`RUN`, `DEAL`, `DEAL_REQUEST`, `ACCOUNT`, `DEPOSITS` or `DEALS`) and the evaluation;
+- a `WARNING` breach that crosses the hard level is upgraded to `HARD` in place (`escalatedOn`, the levels as they then were, a system comment) and reopened if it had been acknowledged; a breach is never downgraded;
+- a value back within the levels sets `clearedOn` (with a system comment) but leaves the breach open: a user resolves it. Crossing again clears `clearedOn`;
+- a resolved breach stays as it is, and a new breach of the same limit and subject starts a new row.
+
+`POST /treasury/breaches/{id}?command=acknowledge` (`ACKNOWLEDGE_TREASURYBREACH`; an optional `comment`), `?command=resolve` (`RESOLVE_TREASURYBREACH`; a `comment` is required; the resolver may be the acknowledger), `POST /treasury/breaches/{id}/comments` (`COMMENT_TREASURYBREACH`, `comment`), in any status.
+
+### Notifications
+
+A new or escalated breach notifies the enabled users of the limit's `notifyRoleId` through Fineract's in-app notifications (object type `treasuryBreach`, the breach id; `GET /v1/notifications`), with no upstream change. A limit without a role notifies nobody; `GET /treasury/breaches?status=OPEN` is the feed of what is open.
+
+### Seeded limits
+
+Placeholders, all `INACTIVE` until MICROPAY confirms its limits (Q6): `LIQUID_ASSETS_TO_DEPOSITS_MIN` (warning below 17%, breach below 15%), `GAP_ON_CUMULATIVE` and `GAP_D2_8_CUMULATIVE` (cumulative gap not negative, UGX), `DEPOSITORS_TOP20_MAX` (25%), `DEPOSITOR_SINGLE_MAX` (5%), `FUNDER_SINGLE_MAX` (40%); `COUNTERPARTY_OWN_LIMITS` (activate to log the deal capture warnings, referrals and refusals) and `ACCOUNT_OWN_LEVELS` (activate to log the accounts' minimum and maximum breaches), with their own levels. None notifies until a role is set.
+
+### Report
+
+"Treasury Limit Breaches" (table, category Accounting, parameter `asOn`): the breaches open on a date, first seen on or before it and not resolved before it, hard ones first. It needs `READ_Treasury Limit Breaches`.
+
 ## Tables
 
 | Table | Holds |
@@ -503,6 +566,12 @@ Cash in vaults of 2,500 and a government bond class carried at 300,000, of which
 | `m_treasury_run_ratio` | Each ratio of a RATIOS run as computed. |
 | `m_treasury_run_component` | Each component of a ratio of a run: source, exclusions, haircut, weight, eligible amount. |
 | `m_treasury_run_return_line` | The lines of a RETURN run. |
+| `m_treasury_limit` | Limits: metric, scope, currency, levels, status, effective dates, the role notified, the version. |
+| `m_treasury_limit_history` | Every version of a limit as JSON, with who changed it. |
+| `m_treasury_limit_evaluation` | Each evaluation: date, currency, office, trigger, source run or deal, counts. |
+| `m_treasury_limit_evaluation_line` | What an evaluation observed per limit and subject, the levels, the level crossed and what it did to the log. |
+| `m_treasury_breach` | Breaches: limit and version, subject, levels, observed value, source, status, first and last seen, occurrences, escalation, clearing, acknowledgement and resolution. |
+| `m_treasury_breach_comment` | The comment thread of a breach, the user's and the engine's. |
 
 ## Permissions
 
@@ -529,6 +598,8 @@ Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` var
 - `READ_TREASURYASSUMPTIONSET`, `CREATE_TREASURYASSUMPTIONSET`, `UPDATE_TREASURYASSUMPTIONSET`, `DELETE_TREASURYASSUMPTIONSET`, `ACTIVATE_TREASURYASSUMPTIONSET`
 - `READ_TREASURYLADDERITEM`, `CREATE_TREASURYLADDERITEM`, `UPDATE_TREASURYLADDERITEM`, `DELETE_TREASURYLADDERITEM`
 - `READ_TREASURYRUN` (also the return), `CREATE_TREASURYRUN`, `SUBMIT_TREASURYRUN`
-- reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`
+- `READ_TREASURYLIMIT` (also the evaluations), `CREATE_TREASURYLIMIT`, `UPDATE_TREASURYLIMIT`, `ACTIVATE_TREASURYLIMIT`, `DEACTIVATE_TREASURYLIMIT`, `EVALUATE_TREASURYLIMIT`
+- `READ_TREASURYBREACH`, `ACKNOWLEDGE_TREASURYBREACH`, `RESOLVE_TREASURYBREACH`, `COMMENT_TREASURYBREACH`
+- reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`, `READ_Treasury Limit Breaches`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

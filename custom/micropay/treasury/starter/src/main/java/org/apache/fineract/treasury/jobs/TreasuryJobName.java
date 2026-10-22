@@ -28,7 +28,8 @@ public enum TreasuryJobName {
     TREASURY_ACCRUAL("Treasury Accrual"), //
     TREASURY_VALUATION("Treasury Valuation"), //
     TREASURY_ECL("Treasury ECL"), //
-    TREASURY_LIQUIDITY_RUN("Treasury Liquidity Run"); //
+    TREASURY_LIQUIDITY_RUN("Treasury Liquidity Run"), //
+    TREASURY_LIMITS("Treasury Limits"); //
 
     private final String name;
 

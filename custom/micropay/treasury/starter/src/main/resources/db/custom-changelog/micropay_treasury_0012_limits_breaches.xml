@@ -1,0 +1,836 @@
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+<!--
+  MICROPAY CBS: treasury P3.3. The limits engine and breach log: limits with their version history, stored evaluations
+  and their lines, breaches with their comment threads, example limits (inactive placeholders), the "Treasury Limit
+  Breaches" table report, the "Treasury Limits" job and the limit and breach permissions.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0012_limits_breaches.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-limits-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_limit"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_limit">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="metric" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metric_key" type="VARCHAR(50)"/>
+            <column name="gap_type" type="VARCHAR(20)"/>
+            <column name="gap_basis" type="VARCHAR(30)"/>
+            <column name="top_n" type="INT"/>
+            <column name="scope_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scope_id" type="BIGINT"/>
+            <column name="currency_code" type="VARCHAR(3)"/>
+            <column name="comparison" type="VARCHAR(10)"/>
+            <column name="warning_level" type="DECIMAL(19,6)"/>
+            <column name="hard_level" type="DECIMAL(19,6)"/>
+            <column name="unit" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="use_own_levels" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="effective_from" type="DATE"/>
+            <column name="effective_to" type="DATE"/>
+            <column name="notify_role_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_limit_notify_role" references="m_role(id)"/>
+            </column>
+            <column name="version" type="INT" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+            <column name="activated_by" type="BIGINT"/>
+            <column name="activated_on_date" type="DATE"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_limit" columnNames="code" constraintName="uq_treasury_limit_code"/>
+    </changeSet>
+
+    <changeSet id="treasury-limits-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_limit_history"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_limit_history">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="limit_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_limit_history_limit" references="m_treasury_limit(id)"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="snapshot" type="TEXT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_by" type="BIGINT"/>
+            <column name="changed_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_limit_history" indexName="idx_treasury_limit_history_limit">
+            <column name="limit_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-limits-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_limit_evaluation"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_limit_evaluation">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="as_of_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT"/>
+            <column name="trigger_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_run_id" type="BIGINT"/>
+            <column name="source_deal_id" type="BIGINT"/>
+            <column name="limits_evaluated" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="breaches_created" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="breaches_escalated" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="breaches_repeated" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="breaches_cleared" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_limit_evaluation" indexName="idx_treasury_limit_evaluation_date">
+            <column name="as_of_date"/>
+            <column name="currency_code"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_limit_evaluation" indexName="idx_treasury_limit_evaluation_run">
+            <column name="source_run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-limits-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_breach"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_breach">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="limit_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_breach_limit" references="m_treasury_limit(id)"/>
+            </column>
+            <column name="limit_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metric" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metric_key" type="VARCHAR(50)"/>
+            <column name="scope_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scope_id" type="BIGINT"/>
+            <column name="scope_label" type="VARCHAR(200)"/>
+            <column name="currency_code" type="VARCHAR(3)"/>
+            <column name="as_of_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="observed_value" type="DECIMAL(19,6)"/>
+            <column name="level_hit" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_level" type="VARCHAR(10)"/>
+            <column name="comparison" type="VARCHAR(10)"/>
+            <column name="warning_level" type="DECIMAL(19,6)"/>
+            <column name="hard_level" type="DECIMAL(19,6)"/>
+            <column name="unit" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_id" type="BIGINT"/>
+            <column name="evaluation_id" type="BIGINT"/>
+            <column name="detail" type="VARCHAR(1000)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="first_seen_on" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_seen_on" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="occurrences" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="escalated_on" type="DATE"/>
+            <column name="cleared_on" type="DATE"/>
+            <column name="acknowledged_by" type="BIGINT"/>
+            <column name="acknowledged_on_utc" type="${treasury.datetime.type}"/>
+            <column name="resolved_by" type="BIGINT"/>
+            <column name="resolved_on_date" type="DATE"/>
+            <column name="resolved_on_utc" type="${treasury.datetime.type}"/>
+            <column name="resolution_comment" type="VARCHAR(2000)"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_breach" indexName="idx_treasury_breach_limit_status">
+            <column name="limit_id"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_breach" indexName="idx_treasury_breach_status">
+            <column name="status"/>
+            <column name="last_seen_on"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-limits-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_breach_comment"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_breach_comment">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="breach_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_breach_comment_breach" references="m_treasury_breach(id)"/>
+            </column>
+            <column name="kind" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="comment_text" type="VARCHAR(2000)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_breach_comment" indexName="idx_treasury_breach_comment_breach">
+            <column name="breach_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-limits-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_limit_evaluation_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_limit_evaluation_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="evaluation_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_limit_evaluation_line_evaluation" references="m_treasury_limit_evaluation(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="metric" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scope_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scope_id" type="BIGINT"/>
+            <column name="scope_label" type="VARCHAR(200)"/>
+            <column name="observed_value" type="DECIMAL(19,6)"/>
+            <column name="comparison" type="VARCHAR(10)"/>
+            <column name="warning_level" type="DECIMAL(19,6)"/>
+            <column name="hard_level" type="DECIMAL(19,6)"/>
+            <column name="unit" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="level_hit" type="VARCHAR(10)"/>
+            <column name="action" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="breach_id" type="BIGINT"/>
+            <column name="source_type" type="VARCHAR(20)"/>
+            <column name="source_id" type="BIGINT"/>
+            <column name="detail" type="VARCHAR(1000)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_limit_evaluation_line" indexName="idx_treasury_limit_evaluation_line_evaluation">
+            <column name="evaluation_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Example limits, all INACTIVE placeholders until MICROPAY confirms its limits (Q6) -->
+    <changeSet id="treasury-limits-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_limit</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="LIQUID_ASSETS_TO_DEPOSITS_MIN"/>
+            <column name="name" value="Liquid assets to deposits"/>
+            <column name="metric" value="RATIO"/>
+            <column name="metric_key" value="LIQUID_ASSETS_TO_DEPOSITS"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MIN"/>
+            <column name="warning_level" valueNumeric="17"/>
+            <column name="hard_level" valueNumeric="15"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="description" value="Liquid assets to total deposits of the institution ratios run: warning below 17%, breach below 15%. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'LIQUID_ASSETS_TO_DEPOSITS_MIN')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"LIQUID_ASSETS_TO_DEPOSITS_MIN","name":"Liquid assets to deposits","metric":"RATIO","metricKey":"LIQUID_ASSETS_TO_DEPOSITS","scopeType":"INSTITUTION","comparison":"MIN","warningLevel":"17","hardLevel":"15","unit":"PERCENT","description":"Liquid assets to total deposits of the institution ratios run: warning below 17%, breach below 15%. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating.","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="GAP_ON_CUMULATIVE"/>
+            <column name="name" value="Overnight cumulative gap not negative"/>
+            <column name="metric" value="BUCKET_GAP"/>
+            <column name="metric_key" value="ON"/>
+            <column name="gap_type" value="CUMULATIVE"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="currency_code" value="UGX"/>
+            <column name="comparison" value="MIN"/>
+            <column name="hard_level" valueNumeric="0"/>
+            <column name="unit" value="AMOUNT"/>
+            <column name="description" value="The institution ladder's cumulative gap at the overnight bucket. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'GAP_ON_CUMULATIVE')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value="{&quot;code&quot;:&quot;GAP_ON_CUMULATIVE&quot;,&quot;name&quot;:&quot;Overnight cumulative gap not negative&quot;,&quot;metric&quot;:&quot;BUCKET_GAP&quot;,&quot;metricKey&quot;:&quot;ON&quot;,&quot;gapType&quot;:&quot;CUMULATIVE&quot;,&quot;scopeType&quot;:&quot;INSTITUTION&quot;,&quot;currencyCode&quot;:&quot;UGX&quot;,&quot;comparison&quot;:&quot;MIN&quot;,&quot;hardLevel&quot;:&quot;0&quot;,&quot;unit&quot;:&quot;AMOUNT&quot;,&quot;description&quot;:&quot;The institution ladder's cumulative gap at the overnight bucket. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating.&quot;,&quot;status&quot;:&quot;INACTIVE&quot;}"/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="GAP_D2_8_CUMULATIVE"/>
+            <column name="name" value="2 to 8 day cumulative gap not negative"/>
+            <column name="metric" value="BUCKET_GAP"/>
+            <column name="metric_key" value="D2_8"/>
+            <column name="gap_type" value="CUMULATIVE"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="currency_code" value="UGX"/>
+            <column name="comparison" value="MIN"/>
+            <column name="hard_level" valueNumeric="0"/>
+            <column name="unit" value="AMOUNT"/>
+            <column name="description" value="The institution ladder's cumulative gap at the 2 to 8 day bucket. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'GAP_D2_8_CUMULATIVE')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value="{&quot;code&quot;:&quot;GAP_D2_8_CUMULATIVE&quot;,&quot;name&quot;:&quot;2 to 8 day cumulative gap not negative&quot;,&quot;metric&quot;:&quot;BUCKET_GAP&quot;,&quot;metricKey&quot;:&quot;D2_8&quot;,&quot;gapType&quot;:&quot;CUMULATIVE&quot;,&quot;scopeType&quot;:&quot;INSTITUTION&quot;,&quot;currencyCode&quot;:&quot;UGX&quot;,&quot;comparison&quot;:&quot;MIN&quot;,&quot;hardLevel&quot;:&quot;0&quot;,&quot;unit&quot;:&quot;AMOUNT&quot;,&quot;description&quot;:&quot;The institution ladder's cumulative gap at the 2 to 8 day bucket. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating.&quot;,&quot;status&quot;:&quot;INACTIVE&quot;}"/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="DEPOSITORS_TOP20_MAX"/>
+            <column name="name" value="Top 20 depositors at most 25% of deposits"/>
+            <column name="metric" value="DEPOSITOR_CONCENTRATION"/>
+            <column name="top_n" valueNumeric="20"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="hard_level" valueNumeric="25"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="description" value="Savings and term deposit balances per client or group; related parties not grouped. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'DEPOSITORS_TOP20_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"DEPOSITORS_TOP20_MAX","name":"Top 20 depositors at most 25% of deposits","metric":"DEPOSITOR_CONCENTRATION","topN":20,"scopeType":"INSTITUTION","comparison":"MAX","hardLevel":"25","unit":"PERCENT","description":"Savings and term deposit balances per client or group; related parties not grouped. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating.","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="DEPOSITOR_SINGLE_MAX"/>
+            <column name="name" value="Single depositor at most 5% of deposits"/>
+            <column name="metric" value="DEPOSITOR_CONCENTRATION"/>
+            <column name="top_n" valueNumeric="1"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="hard_level" valueNumeric="5"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="description" value="The largest depositor. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'DEPOSITOR_SINGLE_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"DEPOSITOR_SINGLE_MAX","name":"Single depositor at most 5% of deposits","metric":"DEPOSITOR_CONCENTRATION","topN":1,"scopeType":"INSTITUTION","comparison":"MAX","hardLevel":"5","unit":"PERCENT","description":"The largest depositor. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating.","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="FUNDER_SINGLE_MAX"/>
+            <column name="name" value="Single funding counterparty at most 40% of borrowings"/>
+            <column name="metric" value="FUNDING_CONCENTRATION"/>
+            <column name="top_n" valueNumeric="1"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="hard_level" valueNumeric="40"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="description" value="The principal outstanding of settled liability deals per counterparty. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'FUNDER_SINGLE_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"FUNDER_SINGLE_MAX","name":"Single funding counterparty at most 40% of borrowings","metric":"FUNDING_CONCENTRATION","topN":1,"scopeType":"INSTITUTION","comparison":"MAX","hardLevel":"40","unit":"PERCENT","description":"The principal outstanding of settled liability deals per counterparty. PLACEHOLDER, inactive: confirm the level with MICROPAY (Q6) before activating.","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="COUNTERPARTY_OWN_LIMITS"/>
+            <column name="name" value="Counterparty exposure limits"/>
+            <column name="metric" value="COUNTERPARTY_EXPOSURE"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="use_own_levels" valueBoolean="true"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="description" value="Each counterparty against its own exposure limit and warning percentage, at deal capture and on evaluation: activate to log the deal capture warnings, referrals and refusals as breaches."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'COUNTERPARTY_OWN_LIMITS')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"COUNTERPARTY_OWN_LIMITS","name":"Counterparty exposure limits","metric":"COUNTERPARTY_EXPOSURE","scopeType":"INSTITUTION","useOwnLevels":true,"description":"Each counterparty against its own exposure limit and warning percentage, at deal capture and on evaluation: activate to log the deal capture warnings, referrals and refusals as breaches.","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="ACCOUNT_OWN_LEVELS"/>
+            <column name="name" value="Treasury account minimum and maximum balances"/>
+            <column name="metric" value="ACCOUNT_BALANCE"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="use_own_levels" valueBoolean="true"/>
+            <column name="unit" value="AMOUNT"/>
+            <column name="description" value="Each treasury account's GL balance against its own minimum and maximum: activate to log the position snapshot's level breaches as breaches."/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'ACCOUNT_OWN_LEVELS')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value="{&quot;code&quot;:&quot;ACCOUNT_OWN_LEVELS&quot;,&quot;name&quot;:&quot;Treasury account minimum and maximum balances&quot;,&quot;metric&quot;:&quot;ACCOUNT_BALANCE&quot;,&quot;scopeType&quot;:&quot;INSTITUTION&quot;,&quot;useOwnLevels&quot;:true,&quot;description&quot;:&quot;Each treasury account's GL balance against its own minimum and maximum: activate to log the position snapshot's level breaches as breaches.&quot;,&quot;status&quot;:&quot;INACTIVE&quot;}"/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-report-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Limit Breaches'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Limit Breaches"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT b.id AS breach_id, b.limit_code, l.name AS limit_name, b.metric, b.metric_key, b.scope_type, b.scope_label, b.currency_code AS currency, b.level_hit AS level, b.status, b.observed_value, b.comparison, b.warning_level, b.hard_level, b.unit, b.first_seen_on, b.last_seen_on, b.occurrences, b.escalated_on, b.cleared_on, b.acknowledged_on_utc, b.resolved_on_date, b.resolution_comment, b.detail FROM m_treasury_breach b JOIN m_treasury_limit l ON l.id = b.limit_id WHERE b.first_seen_on &lt;= '${asOn}' AND (b.resolved_on_date IS NULL OR b.resolved_on_date &gt;= '${asOn}') ORDER BY CASE b.level_hit WHEN 'HARD' THEN 0 ELSE 1 END, b.first_seen_on, b.id"/>
+            <column name="description" value="The breaches of treasury limits open on a date (first seen on or before it, not resolved before it), with their levels, occurrences and handling."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Limit Breaches')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Limit Breaches"/>
+            <column name="entity_name" value="Treasury Limit Breaches"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- Limits after the liquidity run (02:50); inactive until set up -->
+    <changeSet id="treasury-limits-job-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_LIM'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Treasury Limits"/>
+            <column name="display_name" value="Treasury Limits"/>
+            <column name="cron_expression" value="0 55 2 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Treasury Limits _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="TRS_LIM"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-job-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Evaluates every active treasury limit for the business date in every organisation currency, for the institution and each office with a limit, against the date's latest ladder and ratios runs, and records breaches. Runs after Treasury Liquidity Run."/>
+            <where>short_name='TRS_LIM' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYLIMIT"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYLIMIT"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYLIMIT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYLIMIT_CHECKER"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYLIMIT"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYLIMIT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYLIMIT_CHECKER"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYLIMIT"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="ACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYLIMIT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYLIMIT_CHECKER"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="ACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DEACTIVATE_TREASURYLIMIT"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="DEACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYLIMIT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DEACTIVATE_TREASURYLIMIT_CHECKER"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="DEACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'EVALUATE_TREASURYLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="EVALUATE_TREASURYLIMIT"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="EVALUATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'EVALUATE_TREASURYLIMIT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="EVALUATE_TREASURYLIMIT_CHECKER"/>
+            <column name="entity_name" value="TREASURYLIMIT"/>
+            <column name="action_name" value="EVALUATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYBREACH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYBREACH"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACKNOWLEDGE_TREASURYBREACH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACKNOWLEDGE_TREASURYBREACH"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="ACKNOWLEDGE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-014" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACKNOWLEDGE_TREASURYBREACH_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACKNOWLEDGE_TREASURYBREACH_CHECKER"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="ACKNOWLEDGE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-015" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'RESOLVE_TREASURYBREACH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="RESOLVE_TREASURYBREACH"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="RESOLVE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-016" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'RESOLVE_TREASURYBREACH_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="RESOLVE_TREASURYBREACH_CHECKER"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="RESOLVE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-017" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'COMMENT_TREASURYBREACH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="COMMENT_TREASURYBREACH"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="COMMENT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-limits-perm-018" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'COMMENT_TREASURYBREACH_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="COMMENT_TREASURYBREACH_CHECKER"/>
+            <column name="entity_name" value="TREASURYBREACH"/>
+            <column name="action_name" value="COMMENT_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

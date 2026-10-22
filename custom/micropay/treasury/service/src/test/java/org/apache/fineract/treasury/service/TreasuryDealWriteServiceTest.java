@@ -88,7 +88,8 @@ class TreasuryDealWriteServiceTest {
     private final TreasuryDealWriteService service = new TreasuryDealWriteService(this.actor,
             new TreasuryDealDataValidator(new FromJsonHelper()), this.dealRepository, mock(TreasuryDealCashflowRepository.class),
             mock(TreasuryDealEventRepository.class), this.accountRepository, this.dealTypeService, this.counterpartyService,
-            this.settingService, this.balanceReader, this.journalPoster, this.lookup, this.appUserRepository);
+            this.settingService, this.balanceReader, this.journalPoster, this.lookup, this.appUserRepository,
+            mock(TreasuryLimitEngine.class));
     private final TreasurySetting setting = new TreasurySetting();
     private final TreasuryCounterparty counterparty = new TreasuryCounterparty();
 

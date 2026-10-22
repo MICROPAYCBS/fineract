@@ -45,6 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
@@ -88,6 +89,7 @@ import org.springframework.transaction.annotation.Transactional;
  * user takes two steps in a row (capturer or last editor, approver, confirmer, settler). Settlement is the only step
  * that posts; accrual, maturity, early termination and rollover come later.
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = MODULE_ENABLED_PROPERTY, havingValue = "true")
@@ -108,6 +110,7 @@ public class TreasuryDealWriteService {
     private final TreasuryJournalPoster journalPoster;
     private final TreasuryReferenceDataLookup referenceDataLookup;
     private final AppUserRepository appUserRepository;
+    private final TreasuryLimitEngine limitEngine;
 
     // ---------- capture and edit ----------
 
@@ -122,7 +125,7 @@ public class TreasuryDealWriteService {
         apply(deal, request);
         final Map<String, Object> changes = new LinkedHashMap<>();
         final List<Flow> flows = price(deal);
-        final LimitCheck.Result limit = checkLimit(deal, changes);
+        final LimitCheck.Result limit = checkLimit(deal, changes, deal.getCapturedBy());
         this.dealRepository.saveAndFlush(deal);
         saveFlows(deal, flows);
         event(deal, TreasuryDealEventType.CAPTURED, deal.getCapturedBy(), null, null);
@@ -143,7 +146,7 @@ public class TreasuryDealWriteService {
         deal.setLastEditedBy(userId);
         final Map<String, Object> changes = new LinkedHashMap<>();
         final List<Flow> flows = price(deal);
-        final LimitCheck.Result limit = checkLimit(deal, changes);
+        final LimitCheck.Result limit = checkLimit(deal, changes, userId);
         this.dealRepository.saveAndFlush(deal);
         this.cashflowRepository.deleteByDealId(dealId);
         saveFlows(deal, flows);
@@ -161,7 +164,7 @@ public class TreasuryDealWriteService {
         draft.setStatus(DealStatus.CAPTURED);
         draft.setCapturedBy(userId);
         final List<Flow> flows = price(draft);
-        final LimitCheck.Result limit = checkLimit(draft, changes);
+        final LimitCheck.Result limit = checkLimit(draft, changes, userId);
         this.dealRepository.saveAndFlush(draft);
         saveFlows(draft, flows);
         event(draft, TreasuryDealEventType.CAPTURED, userId, "Rolled over from deal " + draft.getRolledFromDealId(), null);
@@ -192,7 +195,7 @@ public class TreasuryDealWriteService {
         final Long userId = this.actor.userId(command);
         notCapturer(deal, userId, "approve");
         final Map<String, Object> changes = new LinkedHashMap<>();
-        final LimitCheck.Result limit = checkLimit(deal, changes);
+        final LimitCheck.Result limit = checkLimit(deal, changes, userId);
         if (deal.isLimitExceeded()) {
             final AppUser approver = this.appUserRepository.findById(userId).orElseThrow();
             if (!approver.hasAnyPermission("ALL_FUNCTIONS", APPROVE_OVERLIMIT_PERMISSION)) {
@@ -418,9 +421,10 @@ public class TreasuryDealWriteService {
 
     /**
      * Asset deals against the counterparty's limit: a warning from the warning percentage; above the limit refused, or
-     * flagged for an over-limit approval when the currency's settings allow referral.
+     * flagged for an over-limit approval when the currency's settings allow referral. A refusal is kept in the breach
+     * log by the counterparty's active COUNTERPARTY_EXPOSURE limits, in a transaction of its own.
      */
-    private LimitCheck.Result checkLimit(final TreasuryDeal deal, final Map<String, Object> changes) {
+    private LimitCheck.Result checkLimit(final TreasuryDeal deal, final Map<String, Object> changes, final Long userId) {
         if (deal.getExposureAmount() == null || deal.getExposureAmount().signum() == 0) {
             deal.setLimitExceeded(false);
             return null;
@@ -433,6 +437,7 @@ public class TreasuryDealWriteService {
                     + "% of its limit, at or above the warning level of " + counterparty.getWarningPercent() + "%");
             case EXCEEDED -> {
                 if (!this.settingService.settingsFor(deal.getCurrencyCode()).isAllowLimitReferral()) {
+                    recordRefusal(counterparty, deal, result, userId);
                     throw new TreasuryWorkflowException(ENTITY, "limit.exceeded",
                             "The deal would take counterparty " + counterparty.getShortCode() + " to "
                                     + result.exposureAfter().toPlainString() + " " + deal.getCurrencyCode() + ", above its limit of "
@@ -451,14 +456,32 @@ public class TreasuryDealWriteService {
         return result;
     }
 
+    /**
+     * The deal's event at the warning level or above the limit, and the check through the counterparty's active
+     * COUNTERPARTY_EXPOSURE limits into the breach log.
+     */
     private void limitEvent(final TreasuryDeal deal, final LimitCheck.Result result, final Long userId) {
-        if (result == null || result.outcome() == LimitCheck.Outcome.OK) {
+        if (result == null) {
+            return;
+        }
+        this.limitEngine.dealChecked(this.counterpartyService.find(deal.getCounterpartyId()), deal, result, userId);
+        if (result.outcome() == LimitCheck.Outcome.OK) {
             return;
         }
         event(deal,
                 result.outcome() == LimitCheck.Outcome.EXCEEDED ? TreasuryDealEventType.LIMIT_EXCEEDED
                         : TreasuryDealEventType.LIMIT_WARNING,
                 userId, "Limit utilisation " + result.utilisation() + "%, exposure " + result.exposureAfter().toPlainString(), null);
+    }
+
+    private void recordRefusal(final TreasuryCounterparty counterparty, final TreasuryDeal deal, final LimitCheck.Result result,
+            final Long userId) {
+        try {
+            this.limitEngine.dealRefused(counterparty, deal, result, userId);
+        } catch (RuntimeException e) {
+            log.error("The refusal of a deal with counterparty {} could not be logged as a breach: {}", counterparty.getShortCode(),
+                    e.getMessage());
+        }
     }
 
     /** Fees are expensed, or deferred to be amortised by the accrual job. */

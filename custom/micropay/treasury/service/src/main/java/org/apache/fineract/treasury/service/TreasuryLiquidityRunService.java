@@ -79,6 +79,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  * A run for a type, date, currency and scope replaces the earlier one of that type and what was computed from it,
  * unless a return of the scope has been SUBMITTED (with {@code ?command=submit}): the scope's runs are then locked. The
  * "Treasury Liquidity Run" job runs the ladder and the ratios of every organisation currency for the business date.
+ * Each ladder and ratios run is followed by an evaluation of the scope's active BUCKET_GAP or RATIO limits
+ * ({@link TreasuryLimitEngine}).
  * </p>
  */
 @Slf4j
@@ -103,6 +105,7 @@ public class TreasuryLiquidityRunService {
     private final AppUserRepositoryWrapper appUserRepository;
     private final PlatformTransactionManager transactionManager;
     private final TreasuryRatioRunService ratioRunService;
+    private final TreasuryLimitEngine limitEngine;
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
@@ -138,6 +141,10 @@ public class TreasuryLiquidityRunService {
         if (run.getNotes() != null) {
             changes.put("notes", run.getNotes());
         }
+        this.limitEngine.latestFor(run.getId()).ifPresent(e -> {
+            changes.put("limitEvaluationId", e.getId());
+            changes.put("limitBreaches", e.getBreachesCreated() + e.getBreachesEscalated() + e.getBreachesRepeated());
+        });
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(run.getId()).with(changes).build();
     }
 
@@ -216,6 +223,7 @@ public class TreasuryLiquidityRunService {
                     total.contractual(), total.behavioural(), total.net(), total.cumulativeGap()));
         }
         this.lineRepository.flush();
+        this.limitEngine.afterRun(run, null, userId);
         return run;
     }
 
@@ -227,6 +235,7 @@ public class TreasuryLiquidityRunService {
         this.runRepository.saveAndFlush(run);
         this.ratioRunService.computeRatios(run, ladderRun, this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
         this.runRepository.saveAndFlush(run);
+        this.limitEngine.afterRun(run, ladderRun, userId);
         return run;
     }
 

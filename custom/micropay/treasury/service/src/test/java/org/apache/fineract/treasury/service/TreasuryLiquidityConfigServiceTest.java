@@ -225,7 +225,7 @@ class TreasuryLiquidityConfigServiceTest {
         final TreasuryLiquidityRunService service = new TreasuryLiquidityRunService(this.validator, this.actor, this.ruleSetService,
                 this.assumptionSetService, this.runs, this.runLines, this.lookup, List.of(opening, items),
                 mock(NamedParameterJdbcTemplate.class), mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class),
-                mock(TreasuryRatioRunService.class));
+                mock(TreasuryRatioRunService.class), mock(TreasuryLimitEngine.class));
         final TreasuryRun earlier = new TreasuryRun();
         earlier.setId(70L);
         earlier.setRunType(RunType.LADDER);

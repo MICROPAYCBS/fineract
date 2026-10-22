@@ -186,7 +186,8 @@ class TreasuryRatioRunServiceTest {
         final TreasuryLiquidityRunService runService = new TreasuryLiquidityRunService(validator, actor, this.ruleSetService,
                 mock(TreasuryAssumptionSetService.class), runs, mock(TreasuryRunLineRepository.class),
                 mock(TreasuryReferenceDataLookup.class), List.of(), mock(NamedParameterJdbcTemplate.class),
-                mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class), this.service);
+                mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class), this.service,
+                mock(TreasuryLimitEngine.class));
         final TreasuryRun returnRun = run(30L, RunType.RETURN);
         returnRun.setStatus("COMPLETED");
         returnRun.setCreatedBy(5L);
