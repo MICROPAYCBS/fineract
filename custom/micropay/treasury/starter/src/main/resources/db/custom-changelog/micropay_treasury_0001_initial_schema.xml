@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury accounts, day-end position snapshots and the treasury posting link. Treasury links to upstream
+  tables by id only; m_treasury_posting is filled from P1.2 (funding transfers) on.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0001_initial_schema.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+
+    <!-- A place treasury cash sits, linked to one asset GL account, office and currency -->
+    <changeSet id="treasury-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_account"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_account">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="account_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gl_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="counterparty_name" type="VARCHAR(150)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="external_account_number" type="VARCHAR(100)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="min_balance" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="max_balance" type="DECIMAL(19,6)">
+                <constraints nullable="true"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-002" author="micropay">
+        <createIndex tableName="m_treasury_account" indexName="uq_treasury_account_code" unique="true">
+            <column name="code"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-003" author="micropay">
+        <addForeignKeyConstraint baseTableName="m_treasury_account" baseColumnNames="gl_account_id" constraintName="fk_treasury_account_gl_account"
+                                 referencedTableName="acc_gl_account" referencedColumnNames="id"/>
+        <addForeignKeyConstraint baseTableName="m_treasury_account" baseColumnNames="office_id" constraintName="fk_treasury_account_office"
+                                 referencedTableName="m_office" referencedColumnNames="id"/>
+    </changeSet>
+
+    <changeSet id="treasury-004" author="micropay">
+        <createIndex tableName="m_treasury_account" indexName="idx_treasury_account_gl_office">
+            <column name="gl_account_id"/>
+            <column name="office_id"/>
+            <column name="currency_code"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Day-end position per account and business date; a rerun overwrites the row -->
+    <changeSet id="treasury-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_position_snapshot"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_position_snapshot">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="treasury_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="business_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gl_balance" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pending_in" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="pending_out" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="level_status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-006" author="micropay">
+        <createIndex tableName="m_treasury_position_snapshot" indexName="uq_treasury_position_snapshot_account_date" unique="true">
+            <column name="treasury_account_id"/>
+            <column name="business_date"/>
+        </createIndex>
+        <addForeignKeyConstraint baseTableName="m_treasury_position_snapshot" baseColumnNames="treasury_account_id"
+                                 constraintName="fk_treasury_position_snapshot_account" referencedTableName="m_treasury_account"
+                                 referencedColumnNames="id"/>
+    </changeSet>
+
+    <!-- Link from a treasury event to the upstream journal transaction it created (filled from P1.2 on) -->
+    <changeSet id="treasury-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_posting"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_posting">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="treasury_event_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="treasury_event_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_id" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-008" author="micropay">
+        <createIndex tableName="m_treasury_posting" indexName="idx_treasury_posting_event">
+            <column name="treasury_event_type"/>
+            <column name="treasury_event_id"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_posting" indexName="idx_treasury_posting_transaction">
+            <column name="transaction_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Day-end snapshot job, inactive until set up; it belongs after "Update GL Balance Snapshots" in a job sequence -->
+    <changeSet id="treasury-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_PSNAP'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Treasury Position Snapshot"/>
+            <column name="display_name" value="Treasury Position Snapshot"/>
+            <column name="cron_expression" value="0 45 2 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Treasury Position Snapshot _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="TRS_PSNAP"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Writes the day-end position of every active treasury account for the day being closed (business date less one) and logs the accounts outside their minimum or maximum."/>
+            <where>short_name='TRS_PSNAP' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

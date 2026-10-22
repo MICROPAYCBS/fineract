@@ -53,11 +53,13 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_PRODUCT_CONFIG;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SECTOR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SUBINDUSTRY;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYACCOUNT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_USERSESSION;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_WORKFLOW_DEFINITION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACTIVATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_BLOCK;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CANCEL;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CLOSE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CREATE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_DELETE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_EXECUTE;
@@ -747,6 +749,29 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = ENTITY_SCORING_LIMIT_POLICY;
         this.entityId = policyId;
         this.href = "/scoring/limit-policies/" + policyId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTreasuryAccount() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYACCOUNT;
+        this.href = "/treasury/accounts";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTreasuryAccount(final Long accountId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TREASURYACCOUNT;
+        this.entityId = accountId;
+        this.href = "/treasury/accounts/" + accountId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder closeTreasuryAccount(final Long accountId) {
+        this.actionName = ACTION_CLOSE;
+        this.entityName = ENTITY_TREASURYACCOUNT;
+        this.entityId = accountId;
+        this.href = "/treasury/accounts/" + accountId + "?command=close";
         return this;
     }
 }
