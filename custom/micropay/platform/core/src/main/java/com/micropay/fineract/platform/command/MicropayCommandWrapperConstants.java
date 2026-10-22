@@ -65,4 +65,11 @@ public final class MicropayCommandWrapperConstants {
     public static final String ACTION_OVERRIDE = "OVERRIDE";
     public static final String ENTITY_SCORING_LIMIT_POLICY = "SCORING_LIMIT_POLICY";
     public static final String ENTITY_TREASURYACCOUNT = "TREASURYACCOUNT";
+    public static final String ENTITY_TREASURYTRANSFER = "TREASURYTRANSFER";
+    public static final String ENTITY_TREASURYSETTING = "TREASURYSETTING";
+    public static final String ENTITY_TREASURYAGENTFLOAT = "TREASURYAGENTFLOAT";
+    public static final String ENTITY_TREASURYFLOATREQUEST = "TREASURYFLOATREQUEST";
+    /** Upstream's {@code ACTION_SEND} is lower case; treasury permissions are SEND_TREASURYTRANSFER. */
+    public static final String ACTION_TREASURY_SEND = "SEND";
+    public static final String ACTION_TREASURY_RECEIVE = "RECEIVE";
 }

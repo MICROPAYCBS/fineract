@@ -29,11 +29,13 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
+import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.treasury.data.TreasuryAccountData;
 import org.apache.fineract.treasury.data.TreasuryPositionData;
 import org.apache.fineract.treasury.data.TreasuryPositionSummaryData;
 import org.apache.fineract.treasury.domain.TreasuryAccountStatus;
 import org.apache.fineract.treasury.exception.TreasuryAccountNotFoundException;
+import org.apache.fineract.treasury.service.TreasuryBalanceReader.Pending;
 import org.apache.fineract.treasury.service.TreasuryPositionCalculator.LastSnapshot;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -110,9 +112,12 @@ public class TreasuryAccountReadPlatformServiceImpl implements TreasuryAccountRe
         final List<Long> ids = accounts.stream().map(TreasuryAccountData::id).toList();
         final Map<Long, BigDecimal> balances = this.balanceReader.glBalances(ids, null);
         final Map<Long, LastSnapshot> snapshots = this.balanceReader.lastSnapshots(ids);
-        // pending in and out are the transfers in transit, which come with funding transfers (P1.2)
-        return accounts.stream().map(account -> TreasuryPositionCalculator.position(account, balances.get(account.id()), BigDecimal.ZERO,
-                BigDecimal.ZERO, snapshots.get(account.id()))).toList();
+        final Map<Long, Pending> pending = this.balanceReader.pending(ids, DateUtils.getBusinessLocalDate());
+        return accounts.stream().map(account -> {
+            final Pending accountPending = pending.getOrDefault(account.id(), Pending.NONE);
+            return TreasuryPositionCalculator.position(account, balances.get(account.id()), accountPending.in(), accountPending.out(),
+                    snapshots.get(account.id()));
+        }).toList();
     }
 
     private static TreasuryAccountData mapAccount(final ResultSet rs) throws SQLException {

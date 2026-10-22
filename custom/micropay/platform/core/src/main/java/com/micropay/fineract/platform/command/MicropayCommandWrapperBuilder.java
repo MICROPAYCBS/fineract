@@ -30,6 +30,8 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SCORE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBMIT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_SUBSCRIBE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_RECEIVE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_TREASURY_SEND;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNDOMARKASNPA;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UNSUBSCRIBE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_UPDATECHANNELLIMIT;
@@ -54,9 +56,14 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SECTOR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SUBINDUSTRY;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYACCOUNT;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYAGENTFLOAT;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYFLOATREQUEST;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYSETTING;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYTRANSFER;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_USERSESSION;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_WORKFLOW_DEFINITION;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_ACTIVATE;
+import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_APPROVE;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_BLOCK;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CANCEL;
 import static org.apache.fineract.commands.domain.CommandWrapperConstants.ACTION_CLOSE;
@@ -772,6 +779,96 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = ENTITY_TREASURYACCOUNT;
         this.entityId = accountId;
         this.href = "/treasury/accounts/" + accountId + "?command=close";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTreasuryTransfer() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYTRANSFER;
+        this.href = "/treasury/transfers";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder approveTreasuryTransfer(final Long transferId) {
+        return treasuryTransferStep(transferId, ACTION_APPROVE, "approve");
+    }
+
+    public MicropayCommandWrapperBuilder sendTreasuryTransfer(final Long transferId) {
+        return treasuryTransferStep(transferId, ACTION_TREASURY_SEND, "send");
+    }
+
+    public MicropayCommandWrapperBuilder receiveTreasuryTransfer(final Long transferId) {
+        return treasuryTransferStep(transferId, ACTION_TREASURY_RECEIVE, "receive");
+    }
+
+    public MicropayCommandWrapperBuilder cancelTreasuryTransfer(final Long transferId) {
+        return treasuryTransferStep(transferId, ACTION_CANCEL, "cancel");
+    }
+
+    private MicropayCommandWrapperBuilder treasuryTransferStep(final Long transferId, final String action, final String command) {
+        this.actionName = action;
+        this.entityName = ENTITY_TREASURYTRANSFER;
+        this.entityId = transferId;
+        this.href = "/treasury/transfers/" + transferId + "?command=" + command;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTreasurySettings() {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TREASURYSETTING;
+        this.href = "/treasury/settings";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTreasuryAgentFloat() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYAGENTFLOAT;
+        this.href = "/treasury/agent-floats";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTreasuryAgentFloat(final Long agentFloatId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TREASURYAGENTFLOAT;
+        this.entityId = agentFloatId;
+        this.href = "/treasury/agent-floats/" + agentFloatId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder closeTreasuryAgentFloat(final Long agentFloatId) {
+        this.actionName = ACTION_CLOSE;
+        this.entityName = ENTITY_TREASURYAGENTFLOAT;
+        this.entityId = agentFloatId;
+        this.href = "/treasury/agent-floats/" + agentFloatId + "?command=close";
+        return this;
+    }
+
+    /** The agent float travels as the sub-entity; the request gets its id when created. */
+    public MicropayCommandWrapperBuilder createTreasuryFloatRequest(final Long agentFloatId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TREASURYFLOATREQUEST;
+        this.subentityId = agentFloatId;
+        this.href = "/treasury/agent-floats/" + agentFloatId + "/requests";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder approveTreasuryFloatRequest(final Long requestId) {
+        return treasuryFloatRequestStep(requestId, ACTION_APPROVE, "approve");
+    }
+
+    public MicropayCommandWrapperBuilder executeTreasuryFloatRequest(final Long requestId) {
+        return treasuryFloatRequestStep(requestId, ACTION_EXECUTE, "execute");
+    }
+
+    public MicropayCommandWrapperBuilder cancelTreasuryFloatRequest(final Long requestId) {
+        return treasuryFloatRequestStep(requestId, ACTION_CANCEL, "cancel");
+    }
+
+    private MicropayCommandWrapperBuilder treasuryFloatRequestStep(final Long requestId, final String action, final String command) {
+        this.actionName = action;
+        this.entityName = ENTITY_TREASURYFLOATREQUEST;
+        this.entityId = requestId;
+        this.href = "/treasury/float-requests/" + requestId + "?command=" + command;
         return this;
     }
 }

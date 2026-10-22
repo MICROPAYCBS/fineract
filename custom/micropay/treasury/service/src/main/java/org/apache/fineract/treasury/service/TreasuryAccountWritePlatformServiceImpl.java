@@ -31,6 +31,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.OFFICE_ID_PA
 
 import java.math.BigDecimal;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -42,6 +43,10 @@ import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
 import org.apache.fineract.treasury.domain.TreasuryAccountStatus;
 import org.apache.fineract.treasury.domain.TreasuryAccountType;
+import org.apache.fineract.treasury.domain.TreasuryAgentFloatRepository;
+import org.apache.fineract.treasury.domain.TreasuryAgentFloatStatus;
+import org.apache.fineract.treasury.domain.TreasuryTransferRepository;
+import org.apache.fineract.treasury.domain.TreasuryTransferStatus;
 import org.apache.fineract.treasury.exception.TreasuryAccountException;
 import org.apache.fineract.treasury.exception.TreasuryAccountNotFoundException;
 import org.apache.fineract.treasury.serialization.TreasuryAccountDataValidator;
@@ -58,6 +63,29 @@ public class TreasuryAccountWritePlatformServiceImpl implements TreasuryAccountW
     private final TreasuryAccountDataValidator validator;
     private final TreasuryAccountRepository accountRepository;
     private final TreasuryReferenceDataLookup referenceDataLookup;
+    private final TreasuryTransferRepository transferRepository;
+    private final TreasuryAgentFloatRepository agentFloatRepository;
+
+    /**
+     * An account with transfers not yet received or cancelled, or with active agent floats, cannot be closed or moved
+     * to another GL account, office or currency: the pending legs were worked out against the current ones.
+     */
+    private void requireNoOpenWork(final TreasuryAccount account, final String action) {
+        final long openTransfers = this.transferRepository.countByAccountAndStatusIn(account.getId(),
+                List.of(TreasuryTransferStatus.REQUESTED, TreasuryTransferStatus.APPROVED, TreasuryTransferStatus.SENT));
+        if (openTransfers > 0) {
+            throw new TreasuryAccountException("open.transfers",
+                    "Treasury account " + account.getCode() + " has " + openTransfers + " open transfers and cannot " + action,
+                    account.getId(), openTransfers);
+        }
+        final long activeFloats = this.agentFloatRepository.countByTreasuryAccountIdAndStatus(account.getId(),
+                TreasuryAgentFloatStatus.ACTIVE);
+        if (activeFloats > 0) {
+            throw new TreasuryAccountException("active.agent.floats",
+                    "Treasury account " + account.getCode() + " backs " + activeFloats + " active agent floats and cannot " + action,
+                    account.getId(), activeFloats);
+        }
+    }
 
     @Override
     @Transactional
@@ -124,6 +152,7 @@ public class TreasuryAccountWritePlatformServiceImpl implements TreasuryAccountW
         }
         this.validator.validateBalanceRange(account.getMinBalance(), account.getMaxBalance());
         if (changes.containsKey(GL_ACCOUNT_ID_PARAM) || changes.containsKey(OFFICE_ID_PARAM) || changes.containsKey(CURRENCY_CODE_PARAM)) {
+            requireNoOpenWork(account, "have its GL account, office or currency changed");
             validateReferences(account);
         }
         if (!changes.isEmpty()) {
@@ -137,6 +166,7 @@ public class TreasuryAccountWritePlatformServiceImpl implements TreasuryAccountW
     @Transactional
     public CommandProcessingResult closeAccount(final Long accountId, final JsonCommand command) {
         final TreasuryAccount account = findActive(accountId, "close");
+        requireNoOpenWork(account, "be closed");
         account.setStatus(TreasuryAccountStatus.CLOSED);
         this.accountRepository.saveAndFlush(account);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(accountId)

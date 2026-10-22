@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions (phase 1 of the "Treasury and Funds Management Design for Micropay" doc, PR P1.1, requirements TR-01 to TR-04). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the "Treasury Position Snapshot" job and the Liquibase changelogs.
@@ -64,7 +64,7 @@ Treasury accounts and cash positions (phase 1 of the "Treasury and Funds Managem
 
 - `balance` is live: the debits less credits of every journal entry on the account's GL account, in its office and currency. It is summed from `acc_gl_journal_entry` rather than taken from the latest GL balance snapshot plus later entries, because a GL balance snapshot is not rebuilt when an entry is posted with an earlier date or updated in place, and the sum over one GL account is cheap.
 - `levelStatus` compares `balance` with the minimum and maximum (both inclusive): `OK`, `BELOW_MIN` or `ABOVE_MAX`.
-- `pendingIn` and `pendingOut` are transfers in transit; they stay zero until funding transfers arrive (P1.2). `projectedBalance` is `balance + pendingIn - pendingOut`.
+- `pendingOut` is the transfers out of the account that are approved and not yet sent; `pendingIn` is the transfers into it that are sent and not yet received. `projectedBalance` is `balance + pendingIn - pendingOut`. The send already took the money out of the source's GL balance, so cash in transit is counted once.
 - `lastSnapshot*` is the latest day-end snapshot, if any.
 
 `GET /v1/treasury/positions?officeId=1&currency=UGX` totals the active accounts per office and currency (both filters optional), with the number of accounts below their minimum and above their maximum and each account's position.
@@ -75,14 +75,97 @@ The "Treasury Position Snapshot" job (short name `TRS_SNAP`) writes one row per 
 
 The job is created inactive with a 02:45 schedule. Put it in a job sequence (`jobs/sequence`) after `GLB_SNAP`, or turn it on in the scheduler.
 
+## Settings
+
+`PUT /v1/treasury/settings`, one row per currency; only the fields sent change:
+
+```json
+{ "currencyCode": "UGX", "cashInTransitGlAccountId": 31, "floatPaymentTypeId": 7, "allowInsufficientBalance": false }
+```
+
+- `cashInTransitGlAccountId`: an enabled asset detail GL account that holds transfers between send and receive. Needed before the first send.
+- `floatPaymentTypeId`: the payment type of agent float top-ups and sweeps. It must be an active, non-cash payment type (a cash one would make the savings deposit ask for a legal tender breakdown).
+- `allowInsufficientBalance` (default `false`): when false, a transfer is not sent if the source account's GL balance is below the amount.
+
+`GET /v1/treasury/settings` lists them.
+
+## Funding transfers
+
+A transfer moves money between two active treasury accounts in the same currency: bank to bank, bank to vault, vault to branch vault, wallet to agent float pool.
+
+| Step | Call | Who | What happens |
+| --- | --- | --- | --- |
+| Request | `POST /v1/treasury/transfers` | anyone with `CREATE_TREASURYTRANSFER` | `REQUESTED`. Nothing is posted. |
+| Approve | `POST /v1/treasury/transfers/{id}?command=approve` | not the requester | `APPROVED`. Counts as `pendingOut` on the source. |
+| Send | `?command=send` | not the approver | `SENT`. Dr cash in transit, Cr source GL, in the source office. Counts as `pendingIn` on the destination. |
+| Receive | `?command=receive` | anyone with `RECEIVE_TREASURYTRANSFER` | `RECEIVED`. Dr destination GL, Cr cash in transit. |
+| Cancel | `?command=cancel` | anyone with `CANCEL_TREASURYTRANSFER` | `CANCELLED`, from `REQUESTED` or `APPROVED` only. Once sent, a mistake is put right with a reversing transfer. |
+
+```json
+{ "fromAccountId": 3, "toAccountId": 5, "amount": 25000000, "transferDate": "2026-10-16", "reference": "VLT-0042", "description": "Branch vault top-up" }
+```
+
+Each step takes an optional body `{"transactionDate": "2026-10-16", "note": "..."}`; dates are ISO unless `dateFormat` (and `locale`) are sent.
+
+- **Dates**: nothing is dated after the business date; send is not before the transfer date and receive not before the send date. A date in a closed GL period is refused, as for any journal entry.
+- **Postings**: upstream journal entries (system entries, no entity) under transaction ids `TR-TFS-<id>` (send) and `TR-TFR-<id>` (receive), each recorded in `m_treasury_posting`.
+- **Across offices**: Fineract journal entries balance per office, so the receive clears cash in transit in the source office (where the send put it) and balances each office through the inter-branch clearing account: the active inter-branch GL rule for the two offices and the currency, or else the `INTER_BRANCH_RECON` financial activity account. Approving a cross-office transfer checks that one is set up.
+- **Separation of duties**: the requester cannot approve and the approver cannot send, whatever their permissions. Approve, send and receive can also go through maker-checker.
+- An account with open transfers or active agent floats cannot be closed or moved to another GL account, office or currency.
+
+`GET /v1/treasury/transfers?status=SENT&accountId=3&officeId=1&fromDate=2026-10-01&toDate=2026-10-31` lists transfers (every filter optional). `GET /v1/treasury/transfers/in-transit?officeId=1` lists sent transfers not yet received, oldest first, with `daysInTransit` (business date less send date). The day-end snapshot stores `pending_in` and `pending_out` as they stood on the snapshot day.
+
+## Agent floats
+
+An agent float is an agent client's float savings account, its minimum and maximum, and the treasury account on the other side of its top-ups and sweeps. Top-ups and sweeps go through the upstream savings deposit and withdrawal, so the savings ledger, its accounting and its limits stay as upstream keeps them; treasury records the request and links the savings transaction.
+
+`POST /v1/treasury/agent-floats`
+
+```json
+{ "clientId": 812, "savingsAccountId": 1290, "treasuryAccountId": 6, "minFloat": 500000, "maxFloat": 5000000 }
+```
+
+The float is refused unless:
+
+- the savings account is active, belongs to the client and holds no other active float;
+- it is in the treasury account's currency and its client is in the treasury account's office (savings journal entries are posted in the client's office);
+- the savings product's payment channel to fund source mapping sends the currency's `floatPaymentTypeId` to the treasury account's GL account (or, with no mapping for that payment type, the product's default fund source is that GL account). This is checked again at every execution.
+
+`PUT /v1/treasury/agent-floats/{id}` changes `treasuryAccountId`, `minFloat` or `maxFloat`; `POST /v1/treasury/agent-floats/{id}?command=close` closes a float with no open requests.
+
+`GET /v1/treasury/agent-floats?officeId=&clientId=&status=&levelStatus=BELOW_MIN` lists floats with the savings balance, the level status against the minimum and maximum, and approved top-ups and sweeps not yet executed.
+
+### Top-ups and sweeps
+
+| Step | Call | Who |
+| --- | --- | --- |
+| Request | `POST /v1/treasury/agent-floats/{id}/requests` with `{"requestType": "TOPUP", "amount": 1000000}` (or `SWEEP`) | anyone with `CREATE_TREASURYFLOATREQUEST` |
+| Approve | `POST /v1/treasury/float-requests/{id}?command=approve` | not the requester |
+| Execute | `?command=execute` | not the approver |
+| Cancel | `?command=cancel` | from `REQUESTED` or `APPROVED` |
+
+Execute makes a savings deposit (top-up) or withdrawal (sweep) of the amount with the float payment type and receipt number `TR-FLT-<id>`, and stores the savings transaction id on the request. With the fund source mapping above, a top-up is Dr treasury account GL / Cr savings control, so the treasury account's balance rises by what the agent pays in, and a sweep is the reverse. `GET /v1/treasury/float-requests?status=APPROVED` and `GET /v1/treasury/agent-floats/{id}/requests` list requests.
+
 ## Tables
 
 | Table | Holds |
 | --- | --- |
 | `m_treasury_account` | The accounts (code unique; foreign keys to `acc_gl_account` and `m_office`). |
 | `m_treasury_position_snapshot` | Day-end position per account and business date (unique on both). |
-| `m_treasury_posting` | Link from a treasury event to the journal transaction id it created. Created now, filled from P1.2 on. |
+| `m_treasury_posting` | Link from a treasury event (`TRANSFER_SEND`, `TRANSFER_RECEIVE`) to the journal transaction id it posted. |
+| `m_treasury_setting` | Settings per currency. |
+| `m_treasury_transfer` | Funding transfers, with who took each step and when, and both journal transaction ids. |
+| `m_treasury_agent_float` | Agent floats (foreign keys to the client, savings account and treasury account). |
+| `m_treasury_float_request` | Top-up and sweep requests, with the savings transaction id once executed. |
 
 ## Permissions
 
-Grouping `treasury`: `READ_TREASURYACCOUNT`, `CREATE_TREASURYACCOUNT`, `UPDATE_TREASURYACCOUNT`, `CLOSE_TREASURYACCOUNT`, plus `_CHECKER` variants of the three writes. Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`.
+Grouping `treasury`, each write with a `_CHECKER` variant:
+
+- `READ_TREASURYACCOUNT`, `CREATE_TREASURYACCOUNT`, `UPDATE_TREASURYACCOUNT`, `CLOSE_TREASURYACCOUNT`
+- `READ_TREASURYTRANSFER`, `CREATE_TREASURYTRANSFER`, `APPROVE_TREASURYTRANSFER`, `SEND_TREASURYTRANSFER`, `RECEIVE_TREASURYTRANSFER`, `CANCEL_TREASURYTRANSFER`
+- `READ_TREASURYSETTING`, `UPDATE_TREASURYSETTING`
+- `READ_TREASURYAGENTFLOAT`, `CREATE_TREASURYAGENTFLOAT`, `UPDATE_TREASURYAGENTFLOAT`, `CLOSE_TREASURYAGENTFLOAT`
+- `READ_TREASURYFLOATREQUEST`, `CREATE_TREASURYFLOATREQUEST`, `APPROVE_TREASURYFLOATREQUEST`, `EXECUTE_TREASURYFLOATREQUEST`, `CANCEL_TREASURYFLOATREQUEST`
+
+Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

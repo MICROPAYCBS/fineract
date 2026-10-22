@@ -102,4 +102,49 @@ public class TreasuryBalanceReader {
         });
         return snapshots;
     }
+
+    /**
+     * Transfers pending on the given date: out of an account once approved and until sent, into an account once sent
+     * and until received. Cancelled transfers never leave APPROVED, so their cancellation date ends them.
+     */
+    public Map<Long, Pending> pending(final Collection<Long> treasuryAccountIds, final LocalDate asOf) {
+        final Map<Long, Pending> pending = new HashMap<>();
+        if (treasuryAccountIds.isEmpty()) {
+            return pending;
+        }
+        final MapSqlParameterSource params = new MapSqlParameterSource("ids", treasuryAccountIds).addValue("asOf", asOf);
+        this.jdbcTemplate.query(PENDING_OUT_SQL, params, rs -> {
+            pending.merge(rs.getLong("account_id"), new Pending(BigDecimal.ZERO, rs.getBigDecimal("amount")), Pending::plus);
+        });
+        this.jdbcTemplate.query(PENDING_IN_SQL, params, rs -> {
+            pending.merge(rs.getLong("account_id"), new Pending(rs.getBigDecimal("amount"), BigDecimal.ZERO), Pending::plus);
+        });
+        return pending;
+    }
+
+    public record Pending(BigDecimal in, BigDecimal out) {
+
+        public static final Pending NONE = new Pending(BigDecimal.ZERO, BigDecimal.ZERO);
+
+        public Pending plus(final Pending other) {
+            return new Pending(this.in.add(other.in), this.out.add(other.out));
+        }
+    }
+
+    private static final String PENDING_OUT_SQL = """
+            SELECT tr.from_account_id AS account_id, SUM(tr.amount) AS amount
+            FROM m_treasury_transfer tr
+            WHERE tr.from_account_id IN (:ids) AND tr.approved_on_date <= :asOf
+              AND (tr.sent_on_date IS NULL OR tr.sent_on_date > :asOf)
+              AND (tr.cancelled_on_date IS NULL OR tr.cancelled_on_date > :asOf)
+            GROUP BY tr.from_account_id
+            """;
+
+    private static final String PENDING_IN_SQL = """
+            SELECT tr.to_account_id AS account_id, SUM(tr.amount) AS amount
+            FROM m_treasury_transfer tr
+            WHERE tr.to_account_id IN (:ids) AND tr.sent_on_date <= :asOf
+              AND (tr.received_on_date IS NULL OR tr.received_on_date > :asOf)
+            GROUP BY tr.to_account_id
+            """;
 }

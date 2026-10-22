@@ -19,6 +19,9 @@
 
 dependencies {
     implementation(project(':fineract-core'))
+    implementation(project(':fineract-accounting'))
+    implementation(project(':fineract-savings'))
+    implementation(project(':fineract-provider'))
     implementation(project(':custom:micropay:platform:core'))
     implementation('org.springframework.boot:spring-boot-starter-web')
     implementation('org.springframework.boot:spring-boot-starter-security')

@@ -33,6 +33,8 @@ import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
 import org.apache.fineract.treasury.domain.TreasuryAccountStatus;
+import org.apache.fineract.treasury.domain.TreasuryAgentFloatRepository;
+import org.apache.fineract.treasury.domain.TreasuryTransferRepository;
 import org.apache.fineract.treasury.exception.TreasuryAccountException;
 import org.apache.fineract.treasury.serialization.TreasuryAccountDataValidator;
 import org.apache.fineract.treasury.service.TreasuryReferenceDataLookup.GlAccountInfo;
@@ -48,7 +50,8 @@ class TreasuryAccountReferenceValidationTest {
     private final TreasuryAccountRepository repository = mock(TreasuryAccountRepository.class);
     private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
     private final TreasuryAccountWritePlatformServiceImpl service = new TreasuryAccountWritePlatformServiceImpl(
-            new TreasuryAccountDataValidator(new FromJsonHelper()), this.repository, this.lookup);
+            new TreasuryAccountDataValidator(new FromJsonHelper()), this.repository, this.lookup, mock(TreasuryTransferRepository.class),
+            mock(TreasuryAgentFloatRepository.class));
 
     @BeforeEach
     void validReferences() {

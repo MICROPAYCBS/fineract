@@ -34,6 +34,7 @@ import org.apache.fineract.treasury.domain.TreasuryAccountStatus;
 import org.apache.fineract.treasury.domain.TreasuryLevelStatus;
 import org.apache.fineract.treasury.domain.TreasuryPositionSnapshot;
 import org.apache.fineract.treasury.domain.TreasuryPositionSnapshotRepository;
+import org.apache.fineract.treasury.service.TreasuryBalanceReader.Pending;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -70,8 +71,9 @@ public class TreasuryPositionSnapshotService {
     @Transactional
     public SnapshotSummary snapshot(final LocalDate businessDate) {
         final List<TreasuryAccount> accounts = this.accountRepository.findByStatusOrderByIdAsc(TreasuryAccountStatus.ACTIVE);
-        final Map<Long, BigDecimal> balances = this.balanceReader.glBalances(accounts.stream().map(TreasuryAccount::getId).toList(),
-                businessDate);
+        final List<Long> ids = accounts.stream().map(TreasuryAccount::getId).toList();
+        final Map<Long, BigDecimal> balances = this.balanceReader.glBalances(ids, businessDate);
+        final Map<Long, Pending> pending = this.balanceReader.pending(ids, businessDate);
         final OffsetDateTime now = DateUtils.getAuditOffsetDateTime();
         int belowMin = 0;
         int aboveMax = 0;
@@ -83,9 +85,9 @@ public class TreasuryPositionSnapshotService {
             snapshot.setTreasuryAccountId(account.getId());
             snapshot.setBusinessDate(businessDate);
             snapshot.setGlBalance(glBalance);
-            // in-transit transfers come with funding transfers (P1.2)
-            snapshot.setPendingIn(BigDecimal.ZERO);
-            snapshot.setPendingOut(BigDecimal.ZERO);
+            final Pending accountPending = pending.getOrDefault(account.getId(), Pending.NONE);
+            snapshot.setPendingIn(accountPending.in());
+            snapshot.setPendingOut(accountPending.out());
             snapshot.setLevelStatus(levelStatus);
             snapshot.setCreatedOnUtc(now);
             this.snapshotRepository.save(snapshot);
