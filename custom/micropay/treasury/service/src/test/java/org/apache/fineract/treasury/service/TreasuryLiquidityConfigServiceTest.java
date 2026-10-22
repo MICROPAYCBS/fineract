@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -65,6 +66,7 @@ import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -160,6 +162,18 @@ class TreasuryLiquidityConfigServiceTest {
         assertCode("rule.set.not.draft", () -> this.ruleSetService.update(old.getId(), JsonCommand.from("{\"isDefault\": true}")));
         this.ruleSetService.update(active.getId(), JsonCommand.from("{\"isDefault\": true}"));
         assertTrue(active.isDefaultSet(), "an active version may be made the default");
+    }
+
+    @Test
+    void aDraftIsDeletedAfterItsBucketsAreFlushed() {
+        final TreasuryRuleSet draft = ruleSet("BOU_MDI_2004", 2, ConfigStatus.DRAFT);
+
+        this.ruleSetService.delete(draft.getId(), JsonCommand.from("{}"));
+
+        final InOrder order = inOrder(this.buckets, this.ruleSets);
+        order.verify(this.buckets).deleteByRuleSetId(draft.getId());
+        order.verify(this.buckets).flush();
+        order.verify(this.ruleSets).delete(draft);
     }
 
     @Test

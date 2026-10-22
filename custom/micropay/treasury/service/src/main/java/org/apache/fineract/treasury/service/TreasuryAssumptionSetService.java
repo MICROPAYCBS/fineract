@@ -124,7 +124,9 @@ public class TreasuryAssumptionSetService {
     @Transactional
     public CommandProcessingResult delete(final Long setId, final JsonCommand command) {
         final TreasuryAssumptionSet set = draft(setId, "be deleted");
+        // the rows go first: their foreign key holds the set
         this.assumptionRepository.deleteByAssumptionSetId(setId);
+        this.assumptionRepository.flush();
         this.setRepository.delete(set);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(setId).build();
     }

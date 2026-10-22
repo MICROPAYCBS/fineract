@@ -144,7 +144,9 @@ public class TreasuryRuleSetService {
                     "Only a draft rule set can be deleted; version " + set.getVersion() + " of " + set.getCode() + " is " + set.getStatus(),
                     ruleSetId);
         }
+        // the buckets go first: their foreign key holds the rule set
         this.bucketRepository.deleteByRuleSetId(ruleSetId);
+        this.bucketRepository.flush();
         this.ruleSetRepository.delete(set);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(ruleSetId).build();
     }
