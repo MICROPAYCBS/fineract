@@ -45,7 +45,6 @@ import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenantConn
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
 import org.apache.fineract.infrastructure.interbranch.service.InterBranchGlAccountReadService;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
 import org.apache.fineract.treasury.domain.TreasuryAccountStatus;
@@ -57,7 +56,6 @@ import org.apache.fineract.treasury.domain.TreasuryTransferStatus;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.serialization.TreasuryWorkflowDataValidator;
 import org.apache.fineract.treasury.service.TreasuryPostingPlanner.Leg;
-import org.apache.fineract.useradministration.domain.AppUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,7 +77,7 @@ class TreasuryTransferWorkflowTest {
     private static final BigDecimal AMOUNT = new BigDecimal("500");
 
     @Mock
-    private PlatformSecurityContext context;
+    private TreasuryActor actor;
     @Mock
     private TreasuryTransferRepository transferRepository;
     @Mock
@@ -102,7 +100,7 @@ class TreasuryTransferWorkflowTest {
                 .setTenant(new FineractPlatformTenant(1L, "default", "Default", "UTC", mock(FineractPlatformTenantConnection.class)));
         ThreadLocalContextUtil.setBusinessDates(new HashMap<>(
                 Map.of(BusinessDateType.BUSINESS_DATE, BUSINESS_DATE, BusinessDateType.COB_DATE, BUSINESS_DATE.minusDays(1))));
-        this.service = new TreasuryTransferWritePlatformServiceImpl(this.context, new TreasuryWorkflowDataValidator(new FromJsonHelper()),
+        this.service = new TreasuryTransferWritePlatformServiceImpl(this.actor, new TreasuryWorkflowDataValidator(new FromJsonHelper()),
                 this.transferRepository, this.accountRepository, this.settingService, this.balanceReader, this.journalPoster,
                 this.interBranchGlAccountReadService);
         account(100L, 1L, 10L, "UGX");
@@ -396,9 +394,7 @@ class TreasuryTransferWorkflowTest {
     }
 
     private void actAs(final long userId) {
-        final AppUser user = mock(AppUser.class);
-        lenient().when(user.getId()).thenReturn(userId);
-        lenient().when(this.context.authenticatedUser()).thenReturn(user);
+        lenient().when(this.actor.userId(any())).thenReturn(userId);
     }
 
     private static JsonCommand command(final String json) {

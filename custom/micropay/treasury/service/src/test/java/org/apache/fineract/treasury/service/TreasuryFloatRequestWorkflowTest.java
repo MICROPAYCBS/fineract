@@ -39,7 +39,6 @@ import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenantConnection;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
 import org.apache.fineract.treasury.domain.TreasuryAgentFloat;
@@ -51,7 +50,6 @@ import org.apache.fineract.treasury.domain.TreasuryFloatRequestStatus;
 import org.apache.fineract.treasury.domain.TreasuryFloatRequestType;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.serialization.TreasuryWorkflowDataValidator;
-import org.apache.fineract.useradministration.domain.AppUser;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,11 +61,11 @@ class TreasuryFloatRequestWorkflowTest {
     private static final long APPROVER = 2L;
     private static final long EXECUTOR = 3L;
 
-    private final PlatformSecurityContext context = mock(PlatformSecurityContext.class);
+    private final TreasuryActor actor = mock(TreasuryActor.class);
     private final TreasuryAgentFloatRepository floatRepository = mock(TreasuryAgentFloatRepository.class);
     private final TreasuryFloatRequestRepository requestRepository = mock(TreasuryFloatRequestRepository.class);
     private final SavingsAccountWritePlatformService savingsService = mock(SavingsAccountWritePlatformService.class);
-    private final TreasuryAgentFloatWritePlatformServiceImpl service = new TreasuryAgentFloatWritePlatformServiceImpl(this.context,
+    private final TreasuryAgentFloatWritePlatformServiceImpl service = new TreasuryAgentFloatWritePlatformServiceImpl(this.actor,
             new TreasuryWorkflowDataValidator(new FromJsonHelper()), this.floatRepository, this.requestRepository,
             mock(TreasuryAccountRepository.class), mock(TreasuryReferenceDataLookup.class), mock(TreasurySettingService.class),
             this.savingsService, new FromJsonHelper());
@@ -166,8 +164,6 @@ class TreasuryFloatRequestWorkflowTest {
     }
 
     private void actAs(final long userId) {
-        final AppUser user = mock(AppUser.class);
-        when(user.getId()).thenReturn(userId);
-        when(this.context.authenticatedUser()).thenReturn(user);
+        when(this.actor.userId(any())).thenReturn(userId);
     }
 }

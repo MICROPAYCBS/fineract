@@ -27,7 +27,6 @@ import static org.mockito.Mockito.when;
 import java.math.BigDecimal;
 import java.util.Optional;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
@@ -52,9 +51,9 @@ class TreasuryAgentFloatLinkTest {
     private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
     private final TreasurySettingService settingService = mock(TreasurySettingService.class);
     private final TreasuryAgentFloatWritePlatformServiceImpl service = new TreasuryAgentFloatWritePlatformServiceImpl(
-            mock(PlatformSecurityContext.class), new TreasuryWorkflowDataValidator(new FromJsonHelper()),
-            mock(TreasuryAgentFloatRepository.class), mock(TreasuryFloatRequestRepository.class), this.accountRepository, this.lookup,
-            this.settingService, mock(SavingsAccountWritePlatformService.class), new FromJsonHelper());
+            mock(TreasuryActor.class), new TreasuryWorkflowDataValidator(new FromJsonHelper()), mock(TreasuryAgentFloatRepository.class),
+            mock(TreasuryFloatRequestRepository.class), this.accountRepository, this.lookup, this.settingService,
+            mock(SavingsAccountWritePlatformService.class), new FromJsonHelper());
     private final TreasuryAccount treasuryAccount = new TreasuryAccount();
 
     @BeforeEach

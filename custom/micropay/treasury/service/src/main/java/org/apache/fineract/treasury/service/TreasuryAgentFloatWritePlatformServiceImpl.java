@@ -38,7 +38,6 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.portfolio.savings.service.SavingsAccountWritePlatformService;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
@@ -77,7 +76,7 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
     private static final String REQUEST_ENTITY = "float.request";
     private static final String DATE_FORMAT = "yyyy-MM-dd";
 
-    private final PlatformSecurityContext context;
+    private final TreasuryActor actor;
     private final TreasuryWorkflowDataValidator validator;
     private final TreasuryAgentFloatRepository floatRepository;
     private final TreasuryFloatRequestRepository requestRepository;
@@ -173,7 +172,7 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
         floatRequest.setAmount(request.amount());
         floatRequest.setNote(request.note());
         floatRequest.setStatus(TreasuryFloatRequestStatus.REQUESTED);
-        floatRequest.setRequestedBy(currentUserId());
+        floatRequest.setRequestedBy(this.actor.userId(command));
         this.requestRepository.saveAndFlush(floatRequest);
         return requestResult(command, floatRequest, agentFloat, Map.of("status", floatRequest.getStatus().name()));
     }
@@ -184,7 +183,7 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
         final ActionRequest action = this.validator.validateAction(TREASURY_FLOAT_REQUEST_RESOURCE_NAME, command.json());
         final TreasuryFloatRequest floatRequest = findRequest(requestId);
         requireStep(floatRequest, floatRequest.getStatus().canApprove(), "approved");
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(REQUEST_ENTITY, requestId, "requested", floatRequest.getRequestedBy(), "approve", userId);
         final TreasuryAgentFloat agentFloat = activeFloat(floatRequest.getAgentFloatId());
         floatRequest.setStatus(TreasuryFloatRequestStatus.APPROVED);
@@ -201,7 +200,7 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
         final ActionRequest action = this.validator.validateAction(TREASURY_FLOAT_REQUEST_RESOURCE_NAME, command.json());
         final TreasuryFloatRequest floatRequest = findRequest(requestId);
         requireStep(floatRequest, floatRequest.getStatus().canExecute(), "executed");
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(REQUEST_ENTITY, requestId, "approved", floatRequest.getApprovedBy(), "execute", userId);
         final TreasuryAgentFloat agentFloat = activeFloat(floatRequest.getAgentFloatId());
         final SavingsAccountInfo savings = savingsOf(agentFloat);
@@ -248,7 +247,7 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
             throw new TreasuryWorkflowException(REQUEST_ENTITY, "reversal.date.not.supported",
                     "A float request reversal undoes the savings transaction on its own date; leave out transactionDate", requestId);
         }
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(REQUEST_ENTITY, requestId, "executed", floatRequest.getExecutedBy(), "reverse", userId);
         final TreasuryAgentFloat agentFloat = findFloat(floatRequest.getAgentFloatId());
 
@@ -275,7 +274,7 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
         }
         final TreasuryAgentFloat agentFloat = findFloat(floatRequest.getAgentFloatId());
         floatRequest.setStatus(TreasuryFloatRequestStatus.CANCELLED);
-        floatRequest.setCancelledBy(currentUserId());
+        floatRequest.setCancelledBy(this.actor.userId(command));
         floatRequest.setCancelledOnDate(DateUtils.getBusinessLocalDate());
         note(floatRequest, action);
         this.requestRepository.saveAndFlush(floatRequest);
@@ -379,10 +378,6 @@ public class TreasuryAgentFloatWritePlatformServiceImpl implements TreasuryAgent
 
     private static boolean amountChanged(final BigDecimal current, final BigDecimal requested) {
         return current == null ? requested != null : requested == null || current.compareTo(requested) != 0;
-    }
-
-    private Long currentUserId() {
-        return this.context.authenticatedUser().getId();
     }
 
     private static CommandProcessingResult requestResult(final JsonCommand command, final TreasuryFloatRequest floatRequest,

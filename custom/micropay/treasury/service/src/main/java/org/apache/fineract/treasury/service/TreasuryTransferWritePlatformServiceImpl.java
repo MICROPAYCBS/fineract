@@ -33,7 +33,6 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.infrastructure.interbranch.service.InterBranchGlAccountReadService;
-import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.treasury.domain.TreasuryAccount;
 import org.apache.fineract.treasury.domain.TreasuryAccountRepository;
 import org.apache.fineract.treasury.domain.TreasuryEventType;
@@ -63,7 +62,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
 
     static final String ENTITY = "transfer";
 
-    private final PlatformSecurityContext context;
+    private final TreasuryActor actor;
     private final TreasuryWorkflowDataValidator validator;
     private final TreasuryTransferRepository transferRepository;
     private final TreasuryAccountRepository accountRepository;
@@ -95,7 +94,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
         transfer.setReference(request.reference());
         transfer.setDescription(request.description());
         transfer.setStatus(TreasuryTransferStatus.REQUESTED);
-        transfer.setRequestedBy(currentUserId());
+        transfer.setRequestedBy(this.actor.userId(command));
         this.transferRepository.saveAndFlush(transfer);
         return result(command, transfer, Map.of("status", transfer.getStatus().name()));
     }
@@ -106,7 +105,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
         final ActionRequest action = this.validator.validateAction(TREASURY_TRANSFER_RESOURCE_NAME, command.json());
         final TreasuryTransfer transfer = find(transferId);
         requireStep(transfer, transfer.getStatus().canApprove(), "approved");
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(ENTITY, transferId, "requested", transfer.getRequestedBy(), "approve", userId);
         final TreasuryAccount from = activeAccount(transfer.getFromAccountId());
         final TreasuryAccount to = activeAccount(transfer.getToAccountId());
@@ -127,7 +126,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
         final ActionRequest action = this.validator.validateAction(TREASURY_TRANSFER_RESOURCE_NAME, command.json());
         final TreasuryTransfer transfer = find(transferId);
         requireStep(transfer, transfer.getStatus().canSend(), "sent");
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(ENTITY, transferId, "approved", transfer.getApprovedBy(), "send", userId);
         final TreasuryAccount from = activeAccount(transfer.getFromAccountId());
         activeAccount(transfer.getToAccountId());
@@ -159,7 +158,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
         final ActionRequest action = this.validator.validateAction(TREASURY_TRANSFER_RESOURCE_NAME, command.json());
         final TreasuryTransfer transfer = find(transferId);
         requireStep(transfer, transfer.getStatus().canReceive(), "received");
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(ENTITY, transferId, "sent", transfer.getSentBy(), "receive", userId);
         final TreasuryAccount from = account(transfer.getFromAccountId());
         final TreasuryAccount to = activeAccount(transfer.getToAccountId());
@@ -197,7 +196,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
                     "A reason is required to reverse transfer " + transferId, transferId);
         }
         final boolean received = transfer.getStatus() == TreasuryTransferStatus.RECEIVED;
-        final Long userId = currentUserId();
+        final Long userId = this.actor.userId(command);
         TreasurySegregation.requireDifferentUser(ENTITY, transferId, received ? "received" : "sent",
                 received ? transfer.getReceivedBy() : transfer.getSentBy(), "reverse", userId);
         final LocalDate date = stepDate(action, received ? transfer.getReceivedOnDate() : transfer.getSentOnDate(),
@@ -232,7 +231,7 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
                     + "; only a requested or approved transfer can be cancelled, a sent one is reversed", transferId);
         }
         transfer.setStatus(TreasuryTransferStatus.CANCELLED);
-        transfer.setCancelledBy(currentUserId());
+        transfer.setCancelledBy(this.actor.userId(command));
         transfer.setCancelledOnDate(DateUtils.getBusinessLocalDate());
         note(transfer, action);
         this.transferRepository.saveAndFlush(transfer);
@@ -317,10 +316,6 @@ public class TreasuryTransferWritePlatformServiceImpl implements TreasuryTransfe
                     accountId);
         }
         return account;
-    }
-
-    private Long currentUserId() {
-        return this.context.authenticatedUser().getId();
     }
 
     private static CommandProcessingResult result(final JsonCommand command, final TreasuryTransfer transfer,
