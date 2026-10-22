@@ -22,6 +22,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.ACTION_PARAM
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.AGENT_FLOAT_CREATE_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.AGENT_FLOAT_UPDATE_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_INSUFFICIENT_BALANCE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_LIMIT_REFERRAL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.AMOUNT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CLIENT_ID_PARAM;
@@ -102,7 +103,7 @@ public class TreasuryWorkflowDataValidator {
     /** Only the fields present are changed. */
     public record SettingRequest(String currencyCode, Set<String> parametersPassed, Long cashInTransitGlAccountId, Long floatPaymentTypeId,
             Boolean allowInsufficientBalance, Boolean reconReferenceRule, Boolean reconSameDateRule, Boolean reconWindowRule,
-            Integer reconWindowDays) {
+            Integer reconWindowDays, Boolean allowLimitReferral) {
 
         public boolean has(final String parameterName) {
             return this.parametersPassed.contains(parameterName);
@@ -178,6 +179,7 @@ public class TreasuryWorkflowDataValidator {
         final Boolean referenceRule = booleanIfPresent(object, RECON_REFERENCE_RULE_PARAM, validator);
         final Boolean sameDateRule = booleanIfPresent(object, RECON_SAME_DATE_RULE_PARAM, validator);
         final Boolean windowRule = booleanIfPresent(object, RECON_WINDOW_RULE_PARAM, validator);
+        final Boolean limitReferral = booleanIfPresent(object, ALLOW_LIMIT_REFERRAL_PARAM, validator);
         final Integer windowDays = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(RECON_WINDOW_DAYS_PARAM, object);
         if (object.has(RECON_WINDOW_DAYS_PARAM)) {
             validator.reset().parameter(RECON_WINDOW_DAYS_PARAM).value(windowDays).notNull().integerZeroOrGreater().notGreaterThanMax(31);
@@ -187,7 +189,7 @@ public class TreasuryWorkflowDataValidator {
         }
         throwIfAny(errors);
         return new SettingRequest(currencyCode.toUpperCase(), Set.copyOf(object.keySet()), inTransitGl, paymentTypeId, allowInsufficient,
-                referenceRule, sameDateRule, windowRule, windowDays);
+                referenceRule, sameDateRule, windowRule, windowDays, limitReferral);
     }
 
     public AgentFloatRequest validateAgentFloatForCreate(final String json) {

@@ -65,4 +65,11 @@ public class TreasurySetting extends AbstractAuditableWithUTCDateTimeCustom<Long
 
     @Column(name = "recon_window_days", nullable = false)
     private int reconWindowDays = 3;
+
+    /**
+     * When true, a deal above its counterparty's limit is captured and flagged for an over-limit approval instead of
+     * refused.
+     */
+    @Column(name = "allow_limit_referral", nullable = false)
+    private boolean allowLimitReferral;
 }

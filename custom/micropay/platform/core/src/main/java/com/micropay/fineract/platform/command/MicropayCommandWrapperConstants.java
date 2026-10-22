@@ -80,4 +80,7 @@ public final class MicropayCommandWrapperConstants {
     public static final String ACTION_TREASURY_AUTOMATCH = "AUTOMATCH";
     public static final String ACTION_TREASURY_UNMATCH = "UNMATCH";
     public static final String ACTION_TREASURY_EXPLAIN = "EXPLAIN";
+    public static final String ENTITY_TREASURYCOUNTERPARTY = "TREASURYCOUNTERPARTY";
+    public static final String ENTITY_TREASURYDEALTYPE = "TREASURYDEALTYPE";
+    public static final String ENTITY_TREASURYDEAL = "TREASURYDEAL";
 }

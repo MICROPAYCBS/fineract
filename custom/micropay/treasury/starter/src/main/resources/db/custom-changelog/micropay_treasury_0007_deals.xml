@@ -1,0 +1,732 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P2.1. Counterparties and their limits, deal types with their GL accounts, deals with their
+  cash flow schedules and history, the limit referral setting, the counterparty rating code and the deal permissions.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0007_deals.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+
+    <changeSet id="treasury-deal-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_counterparty"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_counterparty">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="short_code" type="VARCHAR(30)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_treasury_counterparty_code"/>
+            </column>
+            <column name="counterparty_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rating" type="VARCHAR(50)"/>
+            <column name="rating_code_value_id" type="INT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_counterparty_rating" references="m_code_value(id)"/>
+            </column>
+            <column name="exposure_limit" type="DECIMAL(19,6)"/>
+            <column name="limit_currency_code" type="VARCHAR(3)"/>
+            <column name="warning_percent" type="DECIMAL(5,2)" defaultValueNumeric="80">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-deal-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_deal_type"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_deal_type">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true" uniqueConstraintName="uq_treasury_deal_type_code"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_kind" type="VARCHAR(40)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="direction" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="interest_method" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_day_count" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="default_frequency" type="INT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="principal_gl_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_trs_deal_type_principal" references="acc_gl_account(id)"/>
+            </column>
+            <column name="interest_receivable_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_interest_receivable" references="acc_gl_account(id)"/>
+            </column>
+            <column name="interest_payable_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_interest_payable" references="acc_gl_account(id)"/>
+            </column>
+            <column name="interest_income_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_interest_income" references="acc_gl_account(id)"/>
+            </column>
+            <column name="interest_expense_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_interest_expense" references="acc_gl_account(id)"/>
+            </column>
+            <column name="premium_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_premium" references="acc_gl_account(id)"/>
+            </column>
+            <column name="discount_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_discount" references="acc_gl_account(id)"/>
+            </column>
+            <column name="fee_income_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_fee_income" references="acc_gl_account(id)"/>
+            </column>
+            <column name="fee_expense_gl_account_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_trs_deal_type_fee_expense" references="acc_gl_account(id)"/>
+            </column>
+            <column name="is_active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-deal-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_deal"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_deal">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deal_type_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_deal_type" references="m_treasury_deal_type(id)"/>
+            </column>
+            <column name="counterparty_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_deal_counterparty" references="m_treasury_counterparty(id)"/>
+            </column>
+            <column name="settlement_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_deal_settlement_account" references="m_treasury_account(id)"/>
+            </column>
+            <column name="office_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_deal_office" references="m_office(id)"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="external_reference" type="VARCHAR(100)"/>
+            <column name="isin" type="VARCHAR(12)"/>
+            <column name="trade_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="maturity_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="issue_date" type="DATE"/>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="clean_price" type="DECIMAL(19,6)"/>
+            <column name="day_count" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="frequency" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amortising" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fees" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="classification" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="consideration" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="accrued_interest_purchased" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="premium" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="discount" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="exposure_amount" type="DECIMAL(19,6)" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_exceeded" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="captured_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_edited_by" type="BIGINT"/>
+            <column name="approved_by" type="BIGINT"/>
+            <column name="approved_on_date" type="DATE"/>
+            <column name="confirmed_by" type="BIGINT"/>
+            <column name="confirmed_on_date" type="DATE"/>
+            <column name="confirmation_reference" type="VARCHAR(100)"/>
+            <column name="settled_by" type="BIGINT"/>
+            <column name="settled_on_date" type="DATE"/>
+            <column name="settlement_transaction_id" type="VARCHAR(50)"/>
+            <column name="closed_by" type="BIGINT"/>
+            <column name="closed_on_date" type="DATE"/>
+            <column name="close_reason" type="VARCHAR(500)"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_deal" indexName="idx_treasury_deal_counterparty_status">
+            <column name="counterparty_id"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_deal" indexName="idx_treasury_deal_maturity">
+            <column name="maturity_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-deal-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_deal_cashflow"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_deal_cashflow">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deal_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_deal_cashflow_deal" references="m_treasury_deal(id)"/>
+            </column>
+            <column name="sequence_number" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="flow_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="period_start" type="DATE"/>
+            <column name="period_end" type="DATE"/>
+            <column name="due_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="principal_outstanding" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_deal_cashflow" indexName="idx_treasury_deal_cashflow_deal">
+            <column name="deal_id"/>
+        </createIndex>
+        <createIndex tableName="m_treasury_deal_cashflow" indexName="idx_treasury_deal_cashflow_due">
+            <column name="due_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-deal-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_deal_event"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_deal_event">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deal_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_deal_event_deal" references="m_treasury_deal(id)"/>
+            </column>
+            <column name="event_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="business_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(1000)"/>
+            <column name="transaction_id" type="VARCHAR(50)"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_deal_event" indexName="idx_treasury_deal_event_deal">
+            <column name="deal_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-deal-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_setting" columnName="allow_limit_referral"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_setting">
+            <column name="allow_limit_referral" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="treasury-deal-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_code WHERE code_name = 'TreasuryCounterpartyRating'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_code">
+            <column name="code_name" value="TreasuryCounterpartyRating"/>
+            <column name="is_system_defined" valueBoolean="true"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYCOUNTERPARTY'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="READ_TREASURYCOUNTERPARTY"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCOUNTERPARTY'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYCOUNTERPARTY"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCOUNTERPARTY_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYCOUNTERPARTY_CHECKER"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYCOUNTERPARTY'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYCOUNTERPARTY"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYCOUNTERPARTY_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYCOUNTERPARTY_CHECKER"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CLOSE_TREASURYCOUNTERPARTY'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CLOSE_TREASURYCOUNTERPARTY"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="CLOSE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CLOSE_TREASURYCOUNTERPARTY_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CLOSE_TREASURYCOUNTERPARTY_CHECKER"/>
+            <column name="entity_name" value="TREASURYCOUNTERPARTY"/>
+            <column name="action_name" value="CLOSE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYDEALTYPE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="READ_TREASURYDEALTYPE"/>
+            <column name="entity_name" value="TREASURYDEALTYPE"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYDEALTYPE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYDEALTYPE"/>
+            <column name="entity_name" value="TREASURYDEALTYPE"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYDEALTYPE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYDEALTYPE_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEALTYPE"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYDEALTYPE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYDEALTYPE"/>
+            <column name="entity_name" value="TREASURYDEALTYPE"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYDEALTYPE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYDEALTYPE_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEALTYPE"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="READ_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-014" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-015" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CREATE_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-016" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-017" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="UPDATE_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-018" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'APPROVE_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="APPROVE_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="APPROVE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-019" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'APPROVE_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="APPROVE_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="APPROVE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-020" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'REJECT_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="REJECT_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="REJECT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-021" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'REJECT_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="REJECT_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="REJECT_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-022" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CONFIRM_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CONFIRM_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="CONFIRM"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-023" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CONFIRM_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CONFIRM_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="CONFIRM_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-024" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CANCEL_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CANCEL_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="CANCEL"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-025" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CANCEL_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="CANCEL_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="CANCEL_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-026" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SETTLE_TREASURYDEAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="SETTLE_TREASURYDEAL"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="SETTLE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-027" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SETTLE_TREASURYDEAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="SETTLE_TREASURYDEAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="SETTLE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-deal-perm-028" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'APPROVE_TREASURYDEAL_OVERLIMIT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury"/>
+            <column name="code" value="APPROVE_TREASURYDEAL_OVERLIMIT"/>
+            <column name="entity_name" value="TREASURYDEAL"/>
+            <column name="action_name" value="APPROVE_OVERLIMIT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

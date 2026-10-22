@@ -77,6 +77,13 @@ public class TreasuryReferenceDataLookup {
         return count != null && count > 0;
     }
 
+    /** Decimal places of an organisation currency; 2 when it is not one. */
+    public int decimalPlaces(final String currencyCode) {
+        final List<Integer> places = this.jdbcTemplate.queryForList("SELECT decimal_places FROM m_organisation_currency WHERE code = ?",
+                Integer.class, currencyCode);
+        return places.isEmpty() || places.getFirst() == null ? 2 : places.getFirst();
+    }
+
     public boolean isActivePaymentType(final Long paymentTypeId) {
         final Long count = this.jdbcTemplate.queryForObject("SELECT COUNT(*) FROM m_payment_type WHERE id = ? AND is_active = ?",
                 Long.class, paymentTypeId, Boolean.TRUE);

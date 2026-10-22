@@ -940,4 +940,15 @@ public class MicropayCommandWrapperBuilder {
         this.href = "/treasury/statement-formats/" + formatId;
         return this;
     }
+
+    /**
+     * A treasury command on an entity (counterparty, deal type or deal). {@code entityId} is {@code null} for a create.
+     */
+    public MicropayCommandWrapperBuilder treasuryCommand(final String entity, final String action, final Long entityId, final String href) {
+        this.actionName = action;
+        this.entityName = entity;
+        this.entityId = entityId;
+        this.href = href;
+        return this;
+    }
 }

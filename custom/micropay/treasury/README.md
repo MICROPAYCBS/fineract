@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits (phase 2, P2.1: TR-10 to TR-13 and TR-18). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the "Treasury Position Snapshot" job and the Liquibase changelogs.
@@ -90,6 +90,7 @@ The job is created inactive with a 02:45 schedule. Put it in a job sequence (`jo
 - `floatPaymentTypeId`: the payment type of agent float top-ups and sweeps. It must be an active, non-cash payment type (a cash one would make the savings deposit ask for a legal tender breakdown).
 - `allowInsufficientBalance` (default `false`): when false, a transfer is not sent if the source account's GL balance is below the amount.
 - `reconReferenceRule`, `reconSameDateRule`, `reconWindowRule` (all default `true`) and `reconWindowDays` (default 3, at most 31): the automatic matching rules of the statement reconciliation.
+- `allowLimitReferral` (default `false`): when true, a deal above its counterparty's limit is captured and flagged for an over-limit approval instead of being refused.
 
 `GET /v1/treasury/settings` lists them.
 
@@ -202,6 +203,84 @@ A statement turns `RECONCILED` when none of its lines is unmatched, and back to 
 - `GET /v1/treasury/accounts/{id}/reconciliation` gives the number of statements and of reconciled ones, `lastReconciledDate` (the end of the last statement up to which every statement is reconciled), that statement's closing balance against the GL balance on the same date and the difference, and the counts still unmatched.
 - `GET /v1/treasury/reconciliation/matches?accountId=&status=` and `GET /v1/treasury/reconciliation/matches/{id}` show matches with their lines and entries.
 
+## Deals
+
+### Counterparties
+
+`/v1/treasury/counterparties` (`POST`, `PUT /{id}`, `POST /{id}?command=close`, `GET`):
+
+```json
+{ "name": "Stanbic Bank Uganda", "shortCode": "STANBIC", "counterpartyType": "BANK", "rating": "AA- (GCR)",
+  "exposureLimit": 20000000000, "limitCurrencyCode": "UGX", "warningPercent": 80 }
+```
+
+Types: `BANK`, `DFI`, `CENTRAL_BANK`, `MOBILE_NETWORK_OPERATOR`, `GOVERNMENT`, `OTHER`. `ratingCodeValueId` may point at a value of code `TreasuryCounterpartyRating` (installed empty). Without `exposureLimit` there is no limit. A counterparty with open deals cannot be closed.
+
+`GET /v1/treasury/counterparties/{id}/exposure` gives the exposure, utilisation (% of the limit), what is still available, and the deals counted.
+
+### Deal types
+
+`/v1/treasury/deal-types` (`POST`, `PUT /{id}`, `GET`). The instrument kind fixes the direction and the interest method:
+
+| Kind | Direction | Interest | Consideration at settlement |
+| --- | --- | --- | --- |
+| `MONEY_MARKET_PLACEMENT`, `FIXED_DEPOSIT_PLACED` | asset | `SIMPLE` | principal |
+| `TREASURY_BILL` | asset | `DISCOUNT_YIELD` | face / (1 + yield × days / basis) |
+| `GOVERNMENT_BOND` | asset | `COUPON` | face × clean price / 100 + accrued coupon |
+| `BORROWING`, `CREDIT_LINE_DRAWDOWN` | liability | `SIMPLE` | principal (received) |
+
+A type has a default day count (`ACT_365` unless set; also `ACT_360`, `THIRTY_360`, `ACT_ACT`) and frequency (payments a year: 1, 2, 4, 12; 0 at maturity; bonds default to 2), and GL accounts, each an enabled detail account of the right type:
+
+- asset kinds: `principalGlAccountId` and `interestReceivableGlAccountId` (asset), `interestIncomeGlAccountId` (income); bonds also `premiumGlAccountId` and `discountGlAccountId` (asset; the discount account works as a contra-asset);
+- liability kinds: `principalGlAccountId` and `interestPayableGlAccountId` (liability), `interestExpenseGlAccountId` (expense);
+- optional `feeIncomeGlAccountId` (income) and `feeExpenseGlAccountId` (expense); a deal with fees needs the fee expense account to settle.
+
+Code and kind cannot change; `active: false` retires a type.
+
+### Deals
+
+`POST /v1/treasury/deals` captures a deal:
+
+```json
+{ "dealTypeId": 3, "counterpartyId": 1, "settlementAccountId": 2, "externalReference": "MM-2026-0142",
+  "tradeDate": "2026-10-16", "valueDate": "2026-10-16", "maturityDate": "2027-01-14",
+  "amount": 500000000, "rate": 12, "fees": 25000, "notes": "Overnight surplus placed for 90 days" }
+```
+
+`amount` is the principal, or the face value for bills and bonds; `rate` is the interest rate, the discount yield or the coupon rate, in percent. Bonds also need `cleanPrice` (per 100) and may give `issueDate`; borrowings may set `amortising: true` with a `frequency`. Optional `dayCount`, `frequency` (else the type's), `isin`, `classification` (`AMORTISED_COST` by default, `FVOCI`, `FVTPL`). The office and currency are the settlement account's; the trade date may not be after the business date. While `CAPTURED`, `PUT /v1/treasury/deals/{id}` edits it and the cash flows are generated again.
+
+Lifecycle, `POST /v1/treasury/deals/{id}?command=...`, each its own permission:
+
+| Step | From | Body | Who |
+| --- | --- | --- | --- |
+| `approve` | CAPTURED | | not the capturer or the last editor; `APPROVE_TREASURYDEAL_OVERLIMIT` too for a deal over its limit |
+| `reject` | CAPTURED | `reason` | not the capturer or the last editor |
+| `confirm` | APPROVED | `confirmationReference` (the counterparty's) | not the approver |
+| `settle` | CONFIRMED | | not the confirmer |
+| `cancel` | CAPTURED, APPROVED, CONFIRMED | `reason` | anyone with the permission |
+
+Under maker-checker a step is credited to its maker. `MATURED`, `TERMINATED` and `ROLLED_OVER` are reserved for accrual, maturity, early termination and rollover, which come next.
+
+**Settlement** posts on the value date (which may not be after the business date; closed GL periods are refused) under `TR-DS-<deal id>`, all in the settlement account's office:
+
+- asset deals: Dr principal for the consideration (bonds: at face, with Dr premium or Cr discount, and Dr interest receivable for the accrued coupon bought) / Cr the settlement account; the account's GL balance must cover the consideration and fees unless `allowInsufficientBalance` is set;
+- liability deals: Dr the settlement account / Cr principal;
+- fees: Dr fee expense / Cr the settlement account.
+
+`GET /v1/treasury/deals?status=&dealTypeId=&counterpartyId=&maturityFrom=&maturityTo=` lists deals; `GET /v1/treasury/deals/{id}` adds the cash flows and the history (captured, limit warnings, approvals and so on, with user, business date and journal transaction id); `GET /v1/treasury/deals/maturity-calendar?from=&to=` lists the cash flows falling due, of deals neither rejected nor cancelled.
+
+### Worked examples
+
+- **Placement**: UGX 500,000,000 for 90 days at 12% on ACT/365 pays 500,000,000 × 0.12 × 90/365 = **14,794,521** interest with the principal at maturity (UGX has no decimals; amounts are rounded half up to the currency's decimal places).
+- **Treasury bill**: UGX 1,000,000,000 face, 91 days at an 11% discount yield on ACT/365 costs 1,000,000,000 / (1 + 0.11 × 91/365) = **973,307,378**; the face value is paid at maturity and the difference is the interest. The basis is 365 for ACT/365, 360 for ACT/360 and 30/360, and the value date's year length for ACT/ACT.
+- **Bond**: 100,000,000 face of a 14% semi-annual bond maturing 15 March 2031, bought on 16 October 2026 at 98.50 clean. Coupons fall on 15 March and 15 September, stepped back from maturity (end-of-month dates stay at month end). Accrued interest (ACT/ACT, ICMA) is the regular coupon 7,000,000 × 31 days / 181 days = **1,198,895.03**, so the consideration is 98,500,000 + 1,198,895.03 = **99,698,895.03**. Settlement: Dr principal 100,000,000.00, Cr discount 1,500,000.00, Dr interest receivable 1,198,895.03, Cr settlement account 99,698,895.03. Nine coupons of 7,000,000 and the face value follow.
+- **Bond stub**: the same bond issued on 1 October 2026 accrues from the issue date (7,000,000 × 15/181 = 580,110.50), and its first coupon is short: 7,000,000 × 165/181 = 6,381,215.47. With other day counts, coupons are face × rate / frequency and accrual is face × rate × the day count's year fraction.
+- **Amortising borrowing**: 1,200,000 at 10% ACT/360, quarterly for a year, repays 300,000 a quarter with interest of 30,000.00, 22,750.00, 15,333.33 and 7,666.67 on what is still owed. Periods run forward from the value date; a term that is not a whole number of periods ends with a short stub.
+
+### Counterparty limits
+
+At capture, at every edit and again at approval, an asset deal is checked against its counterparty's limit. The exposure is the sum of what the counterparty's other approved, confirmed and settled asset deals add (principal, or face value for bills and bonds) plus the new deal. Borrowings from the counterparty and balances in treasury accounts held with it are not counted. At or above `warningPercent` the response carries a `warning` and the deal's history a `LIMIT_WARNING`. Above the limit the deal is refused, unless the currency's `allowLimitReferral` setting is on: then it is captured with `limitExceeded` and a `LIMIT_EXCEEDED` event, and its approver needs `APPROVE_TREASURYDEAL_OVERLIMIT`. A limit in another currency than the deal is refused until FX rates are available.
+
 ## Tables
 
 | Table | Holds |
@@ -218,6 +297,11 @@ A statement turns `RECONCILED` when none of its lines is unmatched, and back to 
 | `m_treasury_statement_line` | Statement lines, money in positive, with their duplicate key (unique per account) and match status. |
 | `m_treasury_recon_match` | Matches and explanations: rule (`REFERENCE`, `SAME_DATE`, `DATE_WINDOW`, `MANUAL`, `EXPLANATION`), reason, adjusting entry, and any unmatch. |
 | `m_treasury_recon_match_item` | The lines and journal entries a match ties, with their amounts. |
+| `m_treasury_counterparty` | Counterparties with their type, rating and exposure limit. |
+| `m_treasury_deal_type` | Deal types: instrument kind, conventions and GL accounts. |
+| `m_treasury_deal` | Deals: terms, computed consideration and settlement split, exposure, status and who took each step. |
+| `m_treasury_deal_cashflow` | The expected principal and interest flows of each deal. |
+| `m_treasury_deal_event` | Each deal's history. |
 
 ## Permissions
 
@@ -232,5 +316,8 @@ Grouping `treasury`, each write with a `_CHECKER` variant:
 - `READ_TREASURYSTATEMENTFORMAT`, `CREATE_TREASURYSTATEMENTFORMAT`, `UPDATE_TREASURYSTATEMENTFORMAT`
 - `EXPLAIN_TREASURYSTATEMENTLINE`
 - `READ_TREASURYRECONMATCH` (also the unmatched and account reconciliation reports), `CREATE_TREASURYRECONMATCH`, `UNMATCH_TREASURYRECONMATCH`
+- `READ_TREASURYCOUNTERPARTY` (also exposure), `CREATE_TREASURYCOUNTERPARTY`, `UPDATE_TREASURYCOUNTERPARTY`, `CLOSE_TREASURYCOUNTERPARTY`
+- `READ_TREASURYDEALTYPE`, `CREATE_TREASURYDEALTYPE`, `UPDATE_TREASURYDEALTYPE`
+- `READ_TREASURYDEAL` (also the maturity calendar), `CREATE_TREASURYDEAL`, `UPDATE_TREASURYDEAL`, `APPROVE_TREASURYDEAL`, `REJECT_TREASURYDEAL`, `CONFIRM_TREASURYDEAL`, `CANCEL_TREASURYDEAL`, `SETTLE_TREASURYDEAL`, and `APPROVE_TREASURYDEAL_OVERLIMIT` (no checker variant)
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

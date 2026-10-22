@@ -19,6 +19,7 @@
 package org.apache.fineract.treasury.service;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_INSUFFICIENT_BALANCE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryApiConstants.ALLOW_LIMIT_REFERRAL_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.CASH_IN_TRANSIT_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.FLOAT_PAYMENT_TYPE_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
@@ -120,6 +121,10 @@ public class TreasurySettingService {
         if (request.has(RECON_WINDOW_DAYS_PARAM) && setting.getReconWindowDays() != request.reconWindowDays()) {
             setting.setReconWindowDays(request.reconWindowDays());
             changes.put(RECON_WINDOW_DAYS_PARAM, request.reconWindowDays());
+        }
+        if (request.has(ALLOW_LIMIT_REFERRAL_PARAM) && setting.isAllowLimitReferral() != request.allowLimitReferral()) {
+            setting.setAllowLimitReferral(request.allowLimitReferral());
+            changes.put(ALLOW_LIMIT_REFERRAL_PARAM, request.allowLimitReferral());
         }
         if (setting.getId() == null || !changes.isEmpty()) {
             this.settingRepository.saveAndFlush(setting);
