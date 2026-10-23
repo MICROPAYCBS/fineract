@@ -24,7 +24,7 @@ import java.util.List;
 
 public record TreasuryRuleSetData(Long id, String code, String name, int version, LocalDate effectiveDate, String status, boolean isDefault,
         String description, Long createdBy, Long lastEditedBy, Long activatedBy, LocalDate activatedOnDate, List<BucketData> buckets,
-        List<RatioData> ratios, List<AssetClassData> assetClasses) {
+        List<RatioData> ratios, List<AssetClassData> assetClasses, String returnFrequency) {
 
     public record BucketData(int seq, String code, String label, int fromDay, Integer toDay) {
     }
@@ -38,6 +38,6 @@ public record TreasuryRuleSetData(Long id, String code, String name, int version
     }
 
     public record AssetClassData(String code, String label, boolean liquid, List<String> accountTypes, List<String> instrumentKinds,
-            List<Long> dealTypeIds, Integer maxMaturityDays, BigDecimal haircut) {
+            List<Long> dealTypeIds, Integer maxMaturityDays, BigDecimal haircut, List<String> classifications) {
     }
 }

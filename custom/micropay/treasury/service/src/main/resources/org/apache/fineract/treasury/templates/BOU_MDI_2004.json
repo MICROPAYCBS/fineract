@@ -1,0 +1,264 @@
+{
+  "code": "BOU_MDI_2004",
+  "name": "BoU MDI regulations 2004",
+  "effectiveDate": "2004-01-01",
+  "dateFormat": "yyyy-MM-dd",
+  "locale": "en",
+  "returnFrequency": "MONTHLY",
+  "description": "Template for microfinance deposit-taking institutions. Regulatory minimum from the Microfinance Deposit-Taking Institutions Regulations 2004: liquid assets at least 15% of deposits. PLACEHOLDERS: the cash reserve, the advances to deposits maximum, the bond haircut, the buckets and every GL component; map them before activating.",
+  "buckets": [
+    {
+      "code": "ON",
+      "label": "Overnight (0-1 day)",
+      "fromDay": 0,
+      "toDay": 1
+    },
+    {
+      "code": "D2_8",
+      "label": "2 to 8 days",
+      "fromDay": 2,
+      "toDay": 8
+    },
+    {
+      "code": "D9_1M",
+      "label": "9 days to 1 month",
+      "fromDay": 9,
+      "toDay": 30
+    },
+    {
+      "code": "M1_3",
+      "label": "1 to 3 months",
+      "fromDay": 31,
+      "toDay": 91
+    },
+    {
+      "code": "M3_6",
+      "label": "3 to 6 months",
+      "fromDay": 92,
+      "toDay": 182
+    },
+    {
+      "code": "M6_12",
+      "label": "6 to 12 months",
+      "fromDay": 183,
+      "toDay": 365
+    },
+    {
+      "code": "Y1_PLUS",
+      "label": "Over 1 year",
+      "fromDay": 366
+    }
+  ],
+  "ratios": [
+    {
+      "code": "LIQUID_ASSETS_TO_DEPOSITS",
+      "name": "Liquid assets to total deposits",
+      "direction": "MIN",
+      "limit": 15,
+      "warning": 17,
+      "inReturn": true,
+      "numeratorLabel": "Liquid assets",
+      "denominatorLabel": "Deposit liabilities",
+      "description": "Regulatory minimum 15%.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Cash in vaults",
+          "assetClass": "CASH",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with Bank of Uganda",
+          "assetClass": "BOU_BALANCE",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Demand balances with banks",
+          "assetClass": "BANK_BALANCE_DEMAND",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Mobile money wallets",
+          "assetClass": "WALLET",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Placements maturing within 91 days",
+          "assetClass": "PLACEMENT",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Treasury bills maturing within 91 days",
+          "assetClass": "TBILL",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Government bonds (after haircut)",
+          "assetClass": "GOVT_BOND",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Deposit liabilities (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "CASH_RESERVE",
+      "name": "Cash reserve with Bank of Uganda",
+      "direction": "MIN",
+      "limit": 8,
+      "warning": 9,
+      "inReturn": false,
+      "numeratorLabel": "Balances with Bank of Uganda",
+      "denominatorLabel": "Deposit liabilities",
+      "description": "PLACEHOLDER requirement and components.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with Bank of Uganda",
+          "assetClass": "BOU_BALANCE",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Deposit liabilities (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "ADVANCES_TO_DEPOSITS",
+      "name": "Advances to deposits",
+      "direction": "MAX",
+      "limit": 80,
+      "warning": 75,
+      "inReturn": false,
+      "numeratorLabel": "Gross loans and advances",
+      "denominatorLabel": "Deposit liabilities",
+      "description": "PLACEHOLDER maximum.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Gross loans (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1100",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Deposit liabilities (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    }
+  ],
+  "assetClasses": [
+    {
+      "code": "CASH",
+      "label": "Cash in vaults",
+      "liquid": true,
+      "accountTypes": [
+        "VAULT"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "BOU_BALANCE",
+      "label": "Balances with Bank of Uganda",
+      "liquid": true,
+      "accountTypes": [
+        "CENTRAL_BANK"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "BANK_BALANCE_DEMAND",
+      "label": "Demand balances with banks",
+      "liquid": true,
+      "accountTypes": [
+        "BANK"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "WALLET",
+      "label": "Mobile money wallets",
+      "liquid": true,
+      "accountTypes": [
+        "MOBILE_WALLET"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "PLACEMENT",
+      "label": "Placements maturing within 91 days",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "MONEY_MARKET_PLACEMENT",
+        "FIXED_DEPOSIT_PLACED"
+      ],
+      "haircut": 0,
+      "maxMaturityDays": 91
+    },
+    {
+      "code": "TBILL",
+      "label": "Treasury bills maturing within 91 days",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "TREASURY_BILL"
+      ],
+      "haircut": 0,
+      "maxMaturityDays": 91
+    },
+    {
+      "code": "GOVT_BOND",
+      "label": "Government bonds (after haircut)",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "GOVERNMENT_BOND"
+      ],
+      "haircut": 10
+    }
+  ]
+}

@@ -122,6 +122,7 @@ public class TreasuryRatioInputs {
         final Set<String> kinds = Set.copyOf(TreasuryRuleSetService.split(rule.getInstrumentKinds()));
         final Set<Long> dealTypes = TreasuryRuleSetService.split(rule.getDealTypeIds()).stream().map(Long::valueOf)
                 .collect(Collectors.toSet());
+        final Set<String> classifications = Set.copyOf(TreasuryRuleSetService.split(rule.getClassifications()));
         BigDecimal source = BigDecimal.ZERO;
         BigDecimal excludedMaturity = BigDecimal.ZERO;
         BigDecimal excludedPledged = BigDecimal.ZERO;
@@ -144,7 +145,9 @@ public class TreasuryRatioInputs {
                 }
                 final InstrumentKind kind = kindOfType.computeIfAbsent(deal.getDealTypeId(),
                         id -> this.dealTypeService.find(id).getInstrumentKind());
-                if (kind.isAsset() && (kinds.contains(kind.name()) || dealTypes.contains(deal.getDealTypeId()))) {
+                if (kind.isAsset() && (kinds.contains(kind.name()) || dealTypes.contains(deal.getDealTypeId()))
+                        && (classifications.isEmpty()
+                                || deal.getClassification() != null && classifications.contains(deal.getClassification().name()))) {
                     held.put(deal, kind);
                 }
             }

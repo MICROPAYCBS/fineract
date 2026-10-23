@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.treasury.fx.NopCapitalBasis;
+import org.apache.fineract.treasury.setup.ClientType;
 
 /**
  * The tenant's own treasury settings, one row; a null value falls back to the deployment property
@@ -50,6 +51,10 @@ public class TreasuryTenantSetting extends AbstractPersistableCustom<Long> {
     @Enumerated(EnumType.STRING)
     @Column(name = "nop_capital_basis", length = 20)
     private NopCapitalBasis nopCapitalBasis;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "client_type", length = 20)
+    private ClientType clientType;
 
     @Column(name = "last_modified_by")
     private Long lastModifiedBy;

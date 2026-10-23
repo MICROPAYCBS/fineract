@@ -1,0 +1,15 @@
+[
+  {
+    "code": "LIQUID_ASSETS_TO_DEPOSITS_MIN",
+    "name": "Liquid assets to deposits at least 15% (MDI Regulations 2004)",
+    "description": "Regulatory hard limit. The warning at 17% is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "LIQUID_ASSETS_TO_DEPOSITS",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 15,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 17
+  }
+]

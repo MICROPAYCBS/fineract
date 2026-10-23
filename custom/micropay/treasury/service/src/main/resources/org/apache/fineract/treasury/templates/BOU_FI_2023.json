@@ -1,0 +1,370 @@
+{
+  "code": "BOU_FI_2023",
+  "name": "BoU Financial Institutions (Liquidity) Regulations 2023",
+  "effectiveDate": "2023-01-01",
+  "dateFormat": "yyyy-MM-dd",
+  "locale": "en",
+  "returnFrequency": "WEEKLY",
+  "description": "Template for banks and credit institutions. Regulatory minimums from the Financial Institutions (Liquidity) Regulations 2023: liquid assets at least 20% of deposits in local and foreign currency (reg 4(6)), liquid assets per reg 4(1)-(4), pledged and encumbered assets excluded (reg 4(4)); LCR and NSFR at least 100%, reported weekly. PLACEHOLDERS: the AFS haircut, the LCR and NSFR factors (per BoU guidelines), the cash reserve, the buckets and every GL component; map them before activating.",
+  "buckets": [
+    {
+      "code": "ON",
+      "label": "Overnight (0-1 day)",
+      "fromDay": 0,
+      "toDay": 1
+    },
+    {
+      "code": "D2_8",
+      "label": "2 to 8 days",
+      "fromDay": 2,
+      "toDay": 8
+    },
+    {
+      "code": "D9_1M",
+      "label": "9 days to 1 month",
+      "fromDay": 9,
+      "toDay": 30
+    },
+    {
+      "code": "M1_3",
+      "label": "1 to 3 months",
+      "fromDay": 31,
+      "toDay": 91
+    },
+    {
+      "code": "M3_6",
+      "label": "3 to 6 months",
+      "fromDay": 92,
+      "toDay": 182
+    },
+    {
+      "code": "M6_12",
+      "label": "6 to 12 months",
+      "fromDay": 183,
+      "toDay": 365
+    },
+    {
+      "code": "Y1_PLUS",
+      "label": "Over 1 year",
+      "fromDay": 366
+    }
+  ],
+  "ratios": [
+    {
+      "code": "LIQUID_ASSETS_TO_DEPOSITS",
+      "name": "Liquid assets to total deposits (reg 4(6))",
+      "direction": "MIN",
+      "limit": 20,
+      "warning": 22,
+      "inReturn": true,
+      "numeratorLabel": "Liquid assets (reg 4(1))",
+      "denominatorLabel": "Deposits, local and foreign currency",
+      "description": "Regulatory minimum 20%. Deposits in local and foreign currency: map both deposit GLs; each currency's run counts its own.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Cash",
+          "assetClass": "CASH",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with Bank of Uganda",
+          "assetClass": "BOU_BALANCE",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with banks in Uganda",
+          "assetClass": "BANK_BALANCE_UG",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Less: balances owed to banks in Uganda (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2100",
+          "sign": -1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "E-money balances held as agents",
+          "assetClass": "EMONEY_AGENT",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Treasury bills within 91 days",
+          "assetClass": "TBILL",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Government securities held for trading",
+          "assetClass": "GOVT_SEC_TRADING",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Government securities available for sale, after haircut",
+          "assetClass": "GOVT_SEC_AFS",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Deposits in local currency (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Deposits in foreign currency (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2050",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "LCR",
+      "name": "Liquidity coverage ratio",
+      "direction": "MIN",
+      "limit": 100,
+      "warning": 110,
+      "inReturn": true,
+      "numeratorLabel": "High-quality liquid assets",
+      "denominatorLabel": "Net cash outflows over 30 days",
+      "description": "Regulatory minimum 100%, reported weekly. Net outflows from the ladder over 30 days, inflows capped at 75% of outflows; the HQLA weights are PLACEHOLDERS per BoU guidelines.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Cash",
+          "assetClass": "CASH",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with Bank of Uganda",
+          "assetClass": "BOU_BALANCE",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Treasury bills within 91 days",
+          "assetClass": "TBILL",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Government securities held for trading",
+          "assetClass": "GOVT_SEC_TRADING",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Government securities available for sale, after haircut",
+          "assetClass": "GOVT_SEC_AFS",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "LADDER_METRIC",
+          "label": "Net cash outflows over 30 days (ladder, inflows capped at 75%)",
+          "ladderMetric": "NET_OUTFLOWS",
+          "metricDays": 30,
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "NSFR",
+      "name": "Net stable funding ratio",
+      "direction": "MIN",
+      "limit": 100,
+      "warning": 105,
+      "inReturn": true,
+      "numeratorLabel": "Available stable funding",
+      "denominatorLabel": "Required stable funding",
+      "description": "Regulatory minimum 100%, reported weekly. The ASF and RSF factors are PLACEHOLDERS per BoU guidelines.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Capital (ASF 100%) (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "3",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Stable retail deposits (ASF 90%) (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 90
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Other deposits (ASF 50%) (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2050",
+          "sign": 1,
+          "weight": 50
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Loans (RSF 65%) (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1100",
+          "sign": 1,
+          "weight": 65
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Other assets (RSF 100%) (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1900",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "CASH_RESERVE",
+      "name": "Cash reserve with Bank of Uganda",
+      "direction": "MIN",
+      "limit": 0,
+      "warning": null,
+      "inReturn": false,
+      "numeratorLabel": "Balances with Bank of Uganda",
+      "denominatorLabel": "Deposits",
+      "description": "PLACEHOLDER, no limit is created: set the BoU cash reserve requirement and add a limit when it applies.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with Bank of Uganda",
+          "assetClass": "BOU_BALANCE",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Deposits (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    }
+  ],
+  "assetClasses": [
+    {
+      "code": "CASH",
+      "label": "Cash (reg 4(1)(a))",
+      "liquid": true,
+      "accountTypes": [
+        "VAULT"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "BOU_BALANCE",
+      "label": "Balances with Bank of Uganda (reg 4(1)(b))",
+      "liquid": true,
+      "accountTypes": [
+        "CENTRAL_BANK"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "BANK_BALANCE_UG",
+      "label": "Balances with banks in Uganda, gross (reg 4(1)(c); what is owed to them is netted in the ratio)",
+      "liquid": true,
+      "accountTypes": [
+        "BANK"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "EMONEY_AGENT",
+      "label": "E-money balances held as agents (reg 4(2)(c))",
+      "liquid": true,
+      "accountTypes": [
+        "MOBILE_WALLET"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "TBILL",
+      "label": "Treasury bills maturing within 91 days (reg 4(1))",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "TREASURY_BILL"
+      ],
+      "haircut": 0,
+      "maxMaturityDays": 91
+    },
+    {
+      "code": "GOVT_SEC_TRADING",
+      "label": "Marketable government securities held for trading (reg 4(2)(d), 0% haircut)",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "GOVERNMENT_BOND"
+      ],
+      "haircut": 0,
+      "classifications": [
+        "FVTPL"
+      ]
+    },
+    {
+      "code": "GOVT_SEC_AFS",
+      "label": "Government securities available for sale / held to collect and sell (reg 4(2)(d); PLACEHOLDER 10% BoU haircut)",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "GOVERNMENT_BOND"
+      ],
+      "haircut": 10,
+      "classifications": [
+        "FVOCI"
+      ]
+    }
+  ]
+}

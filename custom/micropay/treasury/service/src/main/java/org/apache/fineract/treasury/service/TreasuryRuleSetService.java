@@ -26,6 +26,7 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.EFF
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.IS_DEFAULT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.NAME_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RATIOS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RETURN_FREQUENCY_PARAM;
 
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -59,6 +60,8 @@ import org.apache.fineract.treasury.liquidity.RatioPart;
 import org.apache.fineract.treasury.serialization.RatioConfigParser;
 import org.apache.fineract.treasury.serialization.TreasuryLiquidityDataValidator;
 import org.apache.fineract.treasury.serialization.TreasuryLiquidityDataValidator.RuleSetRequest;
+import org.apache.fineract.treasury.setup.TreasuryRuleSetActivationHook;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -84,6 +87,7 @@ public class TreasuryRuleSetService {
     private final TreasuryRatioDefinitionRepository ratioRepository;
     private final TreasuryRatioComponentRepository componentRepository;
     private final TreasuryAssetClassRuleRepository assetClassRepository;
+    private final ObjectProvider<TreasuryRuleSetActivationHook> activationHooks;
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
@@ -101,6 +105,8 @@ public class TreasuryRuleSetService {
         set.setVersion(versions.isEmpty() ? 1 : versions.getLast().getVersion() + 1);
         set.setEffectiveDate(request.effectiveDate());
         set.setDescription(request.description() != null || source == null ? request.description() : source.getDescription());
+        set.setReturnFrequency(
+                request.returnFrequency() != null || source == null ? request.returnFrequency() : source.getReturnFrequency());
         set.setStatus(ConfigStatus.DRAFT);
         set.setCreatedBy(userId);
         set.setLastEditedBy(userId);
@@ -157,6 +163,10 @@ public class TreasuryRuleSetService {
         if (request.has(DESCRIPTION_PARAM)) {
             set.setDescription(request.description());
             changes.put(DESCRIPTION_PARAM, request.description());
+        }
+        if (request.has(RETURN_FREQUENCY_PARAM)) {
+            set.setReturnFrequency(request.returnFrequency());
+            changes.put(RETURN_FREQUENCY_PARAM, request.returnFrequency() == null ? null : request.returnFrequency().name());
         }
         if (request.buckets() != null) {
             this.bucketRepository.deleteByRuleSetId(ruleSetId);
@@ -230,9 +240,11 @@ public class TreasuryRuleSetService {
         set.setActivatedBy(userId);
         set.setActivatedOnDate(DateUtils.getBusinessLocalDate());
         this.ruleSetRepository.saveAndFlush(set);
+        // the tenant's template: becomes the default and its regulatory limits are activated (TreasurySetupService)
+        this.activationHooks.orderedStream().forEach(hook -> hook.activated(set.getId(), set.getCode()));
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("status", set.getStatus().name());
-        changes.put(IS_DEFAULT_PARAM, set.isDefaultSet());
+        changes.put(IS_DEFAULT_PARAM, find(set.getId()).isDefaultSet());
         return result(command, set, changes);
     }
 
@@ -307,18 +319,28 @@ public class TreasuryRuleSetService {
         final List<TreasuryRuleSetData.AssetClassData> classes = assetClasses(set.getId()).stream()
                 .map(a -> new TreasuryRuleSetData.AssetClassData(a.getCode(), a.getLabel(), a.isLiquid(), split(a.getAccountTypes()),
                         split(a.getInstrumentKinds()), split(a.getDealTypeIds()).stream().map(Long::valueOf).toList(),
-                        a.getMaxMaturityDays(), a.getHaircut()))
+                        a.getMaxMaturityDays(), a.getHaircut(), split(a.getClassifications())))
                 .toList();
         return new TreasuryRuleSetData(set.getId(), set.getCode(), set.getName(), set.getVersion(), set.getEffectiveDate(),
                 set.getStatus().name(), set.isDefaultSet(), set.getDescription(), set.getCreatedBy(), set.getLastEditedBy(),
                 set.getActivatedBy(), set.getActivatedOnDate(),
                 buckets(set.getId()).stream()
                         .map(b -> new TreasuryRuleSetData.BucketData(b.seq(), b.code(), b.label(), b.fromDay(), b.toDay())).toList(),
-                ratios, classes);
+                ratios, classes, set.getReturnFrequency() == null ? null : set.getReturnFrequency().name());
     }
 
     static List<String> split(final String list) {
         return StringUtils.isBlank(list) ? List.of() : Arrays.stream(list.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+    }
+
+    /** Makes the active rule set the default (apply-template, and the template's activation). */
+    @Transactional
+    public void makeDefault(final Long ruleSetId) {
+        final TreasuryRuleSet set = find(ruleSetId);
+        if (set.getStatus() != ConfigStatus.ACTIVE) {
+            throw new TreasuryWorkflowException(ENTITY, "default.not.draft", "Only an active rule set can be the default", ruleSetId);
+        }
+        makeDefault(set);
     }
 
     private void makeDefault(final TreasuryRuleSet set) {
@@ -440,6 +462,7 @@ public class TreasuryRuleSetService {
             rule.setInstrumentKinds(spec.instrumentKinds().isEmpty() ? null : String.join(",", spec.instrumentKinds()));
             rule.setDealTypeIds(spec.dealTypeIds().isEmpty() ? null
                     : spec.dealTypeIds().stream().map(String::valueOf).collect(Collectors.joining(",")));
+            rule.setClassifications(spec.classifications().isEmpty() ? null : String.join(",", spec.classifications()));
             rule.setMaxMaturityDays(spec.maxMaturityDays());
             rule.setHaircut(spec.haircut());
             this.assetClassRepository.save(rule);
@@ -457,6 +480,7 @@ public class TreasuryRuleSetService {
             rule.setAccountTypes(from.getAccountTypes());
             rule.setInstrumentKinds(from.getInstrumentKinds());
             rule.setDealTypeIds(from.getDealTypeIds());
+            rule.setClassifications(from.getClassifications());
             rule.setMaxMaturityDays(from.getMaxMaturityDays());
             rule.setHaircut(from.getHaircut());
             this.assetClassRepository.save(rule);

@@ -68,6 +68,7 @@ public final class TreasuryFxApiConstants {
     public static final Set<String> CORE_CAPITAL_PARAMS = Set.of(EFFECTIVE_DATE_PARAM, AMOUNT_PARAM, NOTE_PARAM, DATE_FORMAT_PARAM,
             LOCALE_PARAM);
     public static final Set<String> NOTE_PARAMS = Set.of(NOTE_PARAM, LOCALE_PARAM);
+    public static final String CLIENT_TYPE_PARAM = "clientType";
     public static final Set<String> TENANT_SETTING_PARAMS = Set.of(BASE_CURRENCY_PARAM, FX_MAX_RATE_AGE_DAYS_PARAM, NOP_CAPITAL_BASIS_PARAM,
-            LOCALE_PARAM);
+            CLIENT_TYPE_PARAM, LOCALE_PARAM);
 }

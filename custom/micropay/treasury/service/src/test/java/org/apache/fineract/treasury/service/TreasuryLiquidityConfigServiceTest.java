@@ -70,6 +70,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -89,7 +90,7 @@ class TreasuryLiquidityConfigServiceTest {
     private final TreasuryLiquidityDataValidator validator = new TreasuryLiquidityDataValidator(new FromJsonHelper());
     private final TreasuryRuleSetService ruleSetService = new TreasuryRuleSetService(this.validator, this.actor, this.ruleSets,
             this.buckets, mock(TreasuryRatioDefinitionRepository.class), mock(TreasuryRatioComponentRepository.class),
-            mock(TreasuryAssetClassRuleRepository.class));
+            mock(TreasuryAssetClassRuleRepository.class), mock(ObjectProvider.class));
     private final TreasuryAssumptionSetService assumptionSetService = new TreasuryAssumptionSetService(this.validator, this.actor,
             this.assumptionSets, mock(TreasuryAssumptionRepository.class));
     private final List<TreasuryRuleSet> savedSets = new ArrayList<>();

@@ -35,6 +35,7 @@ import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
+import org.apache.fineract.treasury.deal.DealClassification;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.domain.TreasuryAccountType;
 import org.apache.fineract.treasury.liquidity.ComponentType;
@@ -58,8 +59,14 @@ public final class RatioConfigParser {
             String numeratorLabel, String denominatorLabel, String description, List<ComponentSpec> components) {
     }
 
+    /** {@code classifications}: the deals' accounting classifications counted, all when empty. */
     public record AssetClassSpec(String code, String label, boolean liquid, List<String> accountTypes, List<String> instrumentKinds,
-            List<Long> dealTypeIds, Integer maxMaturityDays, BigDecimal haircut) {
+            List<Long> dealTypeIds, Integer maxMaturityDays, BigDecimal haircut, List<String> classifications) {
+
+        public AssetClassSpec(final String code, final String label, final boolean liquid, final List<String> accountTypes,
+                final List<String> instrumentKinds, final List<Long> dealTypeIds, final Integer maxMaturityDays, final BigDecimal haircut) {
+            this(code, label, liquid, accountTypes, instrumentKinds, dealTypeIds, maxMaturityDays, haircut, List.of());
+        }
     }
 
     static List<RatioSpec> ratios(final FromJsonHelper helper, final JsonElement element, final DataValidatorBuilder v) {
@@ -217,6 +224,16 @@ public final class RatioConfigParser {
             v.reset().parameter(p + "haircut").value(haircut).ignoreIfNull().zeroOrPositiveAmount().notGreaterThanMax(HUNDRED);
             final List<String> accountTypes = strings(o.get("accountTypes"));
             final List<String> kinds = strings(o.get("instrumentKinds"));
+            final List<String> classifications = strings(o.get("classifications"));
+            for (final String classification : classifications) {
+                if (Arrays.stream(DealClassification.values()).noneMatch(c -> c.name().equals(classification))) {
+                    v.reset().parameter(p + "classifications").value(classification).failWithCode("unknown");
+                }
+            }
+            // a kind may sit in two classes when they split it by classification (bonds held for trading and available
+            // for sale)
+            final List<String> kindKeys = classifications.isEmpty() ? Arrays.stream(DealClassification.values()).map(Enum::name).toList()
+                    : classifications;
             final List<Long> dealTypes = new ArrayList<>();
             for (final String accountType : accountTypes) {
                 if (Arrays.stream(TreasuryAccountType.values()).noneMatch(t -> t.name().equals(accountType))) {
@@ -228,7 +245,7 @@ public final class RatioConfigParser {
             for (final String kind : kinds) {
                 if (!assetKinds.contains(kind)) {
                     v.reset().parameter(p + "instrumentKinds").value(kind).failWithCode("not.an.asset.kind");
-                } else if (!claimed.add("K:" + kind)) {
+                } else if (!kindKeys.stream().allMatch(c -> claimed.add("K:" + kind + ":" + c))) {
                     v.reset().parameter(p + "instrumentKinds").value(kind).failWithCode("in.two.classes");
                 }
             }
@@ -246,9 +263,9 @@ public final class RatioConfigParser {
                 v.reset().parameter(p + "accountTypes").failWithCode("account.types.instrument.kinds.or.deal.types.required");
             }
             final JsonElement liquid = o.get("liquid");
-            classes.add(
-                    new AssetClassSpec(code, text(o, "label"), liquid == null || liquid.isJsonNull() || liquid.getAsBoolean(), accountTypes,
-                            kinds, dealTypes, maturity == null ? null : maturity.intValue(), haircut == null ? BigDecimal.ZERO : haircut));
+            classes.add(new AssetClassSpec(code, text(o, "label"), liquid == null || liquid.isJsonNull() || liquid.getAsBoolean(),
+                    accountTypes, kinds, dealTypes, maturity == null ? null : maturity.intValue(),
+                    haircut == null ? BigDecimal.ZERO : haircut, classifications));
         }
         return classes;
     }

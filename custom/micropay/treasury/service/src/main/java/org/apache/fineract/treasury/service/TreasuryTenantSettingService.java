@@ -23,6 +23,7 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABL
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -35,6 +36,7 @@ import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.fx.NopCapitalBasis;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator.TenantSettingRequest;
+import org.apache.fineract.treasury.setup.ClientType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -61,7 +63,24 @@ public class TreasuryTenantSettingService {
         return new TreasuryTenantSettingData(this.fxConfig.baseCurrency(), s.getBaseCurrency(), this.fxConfig.defaultBaseCurrency(),
                 this.fxConfig.maxRateAgeDays(), s.getFxMaxRateAgeDays(), this.fxConfig.defaultMaxRateAgeDays(),
                 this.fxConfig.nopCapitalBasis().name(), s.getNopCapitalBasis() == null ? null : s.getNopCapitalBasis().name(),
-                NopCapitalBasis.PRECEDING_QUARTER.name(), s.getLastModifiedBy(), s.getLastModifiedOnUtc());
+                NopCapitalBasis.PRECEDING_QUARTER.name(), s.getLastModifiedBy(), s.getLastModifiedOnUtc(),
+                s.getClientType() == null ? null : s.getClientType().name());
+    }
+
+    /** The tenant's client type, if set. */
+    @Transactional(readOnly = true)
+    public Optional<ClientType> clientType() {
+        return this.repository.findFirstByOrderByIdAsc().map(TreasuryTenantSetting::getClientType);
+    }
+
+    /** Sets the client type (apply-template); returns the setting row. */
+    @Transactional
+    public TreasuryTenantSetting setClientType(final ClientType type, final Long userId) {
+        final TreasuryTenantSetting setting = this.repository.findFirstByOrderByIdAsc().orElseGet(TreasuryTenantSetting::new);
+        setting.setClientType(type);
+        setting.setLastModifiedBy(userId);
+        setting.setLastModifiedOnUtc(DateUtils.getAuditOffsetDateTime());
+        return this.repository.saveAndFlush(setting);
     }
 
     /**
@@ -90,6 +109,10 @@ public class TreasuryTenantSettingService {
         if (request.nopCapitalBasisSent() && request.nopCapitalBasis() != setting.getNopCapitalBasis()) {
             setting.setNopCapitalBasis(request.nopCapitalBasis());
             changes.put("nopCapitalBasis", request.nopCapitalBasis() == null ? null : request.nopCapitalBasis().name());
+        }
+        if (request.clientTypeSent() && request.clientType() != setting.getClientType()) {
+            setting.setClientType(request.clientType());
+            changes.put("clientType", request.clientType() == null ? null : request.clientType().name());
         }
         if (!changes.isEmpty()) {
             setting.setLastModifiedBy(this.actor.userId(command));

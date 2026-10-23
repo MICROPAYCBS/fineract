@@ -1,0 +1,281 @@
+{
+  "code": "UMRA_SACCO",
+  "name": "UMRA SACCO prudential ratios (Tier 4 MFI and Money Lenders Act 2016)",
+  "effectiveDate": "2016-01-01",
+  "dateFormat": "yyyy-MM-dd",
+  "locale": "en",
+  "returnFrequency": "QUARTERLY",
+  "description": "Template for SACCOs and Tier 4 microfinance institutions. Regulatory minimums and maximums from the Tier 4 Microfinance Institutions and Money Lenders Act 2016 (liquid assets, s.5 and s.46) and the UMRA SACCO regulations: liquidity at least 15% of savings and short-term liabilities, core capital at least 10% of total assets, non-earning assets at most 10% of total assets, external borrowing at most 25% of total assets, non-government securities at most 40% of core capital; returns quarterly. PLACEHOLDERS: every GL component, the call money term and the warnings; map them before activating.",
+  "buckets": [
+    {
+      "code": "D0_30",
+      "label": "0 to 30 days",
+      "fromDay": 0,
+      "toDay": 30
+    },
+    {
+      "code": "D31_90",
+      "label": "31 to 90 days",
+      "fromDay": 31,
+      "toDay": 90
+    },
+    {
+      "code": "D91_180",
+      "label": "91 to 180 days",
+      "fromDay": 91,
+      "toDay": 180
+    },
+    {
+      "code": "D181_365",
+      "label": "181 to 365 days",
+      "fromDay": 181,
+      "toDay": 365
+    },
+    {
+      "code": "Y1_PLUS",
+      "label": "Over 365 days",
+      "fromDay": 366
+    }
+  ],
+  "ratios": [
+    {
+      "code": "SACCO_LIQUIDITY",
+      "name": "Liquid assets to savings and short-term liabilities",
+      "direction": "MIN",
+      "limit": 15,
+      "warning": 17,
+      "inReturn": true,
+      "numeratorLabel": "Liquid assets (Act s.5, s.46)",
+      "denominatorLabel": "Total savings and short-term liabilities",
+      "description": "Regulatory minimum 15%.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Cash",
+          "assetClass": "CASH",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Balances with banks and MDIs",
+          "assetClass": "BANK_MDI_BALANCE",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Mobile money float",
+          "assetClass": "MOBILE_MONEY",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Call money",
+          "assetClass": "CALL_MONEY",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "Treasury bills maturing within 3 months",
+          "assetClass": "TBILL",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Total savings (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2000",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Short-term liabilities (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2200",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "SACCO_CORE_CAPITAL",
+      "name": "Core capital to total assets",
+      "direction": "MIN",
+      "limit": 10,
+      "warning": 11,
+      "inReturn": true,
+      "numeratorLabel": "Core capital",
+      "denominatorLabel": "Total assets",
+      "description": "Regulatory minimum 10%.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Core capital (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "3",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Total assets (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "SACCO_NON_EARNING_ASSETS",
+      "name": "Non-earning assets to total assets",
+      "direction": "MAX",
+      "limit": 10,
+      "warning": 9,
+      "inReturn": true,
+      "numeratorLabel": "Non-earning assets",
+      "denominatorLabel": "Total assets",
+      "description": "Regulatory maximum 10%.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Non-earning assets (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1500",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Total assets (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "SACCO_EXTERNAL_BORROWING",
+      "name": "External borrowing to total assets",
+      "direction": "MAX",
+      "limit": 25,
+      "warning": 22,
+      "inReturn": true,
+      "numeratorLabel": "External borrowing",
+      "denominatorLabel": "Total assets",
+      "description": "Regulatory maximum 25%.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "External borrowing (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2300",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Total assets (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    },
+    {
+      "code": "SACCO_NON_GOVT_SECURITIES",
+      "name": "Non-government securities to core capital",
+      "direction": "MAX",
+      "limit": 40,
+      "warning": 35,
+      "inReturn": true,
+      "numeratorLabel": "Non-government securities",
+      "denominatorLabel": "Core capital",
+      "description": "Regulatory maximum 40%.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Non-government securities (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "1400",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "Core capital (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "3",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    }
+  ],
+  "assetClasses": [
+    {
+      "code": "CASH",
+      "label": "Cash (Act s.5)",
+      "liquid": true,
+      "accountTypes": [
+        "VAULT"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "BANK_MDI_BALANCE",
+      "label": "Balances with banks and MDIs (Act s.5)",
+      "liquid": true,
+      "accountTypes": [
+        "BANK"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "MOBILE_MONEY",
+      "label": "Mobile money float (Act s.5 counts it; s.46 does not list it: confirm with UMRA)",
+      "liquid": true,
+      "accountTypes": [
+        "MOBILE_WALLET"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    },
+    {
+      "code": "CALL_MONEY",
+      "label": "Call money (placements at call, PLACEHOLDER: up to 7 days)",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "MONEY_MARKET_PLACEMENT"
+      ],
+      "haircut": 0,
+      "maxMaturityDays": 7
+    },
+    {
+      "code": "TBILL",
+      "label": "Treasury bills maturing within 3 months",
+      "liquid": true,
+      "accountTypes": [],
+      "instrumentKinds": [
+        "TREASURY_BILL"
+      ],
+      "haircut": 0,
+      "maxMaturityDays": 91
+    }
+  ]
+}

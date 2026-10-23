@@ -1,0 +1,67 @@
+[
+  {
+    "code": "SACCO_LIQUIDITY_MIN",
+    "name": "SACCO liquidity at least 15% (UMRA)",
+    "description": "Regulatory hard limit. The warning is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "SACCO_LIQUIDITY",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 15,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 17
+  },
+  {
+    "code": "SACCO_CORE_CAPITAL_MIN",
+    "name": "SACCO core capital at least 10% of total assets (UMRA)",
+    "description": "Regulatory hard limit. The warning is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "SACCO_CORE_CAPITAL",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 10,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 11
+  },
+  {
+    "code": "SACCO_NON_EARNING_ASSETS_MAX",
+    "name": "SACCO non-earning assets at most 10% of total assets (UMRA)",
+    "description": "Regulatory hard limit. The warning is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "SACCO_NON_EARNING_ASSETS",
+    "scopeType": "INSTITUTION",
+    "comparison": "MAX",
+    "hardLevel": 10,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 9
+  },
+  {
+    "code": "SACCO_EXTERNAL_BORROWING_MAX",
+    "name": "SACCO external borrowing at most 25% of total assets (UMRA)",
+    "description": "Regulatory hard limit. The warning is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "SACCO_EXTERNAL_BORROWING",
+    "scopeType": "INSTITUTION",
+    "comparison": "MAX",
+    "hardLevel": 25,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 22
+  },
+  {
+    "code": "SACCO_NON_GOVT_SECURITIES_MAX",
+    "name": "SACCO non-government securities at most 40% of core capital (UMRA)",
+    "description": "Regulatory hard limit. The warning is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "SACCO_NON_GOVT_SECURITIES",
+    "scopeType": "INSTITUTION",
+    "comparison": "MAX",
+    "hardLevel": 40,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 35
+  }
+]

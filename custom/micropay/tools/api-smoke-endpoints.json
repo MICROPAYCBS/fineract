@@ -378,6 +378,9 @@
     { "path": "/treasury/settings", "owner": "micropay" },
     { "path": "/treasury/transfers", "owner": "micropay" },
     { "path": "/treasury/transfers/in-transit", "owner": "micropay" },
-    { "path": "/treasury/transfers/{trsTransferId}", "owner": "micropay" }
+    { "path": "/treasury/transfers/{trsTransferId}", "owner": "micropay" },
+    { "path": "/treasury/settings/tenant", "owner": "micropay" },
+    { "path": "/treasury/setup/checklist", "owner": "micropay" },
+    { "path": "/treasury/setup/templates", "owner": "micropay" }
   ]
 }

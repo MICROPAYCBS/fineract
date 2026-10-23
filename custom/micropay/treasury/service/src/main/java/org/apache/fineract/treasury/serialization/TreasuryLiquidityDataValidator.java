@@ -52,6 +52,7 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.ONE
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.PRODUCT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RATIOS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RETURN_FREQUENCY_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RUN_PARAMS;
@@ -95,6 +96,7 @@ import org.apache.fineract.treasury.liquidity.Bucket;
 import org.apache.fineract.treasury.liquidity.LadderBuilder;
 import org.apache.fineract.treasury.liquidity.LadderItemDirection;
 import org.apache.fineract.treasury.liquidity.LadderSourceCode;
+import org.apache.fineract.treasury.liquidity.ReturnFrequency;
 import org.apache.fineract.treasury.liquidity.RunType;
 import org.springframework.stereotype.Component;
 
@@ -123,7 +125,7 @@ public class TreasuryLiquidityDataValidator {
 
     public record RuleSetRequest(Set<String> parametersPassed, String code, String name, LocalDate effectiveDate, String description,
             Boolean isDefault, List<Bucket> buckets, Long copyFromId, List<RatioConfigParser.RatioSpec> ratios,
-            List<RatioConfigParser.AssetClassSpec> assetClasses) {
+            List<RatioConfigParser.AssetClassSpec> assetClasses, ReturnFrequency returnFrequency) {
 
         public boolean has(final String parameter) {
             return this.parametersPassed.contains(parameter);
@@ -183,6 +185,9 @@ public class TreasuryLiquidityDataValidator {
         final Long copyFrom = this.fromApiJsonHelper.extractLongNamed(COPY_FROM_ID_PARAM, object);
         v.reset().parameter(COPY_FROM_ID_PARAM).value(copyFrom).ignoreIfNull().longGreaterThanZero();
         v.reset().parameter(DESCRIPTION_PARAM).value(text(object, DESCRIPTION_PARAM)).ignoreIfNull().notExceedingLengthOf(1000);
+        final String frequency = upper(text(object, RETURN_FREQUENCY_PARAM));
+        v.reset().parameter(RETURN_FREQUENCY_PARAM).value(frequency).ignoreIfNull()
+                .isOneOfTheseStringValues(Arrays.stream(ReturnFrequency.values()).map(Enum::name).toList());
         final List<RatioConfigParser.RatioSpec> ratios = object.has(RATIOS_PARAM)
                 ? RatioConfigParser.ratios(this.fromApiJsonHelper, object.get(RATIOS_PARAM), v)
                 : null;
@@ -207,7 +212,7 @@ public class TreasuryLiquidityDataValidator {
             }
         }
         return new RuleSetRequest(Set.copyOf(object.keySet()), code, text(object, NAME_PARAM), effective, text(object, DESCRIPTION_PARAM),
-                isDefault, buckets, copyFrom, ratios, assetClasses);
+                isDefault, buckets, copyFrom, ratios, assetClasses, frequency == null ? null : ReturnFrequency.valueOf(frequency));
     }
 
     private List<Bucket> buckets(final JsonElement element, final DataValidatorBuilder v) {

@@ -24,6 +24,7 @@ import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.AMOUNT_PAR
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.AS_OF_DATE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.BASE_CURRENCY_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.BATCH_RATE_PARAMS;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CLIENT_TYPE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CONFIG_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CORE_CAPITAL_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CURRENCY_CODE_PARAM;
@@ -73,6 +74,7 @@ import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.treasury.fx.FxRateSource;
 import org.apache.fineract.treasury.fx.FxRateType;
 import org.apache.fineract.treasury.fx.NopCapitalBasis;
+import org.apache.fineract.treasury.setup.ClientType;
 import org.springframework.stereotype.Component;
 
 /**
@@ -103,7 +105,8 @@ public class TreasuryFxDataValidator {
 
     /** The settings sent; a setting sent as null goes back to the deployment default, one not sent stays. */
     public record TenantSettingRequest(boolean baseCurrencySent, String baseCurrency, boolean fxMaxRateAgeDaysSent,
-            Integer fxMaxRateAgeDays, boolean nopCapitalBasisSent, NopCapitalBasis nopCapitalBasis) {
+            Integer fxMaxRateAgeDays, boolean nopCapitalBasisSent, NopCapitalBasis nopCapitalBasis, boolean clientTypeSent,
+            ClientType clientType) {
     }
 
     /** One rate, or {@code rates}: a batch, each rate IMPORT unless it names its source. */
@@ -232,9 +235,10 @@ public class TreasuryFxDataValidator {
             v.reset().parameter(FX_MAX_RATE_AGE_DAYS_PARAM).value(age).notNull().inMinMaxRange(0, 30);
         }
         final NopCapitalBasis basis = enumValue(object, NOP_CAPITAL_BASIS_PARAM, NopCapitalBasis.class, v, "");
+        final ClientType clientType = enumValue(object, CLIENT_TYPE_PARAM, ClientType.class, v, "");
         throwIfAny(errors);
         return new TenantSettingRequest(object.has(BASE_CURRENCY_PARAM), base, object.has(FX_MAX_RATE_AGE_DAYS_PARAM), age,
-                object.has(NOP_CAPITAL_BASIS_PARAM), basis);
+                object.has(NOP_CAPITAL_BASIS_PARAM), basis, object.has(CLIENT_TYPE_PARAM), clientType);
     }
 
     public String validateNote(final String json) {

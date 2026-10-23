@@ -60,6 +60,10 @@ public class TreasuryAssetClassRule extends AbstractPersistableCustom<Long> {
     @Column(name = "deal_type_ids", length = 200)
     private String dealTypeIds;
 
+    /** The deals' accounting classifications counted, comma-separated; all when empty. */
+    @Column(name = "classifications", length = 100)
+    private String classifications;
+
     @Column(name = "max_maturity_days")
     private Integer maxMaturityDays;
 

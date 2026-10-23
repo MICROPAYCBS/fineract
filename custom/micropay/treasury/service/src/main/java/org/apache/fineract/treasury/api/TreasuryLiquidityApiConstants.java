@@ -74,14 +74,16 @@ public final class TreasuryLiquidityApiConstants {
     public static final String DATE_FORMAT_PARAM = "dateFormat";
     public static final String LOCALE_PARAM = "locale";
 
+    public static final String RETURN_FREQUENCY_PARAM = "returnFrequency";
     public static final Set<String> RULE_SET_PARAMS = Set.of(CODE_PARAM, NAME_PARAM, EFFECTIVE_DATE_PARAM, DESCRIPTION_PARAM,
-            IS_DEFAULT_PARAM, BUCKETS_PARAM, COPY_FROM_ID_PARAM, RATIOS_PARAM, ASSET_CLASSES_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+            IS_DEFAULT_PARAM, BUCKETS_PARAM, COPY_FROM_ID_PARAM, RATIOS_PARAM, ASSET_CLASSES_PARAM, RETURN_FREQUENCY_PARAM,
+            DATE_FORMAT_PARAM, LOCALE_PARAM);
     public static final Set<String> RATIO_PARAMS = Set.of("code", "name", "direction", "limit", "warning", "inReturn", "numeratorLabel",
             "denominatorLabel", "description", "components");
     public static final Set<String> COMPONENT_PARAMS = Set.of("part", "type", "label", "glAccountId", "glCodePrefix", "glCodeFrom",
             "glCodeTo", "assetClass", "ladderMetric", "metricDays", "sign", "weight");
     public static final Set<String> ASSET_CLASS_PARAMS = Set.of("code", "label", "liquid", "accountTypes", "instrumentKinds", "dealTypeIds",
-            "maxMaturityDays", "haircut");
+            "maxMaturityDays", "haircut", "classifications");
     public static final Set<String> BUCKET_PARAMS = Set.of(CODE_PARAM, LABEL_PARAM, FROM_DAY_PARAM, TO_DAY_PARAM);
     public static final Set<String> ASSUMPTION_SET_PARAMS = Set.of(CODE_PARAM, NAME_PARAM, EFFECTIVE_DATE_PARAM, DESCRIPTION_PARAM,
             ASSUMPTIONS_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);

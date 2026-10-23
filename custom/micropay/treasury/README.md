@@ -761,11 +761,70 @@ At +200bp:
 
 ΔNII = **+38.44**; the gap beyond a year does not count. At -200bp ΔNII is -38.44, which against core capital of 1,000 is earnings at risk of 3.84%. The cumulative one-year gap is 1,000 - 500 + 2,000 - 1,000 = 1,500, which against total assets of 10,000 is 15%.
 
+## Client types and onboarding
+
+P5.2. Every institution on the deployment is a tenant of one **client type** (tenant setting `clientType`): `PSP`, `BANK`, `MDI` or `SACCO_MFI`. The type picks its regulatory rule set template, its regulatory limits and the default roles.
+
+| Client type | Rule set template | Source | Return | Regulatory limits |
+| --- | --- | --- | --- | --- |
+| `BANK` | `BOU_FI_2023` | Financial Institutions (Liquidity) Regulations 2023 | weekly | `BANK_LAR_MIN` (liquid assets at least 20% of deposits in local and foreign currency, reg 4(6)), `BANK_LCR_MIN` (100%), `BANK_NSFR_MIN` (100%), `FX_AGGREGATE_NOP_MAX` (25%) |
+| `MDI` | `BOU_MDI_2004` | MDI Regulations 2004 | monthly | `LIQUID_ASSETS_TO_DEPOSITS_MIN` (15%), `FX_AGGREGATE_NOP_MAX` |
+| `SACCO_MFI` | `UMRA_SACCO` | Tier 4 Microfinance Institutions and Money Lenders Act 2016, UMRA SACCO regulations | quarterly | `SACCO_LIQUIDITY_MIN` (liquid assets at least 15% of savings and short-term liabilities), `SACCO_CORE_CAPITAL_MIN` (core capital at least 10% of total assets), `SACCO_NON_EARNING_ASSETS_MAX` (10% of total assets), `SACCO_EXTERNAL_BORROWING_MAX` (25% of total assets), `SACCO_NON_GOVT_SECURITIES_MAX` (40% of core capital) |
+| `PSP` | `BOU_NPS_2021` | National Payment Systems Act 2020 and Regulations 2021 | daily | the trust limits (P5.3) |
+
+Each template's description says that its figures are regulatory minimums and the rest are placeholders, with its source. The figures are the regulatory minimums (hard levels); warnings, haircuts, LCR and NSFR factors, buckets and every GL component are **placeholders** to map to the tenant's chart of accounts.
+
+`BOU_FI_2023` in detail:
+
+- **Liquid assets (reg 4(1)):** cash; balances with Bank of Uganda; balances with banks in Uganda, less what is owed to them (a negative GL component); treasury bills within 91 days.
+- **Government securities (reg 4(2)(d)):** held for trading at 0% (`classifications: FVTPL`); available for sale / hold to collect and sell at a placeholder 10% BoU haircut (`FVOCI`). Asset classes can now split an instrument kind by accounting classification.
+- **E-money balances held as agents** count (reg 4(2)(c)), as mobile wallets.
+- **Pledged and encumbered holdings** are left out (reg 4(4)), as everywhere.
+- **LCR:** net outflows over 30 days from the ladder, inflows capped at 75% of outflows.
+- **NSFR:** placeholder ASF and RSF factors, "per BoU guidelines".
+- **Cash reserve:** a placeholder ratio with no limit.
+- Each currency's run counts its own deposits; map the local and the foreign currency deposit GLs.
+
+`UMRA_SACCO` in detail:
+
+- **Buckets:** 0-30, 31-90, 91-180, 181-365 and over 365 days.
+- **Liquid assets:** cash, bank and MDI balances, mobile money float, call money (placements up to a placeholder 7 days) and treasury bills within 3 months.
+- **The Act is not consistent on mobile money:** s.5 counts mobile money in liquid assets and s.46 does not list it. The template follows s.5; drop the `MOBILE_MONEY` component if UMRA reads s.46 strictly.
+
+### Apply a template
+
+`POST /treasury/setup?command=apply-template&clientType=SACCO_MFI` (`APPLYTEMPLATE_TREASURYSETUP`, maker-checker capable; body `{"enableMakerChecker": false}` to leave maker-checker alone):
+
+1. sets `clientType`;
+2. puts the rule set in place:
+   - an active version of the template code is made the default;
+   - else the seeded, never edited draft (the old `BOU_FI_2023` placeholder) is completed from the template;
+   - else a new draft is created from the template;
+   - a draft someone has edited is kept as it is;
+3. creates the type's regulatory limits that do not exist yet;
+4. creates the default roles that do not exist yet: `Treasury dealer`, `Treasury approver`, `Treasury operations`, `Treasury risk and compliance` (and, for a PSP, `Trust and reconciliation officer`). Every role reads all of treasury and its reports. The dealer makes deals, prices, rates and transfer requests; the approver holds every `_CHECKER` and the approvals; operations runs accounts, transfers, floats, statements and settlement; risk and compliance owns the rule sets, assumptions, runs, limits, stress, FX and setup;
+5. switches maker-checker on for every treasury write (`enableMakerChecker`, default `true`).
+
+Every step is skipped when done already, so applying again changes nothing.
+
+**The regulatory limits are active exactly when the template rule set is.** This was chosen over leaving them for a separate step:
+
+- if the rule set is already active, apply activates the limits at once;
+- otherwise the draft is mapped to the chart of accounts and then activated by another user (segregation of duties, as for every rule set). That activation makes it the default and activates the type's limits.
+
+Applying another type does not deactivate the first type's limits.
+
+`GET /treasury/setup/templates` lists the templates. `GET /treasury/setup/checklist` (`READ_TREASURYSETUP`) shows the onboarding progress, each item `DONE`, `TODO` or `NOT_APPLICABLE`:
+
+- client type, template rule set, GL mapping (it lists the GL components that match no GL account), default rule set, regulatory limits active, roles;
+- treasury accounts, currency settings, counterparties, deal types, an active assumption set, core capital, FX revaluation (with more than one currency);
+- maker-checker on the treasury writes, treasury jobs active.
+
 ## User guide
 
 ### Setting up
 
-Work in this order; each step uses what the earlier ones made.
+Work in this order; each step uses what the earlier ones made. Start with `apply-template` for the client type (see [Client types and onboarding](#client-types-and-onboarding)): it puts the rule set, limits and roles in place, and `GET /treasury/setup/checklist` tracks the rest.
 
 1. **GL accounts.** In the chart of accounts, an asset GL account for each place cash sits (each bank, the central bank, each wallet, the vault, agent float pools), and the income, expense, asset and liability accounts the deal types post to (interest receivable and income, premium and discount, fair value adjustment and reserve, realised gain and loss, ECL allowance and charge, interest payable and expense), plus an FX revaluation gain and loss pair and an adjustment account in the base currency.
 2. **Treasury accounts** (`POST /treasury/accounts`): one per place, on its GL account, office and currency, with its type and the minimum and maximum balance used by the position status and the `ACCOUNT_BALANCE` limits.
@@ -949,6 +1008,7 @@ Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` var
 - `READ_TREASURYFUNDINGLINE` (also the CFP summary, with `READ_TREASURYCFPACTIVATION`), `CREATE_TREASURYFUNDINGLINE`, `UPDATE_TREASURYFUNDINGLINE`
 - `READ_TREASURYCFPTRIGGER`, `CREATE_TREASURYCFPTRIGGER`, `UPDATE_TREASURYCFPTRIGGER`, `ACTIVATE_TREASURYCFPTRIGGER`, `DEACTIVATE_TREASURYCFPTRIGGER`, `FIRE_TREASURYCFPTRIGGER`
 - `READ_TREASURYCFPACTIVATION`, `COMPLETEACTION_TREASURYCFPACTIVATION`, `CLOSE_TREASURYCFPACTIVATION`
+- `READ_TREASURYSETUP` (checklist, templates), `APPLYTEMPLATE_TREASURYSETUP`
 - reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`, `READ_Treasury Limit Breaches`, `READ_Treasury Stress Test Results`, `READ_Treasury Contingency Funding Plan`
 
 Grouping `treasury_fx`, each write with a `_CHECKER` variant:

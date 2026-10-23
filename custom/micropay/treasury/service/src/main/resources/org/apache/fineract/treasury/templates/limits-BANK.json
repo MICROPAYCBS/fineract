@@ -1,0 +1,41 @@
+[
+  {
+    "code": "BANK_LAR_MIN",
+    "name": "Liquid assets to deposits at least 20% (FI (Liquidity) Regulations 2023 reg 4(6))",
+    "description": "Regulatory hard limit. The warning at 22% is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "LIQUID_ASSETS_TO_DEPOSITS",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 20,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 22
+  },
+  {
+    "code": "BANK_LCR_MIN",
+    "name": "Liquidity coverage ratio at least 100% (FI (Liquidity) Regulations 2023)",
+    "description": "Regulatory hard limit, weekly. The warning at 110% is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "LCR",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 100,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 110
+  },
+  {
+    "code": "BANK_NSFR_MIN",
+    "name": "Net stable funding ratio at least 100% (FI (Liquidity) Regulations 2023)",
+    "description": "Regulatory hard limit, weekly. The warning at 105% is a placeholder.",
+    "metric": "RATIO",
+    "metricKey": "NSFR",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 100,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 105
+  }
+]

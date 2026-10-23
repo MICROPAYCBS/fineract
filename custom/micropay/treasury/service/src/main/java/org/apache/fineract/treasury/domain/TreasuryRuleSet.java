@@ -30,6 +30,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.treasury.liquidity.ConfigStatus;
+import org.apache.fineract.treasury.liquidity.ReturnFrequency;
 
 /**
  * A regulatory regime (for example {@code BOU_MDI_2004}), versioned: its ladder buckets now, its ratios and liquid
@@ -60,6 +61,10 @@ public class TreasuryRuleSet extends AbstractPersistableCustom<Long> {
 
     @Column(name = "is_default", nullable = false)
     private boolean defaultSet;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "return_frequency", length = 20)
+    private ReturnFrequency returnFrequency;
 
     @Column(name = "description", length = 1000)
     private String description;

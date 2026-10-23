@@ -169,4 +169,20 @@ class RatioConfigValidatorTest {
         return assertThrows(PlatformApiDataValidationException.class, () -> this.validator.validateRuleSet(json, false)).getErrors()
                 .stream().map(ApiParameterError::getParameterName).distinct().toList();
     }
+
+    @Test
+    void aKindSplitByClassificationMayBeInTwoClasses() {
+        final var request = this.validator.validateRuleSet(
+                """
+                        {"assetClasses": [{"code": "TRADING", "label": "Held for trading", "instrumentKinds": ["GOVERNMENT_BOND"], "classifications": ["FVTPL"]},
+                          {"code": "AFS", "label": "Available for sale", "instrumentKinds": ["GOVERNMENT_BOND"], "classifications": ["fvoci"], "haircut": 10}]}
+                        """,
+                false);
+        assertEquals(List.of("FVTPL"), request.assetClasses().get(0).classifications());
+        assertEquals(List.of("FVOCI"), request.assetClasses().get(1).classifications());
+        assertThrows(PlatformApiDataValidationException.class, () -> this.validator.validateRuleSet("""
+                {"assetClasses": [{"code": "ALL", "label": "All bonds", "instrumentKinds": ["GOVERNMENT_BOND"]},
+                  {"code": "AFS", "label": "Available for sale", "instrumentKinds": ["GOVERNMENT_BOND"], "classifications": ["FVOCI"]}]}
+                """, false), "a class of every classification and one of a classification overlap");
+    }
 }
