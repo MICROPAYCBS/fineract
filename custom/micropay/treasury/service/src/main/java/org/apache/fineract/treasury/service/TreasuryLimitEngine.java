@@ -174,20 +174,21 @@ public class TreasuryLimitEngine {
      */
     @Transactional
     public Summary afterRun(final TreasuryRun run, final TreasuryRun ladderRun, final Long userId) {
-        final LimitMetric metric = switch (run.getRunType()) {
-            case LADDER -> LimitMetric.BUCKET_GAP;
-            case RATIOS -> LimitMetric.RATIO;
-            case STRESS -> LimitMetric.SURVIVAL_DAYS;
+        final Set<LimitMetric> metrics = switch (run.getRunType()) {
+            case LADDER -> EnumSet.of(LimitMetric.BUCKET_GAP);
+            case RATIOS -> EnumSet.of(LimitMetric.RATIO);
+            case STRESS -> EnumSet.of(LimitMetric.SURVIVAL_DAYS);
+            case REPRICING -> EnumSet.of(LimitMetric.REPRICING_GAP_PCT, LimitMetric.EAR_PCT);
             default -> null;
         };
-        if (metric == null) {
+        if (metrics == null) {
             return Summary.NONE;
         }
         final boolean ladder = run.getRunType() == RunType.LADDER;
         final EvaluationContext context = new EvaluationContext(run.getAsOfDate(), run.getCurrencyCode(), run.getOfficeId(),
                 ladder ? run : ladderRun, run.getRunType() == RunType.RATIOS ? run : null,
                 this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
-        return evaluate(context, EnumSet.of(metric), TRIGGER_RUN, run.getId(), userId, false);
+        return evaluate(context, metrics, TRIGGER_RUN, run.getId(), userId, false);
     }
 
     /** The latest evaluation that read the run. */

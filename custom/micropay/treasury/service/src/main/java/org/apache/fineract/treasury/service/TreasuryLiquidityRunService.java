@@ -35,6 +35,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.treasury.data.TreasuryRepricingData;
 import org.apache.fineract.treasury.data.TreasuryReturnData;
 import org.apache.fineract.treasury.data.TreasuryRunData;
 import org.apache.fineract.treasury.data.TreasuryStressData;
@@ -114,6 +115,7 @@ public class TreasuryLiquidityRunService {
     private final TreasuryStressRunService stressRunService;
     private final TreasuryScenarioService scenarioService;
     private final TreasuryCfpService cfpService;
+    private final TreasuryRepricingRunService repricingRunService;
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
@@ -137,6 +139,7 @@ public class TreasuryLiquidityRunService {
             case RATIOS -> ratios(ladderFor(request, asOf, userId), userId);
             case RETURN -> returnRun(ratiosFor(request, asOf, userId), userId);
             case STRESS -> stress(ladderFor(request, asOf, userId), activeScenario(request.scenarioId()), userId);
+            case REPRICING -> repricing(request, asOf, userId);
         };
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("type", run.getRunType().name());
@@ -149,6 +152,10 @@ public class TreasuryLiquidityRunService {
         }
         if (run.getNotes() != null) {
             changes.put("notes", run.getNotes());
+        }
+        if (run.getRunType() == RunType.REPRICING) {
+            changes.put("totalAssets", run.getTotalAssets());
+            changes.put("shocks", request.shocksBp());
         }
         if (run.getRunType() == RunType.STRESS) {
             changes.put("scenario", run.getScenarioCode() + " v" + run.getScenarioVersion());
@@ -170,7 +177,7 @@ public class TreasuryLiquidityRunService {
         final TreasuryRun source = find(request.sourceRunId());
         return new RunRequest(request.type(), request.asOfDate() == null ? source.getAsOfDate() : request.asOfDate(),
                 source.getCurrencyCode(), request.officeId() == null ? source.getOfficeId() : request.officeId(), request.ruleSetId(),
-                request.assumptionSetId(), request.sourceRunId(), request.scenarioId());
+                request.assumptionSetId(), request.sourceRunId(), request.scenarioId(), request.shocksBp());
     }
 
     /** Submits a return: it and every run of its scope are then locked. Not by who made the return. */
@@ -210,6 +217,8 @@ public class TreasuryLiquidityRunService {
                     for (final TreasuryScenario scenario : this.scenarioService.active()) {
                         stress(ladder, scenario, systemUserId);
                     }
+                    repricing(asOf, currency, null, this.ruleSetService.find(ladder.getRuleSetId()), this.assumptionSetService.activeSet(),
+                            ladder, TreasuryRepricingRunService.DEFAULT_SHOCKS, systemUserId);
                     return ladder;
                 });
                 runs++;
@@ -295,6 +304,45 @@ public class TreasuryLiquidityRunService {
         return run;
     }
 
+    /**
+     * A repricing gap with the rule set and assumptions of the ladder run given, else of the request (or the defaults).
+     */
+    private TreasuryRun repricing(final RunRequest request, final LocalDate asOf, final Long userId) {
+        final TreasuryRun ladder = request.sourceRunId() == null ? null : source(request.sourceRunId(), RunType.LADDER, request, asOf);
+        if (ladder == null) {
+            return repricing(asOf, request.currencyCode(), request.officeId(), ruleSet(request.ruleSetId()),
+                    assumptionSet(request.assumptionSetId()), null, request.shocksBp(), userId);
+        }
+        return repricing(asOf, request.currencyCode(), request.officeId(), this.ruleSetService.find(ladder.getRuleSetId()),
+                ladder.getAssumptionSetId() == null ? Optional.empty()
+                        : Optional.of(this.assumptionSetService.find(ladder.getAssumptionSetId())),
+                ladder, request.shocksBp(), userId);
+    }
+
+    /**
+     * Principal outstanding by repricing date ({@link TreasuryRepricingRunService}), replacing the scope's earlier
+     * REPRICING run; then the scope's REPRICING_GAP_PCT and EAR_PCT limits.
+     */
+    TreasuryRun repricing(final LocalDate asOf, final String currency, final Long officeId, final TreasuryRuleSet ruleSet,
+            final Optional<TreasuryAssumptionSet> assumptionSet, final TreasuryRun ladderRun, final List<Integer> shocks,
+            final Long userId) {
+        replace(RunType.REPRICING, asOf, currency, officeId);
+        final Assumptions assumptions = assumptionSet.map(s -> this.assumptionSetService.assumptions(s.getId())).orElse(Assumptions.NONE);
+        final LadderContext context = new LadderContext(asOf, currency, officeId, this.ruleSetService.buckets(ruleSet.getId()), assumptions,
+                this.referenceDataLookup.decimalPlaces(currency));
+        final TreasuryRun run = newRun(RunType.REPRICING, asOf, currency, officeId, ruleSet.getId(), ruleSet.getVersion(),
+                assumptionSet.map(TreasuryAssumptionSet::getId).orElse(null),
+                assumptionSet.map(TreasuryAssumptionSet::getVersion).orElse(null), ladderRun == null ? null : ladderRun.getId(), List.of(),
+                userId);
+        this.runRepository.saveAndFlush(run);
+        this.repricingRunService.compute(run, context, shocks);
+        final String notes = String.join("; ", context.warnings());
+        run.setNotes(notes.isEmpty() ? null : notes.substring(0, Math.min(2000, notes.length())));
+        this.runRepository.saveAndFlush(run);
+        this.limitEngine.afterRun(run, ladderRun, userId);
+        return run;
+    }
+
     private TreasuryScenario activeScenario(final Long scenarioId) {
         final TreasuryScenario scenario = this.scenarioService.find(scenarioId);
         if (scenario.getStatus() != ConfigStatus.ACTIVE) {
@@ -376,6 +424,7 @@ public class TreasuryLiquidityRunService {
         this.lineRepository.flush();
         this.ratioRunService.deleteRun(run.getId());
         this.stressRunService.deleteRun(run.getId());
+        this.repricingRunService.deleteRun(run.getId());
         this.runRepository.delete(run);
         this.runRepository.flush();
     }
@@ -462,6 +511,16 @@ public class TreasuryLiquidityRunService {
     }
 
     @Transactional(readOnly = true)
+    public TreasuryRepricingData retrieveRepricing(final Long runId) {
+        final TreasuryRun run = find(runId);
+        if (run.getRunType() != RunType.REPRICING) {
+            throw new TreasuryWorkflowException(ENTITY, "not.a.repricing.run", "Run " + runId + " is a " + run.getRunType() + " run",
+                    runId);
+        }
+        return this.repricingRunService.data(run);
+    }
+
+    @Transactional(readOnly = true)
     public TreasuryStressData retrieveStress(final Long runId) {
         final TreasuryRun run = find(runId);
         if (run.getRunType() != RunType.STRESS) {
@@ -499,8 +558,8 @@ public class TreasuryLiquidityRunService {
 
     private static TreasuryRunData.Line line(final TreasuryRunLine l) {
         return new TreasuryRunData.Line(l.getBucketSeq(), l.getBucketCode(), l.getSource().name(), l.getLineCode(), l.getProductId(),
-                l.getProductName(), l.getInflow(), l.getOutflow(), l.getContractual(), l.getBehavioural(), l.getNet(),
-                l.getCumulativeGap());
+                l.getProductName(), l.getInflow(), l.getOutflow(), l.getContractual(), l.getBehavioural(), l.getNet(), l.getCumulativeGap(),
+                l.getRateType() == null ? null : l.getRateType().name());
     }
 
     private static TreasuryRunLine line(final TreasuryRun run, final Bucket bucket, final LadderSourceCode source, final String lineCode,

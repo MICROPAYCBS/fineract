@@ -70,6 +70,7 @@ public final class TreasuryLiquidityApiConstants {
     public static final String ASSET_CLASSES_PARAM = "assetClasses";
     public static final String SOURCE_RUN_ID_PARAM = "sourceRunId";
     public static final String SCENARIO_ID_PARAM = "scenarioId";
+    public static final String SHOCKS_PARAM = "shocks";
     public static final String DATE_FORMAT_PARAM = "dateFormat";
     public static final String LOCALE_PARAM = "locale";
 
@@ -89,6 +90,7 @@ public final class TreasuryLiquidityApiConstants {
     public static final Set<String> LADDER_ITEM_PARAMS = Set.of(NAME_PARAM, DIRECTION_PARAM, AMOUNT_PARAM, CURRENCY_CODE_PARAM,
             OFFICE_ID_PARAM, ONE_OFF_DATE_PARAM, DAY_OF_MONTH_PARAM, ACTIVE_FROM_PARAM, ACTIVE_TO_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
     public static final Set<String> RUN_PARAMS = Set.of(TYPE_PARAM, AS_OF_DATE_PARAM, CURRENCY_CODE_PARAM, OFFICE_ID_PARAM,
-            RULE_SET_ID_PARAM, ASSUMPTION_SET_ID_PARAM, SOURCE_RUN_ID_PARAM, SCENARIO_ID_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
+            RULE_SET_ID_PARAM, ASSUMPTION_SET_ID_PARAM, SOURCE_RUN_ID_PARAM, SCENARIO_ID_PARAM, SHOCKS_PARAM, DATE_FORMAT_PARAM,
+            LOCALE_PARAM);
     public static final Set<String> ACTIVATE_PARAMS = Set.of(NOTE_PARAM, LOCALE_PARAM);
 }

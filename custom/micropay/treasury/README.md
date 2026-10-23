@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27), then FX rates, revaluation and currency positions (phase 4: P4.1, TR-30, TR-31). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27), then FX rates, revaluation and currency positions, and the repricing gap (phase 4: P4.1, TR-30, TR-31; P4.2, TR-32). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run", "Treasury Limits", "Treasury FX Revaluation") and the Liquibase changelogs.
@@ -671,6 +671,81 @@ USD 1,000 came in on 1 October at 3,700 and USD 500 on 10 October at 3,720. On 1
 - **Rate corrected to 3,740:** the target becomes 5,610,000, so the run posts **-15,000**: Dr loss / Cr adjustment.
 - **NOP:** with core capital of 1,000,000,000, the USD NOP is 5,610,000 / 1,000,000,000 = 0.561%.
 
+## Repricing gap and earnings at risk
+
+P4.2 (TR-32) adds the repricing gap: principal outstanding bucketed by its next repricing date with the ladder's buckets, split by rate type, and the earnings at risk for parallel rate shocks.
+
+### Runs
+
+`POST /runs?type=repricing&asOfDate=&currency=&officeId=&shocks=200,-200` builds a `REPRICING` run.
+
+- **Rule set and assumptions:** those of a `ladderRunId` when given (its scope too), else `ruleSetId` and `assumptionSetId`, else the defaults.
+- **Shocks:** in basis points, comma-separated or an array, each non-zero and within ±2,000, at most 10. The default is +200 and -200.
+- **Replacement:** a run replaces the scope's earlier `REPRICING` run, follows the lock rules, and goes with its ladder run.
+- **Job:** the "Treasury Liquidity Run" job (`TRS_LIQ`) runs one per currency after the ladder.
+
+Reading a run:
+
+- `GET /runs/{id}/lines` returns the positions, with `rateType`. `inflow` is a rate-sensitive asset (RSA) and `outflow` a rate-sensitive liability (RSL). Non-sensitive positions are in bucket 0, `NON_SENSITIVE`.
+- `GET /runs/{id}/repricing-summary` returns:
+  - the GL totals and the non-sensitive positions;
+  - per bucket, RSA and RSL by rate type (`FIXED`, `FLOATING`, `ADMINISTERED`), the gap, the cumulative gap, both as a percentage of total assets, and RSA / RSL;
+  - the change in net interest income per shock;
+  - the breakdown by bucket, source, side and rate type.
+
+### Sources
+
+Repricing positions come from `RepricingSource` beans, parallel to the ladder's `LadderSource` beans. They use the same context (date, currency, scope, buckets, assumptions) but produce principal outstanding by repricing date instead of cash flows, which keeps the ladder sources unchanged.
+
+| Source | Position | Rate type and repricing date |
+| --- | --- | --- |
+| `LOANS` | unpaid schedule principal of active loans | `FIXED` as each installment's principal falls due (overdue: first bucket). `FLOATING` (`is_floating_interest_rate`): all of it at the next reset, the first active period of the product's floating rate starting after the date (upstream `m_floating_rates_periods`), the first bucket when there is none. Non-performing (`is_npa`) loans are `NON_SENSITIVE`, as is the `REPRICING_NON_SENSITIVE` rate of a loan in that assumption's days-in-arrears band |
+| `TERM_DEPOSITS` | balance of active fixed and recurring deposits (RSL) | `FIXED`, at maturity |
+| `SAVINGS` | demand savings per product (RSL) | `ADMINISTERED`, spread by the `REPRICING_DIST` rows of the product (or the general rows); what they leave, or all of it without rows, in the first bucket |
+| `DEALS` | principal still to come of settled deals; bills and bonds at face | `FIXED` (deals carry no rate type), when each principal falls due, at maturity for bullet deals |
+| `OPENING` | treasury accounts at their GL balance | vaults, wallets and agent float pools `NON_SENSITIVE`. Bank and BoU balances are spread by the `REPRICING_DIST` rows of source `OPENING` as `ADMINISTERED`, `NON_SENSITIVE` otherwise (the default) |
+
+Two assumption types are new:
+
+- `REPRICING_DIST` (source `SAVINGS` or `OPENING`, a `bucketCode`, the rate of the balance): the rows of a product may add up to 100% at most.
+- `REPRICING_NON_SENSITIVE` (source `LOANS`, a `minDays` to `maxDays` arrears band, the rate of the principal that is non-sensitive): bands may not overlap.
+
+The seeded `DEFAULT` v1 assumption set gets a placeholder savings distribution: 30% overnight, 5% in 2 to 8 days, then 10%, 15%, 15%, 15% and 10% beyond a year. A tenant whose active version is later adds the rows to a new version.
+
+Total assets and liabilities are the GL balances of asset and liability accounts in the currency and scope. Equity and other balances are left out as non-sensitive.
+
+### Earnings at risk
+
+For a shock of Δr (bp / 10,000), the change in net interest income over twelve months is
+
+ΔNII = Σ over the buckets ending within 365 days of gap_b × Δr × (365 − midpoint_b) / 365, where midpoint_b = (first day + last day) / 2.
+
+A gap that reprices sooner earns or loses the new rate for longer. The loss under a shock as a percentage of the **core capital** in effect (P4.1) is the earnings at risk. Core capital is used because it is already configured with an effective date and maker-checker, where an annual NII figure would be one more input; a gain is no loss.
+
+### Limits
+
+- `REPRICING_GAP_PCT`: the cumulative one-year gap as a percentage of total assets, or a bucket's own gap with `metricKey` set to the bucket code.
+- `EAR_PCT`: the worst shock's earnings at risk, or one shock with `metricKey` such as `-200`.
+
+Every repricing run evaluates them. Seeded inactive as placeholders: `REPRICING_GAP_1Y_MIN` (warning below -10%, breach below -15%) and `EAR_MAX` (5%).
+
+### Report
+
+"Treasury Repricing Gap" (table, category Accounting, parameter `asOn`): the institution repricing runs of a date, per bucket. It needs `READ_Treasury Repricing Gap`.
+
+### Worked example
+
+The gaps are +1,000 overnight (days 0 to 1), -500 in 2 to 8 days, +2,000 in 1 to 3 months (31 to 90), -1,000 in 6 to 12 months (181 to 365) and +5,000 beyond a year.
+
+At +200bp:
+
+- overnight: 1,000 x 2% x 364.5/365 = 19.97
+- 2 to 8 days: -500 x 2% x 360/365 = -9.86
+- 1 to 3 months: 2,000 x 2% x 304.5/365 = 33.37
+- 6 to 12 months: -1,000 x 2% x 92/365 = -5.04
+
+ΔNII = **+38.44**; the gap beyond a year does not count. At -200bp ΔNII is -38.44, which against core capital of 1,000 is earnings at risk of 3.84%. The cumulative one-year gap is 1,000 - 500 + 2,000 - 1,000 = 1,500, which against total assets of 10,000 is 15%.
+
 ## Tables
 
 | Table | Holds |
@@ -731,6 +806,8 @@ USD 1,000 came in on 1 October at 3,700 and USD 500 on 10 October at 3,720. On 1
 | `m_treasury_fx_reval_config` | How each foreign currency GL account is revalued: adjustment, gain and loss accounts. |
 | `m_treasury_fx_revaluation` | Each revaluation: balance, rate, target, carried base, adjustment, posting and reversal. |
 | `m_treasury_core_capital` | Core capital by effective date, the base of the NOP limits. |
+| `m_treasury_run_repricing_bucket` | Each bucket of a REPRICING run: RSA and RSL by rate type, gaps, percentages, RSA / RSL. |
+| `m_treasury_run_repricing_shock` | The change in net interest income of a REPRICING run per rate shock, and the earnings at risk. |
 
 ## Permissions
 
@@ -772,6 +849,6 @@ Grouping `treasury_fx`, each write with a `_CHECKER` variant:
 - `READ_TREASURYFXREVALUATION`, `RUN_TREASURYFXREVALUATION`, `REVERSE_TREASURYFXREVALUATION`
 - `READ_TREASURYCORECAPITAL`, `CREATE_TREASURYCORECAPITAL`
 - `READ_TREASURYFXPOSITION` (positions and the consolidated ladder)
-- report: `READ_Treasury Currency Position and NOP`
+- report: `READ_Treasury Currency Position and NOP`; repricing runs use the run permissions, and the report `READ_Treasury Repricing Gap`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

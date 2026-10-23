@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P4.2. The repricing gap: REPRICING runs with their lines, buckets and earnings at risk per rate
+  shock, a placeholder demand savings repricing distribution, two interest rate risk limits (inactive placeholders) and the
+  "Treasury Repricing Gap" table report.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0015_repricing_gap.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-repricing-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_run_line" columnName="rate_type"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_run_line">
+            <column name="rate_type" type="VARCHAR(20)"/>
+        </addColumn>
+        <addColumn tableName="m_treasury_run">
+            <column name="total_assets" type="DECIMAL(19,6)"/>
+            <column name="total_liabilities" type="DECIMAL(19,6)"/>
+            <column name="core_capital" type="DECIMAL(19,6)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="treasury-repricing-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_repricing_bucket"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_repricing_bucket">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_repricing_bucket_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="bucket_seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bucket_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_day" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_day" type="INT"/>
+            <column name="rsa_fixed" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsa_floating" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsa_administered" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsl_fixed" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsl_floating" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsl_administered" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsa" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rsl" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gap" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="cumulative_gap" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="gap_percent" type="DECIMAL(19,6)"/>
+            <column name="cumulative_percent" type="DECIMAL(19,6)"/>
+            <column name="rsa_rsl_ratio" type="DECIMAL(19,6)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_repricing_bucket" indexName="idx_treasury_run_repricing_bucket_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-repricing-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_repricing_shock"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_repricing_shock">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_repricing_shock_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="shock_bp" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="delta_nii" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="ear_percent" type="DECIMAL(19,6)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_repricing_shock" indexName="idx_treasury_run_repricing_shock_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Placeholder repricing distribution of demand savings on the seeded DEFAULT v1 assumption set (30% in the first bucket);
+         a tenant past v1 adds REPRICING_DIST rows to a new version -->
+    <changeSet id="treasury-repricing-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1</sqlCheck>
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_assumption WHERE assumption_type = 'REPRICING_DIST'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="ON"/>
+            <column name="rate" valueNumeric="30"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="D2_8"/>
+            <column name="rate" valueNumeric="5"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="D9_1M"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="M1_3"/>
+            <column name="rate" valueNumeric="15"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="M3_6"/>
+            <column name="rate" valueNumeric="15"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="M6_12"/>
+            <column name="rate" valueNumeric="15"/>
+        </insert>
+        <insert tableName="m_treasury_assumption">
+            <column name="assumption_set_id" valueComputed="(SELECT id FROM m_treasury_assumption_set WHERE code = 'DEFAULT' AND version = 1)"/>
+            <column name="assumption_type" value="REPRICING_DIST"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="bucket_code" value="Y1_PLUS"/>
+            <column name="rate" valueNumeric="10"/>
+        </insert>
+    </changeSet>
+
+    <!-- Placeholder interest rate risk limits, inactive -->
+    <changeSet id="treasury-repricing-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_limit WHERE code IN ('REPRICING_GAP_1Y_MIN', 'EAR_MAX')</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="REPRICING_GAP_1Y_MIN"/>
+            <column name="name" value="Cumulative one-year repricing gap at least -15% of total assets"/>
+            <column name="description" value="The cumulative repricing gap of the buckets within one year as a percentage of total assets: warning below -10%, breach below -15%. PLACEHOLDER, inactive: confirm with MICROPAY."/>
+            <column name="metric" value="REPRICING_GAP_PCT"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MIN"/>
+            <column name="warning_level" valueNumeric="-10"/>
+            <column name="hard_level" valueNumeric="-15"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'REPRICING_GAP_1Y_MIN')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"REPRICING_GAP_1Y_MIN","name":"Cumulative one-year repricing gap at least -15% of total assets","description":"The cumulative repricing gap of the buckets within one year as a percentage of total assets: warning below -10%, breach below -15%. PLACEHOLDER, inactive: confirm with MICROPAY.","metric":"REPRICING_GAP_PCT","scopeType":"INSTITUTION","comparison":"MIN","warningLevel":"-10","hardLevel":"-15","unit":"PERCENT","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="EAR_MAX"/>
+            <column name="name" value="Earnings at risk at most 5% of core capital"/>
+            <column name="description" value="The fall in net interest income over twelve months under the worst rate shock of the repricing run, as a percentage of core capital. PLACEHOLDER, inactive: confirm the shocks and the limit with MICROPAY."/>
+            <column name="metric" value="EAR_PCT"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="hard_level" valueNumeric="5"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'EAR_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"EAR_MAX","name":"Earnings at risk at most 5% of core capital","description":"The fall in net interest income over twelve months under the worst rate shock of the repricing run, as a percentage of core capital. PLACEHOLDER, inactive: confirm the shocks and the limit with MICROPAY.","metric":"EAR_PCT","scopeType":"INSTITUTION","comparison":"MAX","hardLevel":"5","unit":"PERCENT","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-repricing-report-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Repricing Gap'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Repricing Gap"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, r.id AS run_id, r.total_assets, b.bucket_seq, b.bucket_code AS bucket, b.rsa_fixed, b.rsa_floating, b.rsa_administered, b.rsa, b.rsl_fixed, b.rsl_floating, b.rsl_administered, b.rsl, b.gap, b.cumulative_gap, b.gap_percent, b.cumulative_percent, b.rsa_rsl_ratio FROM m_treasury_run r JOIN m_treasury_run_repricing_bucket b ON b.run_id = r.id WHERE r.run_type = 'REPRICING' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' ORDER BY r.currency_code, b.bucket_seq"/>
+            <column name="description" value="The institution repricing gap runs of a date: per bucket the rate-sensitive assets and liabilities, the gap, the cumulative gap, as a percentage of total assets, and RSA / RSL."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Repricing Gap')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Repricing Gap"/>
+            <column name="entity_name" value="Treasury Repricing Gap"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-repricing-job-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Builds the maturity ladder of every organisation currency for the business date with the default rule set and the active assumption set, computes the ratios, runs every active stress scenario and the repricing gap over it, replacing that date's earlier runs unless a return of the date has been submitted; each run evaluates its limits. Runs after Treasury Position Snapshot."/>
+            <where>short_name='TRS_LIQ'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

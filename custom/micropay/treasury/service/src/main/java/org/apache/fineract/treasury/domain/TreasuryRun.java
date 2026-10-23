@@ -118,6 +118,19 @@ public class TreasuryRun extends AbstractPersistableCustom<Long> {
     @Column(name = "baseline_survival_days", precision = 19, scale = 6)
     private BigDecimal baselineSurvivalDays;
 
+    /**
+     * REPRICING: GL total assets and liabilities in the currency and scope, and the core capital EAR was measured
+     * against.
+     */
+    @Column(name = "total_assets", precision = 19, scale = 6)
+    private BigDecimal totalAssets;
+
+    @Column(name = "total_liabilities", precision = 19, scale = 6)
+    private BigDecimal totalLiabilities;
+
+    @Column(name = "core_capital", precision = 19, scale = 6)
+    private BigDecimal coreCapital;
+
     @Column(name = "created_by")
     private Long createdBy;
 

@@ -61,6 +61,7 @@ import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamE
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.treasury.data.TreasuryAssumptionSetData;
 import org.apache.fineract.treasury.data.TreasuryLadderItemData;
+import org.apache.fineract.treasury.data.TreasuryRepricingData;
 import org.apache.fineract.treasury.data.TreasuryReturnData;
 import org.apache.fineract.treasury.data.TreasuryRuleSetData;
 import org.apache.fineract.treasury.data.TreasuryRunData;
@@ -309,13 +310,14 @@ public class TreasuryLiquidityApiResource {
     @Path("runs")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Run the ladder, the ratios, the return or a stress test", description = "type=ladder|ratios|return|stress, scenarioId (stress, an active scenario), ladderRunId (stress; as sourceRunId), asOfDate (default the business date), currency, optional officeId, ruleSetId (default rule set), assumptionSetId (active set), sourceRunId (ratios: the ladder run; return: the ratios run; by default the scope's, built when missing); as query parameters or in the body. A rerun for the same type, date, currency and office replaces the earlier run and what was computed from it, unless a return of the scope has been submitted")
+    @Operation(summary = "Run the ladder, the ratios, the return or a stress test", description = "type=ladder|ratios|return|stress|repricing, shocks (repricing: basis points, comma-separated, default 200,-200), scenarioId (stress, an active scenario), ladderRunId (stress; as sourceRunId), asOfDate (default the business date), currency, optional officeId, ruleSetId (default rule set), assumptionSetId (active set), sourceRunId (ratios: the ladder run; return: the ratios run; by default the scope's, built when missing); as query parameters or in the body. A rerun for the same type, date, currency and office replaces the earlier run and what was computed from it, unless a return of the scope has been submitted")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult createRun(@QueryParam("type") final String type, @QueryParam("asOfDate") final String asOfDate,
             @QueryParam("currency") final String currency, @QueryParam("officeId") final Long officeId,
             @QueryParam("ruleSetId") final Long ruleSetId, @QueryParam("assumptionSetId") final Long assumptionSetId,
             @QueryParam("sourceRunId") final Long sourceRunId, @QueryParam("scenarioId") final Long scenarioId,
-            @QueryParam("ladderRunId") final Long ladderRunId, @Parameter(hidden = true) final String body) {
+            @QueryParam("ladderRunId") final Long ladderRunId, @QueryParam("shocks") final String shocks,
+            @Parameter(hidden = true) final String body) {
         final JsonObject json = StringUtils.isBlank(body) ? new JsonObject() : object(body);
         put(json, "type", type);
         put(json, "asOfDate", asOfDate);
@@ -335,6 +337,7 @@ public class TreasuryLiquidityApiResource {
         if (scenarioId != null) {
             json.addProperty("scenarioId", scenarioId);
         }
+        put(json, "shocks", shocks);
         return command(TREASURY_RUN_RESOURCE_NAME, "CREATE", null, "/treasury/runs", json.toString());
     }
 
@@ -406,6 +409,16 @@ public class TreasuryLiquidityApiResource {
     public TreasuryStressData retrieveStress(@PathParam("id") final Long id) {
         this.context.authenticatedUser().validateHasReadPermission(TREASURY_RUN_RESOURCE_NAME);
         return this.runService.retrieveStress(id);
+    }
+
+    @GET
+    @Path("runs/{id}/repricing-summary")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "A stored repricing gap", description = "GL totals, RSA and RSL per bucket by rate type with the gaps, the change in net interest income per rate shock, and the positions by bucket, source, side and rate type")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TreasuryRepricingData.class)))
+    public TreasuryRepricingData retrieveRepricing(@PathParam("id") final Long id) {
+        this.context.authenticatedUser().validateHasReadPermission(TREASURY_RUN_RESOURCE_NAME);
+        return this.runService.retrieveRepricing(id);
     }
 
     private CommandProcessingResult command(final String entity, final String action, final Long entityId, final String href,

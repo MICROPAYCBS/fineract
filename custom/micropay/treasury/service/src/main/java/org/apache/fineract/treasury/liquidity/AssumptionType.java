@@ -29,5 +29,11 @@ public enum AssumptionType {
     ROLLOVER, //
     ARREARS_HAIRCUT, //
     DRAWDOWN, //
-    FLOAT_DEMAND; //
+    FLOAT_DEMAND, //
+    /**
+     * Repricing: the share of a balance (SAVINGS per product, or OPENING bank and BoU balances) repricing in a bucket.
+     */
+    REPRICING_DIST, //
+    /** Repricing: the share of a loan's principal that is NON_SENSITIVE in a days-in-arrears band. */
+    REPRICING_NON_SENSITIVE; //
 }

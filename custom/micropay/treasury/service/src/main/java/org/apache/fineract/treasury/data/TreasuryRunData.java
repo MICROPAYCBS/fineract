@@ -39,8 +39,8 @@ public record TreasuryRunData(Long id, String runType, LocalDate asOfDate, Strin
 
     /** A line: a source line in a bucket, or (source TOTAL) the bucket's totals with its net and cumulative gap. */
     public record Line(int bucketSeq, String bucketCode, String source, String lineCode, Long productId, String productName,
-            BigDecimal inflow, BigDecimal outflow, BigDecimal contractual, BigDecimal behavioural, BigDecimal net,
-            BigDecimal cumulativeGap) {
+            BigDecimal inflow, BigDecimal outflow, BigDecimal contractual, BigDecimal behavioural, BigDecimal net, BigDecimal cumulativeGap,
+            String rateType) {
     }
 
     public record Ratio(int seq, String code, String name, String direction, BigDecimal numerator, BigDecimal denominator,

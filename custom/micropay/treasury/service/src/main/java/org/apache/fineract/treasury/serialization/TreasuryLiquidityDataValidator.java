@@ -56,6 +56,7 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RUL
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RUN_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SCENARIO_ID_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SHOCKS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SOURCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SOURCE_RUN_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TO_DAY_PARAM;
@@ -114,7 +115,9 @@ public class TreasuryLiquidityDataValidator {
             Set.of(LadderSourceCode.SAVINGS), AssumptionType.CORE_SHARE, Set.of(LadderSourceCode.SAVINGS), AssumptionType.PREPAYMENT,
             Set.of(LadderSourceCode.LOANS), AssumptionType.ARREARS_HAIRCUT, Set.of(LadderSourceCode.LOANS), AssumptionType.ROLLOVER,
             Set.of(LadderSourceCode.TERM_DEPOSITS, LadderSourceCode.DEALS), AssumptionType.DRAWDOWN, Set.of(LadderSourceCode.COMMITMENTS),
-            AssumptionType.FLOAT_DEMAND, Set.of(LadderSourceCode.AGENT_FLOAT));
+            AssumptionType.FLOAT_DEMAND, Set.of(LadderSourceCode.AGENT_FLOAT), AssumptionType.REPRICING_DIST,
+            Set.of(LadderSourceCode.SAVINGS, LadderSourceCode.OPENING), AssumptionType.REPRICING_NON_SENSITIVE,
+            Set.of(LadderSourceCode.LOANS));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -144,7 +147,7 @@ public class TreasuryLiquidityDataValidator {
     }
 
     public record RunRequest(RunType type, LocalDate asOfDate, String currencyCode, Long officeId, Long ruleSetId, Long assumptionSetId,
-            Long sourceRunId, Long scenarioId) {
+            Long sourceRunId, Long scenarioId, List<Integer> shocksBp) {
     }
 
     // ---------- rule sets ----------
@@ -316,12 +319,12 @@ public class TreasuryLiquidityDataValidator {
             }
             final BigDecimal max = assumptionType == AssumptionType.FLOAT_DEMAND ? FLOAT_SCALE_MAX : HUNDRED;
             v.reset().parameter(prefix + RATE_PARAM).value(rate).ignoreIfNull().notGreaterThanMax(max);
-            if (assumptionType == AssumptionType.RUN_OFF) {
+            if (assumptionType == AssumptionType.RUN_OFF || assumptionType == AssumptionType.REPRICING_DIST) {
                 v.reset().parameter(prefix + BUCKET_CODE_PARAM).value(bucket).notBlank();
             } else if (bucket != null) {
                 v.reset().parameter(prefix + BUCKET_CODE_PARAM).value(bucket).failWithCode("only.for.run.off");
             }
-            if (assumptionType == AssumptionType.ARREARS_HAIRCUT) {
+            if (assumptionType == AssumptionType.ARREARS_HAIRCUT || assumptionType == AssumptionType.REPRICING_NON_SENSITIVE) {
                 v.reset().parameter(prefix + MIN_DAYS_PARAM).value(minDays).notNull();
                 if (minDays != null && maxDays != null && maxDays < minDays) {
                     v.reset().parameter(prefix + MAX_DAYS_PARAM).value(maxDays).failWithCode("before.min.days", minDays);
@@ -349,7 +352,8 @@ public class TreasuryLiquidityDataValidator {
         final Set<String> keys = new HashSet<>();
         for (final Assumptions.Row row : rows) {
             final String key = row.type() + "|" + row.source() + "|" + row.productId() + "|" + row.bucketCode() + "|"
-                    + (row.type() == AssumptionType.ARREARS_HAIRCUT ? row.minDays() : "");
+                    + (row.type() == AssumptionType.ARREARS_HAIRCUT || row.type() == AssumptionType.REPRICING_NON_SENSITIVE ? row.minDays()
+                            : "");
             if (!keys.add(key)) {
                 return "two " + row.type() + " rows for source " + row.source()
                         + (row.productId() == null ? "" : ", product " + row.productId())
@@ -358,17 +362,39 @@ public class TreasuryLiquidityDataValidator {
         }
         final Map<String, List<Assumptions.Row>> bands = new HashMap<>();
         final Map<String, BigDecimal> runOff = new HashMap<>();
+        final Map<String, BigDecimal> distribution = new HashMap<>();
+        final Map<String, List<Assumptions.Row>> repricingBands = new HashMap<>();
         for (final Assumptions.Row row : rows) {
             if (row.type() == AssumptionType.ARREARS_HAIRCUT) {
                 bands.computeIfAbsent(String.valueOf(row.productId()), k -> new ArrayList<>()).add(row);
             } else if (row.type() == AssumptionType.RUN_OFF) {
                 runOff.merge(String.valueOf(row.productId()), row.rate(), BigDecimal::add);
+            } else if (row.type() == AssumptionType.REPRICING_DIST) {
+                distribution.merge(row.source() + " " + row.productId(), row.rate(), BigDecimal::add);
+            } else if (row.type() == AssumptionType.REPRICING_NON_SENSITIVE) {
+                repricingBands.computeIfAbsent(String.valueOf(row.productId()), k -> new ArrayList<>()).add(row);
             } else if (row.type() == AssumptionType.FLOAT_DEMAND || row.type() == AssumptionType.CORE_SHARE
                     || row.type() == AssumptionType.PREPAYMENT || row.type() == AssumptionType.DRAWDOWN) {
                 if (rows.stream()
                         .filter(r -> r.type() == row.type() && r.source() == row.source() && Objects.equals(r.productId(), row.productId()))
                         .count() > 1) {
                     return "two " + row.type() + " rows for the same product";
+                }
+            }
+        }
+        for (final Map.Entry<String, BigDecimal> share : distribution.entrySet()) {
+            if (share.getValue().compareTo(HUNDRED) > 0) {
+                return "repricing distribution rates add up to " + share.getValue().toPlainString() + "% for "
+                        + share.getKey().replace(" null", "") + ", above 100%";
+            }
+        }
+        for (final Map.Entry<String, List<Assumptions.Row>> product : repricingBands.entrySet()) {
+            final List<Assumptions.Row> list = new ArrayList<>(product.getValue());
+            list.sort((x, y) -> Integer.compare(x.minDays(), y.minDays()));
+            for (int i = 1; i < list.size(); i++) {
+                if (list.get(i - 1).maxDays() == null || list.get(i - 1).maxDays() >= list.get(i).minDays()) {
+                    return "repricing non-sensitive bands overlap from " + list.get(i).minDays() + " days"
+                            + ("null".equals(product.getKey()) ? "" : " for product " + product.getKey());
                 }
             }
         }
@@ -453,6 +479,7 @@ public class TreasuryLiquidityDataValidator {
         final Long sourceRun = this.fromApiJsonHelper.extractLongNamed(SOURCE_RUN_ID_PARAM, object);
         v.reset().parameter(SOURCE_RUN_ID_PARAM).value(sourceRun).ignoreIfNull().longGreaterThanZero();
         final Long scenario = this.fromApiJsonHelper.extractLongNamed(SCENARIO_ID_PARAM, object);
+        final List<Integer> shocks = shocks(object, v, RunType.REPRICING.name().equals(type));
         if (RunType.STRESS.name().equals(type)) {
             v.reset().parameter(SCENARIO_ID_PARAM).value(scenario).notNull().longGreaterThanZero();
         } else if (scenario != null) {
@@ -469,7 +496,45 @@ public class TreasuryLiquidityDataValidator {
         v.reset().parameter(ASSUMPTION_SET_ID_PARAM).value(assumptionSet).ignoreIfNull().longGreaterThanZero();
         throwIfAny(errors);
         return new RunRequest(type == null ? RunType.LADDER : RunType.valueOf(type), asOf, currency, office, ruleSet, assumptionSet,
-                sourceRun, scenario);
+                sourceRun, scenario, shocks);
+    }
+
+    /**
+     * Rate shocks in basis points for a REPRICING run: an array or a comma-separated list, each non-zero and within
+     * 2,000 either way, at most 10; +200 and -200 by default.
+     */
+    private static List<Integer> shocks(final JsonObject object, final DataValidatorBuilder v, final boolean repricing) {
+        final JsonElement element = object.get(SHOCKS_PARAM);
+        if (element == null || element.isJsonNull()) {
+            return repricing ? List.of(200, -200) : List.of();
+        }
+        if (!repricing) {
+            v.reset().parameter(SHOCKS_PARAM).value(element.toString()).failWithCode("only.for.repricing");
+            return List.of();
+        }
+        final List<String> values = new ArrayList<>();
+        if (element.isJsonArray()) {
+            element.getAsJsonArray().forEach(e -> values.add(e.isJsonNull() ? "" : e.getAsString()));
+        } else {
+            values.addAll(Arrays.asList(element.getAsString().split(",")));
+        }
+        final List<Integer> shocks = new ArrayList<>();
+        for (final String value : values) {
+            try {
+                final int bp = Integer.parseInt(value.trim());
+                if (bp == 0 || Math.abs(bp) > 2000) {
+                    v.reset().parameter(SHOCKS_PARAM).value(bp).failWithCode("out.of.range", -2000, 2000);
+                } else if (!shocks.contains(bp)) {
+                    shocks.add(bp);
+                }
+            } catch (NumberFormatException e) {
+                v.reset().parameter(SHOCKS_PARAM).value(value).failWithCode("not.a.whole.number");
+            }
+        }
+        if (shocks.size() > 10) {
+            v.reset().parameter(SHOCKS_PARAM).value(shocks.size()).failWithCode("too.many", 10);
+        }
+        return shocks;
     }
 
     public void validateActivate(final String json) {

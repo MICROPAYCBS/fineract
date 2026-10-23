@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.treasury.liquidity.LadderSourceCode;
+import org.apache.fineract.treasury.repricing.RateType;
 
 /**
  * A line of a run: one source and line code (and product) in one bucket, with its contractual and behavioural amounts
@@ -83,4 +84,9 @@ public class TreasuryRunLine extends AbstractPersistableCustom<Long> {
     /** TOTAL lines: the net flows of this bucket and every earlier one. */
     @Column(name = "cumulative_gap", precision = 19, scale = 6)
     private BigDecimal cumulativeGap;
+
+    /** REPRICING: the rate type; the inflow is a rate-sensitive asset, the outflow a liability. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rate_type", length = 20)
+    private RateType rateType;
 }

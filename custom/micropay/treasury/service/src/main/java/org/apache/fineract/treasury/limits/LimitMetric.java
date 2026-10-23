@@ -58,7 +58,19 @@ public enum LimitMetric {
      * The aggregate net open position (shorthand: the greater of the longs and the shorts) as a percentage of core
      * capital.
      */
-    FX_AGGREGATE_NOP(EnumSet.of(LimitScopeType.INSTITUTION), EnumSet.of(LimitUnit.PERCENT), false, false); //
+    FX_AGGREGATE_NOP(EnumSet.of(LimitScopeType.INSTITUTION), EnumSet.of(LimitUnit.PERCENT), false, false), //
+    /**
+     * A REPRICING run's gap as a percentage of total assets: the bucket named by {@code metricKey}, or the cumulative
+     * gap of the buckets within one year.
+     */
+    REPRICING_GAP_PCT(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY, LimitScopeType.OFFICE), EnumSet.of(LimitUnit.PERCENT),
+            false, false), //
+    /**
+     * Earnings at risk: a REPRICING run's fall in net interest income over twelve months as a percentage of core
+     * capital, for the shock in basis points named by {@code metricKey}, or the worst of its shocks.
+     */
+    EAR_PCT(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY, LimitScopeType.OFFICE), EnumSet.of(LimitUnit.PERCENT), false,
+            false); //
 
     private final Set<LimitScopeType> scopes;
     private final Set<LimitUnit> units;
@@ -104,7 +116,7 @@ public enum LimitMetric {
 
     /** Takes a {@code metricKey}: needs one when keyed; SURVIVAL_DAYS may name a scenario. */
     public boolean acceptsKey() {
-        return this.keyed || this == SURVIVAL_DAYS;
+        return this.keyed || this == SURVIVAL_DAYS || this == REPRICING_GAP_PCT || this == EAR_PCT;
     }
 
     public boolean isConcentration() {
@@ -113,6 +125,6 @@ public enum LimitMetric {
 
     /** Read from a run of the scope rather than from live data. */
     public boolean readsRun() {
-        return this == RATIO || this == BUCKET_GAP || this == SURVIVAL_DAYS;
+        return this == RATIO || this == BUCKET_GAP || this == SURVIVAL_DAYS || this == REPRICING_GAP_PCT || this == EAR_PCT;
     }
 }
