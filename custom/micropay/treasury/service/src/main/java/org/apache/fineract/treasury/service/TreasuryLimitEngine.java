@@ -63,6 +63,7 @@ import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -200,6 +201,8 @@ public class TreasuryLimitEngine {
     public int evaluateBusinessDate() {
         final LocalDate asOf = DateUtils.getBusinessLocalDate();
         final TransactionTemplate template = new TransactionTemplate(this.transactionManager);
+        // Each scope in its own transaction, so that one that fails is rolled back alone and not the job's
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         final Long systemUserId = template.execute(status -> this.appUserRepository.fetchSystemUser().getId());
         final Set<Long> offices = new TreeSet<>(Comparator.nullsFirst(Comparator.naturalOrder()));
         offices.add(null);

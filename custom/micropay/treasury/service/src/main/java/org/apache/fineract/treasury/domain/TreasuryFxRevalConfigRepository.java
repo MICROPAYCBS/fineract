@@ -18,13 +18,19 @@
  */
 package org.apache.fineract.treasury.domain;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 
 public interface TreasuryFxRevalConfigRepository extends JpaRepository<TreasuryFxRevalConfig, Long> {
 
     Optional<TreasuryFxRevalConfig> findByGlAccountIdAndCurrencyCode(Long glAccountId, String currencyCode);
 
     List<TreasuryFxRevalConfig> findAllByOrderByCurrencyCodeAscGlAccountIdAsc();
+
+    /** The configs locked for update: a revaluation reads what was posted and posts the difference, one at a time. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    List<TreasuryFxRevalConfig> findByActiveTrueOrderByCurrencyCodeAscGlAccountIdAsc();
 }

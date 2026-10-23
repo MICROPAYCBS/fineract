@@ -22,6 +22,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -136,4 +138,21 @@ public class TreasuryRun extends AbstractPersistableCustom<Long> {
 
     @Column(name = "created_on_utc", nullable = false)
     private OffsetDateTime createdOnUtc;
+
+    /**
+     * The scope, null-free, for the unique key on (type, date, currency, office, scenario): a run replaces the scope's
+     * earlier one, so two runs of one scope made at the same time cannot both be saved.
+     */
+    @Column(name = "office_key", nullable = false)
+    private long officeKey;
+
+    @Column(name = "scenario_key", nullable = false, length = 50)
+    private String scenarioKey = "";
+
+    @PrePersist
+    @PreUpdate
+    void scopeKeys() {
+        this.officeKey = this.officeId == null ? 0L : this.officeId;
+        this.scenarioKey = this.scenarioCode == null ? "" : this.scenarioCode;
+    }
 }

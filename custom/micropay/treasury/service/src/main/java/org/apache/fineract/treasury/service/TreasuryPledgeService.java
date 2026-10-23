@@ -22,9 +22,11 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABL
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -163,6 +165,16 @@ public class TreasuryPledgeService {
     public BigDecimal encumberedAmount(final Long dealId, final LocalDate date) {
         return this.pledgeRepository.findByDealIdOrderByIdAsc(dealId).stream().filter(p -> p.activeOn(date)).map(TreasuryPledge::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** The amount pledged on the date of each of the deals, in one query; deals without pledges are left out. */
+    @Transactional(readOnly = true)
+    public Map<Long, BigDecimal> encumberedAmounts(final Collection<Long> dealIds, final LocalDate date) {
+        if (dealIds.isEmpty()) {
+            return Map.of();
+        }
+        return this.pledgeRepository.findByDealIdIn(dealIds).stream().filter(p -> p.activeOn(date))
+                .collect(Collectors.toMap(TreasuryPledge::getDealId, TreasuryPledge::getAmount, BigDecimal::add));
     }
 
     /**

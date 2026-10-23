@@ -26,6 +26,7 @@ import org.apache.fineract.treasury.deal.DealCalculator.FlowType;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.deal.InterestMethod;
 import org.apache.fineract.treasury.domain.TreasuryDeal;
+import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.service.TreasuryPostingPlanner.Leg;
 
 /**
@@ -191,7 +192,8 @@ public final class DealLifecyclePlanner {
             return;
         }
         if (glAccountId == null) {
-            throw new IllegalStateException("No GL account for a " + type + " of " + amount.toPlainString());
+            throw new TreasuryWorkflowException("deal", "gl.account.missing",
+                    "No GL account for a " + type + " of " + amount.toPlainString() + ": set it on the deal type", type.name(), amount);
         }
         legs.add(new Leg(officeId, glAccountId, type, amount));
     }

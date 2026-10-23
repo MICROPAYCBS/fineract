@@ -27,7 +27,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.fineract.treasury.deal.InstrumentKind;
 import org.apache.fineract.treasury.domain.TreasuryLadderItem;
 import org.junit.jupiter.api.Test;
@@ -196,5 +198,20 @@ class LadderSourcesTest {
         item.setActiveFrom(from);
         item.setActiveTo(to);
         return item;
+    }
+
+    @Test
+    void loanFlowsAreSummedByLineProductDateAndSign() {
+        final LocalDate due = AS_OF.plusDays(10);
+        final Map<LadderFlow, BigDecimal> totals = new LinkedHashMap<>();
+        LoanLadderSource.add(totals, List.of(
+                LadderFlow.contractual(LadderSourceCode.LOANS, LoanLadderSource.PRINCIPAL, 9L, "Group loan", due, new BigDecimal("100")),
+                LadderFlow.behavioural(LadderSourceCode.LOANS, LoanLadderSource.PRINCIPAL, 9L, "Group loan", due, new BigDecimal("-10"))));
+        LoanLadderSource.add(totals, List.of(
+                LadderFlow.contractual(LadderSourceCode.LOANS, LoanLadderSource.PRINCIPAL, 9L, "Group loan", due, new BigDecimal("50.5")),
+                LadderFlow.behavioural(LadderSourceCode.LOANS, LoanLadderSource.PRINCIPAL, 9L, "Group loan", due, new BigDecimal("5")),
+                LadderFlow.contractual(LadderSourceCode.LOANS, LoanLadderSource.INTEREST, 9L, "Group loan", due, new BigDecimal("7"))));
+        assertEquals(List.of(new BigDecimal("150.5"), new BigDecimal("-10"), new BigDecimal("5"), new BigDecimal("7")),
+                List.copyOf(totals.values()));
     }
 }

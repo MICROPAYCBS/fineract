@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -90,10 +91,31 @@ public class LoanLadderSource implements LadderSource {
     public List<LadderFlow> flows(final LadderContext context) {
         final MapSqlParameterSource params = new MapSqlParameterSource().addValue("currency", context.currencyCode())
                 .addValue("notCompleted", Boolean.FALSE).addValue("officeId", context.officeId(), java.sql.Types.BIGINT);
-        final List<Installment> installments = this.jdbcTemplate.query(SQL, params,
-                (rs, i) -> new Installment(rs.getLong("loan_id"), rs.getLong("product_id"), rs.getString("product_name"),
-                        rs.getObject("duedate", LocalDate.class), rs.getBigDecimal("principal"), rs.getBigDecimal("interest")));
-        return flows(context, installments);
+        // Streamed a loan at a time (the rows come ordered by loan), the flows summed as they are made
+        final Map<LadderFlow, BigDecimal> totals = new LinkedHashMap<>();
+        final List<Installment> loan = new ArrayList<>();
+        this.jdbcTemplate.query(SQL, params, (RowCallbackHandler) rs -> {
+            final Installment installment = new Installment(rs.getLong("loan_id"), rs.getLong("product_id"), rs.getString("product_name"),
+                    rs.getObject("duedate", LocalDate.class), rs.getBigDecimal("principal"), rs.getBigDecimal("interest"));
+            if (!loan.isEmpty() && !loan.getFirst().loanId().equals(installment.loanId())) {
+                add(totals, flows(context, loan));
+                loan.clear();
+            }
+            loan.add(installment);
+        });
+        add(totals, flows(context, loan));
+        return totals.entrySet().stream().map(e -> withAmount(e.getKey(), e.getValue())).toList();
+    }
+
+    /** Adds the flows to the totals, keyed by the flow without its amount (and by its sign). */
+    static void add(final Map<LadderFlow, BigDecimal> totals, final List<LadderFlow> flows) {
+        for (final LadderFlow flow : flows) {
+            totals.merge(withAmount(flow, BigDecimal.valueOf(flow.amount().signum())), flow.amount(), BigDecimal::add);
+        }
+    }
+
+    private static LadderFlow withAmount(final LadderFlow f, final BigDecimal amount) {
+        return new LadderFlow(f.source(), f.lineCode(), f.productId(), f.productName(), f.date(), amount, f.behavioural());
     }
 
     /** The flows of the installments, grouped by loan, with the behavioural adjustments. */

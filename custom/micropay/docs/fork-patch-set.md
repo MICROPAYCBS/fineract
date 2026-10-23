@@ -9,6 +9,11 @@ Baseline: `origin/develop` `71681f2d88` (JDK 25 / Boot 4.1, merged on `merge/ups
 Prior steps: pre-JDK-25 `3c97339d9c`, Apache Fineract 1.15.0 `f188505b8b`. Prior
 merge-base with `origin/develop` was `0655191138f1dca52e63882a34c7671d0b40887c`.
 
+The treasury module (`custom/micropay/treasury`, P1.1 to P4.3) adds nothing to this inventory: it lives
+entirely under `custom/micropay/`, reads upstream tables through its own SQL and repositories, posts
+through the upstream journal entry services, and its Liquibase changelogs (0001 to 0016) only add
+`m_treasury_*` tables, permissions, jobs, reports and indexes. It patches no upstream file.
+
 Regenerate the raw numbers at any time (PowerShell, from the repo root):
 
 ```powershell
@@ -272,6 +277,14 @@ annotations in §1.1, `ApprovalWorkflowHook`, `ServerExceptionReporter`.
   present on LF checkouts or CI.
 - `custom/acme/**` (upstream sample modules) is still included by `custom/docker/build.gradle`;
   exclude or delete it before building a production image.
+- `:fineract-client:buildJavaSdk` fails since the JDK 25 / Boot 4.1 merge with
+  `OutOfMemoryError: UTF16 String size is 1080885715` in openapi-generator 7.22.0
+  (`JavaClientCodegen.postProcessSupportingFileData` -> `generateYAMLSpecFile` serialises the
+  processed spec to over 1 GB of YAML). The generated SDK that `:custom:micropay:test:integration`
+  compiles against cannot be built, so the fork integration tests (including the seven treasury
+  ITs) do not compile. The SDK last generated on 2026-10-19, before the merge. A fix needs an
+  upstream `fineract-client` change (a generator subclass that skips the YAML supporting file, a
+  generator upgrade, or a spec fix), not a `custom/` one.
 - `POST /tellers/{tellerId}/cashiers` answers `resourceId` = teller id and no `subResourceId`
   (the cashier id is only assigned at flush; same in upstream). Clients have to look the new
   cashier up by staff id, as `CashierSelfReadIntegrationTest.createCashier` now does.

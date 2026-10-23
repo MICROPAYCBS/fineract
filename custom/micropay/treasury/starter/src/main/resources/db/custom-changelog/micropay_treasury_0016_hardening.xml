@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P4.3 hardening. Indexes on the read paths of the treasury jobs, and a unique scope key on
+  m_treasury_run against concurrent runs of one scope.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0016_hardening.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <!-- Read paths of the treasury jobs: GL balances and FX movements per account, office and currency up to a date;
+         settled deals of a currency; active loans of a currency -->
+    <changeSet id="treasury-hardening-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="acc_gl_journal_entry" indexName="idx_treasury_je_account_office_ccy_date"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="acc_gl_journal_entry" indexName="idx_treasury_je_account_office_ccy_date">
+            <column name="account_id"/>
+            <column name="office_id"/>
+            <column name="currency_code"/>
+            <column name="entry_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-hardening-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="m_treasury_deal" indexName="idx_treasury_deal_status_currency"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="m_treasury_deal" indexName="idx_treasury_deal_status_currency">
+            <column name="status"/>
+            <column name="currency_code"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-hardening-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="m_loan" indexName="idx_treasury_loan_status_currency"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="m_loan" indexName="idx_treasury_loan_status_currency">
+            <column name="loan_status_id"/>
+            <column name="currency_code"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- The null-free scope of a run and a unique key on it: a run replaces the scope's earlier one, so two runs of one
+         scope made at the same time cannot both be saved -->
+    <changeSet id="treasury-hardening-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_run" columnName="office_key"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_run">
+            <column name="office_key" type="BIGINT" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scenario_key" type="VARCHAR(50)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <update tableName="m_treasury_run">
+            <column name="office_key" valueComputed="COALESCE(office_id, 0)"/>
+            <column name="scenario_key" valueComputed="COALESCE(scenario_code, '')"/>
+        </update>
+    </changeSet>
+
+    <changeSet id="treasury-hardening-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <indexExists tableName="m_treasury_run" indexName="uq_treasury_run_scope"/>
+            </not>
+        </preConditions>
+        <createIndex tableName="m_treasury_run" indexName="uq_treasury_run_scope" unique="true">
+            <column name="run_type"/>
+            <column name="as_of_date"/>
+            <column name="currency_code"/>
+            <column name="office_key"/>
+            <column name="scenario_key"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

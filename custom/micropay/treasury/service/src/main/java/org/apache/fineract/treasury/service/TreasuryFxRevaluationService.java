@@ -61,6 +61,7 @@ import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -188,8 +189,8 @@ public class TreasuryFxRevaluationService {
     List<TreasuryFxRevaluation> revalue(final LocalDate asOf, final String currency, final Long userId) {
         final List<TreasuryFxRevaluation> rows = new ArrayList<>();
         final int scale = this.referenceDataLookup.decimalPlaces(this.fxConfig.baseCurrency());
-        for (final TreasuryFxRevalConfig config : this.configRepository.findAllByOrderByCurrencyCodeAscGlAccountIdAsc()) {
-            if (!config.isActive() || currency != null && !currency.equals(config.getCurrencyCode())) {
+        for (final TreasuryFxRevalConfig config : this.configRepository.findByActiveTrueOrderByCurrencyCodeAscGlAccountIdAsc()) {
+            if (currency != null && !currency.equals(config.getCurrencyCode())) {
                 continue;
             }
             final FxRates.Rate closing = this.rateService.closingMid(config.getCurrencyCode(), asOf);
@@ -302,6 +303,8 @@ public class TreasuryFxRevaluationService {
     public int runClosedDay() {
         final LocalDate asOf = DateUtils.getBusinessLocalDate().minusDays(1);
         final TransactionTemplate template = new TransactionTemplate(this.transactionManager);
+        // Each scope in its own transaction, so that one that fails is rolled back alone and not the job's
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         final Long systemUserId = template.execute(status -> this.appUserRepository.fetchSystemUser().getId());
         int revaluations = 0;
         for (final String currency : this.referenceDataLookup.organisationCurrencies()) {

@@ -23,6 +23,8 @@ import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABL
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,7 +39,6 @@ import org.apache.fineract.treasury.domain.TreasuryAccountStatus;
 import org.apache.fineract.treasury.domain.TreasuryAssetClassRule;
 import org.apache.fineract.treasury.domain.TreasuryDeal;
 import org.apache.fineract.treasury.domain.TreasuryDealRepository;
-import org.apache.fineract.treasury.domain.TreasuryDealType;
 import org.apache.fineract.treasury.domain.TreasuryRatioComponent;
 import org.apache.fineract.treasury.domain.TreasuryRunLine;
 import org.apache.fineract.treasury.domain.TreasuryRunLineRepository;
@@ -134,20 +135,28 @@ public class TreasuryRatioInputs {
             source = source.add(balances.values().stream().reduce(BigDecimal.ZERO, BigDecimal::add));
         }
         if (!kinds.isEmpty() || !dealTypes.isEmpty()) {
-            for (final TreasuryDeal deal : this.dealRepository.findByStatusOrderByIdAsc(DealStatus.SETTLED)) {
-                if (!deal.getCurrencyCode().equals(currency) || officeId != null && !officeId.equals(deal.getOfficeId())
-                        || deal.getValueDate().isAfter(asOf) || !deal.getMaturityDate().isAfter(asOf)) {
+            final Map<Long, InstrumentKind> kindOfType = new HashMap<>();
+            final Map<TreasuryDeal, InstrumentKind> held = new LinkedHashMap<>();
+            for (final TreasuryDeal deal : this.dealRepository.findByStatusAndCurrencyCodeOrderByIdAsc(DealStatus.SETTLED, currency)) {
+                if (officeId != null && !officeId.equals(deal.getOfficeId()) || deal.getValueDate().isAfter(asOf)
+                        || !deal.getMaturityDate().isAfter(asOf)) {
                     continue;
                 }
-                final TreasuryDealType type = this.dealTypeService.find(deal.getDealTypeId());
-                final InstrumentKind kind = type.getInstrumentKind();
-                if (!kind.isAsset() || !kinds.contains(kind.name()) && !dealTypes.contains(type.getId())) {
-                    continue;
+                final InstrumentKind kind = kindOfType.computeIfAbsent(deal.getDealTypeId(),
+                        id -> this.dealTypeService.find(id).getInstrumentKind());
+                if (kind.isAsset() && (kinds.contains(kind.name()) || dealTypes.contains(deal.getDealTypeId()))) {
+                    held.put(deal, kind);
                 }
-                final BigDecimal value = DealLifecyclePlanner.carrying(deal, kind).assetTotal().add(deal.getFairValueAdjustment())
+            }
+            final Map<Long, BigDecimal> encumbered = this.pledgeService
+                    .encumberedAmounts(held.keySet().stream().map(TreasuryDeal::getId).toList(), asOf);
+            for (final Map.Entry<TreasuryDeal, InstrumentKind> entry : held.entrySet()) {
+                final TreasuryDeal deal = entry.getKey();
+                final BigDecimal value = DealLifecyclePlanner.carrying(deal, entry.getValue()).assetTotal()
+                        .add(deal.getFairValueAdjustment())
                         .subtract(deal.getClassification() == DealClassification.AMORTISED_COST ? deal.getEclAllowance() : BigDecimal.ZERO);
                 final RatioCalculator.HoldingValue holding = RatioCalculator.holding(value, TreasuryPledgeService.outstanding(deal),
-                        this.pledgeService.encumberedAmount(deal.getId(), asOf), ChronoUnit.DAYS.between(asOf, deal.getMaturityDate()),
+                        encumbered.getOrDefault(deal.getId(), BigDecimal.ZERO), ChronoUnit.DAYS.between(asOf, deal.getMaturityDate()),
                         rule.getMaxMaturityDays(), scale);
                 source = source.add(holding.value());
                 excludedMaturity = excludedMaturity.add(holding.excludedMaturity());

@@ -26,7 +26,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.fineract.treasury.liquidity.AssumptionType;
 import org.apache.fineract.treasury.liquidity.Assumptions;
 import org.apache.fineract.treasury.liquidity.LadderContext;
@@ -114,5 +117,18 @@ class RepricingSourcesTest {
 
     private static Assumptions.Row dist(final LadderSourceCode source, final Long product, final String bucket, final String rate) {
         return new Assumptions.Row(AssumptionType.REPRICING_DIST, source, product, bucket, null, null, d(rate));
+    }
+
+    @Test
+    void loanPositionsAreSummedByRateTypeAndDate() {
+        final LocalDate due = LocalDate.of(2026, 11, 30);
+        final Map<RepricingPosition, BigDecimal> totals = new LinkedHashMap<>();
+        for (final String amount : List.of("100", "250.25")) {
+            LoanRepricingSource.add(totals, List.of(new RepricingPosition(LadderSourceCode.LOANS, LoanRepricingSource.PRINCIPAL, 9L,
+                    "Group loan", RepricingSide.ASSET, RateType.FIXED, due, null, new BigDecimal(amount))));
+        }
+        LoanRepricingSource.add(totals, List.of(new RepricingPosition(LadderSourceCode.LOANS, LoanRepricingSource.PRINCIPAL, 9L,
+                "Group loan", RepricingSide.ASSET, RateType.FLOATING, due, null, new BigDecimal("40"))));
+        assertEquals(List.of(new BigDecimal("350.25"), new BigDecimal("40")), List.copyOf(totals.values()));
     }
 }

@@ -18,12 +18,15 @@
  */
 package org.apache.fineract.treasury.domain;
 
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TreasuryPledgeRepository extends JpaRepository<TreasuryPledge, Long> {
 
     List<TreasuryPledge> findByDealIdOrderByIdAsc(Long dealId);
+
+    List<TreasuryPledge> findByDealIdIn(Collection<Long> dealIds);
 
     List<TreasuryPledge> findByDealIdAndStatus(Long dealId, TreasuryPledgeStatus status);
 }

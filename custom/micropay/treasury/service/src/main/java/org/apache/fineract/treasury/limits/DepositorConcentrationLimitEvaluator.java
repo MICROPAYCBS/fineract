@@ -41,7 +41,7 @@ import org.springframework.stereotype.Component;
 public class DepositorConcentrationLimitEvaluator implements LimitEvaluator {
 
     static final String SQL = """
-            SELECT CASE WHEN a.client_id IS NOT NULL THEN 'client ' || a.client_id ELSE 'group ' || a.group_id END AS depositor,
+            SELECT CASE WHEN a.client_id IS NOT NULL THEN CONCAT('client ', a.client_id) ELSE CONCAT('group ', a.group_id) END AS depositor,
                    SUM(a.account_balance_derived) AS balance
             FROM m_savings_account a
             LEFT JOIN m_client c ON c.id = a.client_id

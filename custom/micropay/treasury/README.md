@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27), then FX rates, revaluation and currency positions, and the repricing gap (phase 4: P4.1, TR-30, TR-31; P4.2, TR-32). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27), then FX rates, revaluation and currency positions, and the repricing gap (phase 4: P4.1, TR-30, TR-31; P4.2, TR-32), hardened for volume and concurrency in P4.3. The [user guide](#user-guide) covers setup, roles, the nightly jobs and the routines. A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run", "Treasury Limits", "Treasury FX Revaluation") and the Liquibase changelogs.
@@ -746,6 +746,96 @@ At +200bp:
 
 ΔNII = **+38.44**; the gap beyond a year does not count. At -200bp ΔNII is -38.44, which against core capital of 1,000 is earnings at risk of 3.84%. The cumulative one-year gap is 1,000 - 500 + 2,000 - 1,000 = 1,500, which against total assets of 10,000 is 15%.
 
+## User guide
+
+### Setting up
+
+Work in this order; each step uses what the earlier ones made.
+
+1. **GL accounts.** In the chart of accounts, an asset GL account for each place cash sits (each bank, the central bank, each wallet, the vault, agent float pools), and the income, expense, asset and liability accounts the deal types post to (interest receivable and income, premium and discount, fair value adjustment and reserve, realised gain and loss, ECL allowance and charge, interest payable and expense), plus an FX revaluation gain and loss pair and an adjustment account in the base currency.
+2. **Treasury accounts** (`POST /treasury/accounts`): one per place, on its GL account, office and currency, with its type and the minimum and maximum balance used by the position status and the `ACCOUNT_BALANCE` limits.
+3. **Settings** (`PUT /treasury/settings`): per currency, the cash-in-transit GL account, the agent float payment type, whether a transfer may overdraw, the reconciliation match rules and window, limit referral, automatic cash flow settlement, the rollover window and the stale price days.
+4. **Deal types** (`POST /treasury/deal-types`): the instrument kind, day count, accounting classification, and the GL accounts of step 1. A deal type without its fair value GL accounts is skipped by the valuation job (it logs which ones are missing).
+5. **Counterparties** (`POST /treasury/counterparties`): type, rating and exposure limit.
+6. **Rule set GL mapping** (`/treasury/rule-sets`): the buckets, the ratios with their components (GL accounts, code prefixes or ranges, asset classes, ladder metrics) and the asset classes. Activate a version: runs use the active `DEFAULT` rule set unless told otherwise.
+7. **Assumptions** (`/treasury/assumptions`): the behavioural assumptions (savings run-off and stable share, prepayment, arrears haircuts, the repricing distribution and non-sensitive bands). The seeded `DEFAULT` v1 values are placeholders; create a version with MICROPAY's figures and activate it.
+8. **Limits** (`/treasury/limits`): the seeded limits are inactive placeholders. Set their levels, then activate them; add office, currency, counterparty and account limits as needed.
+9. **Scenarios** (`/treasury/scenarios`): stress scenarios with their shocks; only active ones run in the nightly job.
+10. **Funding lines** (`/treasury/funding-lines`) and **CFP triggers** with their actions (`/treasury/cfp/triggers`).
+11. **FX** (only when a second currency is enabled): enable the currency in the organisation currencies, load rates (`POST /treasury/fx-rates`, one or a batch, `MID` at least for each business day), configure revaluation per GL account and currency (`PUT /treasury/fx/revaluation-config`), and set `fineract.module.treasury.base-currency` and `fx.max-rate-age-days` if the defaults (`UGX`, 3 days) do not fit.
+12. **Core capital** (`POST /treasury/settings/core-capital`): the figure and its effective date; the NOP limits and earnings at risk are measured against it.
+
+### Roles and maker-checker
+
+The permissions fall into three groupings (see [Permissions](#permissions)):
+
+- `treasury`: the treasury desk's day-to-day work, such as accounts, transfers, agent floats, reconciliation, counterparties, deals and holdings.
+- `treasury_risk`: risk and compliance, such as rule sets, assumptions, ladder items, runs and the return, limits and breaches, scenarios, funding lines and the CFP.
+- `treasury_fx`: rates, revaluation, core capital and positions.
+
+A typical split:
+
+| Role | Permissions |
+| --- | --- |
+| Treasury officer (maker) | the writes of `treasury`, the reads of all three groupings |
+| Treasury manager (checker) | the `_CHECKER` variants of `treasury`, `APPROVE_TREASURYDEAL_OVERLIMIT` |
+| Risk and compliance | the writes of `treasury_risk` and `treasury_fx`; `SUBMIT_TREASURYRUN` for whoever files the return |
+| Risk checker | the `_CHECKER` variants of `treasury_risk` and `treasury_fx` |
+| Auditor | the `READ_` permissions and the treasury reports |
+
+Maker-checker is off until it is switched on per action: `PUT /v1/permissions` with, for example, `{"permissions": {"APPROVE_TREASURYTRANSFER": true, "CREATE_TREASURYLIMIT": true}}`. A held command waits in `/v1/makercheckers` until a user with its `_CHECKER` permission approves it (`POST /v1/makercheckers/{id}?command=approve`). A `CHECKER_SUPER_USER` such as `mifos` skips maker-checker, so do not give that role to treasury users. Good candidates are the transfer approvals, deal approval and settlement, limit and scenario changes, rule set and assumption activation, rates, revaluation and core capital.
+
+### The nightly jobs
+
+The jobs are seeded inactive. Turn each one on with `PUT /v1/jobs/{jobId}` `{"active": true}` (the cron can be changed there too), or run it by hand with `POST /v1/jobs/short-name/{shortName}?command=executeJob`. They run after the upstream close of business, in this order:
+
+| Order | Job | Short name | Default cron | Date | Does |
+| --- | --- | --- | --- | --- | --- |
+| 1 | Treasury Accrual | `TRS_ACCR` | 02:30 daily | closed day | accrues settled deals, settles due cash flows, matures deals |
+| 2 | Treasury Valuation | `TRS_VAL` | 02:35 daily | closed day | revalues fair-value deals at the latest price |
+| 3 | Treasury FX Revaluation | `TRS_FXR` | 02:38 daily | closed day | revalues the configured foreign currency GL balances, then the NOP limits |
+| 4 | Treasury Position Snapshot | `TRS_SNAP` | 02:45 daily | closed day | the day-end balance of every treasury account |
+| 5 | Treasury Liquidity Run | `TRS_LIQ` | 02:50 daily | business date | per currency: the ladder, the ratios, every active stress scenario and the repricing gap, each evaluating its limits |
+| 6 | Treasury Limits | `TRS_LIM` | 02:55 daily | business date | every active limit, for the institution and each office with a limit |
+| 7 | Treasury ECL | `TRS_ECL` | 03:00 on the 1st | closed day | the expected credit loss of every settled deal |
+
+The closed day is the business date less one. Every job is safe to run again: postings are cumulative differences (a rerun posts nothing new), and runs replace the scope's earlier run of the date. A run is refused once the date's return has been submitted. A currency or scope that fails is rolled back on its own and logged; the others go on. Check `GET /v1/jobs/{jobId}/runhistory` and the application log after each night.
+
+### Routines
+
+Daily:
+
+- before close of business: load the day's `MID` rates and any prices; import bank and wallet statements, auto-match them, and explain or match what is left (`/treasury/reconciliation/unmatched`);
+- after the jobs: read the positions (`/treasury/positions`) and the maturity calendar; review new and open breaches (`/treasury/breaches?status=OPEN`), and acknowledge, comment or resolve them; act on fired CFP triggers.
+
+Weekly:
+
+- review the ladder and the ratios of the week (`/treasury/runs?type=LADDER`), the stress survival days and the counterparty exposures;
+- fund agent float top-ups, sweep surpluses, and clear transfers still in transit (`/treasury/transfers/in-transit`).
+
+Monthly:
+
+- after `TRS_ECL` on the 1st, review ECL stages and recalculate any deal whose rating changed;
+- review and version the assumptions, limits and scenarios; record core capital when the audited figure changes;
+- build and submit the regulatory return: run the month-end date (`POST /treasury/runs?type=ladder&asOfDate=...`, then ratios and the return), check it, then `SUBMIT`. Once submitted, the date's runs are locked.
+
+### Reproducing a past return
+
+A submitted return is never rebuilt. Its runs are kept with the rule set and assumption set versions and a snapshot of the ratio configuration, so `GET /treasury/runs/{id}/return` and the "Treasury Regulatory Liquidity Return" report always show what was filed. To see how a past date would come out today, run a ladder for that `asOfDate` with an explicit `ruleSetId` and `assumptionSetId` (the versions of the submitted run, or newer ones) in another scope (an office) or after the date's return. Inputs that are read live, such as GL balances, the loan schedule and savings balances, reflect any back-dated postings made since.
+
+### Troubleshooting
+
+| Symptom | Cause and fix |
+| --- | --- |
+| `error.msg.treasury.run.locked` | The date's return was submitted; its runs cannot be replaced. Run another date or scope. |
+| `error.msg.treasury.run.concurrent` | Another run of the same type, date, currency and office was saved at the same moment (for example a manual run during the job). Run it again. |
+| The FX job logs "No MID rate of ... on or before ..." | A movement of a revalued GL account predates the first rate. Load rates back to the first movement, or start the revaluation config later. |
+| The valuation job logs "deal type ... lacks [...]" | The deal type's fair value GL accounts are not set; update the deal type. |
+| A ratio shows no value | A component's GL accounts or asset class matched nothing, or the denominator is zero. Read `/treasury/runs/{id}` for its components. |
+| Limits show `UNAVAILABLE` | The run or data the metric needs is missing (no run of the scope that day, no core capital, no total assets). |
+| A command answers with a `commandId` and nothing changes | Maker-checker is on for the action; approve it in `/v1/makercheckers`. |
+| A job does not run at night | It is inactive (the default); activate it, and check the scheduler is running. |
+
 ## Tables
 
 | Table | Holds |
@@ -808,6 +898,10 @@ At +200bp:
 | `m_treasury_core_capital` | Core capital by effective date, the base of the NOP limits. |
 | `m_treasury_run_repricing_bucket` | Each bucket of a REPRICING run: RSA and RSL by rate type, gaps, percentages, RSA / RSL. |
 | `m_treasury_run_repricing_shock` | The change in net interest income of a REPRICING run per rate shock, and the earnings at risk. |
+
+### Changelogs
+
+The changelogs in `starter/src/main/resources/db/custom-changelog` (0001 to 0016) use Liquibase types only, with a `treasury.datetime.type` property per database for zoned timestamps. Native SQL in the module sticks to what PostgreSQL and MySQL/MariaDB share (`CONCAT`, `COALESCE`, `CASE`, `GREATEST`, `LIMIT`, boolean literals). 0016 (P4.3) adds indexes on the job read paths (`acc_gl_journal_entry` by account, office, currency and date; settled deals by currency; active loans by currency) and the unique run scope key (`office_key`, `scenario_key`) on `m_treasury_run`.
 
 ## Permissions
 

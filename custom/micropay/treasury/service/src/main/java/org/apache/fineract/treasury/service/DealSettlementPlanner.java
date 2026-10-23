@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.fineract.accounting.journalentry.domain.JournalEntryType;
 import org.apache.fineract.treasury.deal.DealPricer.Priced;
 import org.apache.fineract.treasury.deal.InstrumentKind;
+import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.service.TreasuryPostingPlanner.Leg;
 
 /**
@@ -75,7 +76,8 @@ public final class DealSettlementPlanner {
             final BigDecimal amount) {
         if (amount != null && amount.signum() > 0) {
             if (glAccountId == null) {
-                throw new IllegalStateException("No GL account for a " + type + " of " + amount);
+                throw new TreasuryWorkflowException("deal", "gl.account.missing",
+                        "No GL account for a " + type + " of " + amount.toPlainString() + ": set it on the deal type", type.name(), amount);
             }
             legs.add(new Leg(officeId, glAccountId, type, amount));
         }

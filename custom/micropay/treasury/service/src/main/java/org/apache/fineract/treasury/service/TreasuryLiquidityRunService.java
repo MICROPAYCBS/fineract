@@ -61,10 +61,13 @@ import org.apache.fineract.treasury.serialization.TreasuryLiquidityDataValidator
 import org.apache.fineract.treasury.serialization.TreasuryLiquidityDataValidator.RunRequest;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
+import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -98,6 +101,7 @@ public class TreasuryLiquidityRunService {
     static final String ENTITY = "run";
     static final String COMPLETED = "COMPLETED";
     static final String SUBMITTED = "SUBMITTED";
+    private static final String UNIQUE_SCOPE = "uq_treasury_run_scope";
 
     private final TreasuryLiquidityDataValidator validator;
     private final TreasuryActor actor;
@@ -194,7 +198,7 @@ public class TreasuryLiquidityRunService {
         run.setStatus(SUBMITTED);
         run.setSubmittedBy(userId);
         run.setSubmittedOnDate(DateUtils.getBusinessLocalDate());
-        this.runRepository.saveAndFlush(run);
+        save(run);
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("status", SUBMITTED);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(runId).with(changes).build();
@@ -204,6 +208,8 @@ public class TreasuryLiquidityRunService {
     public int runForBusinessDate() {
         final LocalDate asOf = DateUtils.getBusinessLocalDate();
         final TransactionTemplate template = new TransactionTemplate(this.transactionManager);
+        // Each scope in its own transaction, so that one that fails is rolled back alone and not the job's
+        template.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         final Long systemUserId = template.execute(status -> this.appUserRepository.fetchSystemUser().getId());
         int runs = 0;
         for (final String currency : this.referenceDataLookup.organisationCurrencies()) {
@@ -250,7 +256,7 @@ public class TreasuryLiquidityRunService {
                 assumptionSet.map(TreasuryAssumptionSet::getId).orElse(null),
                 assumptionSet.map(TreasuryAssumptionSet::getVersion).orElse(null), null, notes, userId);
         run.setBeyondHorizon(ladder.beyondHorizon());
-        this.runRepository.saveAndFlush(run);
+        save(run);
         for (final LadderBuilder.Line line : ladder.lines()) {
             this.lineRepository.save(line(run, line.bucket(), line.source(), line.lineCode(), line.productId(), line.productName(),
                     line.inflow(), line.outflow(), line.contractual(), line.behavioural(), null, null));
@@ -269,9 +275,9 @@ public class TreasuryLiquidityRunService {
         final TreasuryRun run = newRun(RunType.RATIOS, ladderRun.getAsOfDate(), ladderRun.getCurrencyCode(), ladderRun.getOfficeId(),
                 ladderRun.getRuleSetId(), ladderRun.getRuleSetVersion(), ladderRun.getAssumptionSetId(),
                 ladderRun.getAssumptionSetVersion(), ladderRun.getId(), List.of(), userId);
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.ratioRunService.computeRatios(run, ladderRun, this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.limitEngine.afterRun(run, ladderRun, userId);
         return run;
     }
@@ -281,7 +287,7 @@ public class TreasuryLiquidityRunService {
         final TreasuryRun run = newRun(RunType.RETURN, ratiosRun.getAsOfDate(), ratiosRun.getCurrencyCode(), ratiosRun.getOfficeId(),
                 ratiosRun.getRuleSetId(), ratiosRun.getRuleSetVersion(), ratiosRun.getAssumptionSetId(),
                 ratiosRun.getAssumptionSetVersion(), ratiosRun.getId(), List.of(), userId);
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.ratioRunService.buildReturn(run, ratiosRun);
         return run;
     }
@@ -296,9 +302,9 @@ public class TreasuryLiquidityRunService {
         final TreasuryRun run = newRun(RunType.STRESS, ladderRun.getAsOfDate(), ladderRun.getCurrencyCode(), ladderRun.getOfficeId(),
                 ladderRun.getRuleSetId(), ladderRun.getRuleSetVersion(), ladderRun.getAssumptionSetId(),
                 ladderRun.getAssumptionSetVersion(), ladderRun.getId(), List.of(), userId);
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.stressRunService.compute(run, ladderRun, scenario, this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.limitEngine.afterRun(run, ladderRun, userId);
         this.cfpService.stressRun(run, userId);
         return run;
@@ -334,11 +340,11 @@ public class TreasuryLiquidityRunService {
                 assumptionSet.map(TreasuryAssumptionSet::getId).orElse(null),
                 assumptionSet.map(TreasuryAssumptionSet::getVersion).orElse(null), ladderRun == null ? null : ladderRun.getId(), List.of(),
                 userId);
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.repricingRunService.compute(run, context, shocks);
         final String notes = String.join("; ", context.warnings());
         run.setNotes(notes.isEmpty() ? null : notes.substring(0, Math.min(2000, notes.length())));
-        this.runRepository.saveAndFlush(run);
+        save(run);
         this.limitEngine.afterRun(run, ladderRun, userId);
         return run;
     }
@@ -437,6 +443,24 @@ public class TreasuryLiquidityRunService {
             }
         }
         return runs.stream().filter(r -> Objects.equals(r.getOfficeId(), officeId)).toList();
+    }
+
+    /** Saves the run; another run of the scope saved meanwhile (the unique scope key) is refused as concurrent. */
+    private void save(final TreasuryRun run) {
+        try {
+            this.runRepository.saveAndFlush(run);
+        } catch (DataIntegrityViolationException | JpaSystemException e) {
+            // EclipseLink reports the unique violation as a JpaSystemException; anything else is not ours to explain
+            if (e instanceof JpaSystemException && !String.valueOf(e.getMessage()).contains(UNIQUE_SCOPE)) {
+                throw e;
+            }
+            // the cause is taken from the arguments and left out of them
+            throw new TreasuryWorkflowException(ENTITY, "concurrent",
+                    "Another " + run.getRunType() + " run of " + run.getAsOfDate() + " in " + run.getCurrencyCode()
+                            + (run.getOfficeId() == null ? "" : " for office " + run.getOfficeId())
+                            + " was saved at the same time; run it again",
+                    run.getRunType().name(), run.getAsOfDate(), run.getCurrencyCode(), e);
+        }
     }
 
     private static TreasuryRun newRun(final RunType type, final LocalDate asOf, final String currency, final Long officeId,

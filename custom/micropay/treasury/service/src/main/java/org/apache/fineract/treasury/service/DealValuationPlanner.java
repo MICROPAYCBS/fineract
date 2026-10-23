@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.fineract.accounting.journalentry.domain.JournalEntryType;
 import org.apache.fineract.treasury.deal.DealClassification;
+import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.service.TreasuryPostingPlanner.Leg;
 
 /**
@@ -124,7 +125,8 @@ public final class DealValuationPlanner {
     private static void add(final List<Leg> legs, final Long officeId, final Long glAccountId, final JournalEntryType type,
             final BigDecimal amount) {
         if (glAccountId == null) {
-            throw new IllegalStateException("No GL account for a " + type + " of " + amount.toPlainString());
+            throw new TreasuryWorkflowException("deal", "gl.account.missing",
+                    "No GL account for a " + type + " of " + amount.toPlainString() + ": set it on the deal type", type.name(), amount);
         }
         legs.add(new Leg(officeId, glAccountId, type, amount));
     }
