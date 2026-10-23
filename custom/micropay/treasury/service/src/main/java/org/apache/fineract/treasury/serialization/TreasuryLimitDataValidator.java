@@ -187,7 +187,7 @@ public class TreasuryLimitDataValidator {
             }
             if (metric.isKeyed()) {
                 v.reset().parameter(METRIC_KEY_PARAM).value(metricKey).notBlank().notExceedingLengthOf(50);
-            } else if (metricKey != null) {
+            } else if (metricKey != null && !metric.acceptsKey()) {
                 v.reset().parameter(METRIC_KEY_PARAM).value(metricKey).failWithCode("not.allowed.for.metric", metric.name());
             }
             if (metric == LimitMetric.BUCKET_GAP) {
@@ -213,7 +213,7 @@ public class TreasuryLimitDataValidator {
             }
         }
         throwIfAny(errors);
-        return new LimitRequest(code, name, description, metric, metric.isKeyed() ? metricKey : null,
+        return new LimitRequest(code, name, description, metric, metric.acceptsKey() ? metricKey : null,
                 metric == LimitMetric.BUCKET_GAP ? gapType : null, metric == LimitMetric.BUCKET_GAP ? gapBasis : null,
                 metric.isConcentration() ? topN : null, scope, scope.needsScopeId() ? scopeId : null, currency, own ? null : comparison,
                 own ? null : warning, own ? null : hard, unit, own, from, to, role);

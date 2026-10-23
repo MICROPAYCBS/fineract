@@ -1,6 +1,6 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, and limits with a breach log (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
 - `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run", "Treasury Limits") and the Liquibase changelogs.
@@ -526,6 +526,80 @@ Placeholders, all `INACTIVE` until MICROPAY confirms its limits (Q6): `LIQUID_AS
 
 "Treasury Limit Breaches" (table, category Accounting, parameter `asOn`): the breaches open on a date, first seen on or before it and not resolved before it, hard ones first. It needs `READ_Treasury Limit Breaches`.
 
+## Stress tests and the contingency funding plan
+
+P3.4 (TR-26, TR-27) adds stress scenarios run as shocks over the ladder, with the survival horizon, and the contingency funding plan (CFP): a register of funding lines, triggers with their stage and actions, activations and a summary.
+
+### Scenarios
+
+`/treasury/scenarios`: versioned like assumption sets (one `DRAFT` per code; activating it supersedes the code's `ACTIVE` version; only a draft is changed or deleted; `copyFromId` starts a draft from another version, of its code or a new one). Fields: `code`, `name`, `scenarioType` (`IDIOSYNCRATIC`, `MARKET_WIDE`, `COMBINED`), `severity` (a label), `effectiveDate`, `description`, `shocks`, applied in order:
+
+| `type` | Target | `factor` | Effect |
+| --- | --- | --- | --- |
+| `MULTIPLY` | `source`, optional `lineCode`, `productId`, `bucketCode`, `side` | percent of the flow | the matching lines at that percent: collections at 70%, agent float demand at 150% |
+| `ADD_OUTFLOW_PCT_OF_BALANCE` | as above; `bucketCode` the target bucket (the first by default) | percent of the balance | an extra outflow of that share of the matching lines' balance (their contractual total over every bucket), per product, in the target bucket: a 20% run on demand savings in the first week. It is not taken off later buckets, which is conservative |
+| `REMOVE_ROLLOVER` | `DEALS` or `TERM_DEPOSITS`, as above | | the lines without their behavioural rollover. `side` is the contractual direction: `OUTFLOW` for borrowings, so our own placements keep theirs |
+| `HAIRCUT_LIQUID_ASSET` | `assetClass` | percent | a further haircut on that asset class's capacity |
+| `FREEZE_LINE` | `fundingSourceType` or `fundingLineId` | | those funding lines out of the capacity |
+
+`side` is `INFLOW`, `OUTFLOW` or `BOTH` (the default). Seeded as **DRAFT placeholders, to be reviewed and activated**: `MICROPAY_RUN` (a 20% demand savings run in the 2 to 8 day bucket, term deposits not rolled over, loan collections at 70%), `MARKET_WIDE` (interbank placements and borrowings taken not rolled over, government bonds at a further 15% and T-bills at a further 5% haircut, agent float demand x1.5, uncommitted lines frozen) and `COMBINED` (both).
+
+### Stress runs
+
+`POST /runs?type=stress&scenarioId=&ladderRunId=` (or `asOfDate`, `currency`, `officeId`: the scope's ladder run, built when missing) applies an active scenario version to a ladder run and stores it as a `STRESS` run: `GET /runs/{id}/stress`. A run replaces the scope's earlier run of the same scenario, and goes with its ladder run; a submitted return locks the scope, as for every run. The "Treasury Liquidity Run" job (`TRS_LIQ`) now runs every active scenario after the ladder and the ratios.
+
+What is stored:
+
+- every ladder line before and after the shocks, with the labels of the shocks that changed it, and the scenario version as JSON;
+- per bucket: the baseline and stressed net and cumulative gaps, the liquid capacity, the funding capacity, the baseline capacity, and the position (the stressed cumulative gap plus the capacity);
+- the capacity items and the survival horizon, stressed and baseline.
+
+The **counterbalancing capacity** has two parts:
+
+- the liquid asset classes of the ladder run's rule set that hold instruments (instrument kinds or deal types), at their P3.2 value: the carrying amount, less holdings beyond the cut-off and the pledged share, after the class's haircut and the scenario's further haircut. They count from day 0. Their deal types' inflows within the cut-off leave the stressed ladder, since the holdings are sold instead. Treasury account classes are left out, because the ladder's opening stock already holds those balances;
+- for an institution run, the active funding lines in the currency not expired on the date that count as capacity: committed lines received, and others marked `includeInCapacity`. Each counts from the first bucket that ends on or after its `daysToAccess` (every line in an open-ended last bucket), unless the scenario freezes it. Lines are not ladder flows.
+
+The **survival horizon** is the first day the position turns negative. Within a bucket the cumulative gap is taken to move linearly by day, from its value at the start of the bucket to its value at the end, with the bucket's capacity. An open-ended last bucket cannot be interpolated and counts from its first day. A position negative at the end of the first bucket from nothing counts as day 0. When the position never turns negative, the horizon is "beyond", reported as `beyondHorizon` with no days.
+
+### Survival limits
+
+A limit of metric `SURVIVAL_DAYS` (unit `DAYS`, usually `MIN`) is the shortest survival of the scope's latest stress run per scenario, or of the scenario named in `metricKey`. A run beyond the horizon counts as the first day of its last bucket. Every stress run evaluates the scope's survival limits as it is made. Seeded: `SURVIVAL_30_DAYS_MIN` (warning under 60, breach under 30 days), inactive placeholder.
+
+### Funding lines
+
+`/treasury/funding-lines`: `code`, `name`, `sourceType` (`COMMITTED_LINE_RECEIVED`, `UNCOMMITTED_LINE`, `REPO_BOU`, `ASSET_SALE`, `SHAREHOLDER`, `DEPOSIT_DRIVE`, `OTHER`), optional `counterpartyId` (a P2.1 counterparty), `currencyCode`, `committedAmount`, `drawnAmount`, `availableAmount` (the committed amount less what is drawn when not entered), `daysToAccess`, `expiryDate`, `ownerUserId` or `ownerName`, `status` (`ACTIVE`, `INACTIVE`, `CLOSED`), `includeInCapacity` (by default only for committed lines received) and `description`. Updates are laid over the line. This is also the register of undrawn credit lines received that P3.1 left for later. It feeds the stress capacity rather than the ladder: a committed line is a source the institution can draw on, not a scheduled inflow.
+
+### Triggers, actions and activations
+
+`/treasury/cfp/triggers` (created `INACTIVE`, `?command=activate|deactivate|fire`): `code`, `name`, `conditionType`, `stage` (`WATCH`, `ALERT`, `CRISIS`), `notifyRoleId`, `description`, and `actions` in order, each with a `description`, an `ownerRoleId` and/or `ownerUserId`, and an optional `fundingLineId`.
+
+- `LIMIT_BREACH`: a `limitId`, or a `metric` for every limit of it, and the lowest `level` that sets it off (`WARNING` by default). A new or escalated breach opens one activation per breach.
+- `SURVIVAL_BELOW`: `survivalDays` and an optional `scenarioCode`. A stress run surviving fewer days opens one activation per date, scope and scenario; a rerun updates it while it is open.
+- `MANUAL`: `?command=fire` opens one by hand (any active trigger can be fired).
+
+An activation copies the trigger's stage and actions and notifies the owners in-app: the action users, the users of the action roles, and the trigger's role. `/treasury/cfp/activations` lists them. `POST /treasury/cfp/activations/{id}?command=complete-action` (`actionId`, optional `comment`) marks an action done; `?command=close` (`comment`) closes the activation.
+
+`GET /treasury/cfp/summary?asOfDate=` gives, per currency:
+
+- the funding available by source and days to access, and the part that counts as capacity;
+- each scenario's latest institution stress run of the date, with its survival and worst stressed gap (the most negative stressed cumulative gap);
+- the coverage ratio: the funding available over each gap and over the worst one.
+
+It also lists the open activations.
+
+### Reports
+
+"Treasury Stress Test Results" (each scenario's institution stress run of a date, per bucket) and "Treasury Contingency Funding Plan" (the funding lines available on a date): table reports, category Accounting, parameter `asOn`, each with its `READ_` permission.
+
+### Worked example
+
+The buckets are overnight (days 0 to 1), 2 to 8 days and beyond (from day 9). After the shocks the bucket nets are +100, -300 and -50, so the stressed cumulative gap is 100, -200 and -250.
+
+- **With 150 of liquid holdings:** the position is 250 at the end of the overnight bucket. The 2 to 8 day bucket starts at 250 and ends at -50, so it crosses zero 250/300 of the way through its 7 days: 2 + 5.83 = **7.83 days**.
+- **Adding a committed line of 200 drawable in 5 days:** the line counts from the 2 to 8 day bucket. Its position at the end is -200 + 350 = 150, and the last bucket's is -250 + 350 = 100, so the result is **beyond the horizon**.
+
+With the line, a `SURVIVAL_BELOW` trigger at 30 days stays quiet. Without it, the trigger opens an `ALERT` activation with its actions, for example "Draw the committed line" owned by the treasurer and "Convene ALCO" owned by the ALCO role, and notifies their owners.
+
 ## Tables
 
 | Table | Holds |
@@ -572,6 +646,16 @@ Placeholders, all `INACTIVE` until MICROPAY confirms its limits (Q6): `LIQUID_AS
 | `m_treasury_limit_evaluation_line` | What an evaluation observed per limit and subject, the levels, the level crossed and what it did to the log. |
 | `m_treasury_breach` | Breaches: limit and version, subject, levels, observed value, source, status, first and last seen, occurrences, escalation, clearing, acknowledgement and resolution. |
 | `m_treasury_breach_comment` | The comment thread of a breach, the user's and the engine's. |
+| `m_treasury_scenario` | Stress scenario versions: type, severity, status. |
+| `m_treasury_scenario_shock` | The shocks of a scenario version, in order. |
+| `m_treasury_run_stress_line` | Each ladder line of a STRESS run before and after the shocks. |
+| `m_treasury_run_stress_bucket` | Each bucket of a STRESS run: baseline and stressed gaps, capacity, position. |
+| `m_treasury_run_stress_capacity` | The capacity items of a STRESS run: asset classes and funding lines. |
+| `m_treasury_funding_line` | The contingency funding plan's funding lines. |
+| `m_treasury_cfp_trigger` | Triggers: condition, stage, role notified. |
+| `m_treasury_cfp_action` | The actions of a trigger, in order, with their owners and funding lines. |
+| `m_treasury_cfp_activation` | Triggers that fired, from a breach, a stress run or by hand, open until closed. |
+| `m_treasury_cfp_activation_action` | The actions of an activation and their completion. |
 
 ## Permissions
 
@@ -600,6 +684,10 @@ Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` var
 - `READ_TREASURYRUN` (also the return), `CREATE_TREASURYRUN`, `SUBMIT_TREASURYRUN`
 - `READ_TREASURYLIMIT` (also the evaluations), `CREATE_TREASURYLIMIT`, `UPDATE_TREASURYLIMIT`, `ACTIVATE_TREASURYLIMIT`, `DEACTIVATE_TREASURYLIMIT`, `EVALUATE_TREASURYLIMIT`
 - `READ_TREASURYBREACH`, `ACKNOWLEDGE_TREASURYBREACH`, `RESOLVE_TREASURYBREACH`, `COMMENT_TREASURYBREACH`
-- reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`, `READ_Treasury Limit Breaches`
+- `READ_TREASURYSCENARIO`, `CREATE_TREASURYSCENARIO`, `UPDATE_TREASURYSCENARIO`, `DELETE_TREASURYSCENARIO`, `ACTIVATE_TREASURYSCENARIO`
+- `READ_TREASURYFUNDINGLINE` (also the CFP summary, with `READ_TREASURYCFPACTIVATION`), `CREATE_TREASURYFUNDINGLINE`, `UPDATE_TREASURYFUNDINGLINE`
+- `READ_TREASURYCFPTRIGGER`, `CREATE_TREASURYCFPTRIGGER`, `UPDATE_TREASURYCFPTRIGGER`, `ACTIVATE_TREASURYCFPTRIGGER`, `DEACTIVATE_TREASURYCFPTRIGGER`, `FIRE_TREASURYCFPTRIGGER`
+- `READ_TREASURYCFPACTIVATION`, `COMPLETEACTION_TREASURYCFPACTIVATION`, `CLOSE_TREASURYCFPACTIVATION`
+- reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`, `READ_Treasury Limit Breaches`, `READ_Treasury Stress Test Results`, `READ_Treasury Contingency Funding Plan`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

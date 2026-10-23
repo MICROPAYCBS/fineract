@@ -20,6 +20,7 @@ package org.apache.fineract.treasury.service;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 
+import java.util.Collection;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +36,8 @@ import org.springframework.stereotype.Component;
 /**
  * Notifies the users of a limit's role of a new or escalated breach through Fineract's in-app notifications (object
  * type {@code treasuryBreach}, the breach id; read with {@code GET /notifications}). A limit without a role notifies
- * nobody; the open breaches are also listed by {@code GET /treasury/breaches?status=OPEN}.
+ * nobody; the open breaches are also listed by {@code GET /treasury/breaches?status=OPEN}. Contingency funding plan
+ * activations notify their owners the same way.
  */
 @Slf4j
 @Component
@@ -53,16 +55,26 @@ public class TreasuryBreachNotifier {
         if (limit.getNotifyRoleId() == null || !action.notifies()) {
             return 0;
         }
-        final List<Long> users = this.jdbcTemplate.queryForList("""
+        return notifyUsers(roleUsers(limit.getNotifyRoleId()), OBJECT_TYPE, breach.getId(),
+                action == BreachAction.CREATED ? "breachCreated" : "breachEscalated", actorId, content(limit, breach, action));
+    }
+
+    /** The enabled users of a role. */
+    public List<Long> roleUsers(final Long roleId) {
+        return roleId == null ? List.of() : this.jdbcTemplate.queryForList("""
                 SELECT u.id FROM m_appuser u JOIN m_appuser_role ur ON ur.appuser_id = u.id
                 WHERE ur.role_id = ? AND u.is_deleted = false AND u.enabled = true ORDER BY u.id
-                """, Long.class, limit.getNotifyRoleId());
+                """, Long.class, roleId);
+    }
+
+    /** An in-app notification to the users; also used for contingency funding plan activations. */
+    public int notifyUsers(final Collection<Long> users, final String objectType, final Long objectId, final String action,
+            final Long actorId, final String content) {
         final NotificationWritePlatformService service = this.notifications.getIfAvailable();
         if (users.isEmpty() || service == null) {
             return 0;
         }
-        service.notify(users, OBJECT_TYPE, breach.getId(), action == BreachAction.CREATED ? "breachCreated" : "breachEscalated", actorId,
-                content(limit, breach, action), true);
+        service.notify(users, objectType, objectId, action, actorId, content.length() > 500 ? content.substring(0, 500) : content, true);
         return users.size();
     }
 

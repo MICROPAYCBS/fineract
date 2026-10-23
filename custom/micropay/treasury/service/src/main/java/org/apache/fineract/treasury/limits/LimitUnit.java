@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.treasury.limits;
 
-/** The unit of a limit's levels and of the value observed against them. DAYS is kept for later metrics. */
+/** The unit of a limit's levels and of the value observed against them; DAYS for the survival horizon. */
 public enum LimitUnit {
 
     PERCENT, //

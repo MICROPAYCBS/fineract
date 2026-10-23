@@ -178,9 +178,14 @@ class TreasuryLiquidityDataValidatorTest {
     void runReadsItsFieldsAndDefaultsToALadder() {
         final RunRequest run = this.validator.validateRun(
                 "{\"type\": \"ladder\", \"asOfDate\": \"2026-10-16\", \"currencyCode\": \"ugx\", \"officeId\": 2, \"ruleSetId\": 3, \"assumptionSetId\": 4}");
-        assertEquals(new RunRequest(RunType.LADDER, LocalDate.of(2026, 10, 16), "UGX", 2L, 3L, 4L, null), run);
+        assertEquals(new RunRequest(RunType.LADDER, LocalDate.of(2026, 10, 16), "UGX", 2L, 3L, 4L, null, null), run);
         assertEquals(RunType.LADDER, this.validator.validateRun("{\"currencyCode\": \"UGX\"}").type());
-        assertEquals(List.of("type", "currencyCode"), parameters(() -> this.validator.validateRun("{\"type\": \"STRESS\"}")));
+        assertEquals(List.of("type", "currencyCode"), parameters(() -> this.validator.validateRun("{\"type\": \"FORECAST\"}")));
+        assertEquals(new RunRequest(RunType.STRESS, null, "UGX", null, null, null, 15L, 2L),
+                this.validator.validateRun("{\"type\": \"stress\", \"currencyCode\": \"UGX\", \"sourceRunId\": 15, \"scenarioId\": 2}"));
+        assertEquals(List.of("scenarioId"),
+                parameters(() -> this.validator.validateRun("{\"type\": \"STRESS\", \"currencyCode\": \"UGX\"}")));
+        assertEquals(List.of("scenarioId"), parameters(() -> this.validator.validateRun("{\"currencyCode\": \"UGX\", \"scenarioId\": 2}")));
         assertThrows(UnsupportedParameterException.class, () -> this.validator.validateActivate("{\"force\": true}"));
     }
 

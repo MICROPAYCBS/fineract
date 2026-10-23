@@ -1,0 +1,1156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P3.4. Stress scenarios with their shocks (three DRAFT placeholder templates), STRESS runs with
+  their lines, buckets and capacity, the contingency funding plan's funding lines, triggers, actions and activations, a
+  SURVIVAL_DAYS limit (inactive placeholder), the "Treasury Stress Test Results" and "Treasury Contingency Funding Plan"
+  table reports and the permissions.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0013_stress_cfp.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-stress-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_scenario"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_scenario">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="version" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="scenario_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="severity" type="VARCHAR(50)"/>
+            <column name="effective_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+            <column name="activated_by" type="BIGINT"/>
+            <column name="activated_on_date" type="DATE"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_scenario" columnNames="code, version" constraintName="uq_treasury_scenario_version"/>
+    </changeSet>
+
+    <changeSet id="treasury-stress-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_scenario_shock"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_scenario_shock">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="scenario_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_scenario_shock_scenario" references="m_treasury_scenario(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="shock_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)"/>
+            <column name="line_code" type="VARCHAR(50)"/>
+            <column name="product_id" type="BIGINT"/>
+            <column name="bucket_code" type="VARCHAR(20)"/>
+            <column name="side" type="VARCHAR(10)"/>
+            <column name="factor" type="DECIMAL(19,6)"/>
+            <column name="asset_class" type="VARCHAR(50)"/>
+            <column name="funding_source_type" type="VARCHAR(30)"/>
+            <column name="funding_line_id" type="BIGINT"/>
+        </createTable>
+        <createIndex tableName="m_treasury_scenario_shock" indexName="idx_treasury_scenario_shock_scenario">
+            <column name="scenario_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-stress-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_funding_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_funding_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="counterparty_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_funding_line_counterparty" references="m_treasury_counterparty(id)"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="committed_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="drawn_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="available_amount" type="DECIMAL(19,6)"/>
+            <column name="days_to_access" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="expiry_date" type="DATE"/>
+            <column name="owner_user_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_funding_line_owner" references="m_appuser(id)"/>
+            </column>
+            <column name="owner_name" type="VARCHAR(150)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="include_in_capacity" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_funding_line" columnNames="code" constraintName="uq_treasury_funding_line_code"/>
+    </changeSet>
+
+    <changeSet id="treasury-stress-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_cfp_trigger"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_cfp_trigger">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(150)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="condition_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="limit_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_cfp_trigger_limit" references="m_treasury_limit(id)"/>
+            </column>
+            <column name="metric" type="VARCHAR(40)"/>
+            <column name="level_hit" type="VARCHAR(10)"/>
+            <column name="survival_days" type="DECIMAL(19,6)"/>
+            <column name="scenario_code" type="VARCHAR(50)"/>
+            <column name="stage" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="notify_role_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_cfp_trigger_role" references="m_role(id)"/>
+            </column>
+            <column name="description" type="VARCHAR(1000)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_cfp_trigger" columnNames="code" constraintName="uq_treasury_cfp_trigger_code"/>
+    </changeSet>
+
+    <changeSet id="treasury-stress-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_cfp_action"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_cfp_action">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="trigger_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_cfp_action_trigger" references="m_treasury_cfp_trigger(id)"/>
+            </column>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="owner_role_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_cfp_action_role" references="m_role(id)"/>
+            </column>
+            <column name="owner_user_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_cfp_action_user" references="m_appuser(id)"/>
+            </column>
+            <column name="funding_line_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_cfp_action_funding_line" references="m_treasury_funding_line(id)"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_cfp_action" indexName="idx_treasury_cfp_action_trigger">
+            <column name="trigger_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-stress-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_cfp_activation"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_cfp_activation">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="trigger_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_cfp_activation_trigger" references="m_treasury_cfp_trigger(id)"/>
+            </column>
+            <column name="trigger_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stage" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source_id" type="BIGINT"/>
+            <column name="as_of_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)"/>
+            <column name="office_id" type="BIGINT"/>
+            <column name="scenario_code" type="VARCHAR(50)"/>
+            <column name="detail" type="VARCHAR(1000)"/>
+            <column name="occurrences" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="opened_by" type="BIGINT"/>
+            <column name="opened_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="closed_by" type="BIGINT"/>
+            <column name="closed_on_utc" type="${treasury.datetime.type}"/>
+            <column name="close_comment" type="VARCHAR(2000)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_cfp_activation" indexName="idx_treasury_cfp_activation_trigger">
+            <column name="trigger_id"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-stress-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_cfp_activation_action"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_cfp_activation_action">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="activation_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_cfp_activation_action_activation" references="m_treasury_cfp_activation(id)"/>
+            </column>
+            <column name="action_id" type="BIGINT"/>
+            <column name="seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(500)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="owner_role_id" type="BIGINT"/>
+            <column name="owner_user_id" type="BIGINT"/>
+            <column name="funding_line_id" type="BIGINT"/>
+            <column name="status" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="completed_by" type="BIGINT"/>
+            <column name="completed_on_utc" type="${treasury.datetime.type}"/>
+            <column name="comment_text" type="VARCHAR(2000)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_cfp_activation_action" indexName="idx_treasury_cfp_activation_action">
+            <column name="activation_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-stress-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_run" columnName="scenario_id"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_run">
+            <column name="scenario_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_run_scenario" references="m_treasury_scenario(id)"/>
+            </column>
+            <column name="scenario_code" type="VARCHAR(50)"/>
+            <column name="scenario_version" type="INT"/>
+            <column name="survival_days" type="DECIMAL(19,6)"/>
+            <column name="survival_beyond_horizon" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="baseline_survival_days" type="DECIMAL(19,6)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="treasury-stress-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_stress_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_stress_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_stress_line_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="bucket_seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bucket_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="line_code" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="product_id" type="BIGINT"/>
+            <column name="product_name" type="VARCHAR(150)"/>
+            <column name="baseline_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stressed_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="shocks" type="VARCHAR(1000)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_stress_line" indexName="idx_treasury_run_stress_line_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-stress-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_stress_bucket"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_stress_bucket">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_stress_bucket_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="bucket_seq" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="bucket_code" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="from_day" type="INT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="to_day" type="INT"/>
+            <column name="baseline_net" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="baseline_cumulative" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stressed_net" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stressed_cumulative" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="liquid_capacity" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="funding_capacity" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="baseline_capacity" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="stressed_position" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_run_stress_bucket" indexName="idx_treasury_run_stress_bucket_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-stress-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_stress_capacity"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_stress_capacity">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_stress_capacity_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="kind" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reference" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="label" type="VARCHAR(150)"/>
+            <column name="source_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="excluded_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="haircut" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="shock_haircut" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eligible_amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="days_to_access" type="INT"/>
+            <column name="frozen" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(500)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_stress_capacity" indexName="idx_treasury_run_stress_capacity_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <!-- Placeholder scenario templates, DRAFT: review the percentages with MICROPAY, then activate -->
+    <changeSet id="treasury-stress-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_scenario</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_scenario">
+            <column name="code" value="MICROPAY_RUN"/>
+            <column name="name" value="Micropay-specific deposit run"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="scenario_type" value="IDIOSYNCRATIC"/>
+            <column name="severity" value="Severe (placeholder)"/>
+            <column name="effective_date" valueDate="2026-01-01"/>
+            <column name="status" value="DRAFT"/>
+            <column name="description" value="PLACEHOLDER percentages, not MICROPAY's or BoU's: a run on demand savings, term deposits not rolled over, collections at 70%."/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MICROPAY_RUN' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="shock_type" value="ADD_OUTFLOW_PCT_OF_BALANCE"/>
+            <column name="label" value="20% run on demand savings in the first week"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="line_code" value="DEMAND_SAVINGS"/>
+            <column name="bucket_code" value="D2_8"/>
+            <column name="side" value="OUTFLOW"/>
+            <column name="factor" valueNumeric="20"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MICROPAY_RUN' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="shock_type" value="REMOVE_ROLLOVER"/>
+            <column name="label" value="Term deposits not rolled over"/>
+            <column name="source" value="TERM_DEPOSITS"/>
+            <column name="side" value="BOTH"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MICROPAY_RUN' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="shock_type" value="MULTIPLY"/>
+            <column name="label" value="Loan collections at 70%"/>
+            <column name="source" value="LOANS"/>
+            <column name="side" value="INFLOW"/>
+            <column name="factor" valueNumeric="70"/>
+        </insert>
+        <insert tableName="m_treasury_scenario">
+            <column name="code" value="MARKET_WIDE"/>
+            <column name="name" value="Market-wide liquidity squeeze"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="scenario_type" value="MARKET_WIDE"/>
+            <column name="severity" value="Moderate (placeholder)"/>
+            <column name="effective_date" valueDate="2026-01-01"/>
+            <column name="status" value="DRAFT"/>
+            <column name="description" value="PLACEHOLDER percentages: interbank funding not rolled over, wider haircuts on government securities, agent float demand up, uncommitted lines unavailable."/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MARKET_WIDE' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="shock_type" value="REMOVE_ROLLOVER"/>
+            <column name="label" value="Interbank placements and borrowings taken not rolled over"/>
+            <column name="source" value="DEALS"/>
+            <column name="side" value="OUTFLOW"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MARKET_WIDE' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="shock_type" value="HAIRCUT_LIQUID_ASSET"/>
+            <column name="label" value="Government bonds sold at a further 15% haircut"/>
+            <column name="asset_class" value="GOVT_BOND"/>
+            <column name="factor" valueNumeric="15"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MARKET_WIDE' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="shock_type" value="HAIRCUT_LIQUID_ASSET"/>
+            <column name="label" value="Treasury bills sold at a further 5% haircut"/>
+            <column name="asset_class" value="TBILL"/>
+            <column name="factor" valueNumeric="5"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MARKET_WIDE' AND version = 1)"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="shock_type" value="MULTIPLY"/>
+            <column name="label" value="Agent float demand x1.5"/>
+            <column name="source" value="AGENT_FLOAT"/>
+            <column name="side" value="OUTFLOW"/>
+            <column name="factor" valueNumeric="150"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'MARKET_WIDE' AND version = 1)"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="shock_type" value="FREEZE_LINE"/>
+            <column name="label" value="Uncommitted lines unavailable"/>
+            <column name="funding_source_type" value="UNCOMMITTED_LINE"/>
+        </insert>
+        <insert tableName="m_treasury_scenario">
+            <column name="code" value="COMBINED"/>
+            <column name="name" value="Combined Micropay and market stress"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="scenario_type" value="COMBINED"/>
+            <column name="severity" value="Severe (placeholder)"/>
+            <column name="effective_date" valueDate="2026-01-01"/>
+            <column name="status" value="DRAFT"/>
+            <column name="description" value="PLACEHOLDER: the Micropay-specific and the market-wide shocks together."/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="1"/>
+            <column name="shock_type" value="ADD_OUTFLOW_PCT_OF_BALANCE"/>
+            <column name="label" value="20% run on demand savings in the first week"/>
+            <column name="source" value="SAVINGS"/>
+            <column name="line_code" value="DEMAND_SAVINGS"/>
+            <column name="bucket_code" value="D2_8"/>
+            <column name="side" value="OUTFLOW"/>
+            <column name="factor" valueNumeric="20"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="2"/>
+            <column name="shock_type" value="REMOVE_ROLLOVER"/>
+            <column name="label" value="Term deposits not rolled over"/>
+            <column name="source" value="TERM_DEPOSITS"/>
+            <column name="side" value="BOTH"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="3"/>
+            <column name="shock_type" value="MULTIPLY"/>
+            <column name="label" value="Loan collections at 70%"/>
+            <column name="source" value="LOANS"/>
+            <column name="side" value="INFLOW"/>
+            <column name="factor" valueNumeric="70"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="4"/>
+            <column name="shock_type" value="REMOVE_ROLLOVER"/>
+            <column name="label" value="Interbank placements and borrowings taken not rolled over"/>
+            <column name="source" value="DEALS"/>
+            <column name="side" value="OUTFLOW"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="5"/>
+            <column name="shock_type" value="HAIRCUT_LIQUID_ASSET"/>
+            <column name="label" value="Government bonds sold at a further 15% haircut"/>
+            <column name="asset_class" value="GOVT_BOND"/>
+            <column name="factor" valueNumeric="15"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="6"/>
+            <column name="shock_type" value="HAIRCUT_LIQUID_ASSET"/>
+            <column name="label" value="Treasury bills sold at a further 5% haircut"/>
+            <column name="asset_class" value="TBILL"/>
+            <column name="factor" valueNumeric="5"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="7"/>
+            <column name="shock_type" value="MULTIPLY"/>
+            <column name="label" value="Agent float demand x1.5"/>
+            <column name="source" value="AGENT_FLOAT"/>
+            <column name="side" value="OUTFLOW"/>
+            <column name="factor" valueNumeric="150"/>
+        </insert>
+        <insert tableName="m_treasury_scenario_shock">
+            <column name="scenario_id" valueComputed="(SELECT id FROM m_treasury_scenario WHERE code = 'COMBINED' AND version = 1)"/>
+            <column name="seq" valueNumeric="8"/>
+            <column name="shock_type" value="FREEZE_LINE"/>
+            <column name="label" value="Uncommitted lines unavailable"/>
+            <column name="funding_source_type" value="UNCOMMITTED_LINE"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_limit WHERE code = 'SURVIVAL_30_DAYS_MIN'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="SURVIVAL_30_DAYS_MIN"/>
+            <column name="name" value="Stressed survival of at least 30 days"/>
+            <column name="description" value="The shortest survival horizon of the institution stress runs: warning under 60 days, breach under 30. PLACEHOLDER, inactive: confirm the target with MICROPAY."/>
+            <column name="metric" value="SURVIVAL_DAYS"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MIN"/>
+            <column name="warning_level" valueNumeric="60"/>
+            <column name="hard_level" valueNumeric="30"/>
+            <column name="unit" value="DAYS"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'SURVIVAL_30_DAYS_MIN')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"SURVIVAL_30_DAYS_MIN","name":"Stressed survival of at least 30 days","metric":"SURVIVAL_DAYS","scopeType":"INSTITUTION","comparison":"MIN","warningLevel":"60","hardLevel":"30","unit":"DAYS","description":"The shortest survival horizon of the institution stress runs: warning under 60 days, breach under 30. PLACEHOLDER, inactive: confirm the target with MICROPAY.","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-report-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Stress Test Results'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Stress Test Results"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, r.id AS run_id, r.scenario_code AS scenario, r.scenario_version, r.survival_days, r.survival_beyond_horizon AS beyond_horizon, r.baseline_survival_days, b.bucket_seq, b.bucket_code AS bucket, b.baseline_net, b.baseline_cumulative, b.stressed_net, b.stressed_cumulative, b.liquid_capacity, b.funding_capacity, b.stressed_position FROM m_treasury_run r JOIN m_treasury_run_stress_bucket b ON b.run_id = r.id WHERE r.run_type = 'STRESS' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' ORDER BY r.currency_code, r.scenario_code, b.bucket_seq"/>
+            <column name="description" value="The institution stress runs of a date: each scenario's survival horizon and, per bucket, the baseline and stressed gaps, the capacity and the position."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Stress Test Results')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Stress Test Results"/>
+            <column name="entity_name" value="Treasury Stress Test Results"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-report-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Contingency Funding Plan'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Contingency Funding Plan"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT f.code, f.name, f.source_type, f.currency_code AS currency, c.name AS counterparty, f.committed_amount, f.drawn_amount, COALESCE(f.available_amount, GREATEST(f.committed_amount - f.drawn_amount, 0)) AS available_amount, f.days_to_access, f.expiry_date, COALESCE(u.username, f.owner_name) AS owner, f.include_in_capacity, f.status FROM m_treasury_funding_line f LEFT JOIN m_treasury_counterparty c ON c.id = f.counterparty_id LEFT JOIN m_appuser u ON u.id = f.owner_user_id WHERE f.status = 'ACTIVE' AND (f.expiry_date IS NULL OR f.expiry_date &gt;= '${asOn}') ORDER BY f.currency_code, f.days_to_access, f.source_type, f.code"/>
+            <column name="description" value="The funding lines of the contingency funding plan available on a date: source, amounts, days to access, expiry and owner."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Contingency Funding Plan')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Contingency Funding Plan"/>
+            <column name="entity_name" value="Treasury Contingency Funding Plan"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-job-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Builds the maturity ladder of every organisation currency for the business date with the default rule set and the active assumption set, computes the rule set's ratios and runs every active stress scenario over it, replacing that date's earlier runs unless a return of the date has been submitted; each run evaluates its limits and the stress runs the contingency funding plan's survival triggers. Runs after Treasury Position Snapshot."/>
+            <where>short_name='TRS_LIQ'</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYSCENARIO'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYSCENARIO"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYSCENARIO'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYSCENARIO"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYSCENARIO_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYSCENARIO_CHECKER"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYSCENARIO'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYSCENARIO"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYSCENARIO_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYSCENARIO_CHECKER"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYSCENARIO'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYSCENARIO"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYSCENARIO_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DELETE_TREASURYSCENARIO_CHECKER"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="DELETE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYSCENARIO'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYSCENARIO"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="ACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYSCENARIO_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYSCENARIO_CHECKER"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="ACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYFUNDINGLINE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYFUNDINGLINE"/>
+            <column name="entity_name" value="TREASURYFUNDINGLINE"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYFUNDINGLINE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYFUNDINGLINE"/>
+            <column name="entity_name" value="TREASURYFUNDINGLINE"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYFUNDINGLINE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYFUNDINGLINE_CHECKER"/>
+            <column name="entity_name" value="TREASURYFUNDINGLINE"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYFUNDINGLINE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYFUNDINGLINE"/>
+            <column name="entity_name" value="TREASURYFUNDINGLINE"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-014" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYFUNDINGLINE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYFUNDINGLINE_CHECKER"/>
+            <column name="entity_name" value="TREASURYFUNDINGLINE"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-015" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYCFPTRIGGER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYCFPTRIGGER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-016" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCFPTRIGGER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYCFPTRIGGER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-017" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CREATE_TREASURYCFPTRIGGER_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-018" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYCFPTRIGGER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYCFPTRIGGER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-019" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="UPDATE_TREASURYCFPTRIGGER_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-020" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYCFPTRIGGER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYCFPTRIGGER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="ACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-021" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="ACTIVATE_TREASURYCFPTRIGGER_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="ACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-022" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYCFPTRIGGER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DEACTIVATE_TREASURYCFPTRIGGER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="DEACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-023" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DEACTIVATE_TREASURYCFPTRIGGER_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="DEACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-024" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'FIRE_TREASURYCFPTRIGGER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="FIRE_TREASURYCFPTRIGGER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="FIRE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-025" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'FIRE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="FIRE_TREASURYCFPTRIGGER_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPTRIGGER"/>
+            <column name="action_name" value="FIRE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-026" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYCFPACTIVATION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="READ_TREASURYCFPACTIVATION"/>
+            <column name="entity_name" value="TREASURYCFPACTIVATION"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-027" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'COMPLETEACTION_TREASURYCFPACTIVATION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="COMPLETEACTION_TREASURYCFPACTIVATION"/>
+            <column name="entity_name" value="TREASURYCFPACTIVATION"/>
+            <column name="action_name" value="COMPLETEACTION"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-028" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'COMPLETEACTION_TREASURYCFPACTIVATION_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="COMPLETEACTION_TREASURYCFPACTIVATION_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPACTIVATION"/>
+            <column name="action_name" value="COMPLETEACTION_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-029" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CLOSE_TREASURYCFPACTIVATION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CLOSE_TREASURYCFPACTIVATION"/>
+            <column name="entity_name" value="TREASURYCFPACTIVATION"/>
+            <column name="action_name" value="CLOSE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-030" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CLOSE_TREASURYCFPACTIVATION_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="CLOSE_TREASURYCFPACTIVATION_CHECKER"/>
+            <column name="entity_name" value="TREASURYCFPACTIVATION"/>
+            <column name="action_name" value="CLOSE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

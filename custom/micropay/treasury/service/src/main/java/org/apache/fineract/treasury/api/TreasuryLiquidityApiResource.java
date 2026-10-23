@@ -64,6 +64,7 @@ import org.apache.fineract.treasury.data.TreasuryLadderItemData;
 import org.apache.fineract.treasury.data.TreasuryReturnData;
 import org.apache.fineract.treasury.data.TreasuryRuleSetData;
 import org.apache.fineract.treasury.data.TreasuryRunData;
+import org.apache.fineract.treasury.data.TreasuryStressData;
 import org.apache.fineract.treasury.service.TreasuryAssumptionSetService;
 import org.apache.fineract.treasury.service.TreasuryLadderItemService;
 import org.apache.fineract.treasury.service.TreasuryLiquidityRunService;
@@ -308,12 +309,13 @@ public class TreasuryLiquidityApiResource {
     @Path("runs")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Run the ladder, the ratios or the return", description = "type=ladder|ratios|return, asOfDate (default the business date), currency, optional officeId, ruleSetId (default rule set), assumptionSetId (active set), sourceRunId (ratios: the ladder run; return: the ratios run; by default the scope's, built when missing); as query parameters or in the body. A rerun for the same type, date, currency and office replaces the earlier run and what was computed from it, unless a return of the scope has been submitted")
+    @Operation(summary = "Run the ladder, the ratios, the return or a stress test", description = "type=ladder|ratios|return|stress, scenarioId (stress, an active scenario), ladderRunId (stress; as sourceRunId), asOfDate (default the business date), currency, optional officeId, ruleSetId (default rule set), assumptionSetId (active set), sourceRunId (ratios: the ladder run; return: the ratios run; by default the scope's, built when missing); as query parameters or in the body. A rerun for the same type, date, currency and office replaces the earlier run and what was computed from it, unless a return of the scope has been submitted")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult createRun(@QueryParam("type") final String type, @QueryParam("asOfDate") final String asOfDate,
             @QueryParam("currency") final String currency, @QueryParam("officeId") final Long officeId,
             @QueryParam("ruleSetId") final Long ruleSetId, @QueryParam("assumptionSetId") final Long assumptionSetId,
-            @QueryParam("sourceRunId") final Long sourceRunId, @Parameter(hidden = true) final String body) {
+            @QueryParam("sourceRunId") final Long sourceRunId, @QueryParam("scenarioId") final Long scenarioId,
+            @QueryParam("ladderRunId") final Long ladderRunId, @Parameter(hidden = true) final String body) {
         final JsonObject json = StringUtils.isBlank(body) ? new JsonObject() : object(body);
         put(json, "type", type);
         put(json, "asOfDate", asOfDate);
@@ -327,8 +329,11 @@ public class TreasuryLiquidityApiResource {
         if (assumptionSetId != null) {
             json.addProperty("assumptionSetId", assumptionSetId);
         }
-        if (sourceRunId != null) {
-            json.addProperty("sourceRunId", sourceRunId);
+        if (sourceRunId != null || ladderRunId != null) {
+            json.addProperty("sourceRunId", sourceRunId != null ? sourceRunId : ladderRunId);
+        }
+        if (scenarioId != null) {
+            json.addProperty("scenarioId", scenarioId);
         }
         return command(TREASURY_RUN_RESOURCE_NAME, "CREATE", null, "/treasury/runs", json.toString());
     }
@@ -391,6 +396,16 @@ public class TreasuryLiquidityApiResource {
                     .header("Content-Disposition", "attachment; filename=\"treasury-return-" + id + ".csv\"").build();
         }
         return Response.ok(this.runService.retrieveReturn(id), MediaType.APPLICATION_JSON).build();
+    }
+
+    @GET
+    @Path("runs/{id}/stress")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "A stored stress run", description = "The scenario, the survival horizon, each bucket's baseline and stressed gaps with the capacity, the capacity items and every ladder line before and after the shocks")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TreasuryStressData.class)))
+    public TreasuryStressData retrieveStress(@PathParam("id") final Long id) {
+        this.context.authenticatedUser().validateHasReadPermission(TREASURY_RUN_RESOURCE_NAME);
+        return this.runService.retrieveStress(id);
     }
 
     private CommandProcessingResult command(final String entity, final String action, final Long entityId, final String href,

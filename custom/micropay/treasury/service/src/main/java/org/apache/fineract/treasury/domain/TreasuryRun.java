@@ -23,6 +23,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import lombok.Getter;
@@ -90,9 +91,32 @@ public class TreasuryRun extends AbstractPersistableCustom<Long> {
     @Column(name = "submitted_on_date")
     private LocalDate submittedOnDate;
 
-    /** RATIOS: the ratios, components and asset classes as they were configured, as JSON. */
+    /**
+     * RATIOS: the ratios, components and asset classes as they were configured; STRESS: the scenario and capacity; as
+     * JSON.
+     */
     @Column(name = "config_snapshot")
     private String configSnapshot;
+
+    /** STRESS: the scenario version applied. */
+    @Column(name = "scenario_id")
+    private Long scenarioId;
+
+    @Column(name = "scenario_code", length = 50)
+    private String scenarioCode;
+
+    @Column(name = "scenario_version")
+    private Integer scenarioVersion;
+
+    /** STRESS: days until the stressed position turns negative; null beyond the horizon. */
+    @Column(name = "survival_days", precision = 19, scale = 6)
+    private BigDecimal survivalDays;
+
+    @Column(name = "survival_beyond_horizon", nullable = false)
+    private boolean survivalBeyondHorizon;
+
+    @Column(name = "baseline_survival_days", precision = 19, scale = 6)
+    private BigDecimal baselineSurvivalDays;
 
     @Column(name = "created_by")
     private Long createdBy;

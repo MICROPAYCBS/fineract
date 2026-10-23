@@ -55,6 +55,7 @@ import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RAT
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RULE_SET_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.RUN_PARAMS;
+import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SCENARIO_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SOURCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.SOURCE_RUN_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryLiquidityApiConstants.TO_DAY_PARAM;
@@ -143,7 +144,7 @@ public class TreasuryLiquidityDataValidator {
     }
 
     public record RunRequest(RunType type, LocalDate asOfDate, String currencyCode, Long officeId, Long ruleSetId, Long assumptionSetId,
-            Long sourceRunId) {
+            Long sourceRunId, Long scenarioId) {
     }
 
     // ---------- rule sets ----------
@@ -451,6 +452,12 @@ public class TreasuryLiquidityDataValidator {
         final Long assumptionSet = this.fromApiJsonHelper.extractLongNamed(ASSUMPTION_SET_ID_PARAM, object);
         final Long sourceRun = this.fromApiJsonHelper.extractLongNamed(SOURCE_RUN_ID_PARAM, object);
         v.reset().parameter(SOURCE_RUN_ID_PARAM).value(sourceRun).ignoreIfNull().longGreaterThanZero();
+        final Long scenario = this.fromApiJsonHelper.extractLongNamed(SCENARIO_ID_PARAM, object);
+        if (RunType.STRESS.name().equals(type)) {
+            v.reset().parameter(SCENARIO_ID_PARAM).value(scenario).notNull().longGreaterThanZero();
+        } else if (scenario != null) {
+            v.reset().parameter(SCENARIO_ID_PARAM).value(scenario).failWithCode("only.for.stress");
+        }
         v.reset().parameter(TYPE_PARAM).value(type).ignoreIfNull().isOneOfTheseStringValues(names(RunType.values()));
         v.reset().parameter(CURRENCY_CODE_PARAM).value(currency).notBlank().matchesRegularExpression("^[A-Z]{3}$",
                 "The parameter `currencyCode` is a three-letter code");
@@ -459,7 +466,7 @@ public class TreasuryLiquidityDataValidator {
         v.reset().parameter(ASSUMPTION_SET_ID_PARAM).value(assumptionSet).ignoreIfNull().longGreaterThanZero();
         throwIfAny(errors);
         return new RunRequest(type == null ? RunType.LADDER : RunType.valueOf(type), asOf, currency, office, ruleSet, assumptionSet,
-                sourceRun);
+                sourceRun, scenario);
     }
 
     public void validateActivate(final String json) {

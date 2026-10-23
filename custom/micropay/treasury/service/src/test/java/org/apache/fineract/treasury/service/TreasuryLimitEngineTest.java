@@ -92,6 +92,7 @@ class TreasuryLimitEngineTest {
     private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
     private final TreasuryBreachNotifier notifier = mock(TreasuryBreachNotifier.class);
     private final LimitEvaluator ratioEvaluator = mock(LimitEvaluator.class);
+    private final TreasuryCfpService cfp = mock(TreasuryCfpService.class);
     private final LimitEvaluator exposureEvaluator = mock(LimitEvaluator.class);
     private final List<TreasuryBreach> stored = new ArrayList<>();
     private final List<TreasuryBreachComment> savedComments = new ArrayList<>();
@@ -109,7 +110,7 @@ class TreasuryLimitEngineTest {
         when(this.exposureEvaluator.metric()).thenReturn(LimitMetric.COUNTERPARTY_EXPOSURE);
         this.engine = new TreasuryLimitEngine(List.of(this.ratioEvaluator, this.exposureEvaluator), this.limits, this.breaches,
                 this.comments, this.evaluations, this.lines, mock(TreasuryRunRepository.class), this.lookup, this.notifier,
-                mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class));
+                mock(AppUserRepositoryWrapper.class), mock(PlatformTransactionManager.class), this.cfp);
         this.advances = limit(4L, LimitMetric.RATIO, LimitComparison.MAX, "75", "80", LimitUnit.PERCENT);
         this.advances.setMetricKey("ADVANCES_TO_DEPOSITS");
         this.advances.setNotifyRoleId(9L);
@@ -187,6 +188,7 @@ class TreasuryLimitEngineTest {
         assertTrue(this.savedComments.getFirst().getComment().startsWith("Escalated from WARNING to HARD"));
         verify(this.notifier, times(2)).notify(any(), any(), any(), any());
         verify(this.notifier).notify(eq(this.advances), eq(breach), eq(BreachAction.ESCALATED), eq(7L));
+        verify(this.cfp, times(2)).breachRaised(any(), any(), any());
 
         observe("85");
         assertEquals(LimitLevel.HARD, breach.getLevel());

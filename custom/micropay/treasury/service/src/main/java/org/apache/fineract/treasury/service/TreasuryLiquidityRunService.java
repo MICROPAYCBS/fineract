@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Predicate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
@@ -36,12 +37,14 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuild
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.treasury.data.TreasuryReturnData;
 import org.apache.fineract.treasury.data.TreasuryRunData;
+import org.apache.fineract.treasury.data.TreasuryStressData;
 import org.apache.fineract.treasury.domain.TreasuryAssumptionSet;
 import org.apache.fineract.treasury.domain.TreasuryRuleSet;
 import org.apache.fineract.treasury.domain.TreasuryRun;
 import org.apache.fineract.treasury.domain.TreasuryRunLine;
 import org.apache.fineract.treasury.domain.TreasuryRunLineRepository;
 import org.apache.fineract.treasury.domain.TreasuryRunRepository;
+import org.apache.fineract.treasury.domain.TreasuryScenario;
 import org.apache.fineract.treasury.domain.TreasurySegregation;
 import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.liquidity.Assumptions;
@@ -73,14 +76,16 @@ import org.springframework.transaction.support.TransactionTemplate;
  * <li>RATIOS: the rule set's ratios from a ladder run (the one given, else the scope's, else a new one) and the GL;
  * each ratio with its components, exclusions, haircuts and status, and the configuration used as a snapshot.</li>
  * <li>RETURN: the regulatory return's lines from a ratios run (given, the scope's, or a new one).</li>
+ * <li>STRESS: an active scenario's shocks over a ladder run (given, the scope's, or a new one), with the capacity and
+ * the survival horizon ({@link TreasuryStressRunService}); one per scenario in a scope.</li>
  * </ul>
  *
  * <p>
  * A run for a type, date, currency and scope replaces the earlier one of that type and what was computed from it,
  * unless a return of the scope has been SUBMITTED (with {@code ?command=submit}): the scope's runs are then locked. The
- * "Treasury Liquidity Run" job runs the ladder and the ratios of every organisation currency for the business date.
- * Each ladder and ratios run is followed by an evaluation of the scope's active BUCKET_GAP or RATIO limits
- * ({@link TreasuryLimitEngine}).
+ * "Treasury Liquidity Run" job runs the ladder, the ratios and every active scenario of every organisation currency for
+ * the business date. Each ladder and ratios run is followed by an evaluation of the scope's active BUCKET_GAP or RATIO
+ * limits ({@link TreasuryLimitEngine}).
  * </p>
  */
 @Slf4j
@@ -106,6 +111,9 @@ public class TreasuryLiquidityRunService {
     private final PlatformTransactionManager transactionManager;
     private final TreasuryRatioRunService ratioRunService;
     private final TreasuryLimitEngine limitEngine;
+    private final TreasuryStressRunService stressRunService;
+    private final TreasuryScenarioService scenarioService;
+    private final TreasuryCfpService cfpService;
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
@@ -128,6 +136,7 @@ public class TreasuryLiquidityRunService {
                     assumptionSet(request.assumptionSetId()), userId);
             case RATIOS -> ratios(ladderFor(request, asOf, userId), userId);
             case RETURN -> returnRun(ratiosFor(request, asOf, userId), userId);
+            case STRESS -> stress(ladderFor(request, asOf, userId), activeScenario(request.scenarioId()), userId);
         };
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("type", run.getRunType().name());
@@ -140,6 +149,11 @@ public class TreasuryLiquidityRunService {
         }
         if (run.getNotes() != null) {
             changes.put("notes", run.getNotes());
+        }
+        if (run.getRunType() == RunType.STRESS) {
+            changes.put("scenario", run.getScenarioCode() + " v" + run.getScenarioVersion());
+            changes.put("survivalDays", run.getSurvivalDays());
+            changes.put("beyondHorizon", run.isSurvivalBeyondHorizon());
         }
         this.limitEngine.latestFor(run.getId()).ifPresent(e -> {
             changes.put("limitEvaluationId", e.getId());
@@ -181,6 +195,9 @@ public class TreasuryLiquidityRunService {
                             this.assumptionSetService.activeSet(), systemUserId);
                     if (this.ratioRunService.hasRatios(ladder.getRuleSetId())) {
                         ratios(ladder, systemUserId);
+                    }
+                    for (final TreasuryScenario scenario : this.scenarioService.active()) {
+                        stress(ladder, scenario, systemUserId);
                     }
                     return ladder;
                 });
@@ -249,6 +266,33 @@ public class TreasuryLiquidityRunService {
         return run;
     }
 
+    /**
+     * A stress test of the ladder run with the scenario version, replacing the scope's earlier run of the scenario;
+     * then the scope's SURVIVAL_DAYS limits and the contingency funding plan's survival triggers.
+     */
+    TreasuryRun stress(final TreasuryRun ladderRun, final TreasuryScenario scenario, final Long userId) {
+        replace(RunType.STRESS, ladderRun.getAsOfDate(), ladderRun.getCurrencyCode(), ladderRun.getOfficeId(),
+                r -> scenario.getCode().equals(r.getScenarioCode()));
+        final TreasuryRun run = newRun(RunType.STRESS, ladderRun.getAsOfDate(), ladderRun.getCurrencyCode(), ladderRun.getOfficeId(),
+                ladderRun.getRuleSetId(), ladderRun.getRuleSetVersion(), ladderRun.getAssumptionSetId(),
+                ladderRun.getAssumptionSetVersion(), ladderRun.getId(), List.of(), userId);
+        this.runRepository.saveAndFlush(run);
+        this.stressRunService.compute(run, ladderRun, scenario, this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
+        this.runRepository.saveAndFlush(run);
+        this.limitEngine.afterRun(run, ladderRun, userId);
+        this.cfpService.stressRun(run, userId);
+        return run;
+    }
+
+    private TreasuryScenario activeScenario(final Long scenarioId) {
+        final TreasuryScenario scenario = this.scenarioService.find(scenarioId);
+        if (scenario.getStatus() != ConfigStatus.ACTIVE) {
+            throw new TreasuryWorkflowException(ENTITY, "scenario.not.active",
+                    "Scenario " + scenario.getCode() + " version " + scenario.getVersion() + " is " + scenario.getStatus(), scenarioId);
+        }
+        return scenario;
+    }
+
     /** The ladder run a ratios run is computed from: the one given, else the scope's, else a new one. */
     private TreasuryRun ladderFor(final RunRequest request, final LocalDate asOf, final Long userId) {
         if (request.sourceRunId() != null) {
@@ -293,6 +337,12 @@ public class TreasuryLiquidityRunService {
      * type goes, with whatever was computed from it.
      */
     private void replace(final RunType type, final LocalDate asOf, final String currency, final Long officeId) {
+        replace(type, asOf, currency, officeId, r -> true);
+    }
+
+    /** A STRESS run replaces the scope's earlier run of the same scenario only. */
+    private void replace(final RunType type, final LocalDate asOf, final String currency, final Long officeId,
+            final Predicate<TreasuryRun> same) {
         final List<TreasuryRun> scope = inScope(asOf, currency, officeId);
         final Optional<TreasuryRun> submitted = scope.stream().filter(r -> SUBMITTED.equals(r.getStatus())).findFirst();
         if (submitted.isPresent()) {
@@ -300,7 +350,7 @@ public class TreasuryLiquidityRunService {
                     + " has been submitted; the runs it rests on cannot be replaced", submitted.get().getId());
         }
         for (final TreasuryRun earlier : scope) {
-            if (earlier.getRunType() == type) {
+            if (earlier.getRunType() == type && same.test(earlier)) {
                 delete(earlier);
             }
         }
@@ -314,6 +364,7 @@ public class TreasuryLiquidityRunService {
         this.lineRepository.deleteByRunId(run.getId());
         this.lineRepository.flush();
         this.ratioRunService.deleteRun(run.getId());
+        this.stressRunService.deleteRun(run.getId());
         this.runRepository.delete(run);
         this.runRepository.flush();
     }
@@ -397,6 +448,15 @@ public class TreasuryLiquidityRunService {
         final TreasuryRun run = returnRun(runId);
         return this.ratioRunService.returnData(run,
                 run.getSourceRunId() == null ? null : this.runRepository.findById(run.getSourceRunId()).orElse(null));
+    }
+
+    @Transactional(readOnly = true)
+    public TreasuryStressData retrieveStress(final Long runId) {
+        final TreasuryRun run = find(runId);
+        if (run.getRunType() != RunType.STRESS) {
+            throw new TreasuryWorkflowException(ENTITY, "not.a.stress.run", "Run " + runId + " is a " + run.getRunType() + " run", runId);
+        }
+        return this.stressRunService.data(run);
     }
 
     @Transactional(readOnly = true)

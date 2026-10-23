@@ -45,7 +45,13 @@ public enum LimitMetric {
             EnumSet.of(LimitUnit.PERCENT, LimitUnit.AMOUNT), true, false), //
     /** A treasury account's GL balance. */
     ACCOUNT_BALANCE(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY, LimitScopeType.OFFICE, LimitScopeType.ACCOUNT),
-            EnumSet.of(LimitUnit.AMOUNT), true, false); //
+            EnumSet.of(LimitUnit.AMOUNT), true, false), //
+    /**
+     * The survival horizon of the scope's STRESS runs, in days: of the scenario named by {@code metricKey}, or the
+     * shortest over every scenario. Beyond the horizon counts as the first day of the last bucket.
+     */
+    SURVIVAL_DAYS(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY, LimitScopeType.OFFICE), EnumSet.of(LimitUnit.DAYS), false,
+            false); //
 
     private final Set<LimitScopeType> scopes;
     private final Set<LimitUnit> units;
@@ -89,12 +95,17 @@ public enum LimitMetric {
         return this.keyed;
     }
 
+    /** Takes a {@code metricKey}: needs one when keyed; SURVIVAL_DAYS may name a scenario. */
+    public boolean acceptsKey() {
+        return this.keyed || this == SURVIVAL_DAYS;
+    }
+
     public boolean isConcentration() {
         return this == DEPOSITOR_CONCENTRATION || this == FUNDING_CONCENTRATION;
     }
 
     /** Read from a run of the scope rather than from live data. */
     public boolean readsRun() {
-        return this == RATIO || this == BUCKET_GAP;
+        return this == RATIO || this == BUCKET_GAP || this == SURVIVAL_DAYS;
     }
 }

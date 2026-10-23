@@ -25,5 +25,6 @@ public enum RunType {
 
     LADDER, //
     RATIOS, //
-    RETURN; //
+    RETURN, //
+    STRESS; //
 }

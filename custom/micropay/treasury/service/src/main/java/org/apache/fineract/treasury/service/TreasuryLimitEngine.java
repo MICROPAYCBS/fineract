@@ -110,13 +110,14 @@ public class TreasuryLimitEngine {
     private final TreasuryBreachNotifier notifier;
     private final AppUserRepositoryWrapper appUserRepository;
     private final PlatformTransactionManager transactionManager;
+    private final TreasuryCfpService cfpService;
 
     public TreasuryLimitEngine(final List<LimitEvaluator> evaluators, final TreasuryLimitRepository limitRepository,
             final TreasuryBreachRepository breachRepository, final TreasuryBreachCommentRepository commentRepository,
             final TreasuryLimitEvaluationRepository evaluationRepository, final TreasuryLimitEvaluationLineRepository lineRepository,
             final TreasuryRunRepository runRepository, final TreasuryReferenceDataLookup referenceDataLookup,
             final TreasuryBreachNotifier notifier, final AppUserRepositoryWrapper appUserRepository,
-            final PlatformTransactionManager transactionManager) {
+            final PlatformTransactionManager transactionManager, final TreasuryCfpService cfpService) {
         evaluators.forEach(e -> this.evaluators.put(e.metric(), e));
         this.limitRepository = limitRepository;
         this.breachRepository = breachRepository;
@@ -128,6 +129,7 @@ public class TreasuryLimitEngine {
         this.notifier = notifier;
         this.appUserRepository = appUserRepository;
         this.transactionManager = transactionManager;
+        this.cfpService = cfpService;
     }
 
     /** What an evaluation did; {@code evaluationId} is null when no limit applied and nothing was stored. */
@@ -167,16 +169,25 @@ public class TreasuryLimitEngine {
         return finish(evaluation, limits.size(), tally);
     }
 
-    /** After a LADDER run its BUCKET_GAP limits, after a RATIOS run its RATIO limits. */
+    /**
+     * After a LADDER run its BUCKET_GAP limits, after a RATIOS run its RATIO limits, after a STRESS run SURVIVAL_DAYS.
+     */
     @Transactional
     public Summary afterRun(final TreasuryRun run, final TreasuryRun ladderRun, final Long userId) {
-        if (run.getRunType() != RunType.LADDER && run.getRunType() != RunType.RATIOS) {
+        final LimitMetric metric = switch (run.getRunType()) {
+            case LADDER -> LimitMetric.BUCKET_GAP;
+            case RATIOS -> LimitMetric.RATIO;
+            case STRESS -> LimitMetric.SURVIVAL_DAYS;
+            default -> null;
+        };
+        if (metric == null) {
             return Summary.NONE;
         }
-        final boolean ratios = run.getRunType() == RunType.RATIOS;
+        final boolean ladder = run.getRunType() == RunType.LADDER;
         final EvaluationContext context = new EvaluationContext(run.getAsOfDate(), run.getCurrencyCode(), run.getOfficeId(),
-                ratios ? ladderRun : run, ratios ? run : null, this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
-        return evaluate(context, EnumSet.of(ratios ? LimitMetric.RATIO : LimitMetric.BUCKET_GAP), TRIGGER_RUN, run.getId(), userId, false);
+                ladder ? run : ladderRun, run.getRunType() == RunType.RATIOS ? run : null,
+                this.referenceDataLookup.decimalPlaces(run.getCurrencyCode()));
+        return evaluate(context, EnumSet.of(metric), TRIGGER_RUN, run.getId(), userId, false);
     }
 
     /** The latest evaluation that read the run. */
@@ -338,6 +349,7 @@ public class TreasuryLimitEngine {
         tally.count(action, breach);
         if (action.notifies()) {
             tally.notified += this.notifier.notify(limit, breach, action, userId);
+            this.cfpService.breachRaised(limit, breach, userId);
         }
     }
 
