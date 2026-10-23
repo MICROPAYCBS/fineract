@@ -34,7 +34,9 @@ public enum TreasuryEventType {
     DEAL_CASHFLOW("DC"), //
     DEAL_TERMINATION("DT"), //
     DEAL_VALUATION("DV"), //
-    DEAL_IMPAIRMENT("DE"); //
+    DEAL_IMPAIRMENT("DE"), //
+    FX_REVALUATION("FXR"), //
+    FX_REVALUATION_REVERSAL("FXRX"); //
 
     private final String code;
 

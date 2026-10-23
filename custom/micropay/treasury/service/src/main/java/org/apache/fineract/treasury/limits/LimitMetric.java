@@ -51,7 +51,14 @@ public enum LimitMetric {
      * shortest over every scenario. Beyond the horizon counts as the first day of the last bucket.
      */
     SURVIVAL_DAYS(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY, LimitScopeType.OFFICE), EnumSet.of(LimitUnit.DAYS), false,
-            false); //
+            false), //
+    /** A foreign currency's net open position, long or short, in base at MID, as a percentage of core capital. */
+    FX_SINGLE_NOP(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY), EnumSet.of(LimitUnit.PERCENT), false, false), //
+    /**
+     * The aggregate net open position (shorthand: the greater of the longs and the shorts) as a percentage of core
+     * capital.
+     */
+    FX_AGGREGATE_NOP(EnumSet.of(LimitScopeType.INSTITUTION), EnumSet.of(LimitUnit.PERCENT), false, false); //
 
     private final Set<LimitScopeType> scopes;
     private final Set<LimitUnit> units;

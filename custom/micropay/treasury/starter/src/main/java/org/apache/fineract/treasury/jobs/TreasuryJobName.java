@@ -29,7 +29,8 @@ public enum TreasuryJobName {
     TREASURY_VALUATION("Treasury Valuation"), //
     TREASURY_ECL("Treasury ECL"), //
     TREASURY_LIQUIDITY_RUN("Treasury Liquidity Run"), //
-    TREASURY_LIMITS("Treasury Limits"); //
+    TREASURY_LIMITS("Treasury Limits"), //
+    TREASURY_FX_REVALUATION("Treasury FX Revaluation"); //
 
     private final String name;
 

@@ -1,0 +1,553 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P4.1. Exchange rates, FX revaluation settings and runs, core capital, two net open position
+  limits (inactive placeholders), the "Treasury Currency Position and NOP" table report, the "Treasury FX Revaluation"
+  job and the FX permissions.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0014_fx.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-fx-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_fx_rate"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_fx_rate">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="base_currency" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="quote_currency" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate_type" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="DECIMAL(24,10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(500)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="superseded_by" type="BIGINT"/>
+        </createTable>
+        <createIndex tableName="m_treasury_fx_rate" indexName="idx_treasury_fx_rate_pair_date">
+            <column name="base_currency"/>
+            <column name="quote_currency"/>
+            <column name="rate_date"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-fx-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_fx_reval_config"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_fx_reval_config">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="gl_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_fx_reval_config_gl" references="acc_gl_account(id)"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="adjustment_gl_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_fx_reval_config_adjustment" references="acc_gl_account(id)"/>
+            </column>
+            <column name="gain_gl_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_fx_reval_config_gain" references="acc_gl_account(id)"/>
+            </column>
+            <column name="loss_gl_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_fx_reval_config_loss" references="acc_gl_account(id)"/>
+            </column>
+            <column name="active" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(500)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+        </createTable>
+        <addUniqueConstraint tableName="m_treasury_fx_reval_config" columnNames="gl_account_id, currency_code" constraintName="uq_treasury_fx_reval_config"/>
+    </changeSet>
+
+    <changeSet id="treasury-fx-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_fx_revaluation"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_fx_revaluation">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="config_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_fx_revaluation_config" references="m_treasury_fx_reval_config(id)"/>
+            </column>
+            <column name="gl_account_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="office_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_currency" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="revaluation_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="fc_balance" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate" type="DECIMAL(24,10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="rate_id" type="BIGINT"/>
+            <column name="rate_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="base_equivalent" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="movements_base" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="prior_adjustments" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="carried_base" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="adjustment" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="transaction_id" type="VARCHAR(100)"/>
+            <column name="reversal_transaction_id" type="VARCHAR(100)"/>
+            <column name="reversed_by" type="BIGINT"/>
+            <column name="reversed_on_utc" type="${treasury.datetime.type}"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_fx_revaluation" indexName="idx_treasury_fx_revaluation_account">
+            <column name="gl_account_id"/>
+            <column name="office_id"/>
+            <column name="currency_code"/>
+            <column name="status"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-fx-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_core_capital"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_core_capital">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="effective_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(500)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <!-- Placeholder net open position limits, inactive until MICROPAY confirms the BoU limits for its tier -->
+    <changeSet id="treasury-fx-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_limit WHERE code IN ('FX_SINGLE_NOP_MAX', 'FX_AGGREGATE_NOP_MAX')</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="FX_SINGLE_NOP_MAX"/>
+            <column name="name" value="Single currency net open position at most 10% of core capital"/>
+            <column name="description" value="Each foreign currency's net open position, long or short, in base at MID. PLACEHOLDER, inactive: confirm the BoU limit for the tier with MICROPAY."/>
+            <column name="metric" value="FX_SINGLE_NOP"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="hard_level" valueNumeric="10"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'FX_SINGLE_NOP_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value="{&quot;code&quot;:&quot;FX_SINGLE_NOP_MAX&quot;,&quot;name&quot;:&quot;Single currency net open position at most 10% of core capital&quot;,&quot;description&quot;:&quot;Each foreign currency's net open position, long or short, in base at MID. PLACEHOLDER, inactive: confirm the BoU limit for the tier with MICROPAY.&quot;,&quot;metric&quot;:&quot;FX_SINGLE_NOP&quot;,&quot;scopeType&quot;:&quot;INSTITUTION&quot;,&quot;comparison&quot;:&quot;MAX&quot;,&quot;hardLevel&quot;:&quot;10&quot;,&quot;unit&quot;:&quot;PERCENT&quot;,&quot;status&quot;:&quot;INACTIVE&quot;}"/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="FX_AGGREGATE_NOP_MAX"/>
+            <column name="name" value="Aggregate net open position at most 20% of core capital"/>
+            <column name="description" value="The greater of the sum of the long and of the short positions (shorthand). PLACEHOLDER, inactive: confirm the BoU limit for the tier with MICROPAY."/>
+            <column name="metric" value="FX_AGGREGATE_NOP"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="hard_level" valueNumeric="20"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'FX_AGGREGATE_NOP_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"FX_AGGREGATE_NOP_MAX","name":"Aggregate net open position at most 20% of core capital","description":"The greater of the sum of the long and of the short positions (shorthand). PLACEHOLDER, inactive: confirm the BoU limit for the tier with MICROPAY.","metric":"FX_AGGREGATE_NOP","scopeType":"INSTITUTION","comparison":"MAX","hardLevel":"20","unit":"PERCENT","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-report-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Currency Position and NOP'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Currency Position and NOP"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT p.currency_code AS currency, p.assets, p.liabilities, p.assets - p.liabilities AS net_position, r.rate AS mid_rate, r.rate_date, ROUND((p.assets - p.liabilities) * COALESCE(r.rate, CASE WHEN p.currency_code = c.currency_code THEN 1 END), 2) AS net_base, c.amount AS core_capital, CASE WHEN p.currency_code = c.currency_code THEN NULL ELSE ROUND(ABS((p.assets - p.liabilities) * r.rate) * 100 / NULLIF(c.amount, 0), 4) END AS nop_percent FROM (SELECT je.currency_code, SUM(CASE WHEN g.classification_enum = 1 THEN (CASE WHEN je.type_enum = 2 THEN je.amount ELSE -je.amount END) ELSE 0 END) AS assets, SUM(CASE WHEN g.classification_enum = 2 THEN (CASE WHEN je.type_enum = 1 THEN je.amount ELSE -je.amount END) ELSE 0 END) AS liabilities FROM acc_gl_journal_entry je JOIN acc_gl_account g ON g.id = je.account_id WHERE je.entry_date &lt;= '${asOn}' AND g.classification_enum IN (1, 2) GROUP BY je.currency_code) p LEFT JOIN m_treasury_fx_rate r ON r.id = (SELECT x.id FROM m_treasury_fx_rate x WHERE x.quote_currency = p.currency_code AND x.rate_type = 'MID' AND x.status = 'ACTIVE' AND x.rate_date &lt;= '${asOn}' ORDER BY x.rate_date DESC, x.id DESC LIMIT 1) LEFT JOIN m_treasury_core_capital c ON c.id = (SELECT y.id FROM m_treasury_core_capital y WHERE y.effective_date &lt;= '${asOn}' ORDER BY y.effective_date DESC, y.id DESC LIMIT 1) ORDER BY p.currency_code"/>
+            <column name="description" value="Per currency on a date: GL assets and liabilities, the net position, the latest MID rate on or before the date, the net position in base and as a percentage of the core capital in effect."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Currency Position and NOP')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Currency Position and NOP"/>
+            <column name="entity_name" value="Treasury Currency Position and NOP"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- FX revaluation after the accrual (02:30) and valuation (02:35), before the snapshot and liquidity run; inactive until set up -->
+    <changeSet id="treasury-fx-job-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_FXR'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Treasury FX Revaluation"/>
+            <column name="display_name" value="Treasury FX Revaluation"/>
+            <column name="cron_expression" value="0 38 2 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Treasury FX Revaluation _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="TRS_FXR"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-job-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Revalues the foreign currency GL balances configured for revaluation for the closed business day at the closing MID rate, posting only the change in the base currency, then evaluates the net open position limits. Runs after Treasury Valuation and before Treasury Liquidity Run."/>
+            <where>short_name='TRS_FXR' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYFXRATE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="READ_TREASURYFXRATE"/>
+            <column name="entity_name" value="TREASURYFXRATE"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYFXRATE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="CREATE_TREASURYFXRATE"/>
+            <column name="entity_name" value="TREASURYFXRATE"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYFXRATE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="CREATE_TREASURYFXRATE_CHECKER"/>
+            <column name="entity_name" value="TREASURYFXRATE"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CANCEL_TREASURYFXRATE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="CANCEL_TREASURYFXRATE"/>
+            <column name="entity_name" value="TREASURYFXRATE"/>
+            <column name="action_name" value="CANCEL"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CANCEL_TREASURYFXRATE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="CANCEL_TREASURYFXRATE_CHECKER"/>
+            <column name="entity_name" value="TREASURYFXRATE"/>
+            <column name="action_name" value="CANCEL_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYFXREVALCONFIG'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="READ_TREASURYFXREVALCONFIG"/>
+            <column name="entity_name" value="TREASURYFXREVALCONFIG"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYFXREVALCONFIG'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="UPDATE_TREASURYFXREVALCONFIG"/>
+            <column name="entity_name" value="TREASURYFXREVALCONFIG"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYFXREVALCONFIG_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="UPDATE_TREASURYFXREVALCONFIG_CHECKER"/>
+            <column name="entity_name" value="TREASURYFXREVALCONFIG"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYFXREVALUATION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="READ_TREASURYFXREVALUATION"/>
+            <column name="entity_name" value="TREASURYFXREVALUATION"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'RUN_TREASURYFXREVALUATION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="RUN_TREASURYFXREVALUATION"/>
+            <column name="entity_name" value="TREASURYFXREVALUATION"/>
+            <column name="action_name" value="RUN"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'RUN_TREASURYFXREVALUATION_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="RUN_TREASURYFXREVALUATION_CHECKER"/>
+            <column name="entity_name" value="TREASURYFXREVALUATION"/>
+            <column name="action_name" value="RUN_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'REVERSE_TREASURYFXREVALUATION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="REVERSE_TREASURYFXREVALUATION"/>
+            <column name="entity_name" value="TREASURYFXREVALUATION"/>
+            <column name="action_name" value="REVERSE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'REVERSE_TREASURYFXREVALUATION_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="REVERSE_TREASURYFXREVALUATION_CHECKER"/>
+            <column name="entity_name" value="TREASURYFXREVALUATION"/>
+            <column name="action_name" value="REVERSE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-014" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYCORECAPITAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="READ_TREASURYCORECAPITAL"/>
+            <column name="entity_name" value="TREASURYCORECAPITAL"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-015" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCORECAPITAL'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="CREATE_TREASURYCORECAPITAL"/>
+            <column name="entity_name" value="TREASURYCORECAPITAL"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-016" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCORECAPITAL_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="CREATE_TREASURYCORECAPITAL_CHECKER"/>
+            <column name="entity_name" value="TREASURYCORECAPITAL"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-fx-perm-017" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYFXPOSITION'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="READ_TREASURYFXPOSITION"/>
+            <column name="entity_name" value="TREASURYFXPOSITION"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

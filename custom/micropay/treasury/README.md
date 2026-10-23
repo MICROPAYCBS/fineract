@@ -1,9 +1,9 @@
 # Micropay treasury
 
-Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
+Treasury accounts and cash positions, funding transfers with an in-transit state, and agent floats, and statement reconciliation (phase 1 of the "Treasury and Funds Management Design for Micropay" doc: P1.1, TR-01 to TR-04; P1.2, TR-05, TR-06 and TR-09; P1.3, TR-07 and TR-08), then counterparties, deal types and deals with counterparty limits, accrual, maturity, early termination and rollover, and holdings: pledges, market prices, fair value revaluation and expected credit losses (phase 2: P2.1, TR-10 to TR-13 and TR-18; P2.2, TR-14; P2.3, TR-15 to TR-17), then the liquidity ladder, ratios and the regulatory return, limits with a breach log, and stress tests with the contingency funding plan (phase 3: P3.1, TR-19 to TR-21; P3.2, TR-22, TR-23, TR-28, TR-29; P3.3, TR-24, TR-25; P3.4, TR-26, TR-27), then FX rates, revaluation and currency positions (phase 4: P4.1, TR-30, TR-31). A treasury account is a place cash sits: a commercial bank account, the central bank account, a mobile money wallet, a vault or an agent float pool. Its balance is always read from the GL; treasury keeps no balance of its own and replaces no upstream service.
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.treasury`, so EclipseLink scans the entities).
-- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run", "Treasury Limits") and the Liquibase changelogs.
+- `starter`: auto-configuration, `micropay-treasury.properties`, the jobs ("Treasury Position Snapshot", "Treasury Accrual", "Treasury Valuation", "Treasury ECL", "Treasury Liquidity Run", "Treasury Limits", "Treasury FX Revaluation") and the Liquibase changelogs.
 
 `fineract.module.treasury.enabled` (`FINERACT_MODULE_TREASURY_ENABLED`, default `true`) switches the whole module off.
 
@@ -600,6 +600,77 @@ The buckets are overnight (days 0 to 1), 2 to 8 days and beyond (from day 9). Af
 
 With the line, a `SURVIVAL_BELOW` trigger at 30 days stays quiet. Without it, the trigger opens an `ALERT` activation with its actions, for example "Draw the committed line" owned by the treasurer and "Convene ALCO" owned by the ALCO role, and notifies their owners.
 
+## FX rates, revaluation and currency positions
+
+P4.1 (TR-30, TR-31) adds exchange rates, day-end revaluation of foreign currency balances, currency positions with the net open position (NOP) and its limits.
+
+The base (reporting) currency is `fineract.module.treasury.base-currency` (`FINERACT_TREASURY_BASE_CURRENCY`, default `UGX`). The oldest a closing rate may be for revaluation is `fineract.module.treasury.fx.max-rate-age-days` (`FINERACT_TREASURY_FX_MAX_RATE_AGE_DAYS`, default 3).
+
+### Rates
+
+`/treasury/fx-rates`: a rate is the number of base currency units for one unit of the quote currency, per pair, `rateDate`, `rateType` (`MID`, the default and the rate used here; `BUY`; `SELL`) and `source` (`BOU`, `MANUAL` the default, `IMPORT`).
+
+- `POST /treasury/fx-rates` enters one rate. `POST /treasury/fx-rates/batch`, or the same endpoint with `{"rates": [...]}`, enters a batch, whose rates are `IMPORT` unless they say otherwise.
+- Both go through `CREATE_TREASURYFXRATE`, so maker-checker on that permission covers manual and imported rates alike.
+- A rate of the same pair, date, type and source replaces the earlier one, which is kept as `SUPERSEDED`. `?command=cancel` cancels a rate. No rate may be dated after the business date.
+- `GET ?pair=USD&date=` returns the rate of each type in effect on a date: the latest active one on or before it, preferring BoU to manual to imported on the same date, then the latest entered. `GET ?pair=&from=&to=` returns every rate entered in a period.
+
+### Revaluation
+
+Fineract journal entries are in one currency with no base currency equivalent, and the treasury module does not patch upstream. So the base value of a foreign currency balance is kept on a **base currency adjustment account**, and revaluation posts base currency entries only. The foreign currency entries are left as they are.
+
+- `PUT /treasury/fx/revaluation-config` sets, per foreign currency GL account and currency (`glAccountId`, `currencyCode`), the `adjustmentGlAccountId` (any detail account), the `gainGlAccountId` (income) and the `lossGlAccountId` (expense).
+  - Treasury accounts in the currency post to their GL account, so configuring it covers them.
+  - A deal type's foreign currency GL accounts can be configured in the same way.
+- `POST /treasury/fx/revaluations?command=run&asOfDate=&currency=` (`RUN_TREASURYFXREVALUATION`) revalues every active setting, office by office:
+  - **target**: the GL balance in the currency (debit less credit) at the closing MID rate. The rate is refused when there is none, or when it is more than the maximum age before the date;
+  - **carried base**: each day's movement at that day's MID rate (the latest on or before it), plus the revaluations already posted;
+  - **adjustment** = target − carried, posted in the base currency on the date in the office of the balance, under the usual treasury posting path (`TR-FXR-<id>`, `m_treasury_posting`, GL closures respected): up is Dr adjustment / Cr gain, down is Dr loss / Cr adjustment. Liabilities (credit balances) work the same way;
+  - a rerun posts only what changed, and nothing (`ZERO`) when nothing did;
+  - a date before a later posted revaluation of the same account is refused.
+- `POST /treasury/fx/revaluations/{id}?command=reverse` reverses the latest posted revaluation of its account, dated the business date (`TR-FXRX-<id>`). The next run posts the difference from what is left.
+- The "Treasury FX Revaluation" job (`TRS_FXR`, created inactive, 02:38) revalues the closed business day (the business date less one) and then evaluates the NOP limits. Run it after `TRS_ACCR` and `TRS_VAL`, and before `TRS_SNAP` and `TRS_LIQ`.
+
+The design's "Dr foreign currency account / Cr FX revaluation gain" becomes "Dr adjustment / Cr gain" in the base currency. Configure the foreign currency account's own GL account as the adjustment account to keep both on the same GL account: the foreign currency entries are in the currency, and the revaluation entries in the base currency.
+
+Deals in a foreign currency are revalued when their GL accounts are configured, at their GL balance. Their carrying value from P2.3 is not used.
+
+### Currency positions and the NOP
+
+`GET /treasury/fx/positions?asOfDate=&officeId=` gives, per currency:
+
+- the GL assets (debit less credit of asset accounts) and liabilities (credit less debit of liability accounts) on the date, and the net position;
+- the MID rate in effect (flagged `rateStale` when it is older than the maximum age) and the net position in base, `LONG` or `SHORT`;
+- as memo items, not added to the net: transfers pending between treasury accounts, and approved or confirmed deals not yet settled. Neither changes the net position once it is in the GL.
+
+The NOP of a currency is its net base position, long or short, as a percentage of core capital. The **aggregate NOP** uses the shorthand method: the greater of the sum of the longs and the sum of the shorts.
+
+Core capital, in the base currency, is set from an effective date with `POST /treasury/settings/core-capital` (`CREATE_TREASURYCORECAPITAL`, maker-checker capable); `GET` lists it.
+
+Two limit metrics use it:
+
+- `FX_SINGLE_NOP`: evaluated in each foreign currency's evaluation. A `CURRENCY` scope picks one currency.
+- `FX_AGGREGATE_NOP`: evaluated in the base currency's evaluation.
+
+Both are `MAX` and `PERCENT`, institution only. Seeded inactive as placeholders: `FX_SINGLE_NOP_MAX` (10%) and `FX_AGGREGATE_NOP_MAX` (20%). `TRS_LIM` and `TRS_FXR` evaluate them.
+
+### Ladders in several currencies
+
+The ladder is per currency, so `POST /runs?type=ladder&currency=USD` builds a USD ladder. `GET /treasury/fx/consolidated-ladder?asOfDate=&officeId=` takes each currency's latest ladder run of the date, converts its bucket totals at the MID rate in effect, and sums them by bucket code in the base currency. A currency without a run or a rate is listed and left out.
+
+### Report
+
+"Treasury Currency Position and NOP" (table, category Accounting, parameter `asOn`): per currency, the assets, liabilities, net position, latest MID rate, net base and NOP as a percentage of the core capital in effect. It needs `READ_Treasury Currency Position and NOP`.
+
+### Worked example
+
+USD 1,000 came in on 1 October at 3,700 and USD 500 on 10 October at 3,720. On 16 October the closing MID is 3,750.
+
+- **First run:** the target is 1,500 x 3,750 = 5,625,000, and the carried base is 3,700,000 + 1,860,000 = 5,560,000. The run posts **65,000**: Dr adjustment / Cr unrealised gain.
+- **Rerun:** zero.
+- **Rate corrected to 3,740:** the target becomes 5,610,000, so the run posts **-15,000**: Dr loss / Cr adjustment.
+- **NOP:** with core capital of 1,000,000,000, the USD NOP is 5,610,000 / 1,000,000,000 = 0.561%.
+
 ## Tables
 
 | Table | Holds |
@@ -656,6 +727,10 @@ With the line, a `SURVIVAL_BELOW` trigger at 30 days stays quiet. Without it, th
 | `m_treasury_cfp_action` | The actions of a trigger, in order, with their owners and funding lines. |
 | `m_treasury_cfp_activation` | Triggers that fired, from a breach, a stress run or by hand, open until closed. |
 | `m_treasury_cfp_activation_action` | The actions of an activation and their completion. |
+| `m_treasury_fx_rate` | Exchange rates per pair, date, type and source. |
+| `m_treasury_fx_reval_config` | How each foreign currency GL account is revalued: adjustment, gain and loss accounts. |
+| `m_treasury_fx_revaluation` | Each revaluation: balance, rate, target, carried base, adjustment, posting and reversal. |
+| `m_treasury_core_capital` | Core capital by effective date, the base of the NOP limits. |
 
 ## Permissions
 
@@ -689,5 +764,14 @@ Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` var
 - `READ_TREASURYCFPTRIGGER`, `CREATE_TREASURYCFPTRIGGER`, `UPDATE_TREASURYCFPTRIGGER`, `ACTIVATE_TREASURYCFPTRIGGER`, `DEACTIVATE_TREASURYCFPTRIGGER`, `FIRE_TREASURYCFPTRIGGER`
 - `READ_TREASURYCFPACTIVATION`, `COMPLETEACTION_TREASURYCFPACTIVATION`, `CLOSE_TREASURYCFPACTIVATION`
 - reports: `READ_Treasury Maturity Ladder`, `READ_Treasury Liquidity Ratios`, `READ_Treasury Regulatory Liquidity Return`, `READ_Treasury Limit Breaches`, `READ_Treasury Stress Test Results`, `READ_Treasury Contingency Funding Plan`
+
+Grouping `treasury_fx`, each write with a `_CHECKER` variant:
+
+- `READ_TREASURYFXRATE`, `CREATE_TREASURYFXRATE` (one or a batch), `CANCEL_TREASURYFXRATE`
+- `READ_TREASURYFXREVALCONFIG`, `UPDATE_TREASURYFXREVALCONFIG`
+- `READ_TREASURYFXREVALUATION`, `RUN_TREASURYFXREVALUATION`, `REVERSE_TREASURYFXREVALUATION`
+- `READ_TREASURYCORECAPITAL`, `CREATE_TREASURYCORECAPITAL`
+- `READ_TREASURYFXPOSITION` (positions and the consolidated ladder)
+- report: `READ_Treasury Currency Position and NOP`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.
