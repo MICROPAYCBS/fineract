@@ -144,6 +144,8 @@ public class TreasuryLiquidityRunService {
             case RETURN -> returnRun(ratiosFor(request, asOf, userId), userId);
             case STRESS -> stress(ladderFor(request, asOf, userId), activeScenario(request.scenarioId()), userId);
             case REPRICING -> repricing(request, asOf, userId);
+            case TRUST_RECON -> throw new TreasuryWorkflowException(ENTITY, "trust.reconciliation",
+                    "A trust reconciliation is made with POST /treasury/trust/reconciliations");
         };
         final Map<String, Object> changes = new LinkedHashMap<>();
         changes.put("type", run.getRunType().name());
@@ -409,7 +411,8 @@ public class TreasuryLiquidityRunService {
     private void replace(final RunType type, final LocalDate asOf, final String currency, final Long officeId,
             final Predicate<TreasuryRun> same) {
         final List<TreasuryRun> scope = inScope(asOf, currency, officeId);
-        final Optional<TreasuryRun> submitted = scope.stream().filter(r -> SUBMITTED.equals(r.getStatus())).findFirst();
+        final Optional<TreasuryRun> submitted = scope.stream()
+                .filter(r -> SUBMITTED.equals(r.getStatus()) && r.getRunType() != RunType.TRUST_RECON).findFirst();
         if (submitted.isPresent()) {
             throw new TreasuryWorkflowException(ENTITY, "locked", "Return " + submitted.get().getId() + " of " + asOf + " in " + currency
                     + " has been submitted; the runs it rests on cannot be replaced", submitted.get().getId());

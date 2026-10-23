@@ -30,6 +30,10 @@ import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CORE_CAPIT
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CURRENCY_CODE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.DATE_FORMAT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.EFFECTIVE_DATE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.EMONEY_AGENT_PRODUCTS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.EMONEY_CUSTOMER_PRODUCTS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.EMONEY_OTHER_PRODUCTS_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.EMONEY_SOURCE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.FX_MAX_RATE_AGE_DAYS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.GAIN_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.GL_ACCOUNT_ID_PARAM;
@@ -51,6 +55,7 @@ import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_F
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_REVALUATION_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_REVAL_CONFIG_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_TENANT_SETTING_RESOURCE_NAME;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TRUST_INTEREST_GL_PARAM;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -63,6 +68,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -75,6 +81,8 @@ import org.apache.fineract.treasury.fx.FxRateSource;
 import org.apache.fineract.treasury.fx.FxRateType;
 import org.apache.fineract.treasury.fx.NopCapitalBasis;
 import org.apache.fineract.treasury.setup.ClientType;
+import org.apache.fineract.treasury.trust.EMoneyCategory;
+import org.apache.fineract.treasury.trust.EMoneySourceType;
 import org.springframework.stereotype.Component;
 
 /**
@@ -106,7 +114,8 @@ public class TreasuryFxDataValidator {
     /** The settings sent; a setting sent as null goes back to the deployment default, one not sent stays. */
     public record TenantSettingRequest(boolean baseCurrencySent, String baseCurrency, boolean fxMaxRateAgeDaysSent,
             Integer fxMaxRateAgeDays, boolean nopCapitalBasisSent, NopCapitalBasis nopCapitalBasis, boolean clientTypeSent,
-            ClientType clientType) {
+            ClientType clientType, boolean emoneySourceSent, EMoneySourceType emoneySource, Map<EMoneyCategory, List<Long>> emoneyProducts,
+            boolean trustInterestGlSent, Long trustInterestGlAccountId) {
     }
 
     /** One rate, or {@code rates}: a batch, each rate IMPORT unless it names its source. */
@@ -236,9 +245,52 @@ public class TreasuryFxDataValidator {
         }
         final NopCapitalBasis basis = enumValue(object, NOP_CAPITAL_BASIS_PARAM, NopCapitalBasis.class, v, "");
         final ClientType clientType = enumValue(object, CLIENT_TYPE_PARAM, ClientType.class, v, "");
+        final EMoneySourceType source = enumValue(object, EMONEY_SOURCE_PARAM, EMoneySourceType.class, v, "");
+        final Map<EMoneyCategory, List<Long>> products = new java.util.EnumMap<>(EMoneyCategory.class);
+        for (final Map.Entry<EMoneyCategory, String> e : Map.of(EMoneyCategory.CUSTOMER, EMONEY_CUSTOMER_PRODUCTS_PARAM,
+                EMoneyCategory.AGENT, EMONEY_AGENT_PRODUCTS_PARAM, EMoneyCategory.OTHER, EMONEY_OTHER_PRODUCTS_PARAM).entrySet()) {
+            if (object.has(e.getValue())) {
+                products.put(e.getKey(), ids(object, e.getValue(), v));
+            }
+        }
+        final Set<Long> seen = new java.util.HashSet<>();
+        products.values().forEach(list -> list.forEach(id -> {
+            if (!seen.add(id)) {
+                v.reset().parameter("emoneyProductIds").value(id).failWithCode("in.two.categories");
+            }
+        }));
+        final Long interestGl = this.fromApiJsonHelper.extractLongNamed(TRUST_INTEREST_GL_PARAM, object);
+        v.reset().parameter(TRUST_INTEREST_GL_PARAM).value(interestGl).ignoreIfNull().longGreaterThanZero();
         throwIfAny(errors);
         return new TenantSettingRequest(object.has(BASE_CURRENCY_PARAM), base, object.has(FX_MAX_RATE_AGE_DAYS_PARAM), age,
-                object.has(NOP_CAPITAL_BASIS_PARAM), basis, object.has(CLIENT_TYPE_PARAM), clientType);
+                object.has(NOP_CAPITAL_BASIS_PARAM), basis, object.has(CLIENT_TYPE_PARAM), clientType, object.has(EMONEY_SOURCE_PARAM),
+                source, products, object.has(TRUST_INTEREST_GL_PARAM), interestGl);
+    }
+
+    /** A list of ids: a JSON array of numbers; null for none. */
+    private static List<Long> ids(final JsonObject object, final String name, final DataValidatorBuilder v) {
+        final List<Long> ids = new ArrayList<>();
+        final JsonElement element = object.get(name);
+        if (element == null || element.isJsonNull()) {
+            return ids;
+        }
+        if (!element.isJsonArray()) {
+            v.reset().parameter(name).failWithCode("must.be.an.array");
+            return ids;
+        }
+        for (final JsonElement e : element.getAsJsonArray()) {
+            try {
+                final long id = e.getAsLong();
+                if (id <= 0) {
+                    v.reset().parameter(name).value(id).failWithCode("not.positive");
+                } else if (!ids.contains(id)) {
+                    ids.add(id);
+                }
+            } catch (RuntimeException ex) {
+                v.reset().parameter(name).value(e.toString()).failWithCode("not.a.number");
+            }
+        }
+        return ids;
     }
 
     public String validateNote(final String json) {

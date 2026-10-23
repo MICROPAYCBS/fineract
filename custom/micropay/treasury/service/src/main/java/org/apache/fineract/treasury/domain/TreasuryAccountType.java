@@ -27,5 +27,7 @@ public enum TreasuryAccountType {
     CENTRAL_BANK, //
     MOBILE_WALLET, //
     VAULT, //
-    AGENT_FLOAT_POOL; //
+    AGENT_FLOAT_POOL, //
+    /** Money held in trust for e-money holders (NPS Act 2020 s.47, s.60); not the institution's own liquidity. */
+    TRUST; //
 }

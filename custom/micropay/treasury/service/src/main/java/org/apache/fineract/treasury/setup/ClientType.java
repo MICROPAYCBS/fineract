@@ -26,8 +26,8 @@ import java.util.List;
  */
 public enum ClientType {
 
-    /** A payment service provider issuing e-money (NPS Act 2020); its template, BOU_NPS_2021, comes with P5.3. */
-    PSP("BOU_NPS_2021", List.of()),
+    /** A payment service provider issuing e-money: NPS Act 2020 and Regulations 2021 (the e-money trust). */
+    PSP("BOU_NPS_2021", List.of("TRUST_COVERAGE_MIN", "TRUST_BANK_CONCENTRATION_MAX", "TRUST_SHORTFALL_MAX")),
     /** A bank or credit institution: FI (Liquidity) Regulations 2023. */
     BANK("BOU_FI_2023", List.of("BANK_LAR_MIN", "BANK_LCR_MIN", "BANK_NSFR_MIN", "FX_AGGREGATE_NOP_MAX")),
     /** A microfinance deposit-taking institution: MDI Regulations 2004. */

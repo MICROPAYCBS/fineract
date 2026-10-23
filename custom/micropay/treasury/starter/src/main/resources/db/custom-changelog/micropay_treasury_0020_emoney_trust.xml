@@ -1,0 +1,578 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P5.3. E-money trust safeguarding for payment service providers (NPS Act 2020, NPS Regulations
+  2021): trust account details, deals held in trust, imported e-money balances, the TRUST_RECON run with its lines,
+  trust interest, the e-money source settings, the treasury_trust permissions, the Treasury Trust Reconciliation job
+  (inactive), the trust limits (inactive) and two reports.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0020_emoney_trust.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-trust-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_trust_account"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_trust_account">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="treasury_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_trust_account_account" references="m_treasury_account(id)"/>
+            </column>
+            <column name="bank_counterparty_id" type="BIGINT">
+                <constraints nullable="true" foreignKeyName="fk_treasury_trust_account_bank" references="m_treasury_counterparty(id)"/>
+            </column>
+            <column name="trustee_name" type="VARCHAR(150)"/>
+            <column name="trust_deed_reference" type="VARCHAR(100)"/>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+        </createTable>
+        <createIndex unique="true" tableName="m_treasury_trust_account" indexName="uq_treasury_trust_account">
+            <column name="treasury_account_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-trust-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_trust_holding"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_trust_holding">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="deal_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_trust_holding_deal" references="m_treasury_deal(id)"/>
+            </column>
+            <column name="trust_account_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_trust_holding_account" references="m_treasury_account(id)"/>
+            </column>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex unique="true" tableName="m_treasury_trust_holding" indexName="uq_treasury_trust_holding_deal">
+            <column name="deal_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-trust-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_emoney_balance"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_emoney_balance">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="balance_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="note" type="VARCHAR(500)"/>
+            <column name="created_by" type="BIGINT"/>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex unique="true" tableName="m_treasury_emoney_balance" indexName="uq_treasury_emoney_balance">
+            <column name="balance_date"/>
+            <column name="currency_code"/>
+            <column name="category"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-trust-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_trust"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_trust">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_trust_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="emoney_source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="emoney_customers" type="DECIMAL(19,6)"/>
+            <column name="emoney_agents" type="DECIMAL(19,6)"/>
+            <column name="emoney_other" type="DECIMAL(19,6)"/>
+            <column name="emoney_total" type="DECIMAL(19,6)"/>
+            <column name="trust_total" type="DECIMAL(19,6)"/>
+            <column name="eligible_total" type="DECIMAL(19,6)"/>
+            <column name="encumbered_total" type="DECIMAL(19,6)"/>
+            <column name="ineligible_total" type="DECIMAL(19,6)"/>
+            <column name="difference_amount" type="DECIMAL(19,6)"/>
+            <column name="shortfall" type="DECIMAL(19,6)"/>
+            <column name="coverage_percent" type="DECIMAL(19,6)"/>
+            <column name="max_concentration_percent" type="DECIMAL(19,6)"/>
+            <column name="concentration_threshold" type="DECIMAL(19,6)"/>
+            <column name="concentration_applies" type="BOOLEAN">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex unique="true" tableName="m_treasury_run_trust" indexName="uq_treasury_run_trust_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-trust-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_run_trust_line"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_run_trust_line">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="run_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_treasury_run_trust_line_run" references="m_treasury_run(id)"/>
+            </column>
+            <column name="line_type" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(20)"/>
+            <column name="asset_type" type="VARCHAR(20)"/>
+            <column name="institution_id" type="BIGINT"/>
+            <column name="institution_name" type="VARCHAR(150)"/>
+            <column name="trust_account_id" type="BIGINT"/>
+            <column name="deal_id" type="BIGINT"/>
+            <column name="label" type="VARCHAR(200)"/>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="eligible_amount" type="DECIMAL(19,6)"/>
+            <column name="encumbered_amount" type="DECIMAL(19,6)"/>
+        </createTable>
+        <createIndex tableName="m_treasury_run_trust_line" indexName="idx_treasury_run_trust_line_run">
+            <column name="run_id"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-trust-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_trust_interest"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_trust_interest">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="interest_date" type="DATE">
+                <constraints nullable="false"/>
+            </column>
+            <column name="currency_code" type="VARCHAR(3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="deal_id" type="BIGINT"/>
+            <column name="gl_account_id" type="BIGINT"/>
+            <column name="amount" type="DECIMAL(19,6)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on_utc" type="${treasury.datetime.type}">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <createIndex tableName="m_treasury_trust_interest" indexName="idx_treasury_trust_interest_date">
+            <column name="interest_date"/>
+            <column name="currency_code"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="treasury-trust-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists tableName="m_treasury_tenant_setting" columnName="emoney_source"/>
+            </not>
+        </preConditions>
+        <addColumn tableName="m_treasury_tenant_setting">
+            <column name="emoney_source" type="VARCHAR(20)"/>
+            <column name="emoney_customer_products" type="VARCHAR(200)"/>
+            <column name="emoney_agent_products" type="VARCHAR(200)"/>
+            <column name="emoney_other_products" type="VARCHAR(200)"/>
+            <column name="trust_interest_gl_account_id" type="BIGINT"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYTRUST'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="READ_TREASURYTRUST"/>
+            <column name="entity_name" value="TREASURYTRUST"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYTRUSTACCOUNT'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="UPDATE_TREASURYTRUSTACCOUNT"/>
+            <column name="entity_name" value="TREASURYTRUSTACCOUNT"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYTRUSTACCOUNT_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="UPDATE_TREASURYTRUSTACCOUNT_CHECKER"/>
+            <column name="entity_name" value="TREASURYTRUSTACCOUNT"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-004" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYTRUSTHOLDING'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="CREATE_TREASURYTRUSTHOLDING"/>
+            <column name="entity_name" value="TREASURYTRUSTHOLDING"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-005" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYTRUSTHOLDING_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="CREATE_TREASURYTRUSTHOLDING_CHECKER"/>
+            <column name="entity_name" value="TREASURYTRUSTHOLDING"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-006" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYTRUSTHOLDING'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="DELETE_TREASURYTRUSTHOLDING"/>
+            <column name="entity_name" value="TREASURYTRUSTHOLDING"/>
+            <column name="action_name" value="DELETE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-007" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DELETE_TREASURYTRUSTHOLDING_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="DELETE_TREASURYTRUSTHOLDING_CHECKER"/>
+            <column name="entity_name" value="TREASURYTRUSTHOLDING"/>
+            <column name="action_name" value="DELETE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-008" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYEMONEYBALANCE'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="CREATE_TREASURYEMONEYBALANCE"/>
+            <column name="entity_name" value="TREASURYEMONEYBALANCE"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-009" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYEMONEYBALANCE_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="CREATE_TREASURYEMONEYBALANCE_CHECKER"/>
+            <column name="entity_name" value="TREASURYEMONEYBALANCE"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-010" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYTRUSTRECON'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="CREATE_TREASURYTRUSTRECON"/>
+            <column name="entity_name" value="TREASURYTRUSTRECON"/>
+            <column name="action_name" value="CREATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYTRUSTRECON_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="CREATE_TREASURYTRUSTRECON_CHECKER"/>
+            <column name="entity_name" value="TREASURYTRUSTRECON"/>
+            <column name="action_name" value="CREATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SUBMIT_TREASURYTRUSTRECON'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="SUBMIT_TREASURYTRUSTRECON"/>
+            <column name="entity_name" value="TREASURYTRUSTRECON"/>
+            <column name="action_name" value="SUBMIT"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-perm-013" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'SUBMIT_TREASURYTRUSTRECON_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_trust"/>
+            <column name="code" value="SUBMIT_TREASURYTRUSTRECON_CHECKER"/>
+            <column name="entity_name" value="TREASURYTRUSTRECON"/>
+            <column name="action_name" value="SUBMIT_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- The daily trust reconciliation after the position snapshot (02:45), before the liquidity run; inactive until set up -->
+    <changeSet id="treasury-trust-job-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM job WHERE short_name = 'TRS_TRST'</sqlCheck>
+        </preConditions>
+        <insert tableName="job">
+            <column name="name" value="Treasury Trust Reconciliation"/>
+            <column name="display_name" value="Treasury Trust Reconciliation"/>
+            <column name="cron_expression" value="0 47 2 * * ?"/>
+            <column name="create_time" valueDate="${current_datetime}"/>
+            <column name="task_priority" valueNumeric="5"/>
+            <column name="group_name"/>
+            <column name="previous_run_start_time"/>
+            <column name="job_key" value="Treasury Trust Reconciliation _ DEFAULT"/>
+            <column name="initializing_errorlog"/>
+            <column name="is_active" valueBoolean="false"/>
+            <column name="currently_running" valueBoolean="false"/>
+            <column name="updates_allowed" valueBoolean="true"/>
+            <column name="scheduler_group" valueNumeric="0"/>
+            <column name="is_misfired" valueBoolean="false"/>
+            <column name="node_id" valueNumeric="1"/>
+            <column name="is_mismatched_job" valueBoolean="true"/>
+            <column name="short_name" value="TRS_TRST"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-job-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="job" columnName="description"/>
+        </preConditions>
+        <update tableName="job">
+            <column name="description" value="Reconciles the e-money outstanding against the assets held in trust for the closed business day in every currency with a TRUST account, records the interest earned on the trust, and evaluates the trust limits (a breach is notified at once). Runs after Treasury Position Snapshot."/>
+            <where>short_name='TRS_TRST' AND description IS NULL</where>
+        </update>
+    </changeSet>
+
+    <!-- The e-money trust limits, inactive; apply-template PSP activates them with the BOU_NPS_2021 rule set -->
+    <changeSet id="treasury-trust-limits-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_treasury_limit WHERE code IN ('TRUST_COVERAGE_MIN', 'TRUST_BANK_CONCENTRATION_MAX', 'TRUST_SHORTFALL_MAX')</sqlCheck>
+        </preConditions>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="TRUST_COVERAGE_MIN"/>
+            <column name="name" value="E-money covered 100% by unencumbered liquid trust assets (NPS Act 2020 s.60)"/>
+            <column name="description" value="Regulatory hard limit: eligible trust assets at least 100% of e-money outstanding. The warning at 102% is a placeholder."/>
+            <column name="metric" value="TRUST_COVERAGE"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MIN"/>
+            <column name="warning_level" valueNumeric="102"/>
+            <column name="hard_level" valueNumeric="100"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'TRUST_COVERAGE_MIN')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"TRUST_COVERAGE_MIN","name":"E-money covered 100% by unencumbered liquid trust assets (NPS Act 2020 s.60)","description":"Regulatory hard limit: eligible trust assets at least 100% of e-money outstanding. The warning at 102% is a placeholder.","metric":"TRUST_COVERAGE","scopeType":"INSTITUTION","comparison":"MIN","warningLevel":"102","hardLevel":"100","unit":"PERCENT","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="TRUST_BANK_CONCENTRATION_MAX"/>
+            <column name="name" value="At most 20% of e-money held at one institution (NPS Regulations 2021 reg 15(2)-(3))"/>
+            <column name="description" value="Regulatory hard limit per institution; it does not apply while total e-money is at most UGX 500m. The warning at 18% is a placeholder."/>
+            <column name="metric" value="TRUST_BANK_CONCENTRATION"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="warning_level" valueNumeric="18"/>
+            <column name="hard_level" valueNumeric="20"/>
+            <column name="unit" value="PERCENT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'TRUST_BANK_CONCENTRATION_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"TRUST_BANK_CONCENTRATION_MAX","name":"At most 20% of e-money held at one institution (NPS Regulations 2021 reg 15(2)-(3))","description":"Regulatory hard limit per institution; it does not apply while total e-money is at most UGX 500m. The warning at 18% is a placeholder.","metric":"TRUST_BANK_CONCENTRATION","scopeType":"INSTITUTION","comparison":"MAX","warningLevel":"18","hardLevel":"20","unit":"PERCENT","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit">
+            <column name="code" value="TRUST_SHORTFALL_MAX"/>
+            <column name="name" value="No trust shortfall (NPS Act 2020 s.47(1)(a); report at once, reg 24)"/>
+            <column name="description" value="Regulatory hard limit: any e-money not matched by eligible trust assets breaches."/>
+            <column name="metric" value="TRUST_SHORTFALL"/>
+            <column name="scope_type" value="INSTITUTION"/>
+            <column name="comparison" value="MAX"/>
+            <column name="currency_code" value="UGX"/>
+            <column name="hard_level" valueNumeric="0"/>
+            <column name="unit" value="AMOUNT"/>
+            <column name="use_own_levels" valueBoolean="false"/>
+            <column name="status" value="INACTIVE"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="created_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'TRUST_SHORTFALL_MAX')"/>
+            <column name="version" valueNumeric="1"/>
+            <column name="action" value="CREATE"/>
+            <column name="snapshot" value='{"code":"TRUST_SHORTFALL_MAX","name":"No trust shortfall (NPS Act 2020 s.47(1)(a); report at once, reg 24)","description":"Regulatory hard limit: any e-money not matched by eligible trust assets breaches.","metric":"TRUST_SHORTFALL","scopeType":"INSTITUTION","comparison":"MAX","hardLevel":"0","unit":"AMOUNT","currencyCode":"UGX","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-report-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury E-Money Trust Reconciliation'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury E-Money Trust Reconciliation"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, r.id AS run_id, r.status, t.emoney_source, t.emoney_customers, t.emoney_agents, t.emoney_other, t.emoney_total, t.trust_total, t.eligible_total, t.encumbered_total, t.ineligible_total, t.difference_amount AS difference, t.shortfall, t.coverage_percent, t.max_concentration_percent, t.concentration_applies FROM m_treasury_run r JOIN m_treasury_run_trust t ON t.run_id = r.id WHERE r.run_type = 'TRUST_RECON' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' ORDER BY r.currency_code"/>
+            <column name="description" value="The daily e-money trust reconciliation of a date (NPS Regulations 2021 reg 22(5)): e-money by category, trust assets, eligible assets, difference, shortfall, coverage and the largest institution concentration."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury E-Money Trust Reconciliation')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury E-Money Trust Reconciliation"/>
+            <column name="entity_name" value="Treasury E-Money Trust Reconciliation"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-trust-report-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM stretchy_report WHERE report_name = 'Treasury Trust Asset Breakdown'</sqlCheck>
+        </preConditions>
+        <insert tableName="stretchy_report">
+            <column name="report_name" value="Treasury Trust Asset Breakdown"/>
+            <column name="report_type" value="Table"/>
+            <column name="report_category" value="Accounting"/>
+            <column name="report_sql" value="SELECT r.currency_code AS currency, COALESCE(l.institution_name, 'Not set') AS institution, l.asset_type, SUM(l.amount) AS amount, SUM(COALESCE(l.eligible_amount, 0)) AS eligible, SUM(COALESCE(l.encumbered_amount, 0)) AS encumbered FROM m_treasury_run r JOIN m_treasury_run_trust_line l ON l.run_id = r.id WHERE r.run_type = 'TRUST_RECON' AND r.office_id IS NULL AND r.as_of_date = '${asOn}' AND l.line_type = 'ASSET' GROUP BY r.currency_code, COALESCE(l.institution_name, 'Not set'), l.asset_type ORDER BY 1, 2, 3"/>
+            <column name="description" value="The trust balances of a date by institution and asset type (NPS Regulations 2021 reg 22(6)): demand deposits, term deposits, treasury bills and bonds."/>
+            <column name="core_report" valueBoolean="false"/>
+            <column name="use_report" valueBoolean="true"/>
+            <column name="self_service_user_report" valueBoolean="false"/>
+        </insert>
+        <insert tableName="stretchy_report_parameter">
+            <column name="report_id" valueComputed="(SELECT id FROM stretchy_report WHERE report_name = 'Treasury Trust Asset Breakdown')"/>
+            <column name="parameter_id" valueComputed="(SELECT id FROM stretchy_parameter WHERE parameter_name = 'asOnDate')"/>
+            <column name="report_parameter_name" value="asOn"/>
+        </insert>
+        <insert tableName="m_permission">
+            <column name="grouping" value="report"/>
+            <column name="code" value="READ_Treasury Trust Asset Breakdown"/>
+            <column name="entity_name" value="Treasury Trust Asset Breakdown"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

@@ -30,6 +30,7 @@ import lombok.Setter;
 import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
 import org.apache.fineract.treasury.fx.NopCapitalBasis;
 import org.apache.fineract.treasury.setup.ClientType;
+import org.apache.fineract.treasury.trust.EMoneySourceType;
 
 /**
  * The tenant's own treasury settings, one row; a null value falls back to the deployment property
@@ -55,6 +56,24 @@ public class TreasuryTenantSetting extends AbstractPersistableCustom<Long> {
     @Enumerated(EnumType.STRING)
     @Column(name = "client_type", length = 20)
     private ClientType clientType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "emoney_source", length = 20)
+    private EMoneySourceType emoneySource;
+
+    /** Savings product ids, comma-separated, whose balances are e-money of customers, agents and others. */
+    @Column(name = "emoney_customer_products", length = 200)
+    private String emoneyCustomerProducts;
+
+    @Column(name = "emoney_agent_products", length = 200)
+    private String emoneyAgentProducts;
+
+    @Column(name = "emoney_other_products", length = 200)
+    private String emoneyOtherProducts;
+
+    /** The GL account bank interest on the trust accounts is credited to. */
+    @Column(name = "trust_interest_gl_account_id")
+    private Long trustInterestGlAccountId;
 
     @Column(name = "last_modified_by")
     private Long lastModifiedBy;

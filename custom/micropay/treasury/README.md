@@ -761,6 +761,78 @@ At +200bp:
 
 ΔNII = **+38.44**; the gap beyond a year does not count. At -200bp ΔNII is -38.44, which against core capital of 1,000 is earnings at risk of 3.84%. The cumulative one-year gap is 1,000 - 500 + 2,000 - 1,000 = 1,500, which against total assets of 10,000 is 15%.
 
+## E-money trust safeguarding
+
+P5.3, for a `PSP` tenant: the requirements of the National Payment Systems Act 2020 and the NPS Regulations 2021.
+
+- e-money is issued only against an equal amount deposited in trust (s.47(1)(a));
+- 100% of it is held in unencumbered liquid assets: cash withdrawable on demand, treasury bills and bonds (s.60(1)-(2));
+- at most 20% of e-money sits at one institution, unless total e-money is at most UGX 500m (reg 15(2)-(3));
+- the trust is not commingled (reg 15(1)(d));
+- a daily reconciliation statement is due (reg 22(5)) and a weekly breakdown of the trust (reg 22(6));
+- trust interest is due to customers at each quarter end (reg 14(2), 14(7));
+- a discrepancy is reported at once (reg 24).
+
+### Trust accounts and holdings
+
+- **TRUST accounts.** A treasury account of type `TRUST` holds money in trust. It is kept apart from the institution's own liquidity: the ladder's opening stock and the liquid asset classes leave it out.
+- **Account details.** `PUT /treasury/trust/accounts/{accountId}` names the institution holding it (`bankCounterpartyId`), its trustee and the trust deed (`UPDATE_TREASURYTRUSTACCOUNT`, maker-checker capable). `GET /treasury/trust/accounts` lists them with their GL balance.
+- **Holdings.** A bill, bond or placement is held in trust with `POST /treasury/trust/holdings` (`dealId`, `trustAccountId` of its currency) and released with `DELETE /treasury/trust/holdings/{dealId}`.
+- **Interest.** Accruals on trust-held deals come from the deal accrual. Bank interest on the trust accounts is read from the GL account set as the tenant setting `trustInterestGlAccountId`.
+
+### E-money outstanding
+
+The tenant setting `emoneySource` picks one of two `EMoneySource`s:
+
+- **`FINERACT_SAVINGS`** (the default): the balances at the end of the date of the savings products listed in `emoneyCustomerProductIds`, `emoneyAgentProductIds` and `emoneyOtherProductIds`. A product sits in one category only. Read-only SQL.
+- **`IMPORTED`**: the balance of each category entered or imported per date with `POST /treasury/trust/emoney-balances` (`balanceDate`, `customers`, `agents`, `other`; `CREATE_TREASURYEMONEYBALANCE`, maker-checker capable), for wallets kept on another platform. A date without a balance cannot be reconciled.
+
+### The daily reconciliation
+
+`POST /treasury/trust/reconciliations` (`asOfDate`, by default the closed day; `currencyCode`, by default the base) makes a `TRUST_RECON` run. It stores:
+
+- the e-money by category;
+- each trust asset: the TRUST accounts at their GL balance as demand deposits, and the deals held in trust at carrying value (bills, bonds, term deposits) with the share pledged;
+- the figures:
+  - **eligible:** liquid and unencumbered; a term deposit is held in trust but is not liquid;
+  - **difference:** everything in trust less e-money;
+  - **shortfall:** e-money less eligible, when positive;
+  - **coverage:** eligible as a percentage of e-money;
+  - **concentration:** each institution's demand and term deposits as a percentage of e-money. Bills and bonds are claims on the government and count at no institution. The 20% applies only when total e-money is above UGX 500m.
+
+Behaviour:
+
+- A run replaces the date's earlier one, unless it has been submitted.
+- `GET /treasury/trust/reconciliations/{runId}` is the statement as it was stored (`?format=csv` for CSV).
+- `POST /treasury/trust/reconciliations/{runId}?command=submit` (`SUBMIT_TREASURYTRUSTRECON`, by another user than the one who made it) locks the date. A submitted trust statement does not lock the liquidity runs of the date.
+- `GET /treasury/trust/asset-breakdown?asOfDate=` gives the trust by asset type and institution.
+
+Every reconciliation evaluates the trust limits at once, so a breach notifies the limit's role immediately (reg 24). They are seeded inactive:
+
+| Limit | Metric | Level |
+| --- | --- | --- |
+| `TRUST_COVERAGE_MIN` | `TRUST_COVERAGE` | at least 100% (hard), warning below 102% (placeholder) |
+| `TRUST_BANK_CONCENTRATION_MAX` | `TRUST_BANK_CONCENTRATION` | at most 20% per institution (hard), warning above 18% (placeholder); no level while e-money is at most UGX 500m |
+| `TRUST_SHORTFALL_MAX` | `TRUST_SHORTFALL` | any shortfall (UGX, hard) |
+
+**PSP setup.** `apply-template` for a `PSP` puts the `BOU_NPS_2021` rule set in place. It has the GL view of the trust coverage as its only ratio, a daily return and no deposit ratios. Apply also creates the `Trust and reconciliation officer` role with the `treasury_trust` writes, and makes the trust limits notify it. As for every template, the limits become active with the rule set.
+
+### Interest
+
+The job records each day's interest earned on the trust:
+
+- the accruals posted that day for trust-held deals;
+- the credits to the trust interest GL.
+
+`GET /treasury/trust/interest?from=&to=` (by default the quarter of the business date) gives the interest accrued, by source, with the average trust balance of the period's reconciliations and the annual rate. That is the quarterly report of reg 14(7).
+
+**Not done here, a later item:** allocating the interest to customers and paying it out at the quarter end (reg 14(2)). It depends on the wallet platform.
+
+### Job and reports
+
+- "Treasury Trust Reconciliation" (`TRS_TRST`; the job short name holds 8 characters at most), daily at 02:47 after the snapshot. Inactive. For the closed day, in every currency with a TRUST account, it records the interest and then reconciles.
+- Reports "Treasury E-Money Trust Reconciliation" and "Treasury Trust Asset Breakdown" (parameter `asOn`).
+
 ## Client types and onboarding
 
 P5.2. Every institution on the deployment is a tenant of one **client type** (tenant setting `clientType`): `PSP`, `BANK`, `MDI` or `SACCO_MFI`. The type picks its regulatory rule set template, its regulatory limits and the default roles.
@@ -869,6 +941,7 @@ The jobs are seeded inactive. Turn each one on with `PUT /v1/jobs/{jobId}` `{"ac
 | 2 | Treasury Valuation | `TRS_VAL` | 02:35 daily | closed day | revalues fair-value deals at the latest price |
 | 3 | Treasury FX Revaluation | `TRS_FXR` | 02:38 daily | closed day | revalues the configured foreign currency GL balances, then the NOP limits |
 | 4 | Treasury Position Snapshot | `TRS_SNAP` | 02:45 daily | closed day | the day-end balance of every treasury account |
+| 4a | Treasury Trust Reconciliation | `TRS_TRST` | 02:47 daily | closed day | (PSP) trust interest, then e-money against the trust, with the trust limits |
 | 5 | Treasury Liquidity Run | `TRS_LIQ` | 02:50 daily | business date | per currency: the ladder, the ratios, every active stress scenario and the repricing gap, each evaluating its limits |
 | 6 | Treasury Limits | `TRS_LIM` | 02:55 daily | business date | every active limit, for the institution and each office with a limit |
 | 7 | Treasury ECL | `TRS_ECL` | 03:00 on the 1st | closed day | the expected credit loss of every settled deal |
@@ -1020,5 +1093,11 @@ Grouping `treasury_fx`, each write with a `_CHECKER` variant:
 - `READ_TREASURYFXPOSITION` (positions and the consolidated ladder)
 - `READ_TREASURYTENANTSETTING`, `UPDATE_TREASURYTENANTSETTING`
 - report: `READ_Treasury Currency Position and NOP`; repricing runs use the run permissions, and the report `READ_Treasury Repricing Gap`
+
+Grouping `treasury_trust` (PSP e-money trust), each write with a `_CHECKER` variant:
+
+- `READ_TREASURYTRUST` (accounts, holdings, e-money balances, statements, breakdown, interest)
+- `UPDATE_TREASURYTRUSTACCOUNT`, `CREATE_TREASURYTRUSTHOLDING`, `DELETE_TREASURYTRUSTHOLDING`, `CREATE_TREASURYEMONEYBALANCE`, `CREATE_TREASURYTRUSTRECON`, `SUBMIT_TREASURYTRUSTRECON`
+- reports: `READ_Treasury E-Money Trust Reconciliation`, `READ_Treasury Trust Asset Breakdown`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

@@ -42,7 +42,7 @@ class TreasuryTemplatesTest {
 
     @Test
     void eachTemplateIsAValidRuleSetCitingItsSourceAndPlaceholders() {
-        for (final ClientType type : List.of(ClientType.BANK, ClientType.MDI, ClientType.SACCO_MFI)) {
+        for (final ClientType type : ClientType.values()) {
             final RuleSetRequest request = this.ruleSets.validateRuleSet(TreasuryTemplates.ruleSet(type).orElseThrow(), true);
             assertEquals(type.ruleSetCode(), request.code());
             assertTrue(request.description().contains("PLACEHOLDER"), type + " says what is a placeholder");
@@ -51,8 +51,13 @@ class TreasuryTemplatesTest {
             final Set<String> ratios = request.ratios().stream().map(RatioConfigParser.RatioSpec::code).collect(Collectors.toSet());
             for (final String limit : TreasuryTemplates.limits(type)) {
                 final TreasuryLimitDataValidator.LimitRequest l = this.limits.validateLimit(limit, null);
-                assertEquals(LimitMetric.RATIO, l.metric());
-                assertTrue(ratios.contains(l.metricKey()), l.code() + " evaluates a ratio of " + type.ruleSetCode());
+                if (type == ClientType.PSP) {
+                    assertTrue(Set.of(LimitMetric.TRUST_COVERAGE, LimitMetric.TRUST_BANK_CONCENTRATION, LimitMetric.TRUST_SHORTFALL)
+                            .contains(l.metric()));
+                } else {
+                    assertEquals(LimitMetric.RATIO, l.metric());
+                    assertTrue(ratios.contains(l.metricKey()), l.code() + " evaluates a ratio of " + type.ruleSetCode());
+                }
                 assertTrue(type.regulatoryLimits().contains(l.code()), l.code() + " is one of the type's regulatory limits");
             }
         }
@@ -81,8 +86,11 @@ class TreasuryTemplatesTest {
     }
 
     @Test
-    void thePspTemplateIsNotThereYet() {
-        assertTrue(TreasuryTemplates.ruleSet(ClientType.PSP).isEmpty() || ClientType.PSP.ruleSetCode().equals("BOU_NPS_2021"));
+    void thePspTemplateHasTheTrustRatioAndNoDepositRatios() {
+        final RuleSetRequest psp = this.ruleSets.validateRuleSet(TreasuryTemplates.ruleSet(ClientType.PSP).orElseThrow(), true);
+        assertEquals(ReturnFrequency.DAILY, psp.returnFrequency());
+        assertEquals(List.of("TRUST_COVERAGE_GL"), psp.ratios().stream().map(RatioConfigParser.RatioSpec::code).toList());
+        assertEquals(3, TreasuryTemplates.limits(ClientType.PSP).size());
     }
 
     private static RatioConfigParser.RatioSpec ratio(final RuleSetRequest request, final String code) {

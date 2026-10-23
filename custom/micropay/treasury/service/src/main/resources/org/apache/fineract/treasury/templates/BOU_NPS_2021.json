@@ -1,0 +1,83 @@
+{
+  "code": "BOU_NPS_2021",
+  "name": "BoU National Payment Systems Act 2020 and Regulations 2021 (e-money issuers)",
+  "effectiveDate": "2021-01-01",
+  "dateFormat": "yyyy-MM-dd",
+  "locale": "en",
+  "returnFrequency": "DAILY",
+  "description": "Template for payment service providers issuing e-money. Regulatory requirements from the National Payment Systems Act 2020 and the National Payment Systems Regulations 2021: e-money issued only against an equal amount in trust (s.47(1)(a)); 100% of e-money in unencumbered liquid assets, cash withdrawable on demand, treasury bills and bonds (s.60(1)-(2)); at most 20% of e-money in one institution unless total e-money is at most UGX 500m (reg 15(2)-(3)); a daily reconciliation statement (reg 22(5)) and a weekly breakdown of the trust (reg 22(6)). The trust figures are computed by the TRUST_RECON run, with the limits TRUST_COVERAGE_MIN, TRUST_BANK_CONCENTRATION_MAX and TRUST_SHORTFALL_MAX; the ratio here is the GL view of the same coverage. No deposit ratios. PLACEHOLDERS: the e-money liability GL, the buckets and the warnings.",
+  "buckets": [
+    {
+      "code": "D0_1",
+      "label": "Overnight (0-1 day)",
+      "fromDay": 0,
+      "toDay": 1
+    },
+    {
+      "code": "D2_7",
+      "label": "2 to 7 days",
+      "fromDay": 2,
+      "toDay": 7
+    },
+    {
+      "code": "D8_30",
+      "label": "8 to 30 days",
+      "fromDay": 8,
+      "toDay": 30
+    },
+    {
+      "code": "D31_91",
+      "label": "31 to 91 days",
+      "fromDay": 31,
+      "toDay": 91
+    },
+    {
+      "code": "D92_PLUS",
+      "label": "Over 91 days",
+      "fromDay": 92
+    }
+  ],
+  "ratios": [
+    {
+      "code": "TRUST_COVERAGE_GL",
+      "name": "Trust accounts to e-money liability (GL view)",
+      "direction": "MIN",
+      "limit": 100,
+      "warning": 102,
+      "inReturn": true,
+      "numeratorLabel": "TRUST accounts",
+      "denominatorLabel": "E-money liability",
+      "description": "The GL view of s.60 coverage: TRUST account balances over the e-money liability. The regulatory figure, with bills and bonds held in trust and encumbrance, is the TRUST_RECON run.",
+      "components": [
+        {
+          "part": "NUMERATOR",
+          "type": "ASSET_CLASS",
+          "label": "TRUST accounts",
+          "assetClass": "TRUST",
+          "sign": 1,
+          "weight": 100
+        },
+        {
+          "part": "DENOMINATOR",
+          "type": "GL_ACCOUNT",
+          "label": "E-money liability (PLACEHOLDER GL: map to your chart of accounts)",
+          "glCodePrefix": "2400",
+          "sign": 1,
+          "weight": 100
+        }
+      ]
+    }
+  ],
+  "assetClasses": [
+    {
+      "code": "TRUST",
+      "label": "Accounts held in trust for e-money holders",
+      "liquid": true,
+      "accountTypes": [
+        "TRUST"
+      ],
+      "instrumentKinds": [],
+      "haircut": 0
+    }
+  ]
+}

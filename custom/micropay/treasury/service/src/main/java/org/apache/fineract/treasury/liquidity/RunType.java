@@ -27,5 +27,7 @@ public enum RunType {
     RATIOS, //
     RETURN, //
     STRESS, //
-    REPRICING; //
+    REPRICING, //
+    /** The daily e-money trust reconciliation (NPS Regulations 2021 reg 22(5)). */
+    TRUST_RECON; //
 }

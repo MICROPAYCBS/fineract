@@ -31,6 +31,7 @@ import org.apache.fineract.treasury.service.TreasuryFxRevaluationService;
 import org.apache.fineract.treasury.service.TreasuryLimitEngine;
 import org.apache.fineract.treasury.service.TreasuryLiquidityRunService;
 import org.apache.fineract.treasury.service.TreasuryPositionSnapshotService;
+import org.apache.fineract.treasury.service.TreasuryTrustService;
 import org.apache.fineract.treasury.service.TreasuryValuationService;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.builder.JobBuilder;
@@ -62,6 +63,7 @@ public class TreasuryJobConfig {
     private final TreasuryLiquidityRunService liquidityRunService;
     private final TreasuryLimitEngine limitEngine;
     private final TreasuryFxRevaluationService fxRevaluationService;
+    private final TreasuryTrustService trustService;
 
     @Bean
     public JobNameProvider treasuryJobNameProvider() {
@@ -138,6 +140,18 @@ public class TreasuryJobConfig {
     @Bean
     public Job treasuryFxRevaluationJob() {
         return new JobBuilder(TreasuryJobName.TREASURY_FX_REVALUATION.name(), jobRepository).start(treasuryFxRevaluationStep())
+                .incrementer(new RunIdIncrementer()).build();
+    }
+
+    @Bean
+    protected Step treasuryTrustReconciliationStep() {
+        return new StepBuilder(TreasuryJobName.TREASURY_TRUST_RECONCILIATION.name(), jobRepository)
+                .tasklet(new TreasuryTrustReconciliationTasklet(trustService), transactionManager).build();
+    }
+
+    @Bean
+    public Job treasuryTrustReconciliationJob() {
+        return new JobBuilder(TreasuryJobName.TREASURY_TRUST_RECONCILIATION.name(), jobRepository).start(treasuryTrustReconciliationStep())
                 .incrementer(new RunIdIncrementer()).build();
     }
 

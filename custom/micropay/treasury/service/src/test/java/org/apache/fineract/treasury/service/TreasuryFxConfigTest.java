@@ -90,4 +90,21 @@ class TreasuryFxConfigTest {
         capital.setAmount(new BigDecimal(amount));
         return capital;
     }
+
+    @Test
+    void anEmoneyProductIsInOneCategoryOnly() {
+        final org.apache.fineract.treasury.serialization.TreasuryFxDataValidator validator = new org.apache.fineract.treasury.serialization.TreasuryFxDataValidator(
+                new org.apache.fineract.infrastructure.core.serialization.FromJsonHelper());
+        final var request = validator.validateTenantSetting(
+                "{\"emoneySource\": \"imported\", \"emoneyCustomerProductIds\": [3, 4], \"emoneyAgentProductIds\": null}", List.of("UGX"));
+        assertEquals(org.apache.fineract.treasury.trust.EMoneySourceType.IMPORTED, request.emoneySource());
+        assertEquals(List.of(3L, 4L), request.emoneyProducts().get(org.apache.fineract.treasury.trust.EMoneyCategory.CUSTOMER));
+        assertEquals(List.of(), request.emoneyProducts().get(org.apache.fineract.treasury.trust.EMoneyCategory.AGENT), "null clears");
+        org.junit.jupiter.api.Assertions
+                .assertThrows(org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException.class, () -> validator
+                        .validateTenantSetting("{\"emoneyCustomerProductIds\": [3], \"emoneyAgentProductIds\": [3]}", List.of("UGX")));
+        org.junit.jupiter.api.Assertions.assertThrows(
+                org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException.class,
+                () -> validator.validateTenantSetting("{\"emoneyCustomerProductIds\": \"3\"}", List.of("UGX")));
+    }
 }

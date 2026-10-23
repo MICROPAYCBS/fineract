@@ -19,9 +19,12 @@
 package org.apache.fineract.treasury.data;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 /** The tenant's treasury settings: each in effect, as set for the tenant (null: not set) and the deployment default. */
 public record TreasuryTenantSettingData(String baseCurrency, String baseCurrencyTenant, String baseCurrencyDefault, int fxMaxRateAgeDays,
         Integer fxMaxRateAgeDaysTenant, int fxMaxRateAgeDaysDefault, String nopCapitalBasis, String nopCapitalBasisTenant,
-        String nopCapitalBasisDefault, Long lastModifiedBy, OffsetDateTime lastModifiedOnUtc, String clientType) {
+        String nopCapitalBasisDefault, Long lastModifiedBy, OffsetDateTime lastModifiedOnUtc, String clientType, String emoneySource,
+        List<Long> emoneyCustomerProductIds, List<Long> emoneyAgentProductIds, List<Long> emoneyOtherProductIds,
+        Long trustInterestGlAccountId) {
 }

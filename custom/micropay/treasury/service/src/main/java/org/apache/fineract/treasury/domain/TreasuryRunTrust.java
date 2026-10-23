@@ -1,0 +1,85 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.fineract.treasury.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import java.math.BigDecimal;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+
+/** The figures of a TRUST_RECON run. */
+@Getter
+@Setter
+@Entity
+@NoArgsConstructor
+@Table(name = "m_treasury_run_trust")
+public class TreasuryRunTrust extends AbstractPersistableCustom<Long> {
+
+    @Column(name = "run_id", nullable = false)
+    private Long runId;
+
+    @Column(name = "emoney_source", nullable = false, length = 20)
+    private String emoneySource;
+
+    @Column(name = "emoney_customers", precision = 19, scale = 6)
+    private BigDecimal emoneyCustomers;
+
+    @Column(name = "emoney_agents", precision = 19, scale = 6)
+    private BigDecimal emoneyAgents;
+
+    @Column(name = "emoney_other", precision = 19, scale = 6)
+    private BigDecimal emoneyOther;
+
+    @Column(name = "emoney_total", precision = 19, scale = 6)
+    private BigDecimal emoneyTotal;
+
+    @Column(name = "trust_total", precision = 19, scale = 6)
+    private BigDecimal trustTotal;
+
+    @Column(name = "eligible_total", precision = 19, scale = 6)
+    private BigDecimal eligibleTotal;
+
+    @Column(name = "encumbered_total", precision = 19, scale = 6)
+    private BigDecimal encumberedTotal;
+
+    @Column(name = "ineligible_total", precision = 19, scale = 6)
+    private BigDecimal ineligibleTotal;
+
+    @Column(name = "difference_amount", precision = 19, scale = 6)
+    private BigDecimal difference;
+
+    @Column(name = "shortfall", precision = 19, scale = 6)
+    private BigDecimal shortfall;
+
+    @Column(name = "coverage_percent", precision = 19, scale = 6)
+    private BigDecimal coveragePercent;
+
+    @Column(name = "max_concentration_percent", precision = 19, scale = 6)
+    private BigDecimal maxConcentrationPercent;
+
+    @Column(name = "concentration_threshold", precision = 19, scale = 6)
+    private BigDecimal concentrationThreshold;
+
+    @Column(name = "concentration_applies", nullable = false)
+    private boolean concentrationApplies;
+}

@@ -145,6 +145,9 @@ public class TreasurySetupService implements TreasuryRuleSetActivationHook {
 
         // the default roles, and maker-checker on the treasury writes
         changes.put("rolesCreated", createRoles(type));
+        if (type == ClientType.PSP) {
+            changes.put("limitsNotifying", notifyTrustOfficer(command, type));
+        }
         changes.put("makerCheckerEnabled", makerChecker ? enableMakerChecker() : 0);
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(ruleSetId).with(changes).build();
     }
@@ -271,6 +274,23 @@ public class TreasurySetupService implements TreasuryRuleSetActivationHook {
             created.add(spec.name());
         }
         return created;
+    }
+
+    /** The trust limits without a role to notify notify the Trust and reconciliation officer (reg 24: at once). */
+    private List<String> notifyTrustOfficer(final JsonCommand command, final ClientType type) {
+        final Optional<Role> officer = roleNamed("Trust and reconciliation officer");
+        final List<String> updated = new ArrayList<>();
+        if (officer.isEmpty()) {
+            return updated;
+        }
+        for (final String code : type.regulatoryLimits()) {
+            final Optional<TreasuryLimit> limit = this.limitRepository.findByCode(code);
+            if (limit.isPresent() && limit.get().getNotifyRoleId() == null) {
+                this.limitService.update(limit.get().getId(), sub(command, "{\"notifyRoleId\": " + officer.get().getId() + "}"));
+                updated.add(code);
+            }
+        }
+        return updated;
     }
 
     private int enableMakerChecker() {

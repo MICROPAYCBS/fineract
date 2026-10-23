@@ -2,9 +2,9 @@
     "summary":  {
                     "baseUrl":  "https://localhost:8443/fineract-provider/api/v1",
                     "tenant":  "default",
-                    "ranAt":  "2026-10-23T06:31:42.4738915Z",
-                    "total":  298,
-                    "pass":  276,
+                    "ranAt":  "2026-10-23T07:08:45.2594874Z",
+                    "total":  304,
+                    "pass":  282,
                     "warn":  0,
                     "fail":  0,
                     "skip":  22,
@@ -31,9 +31,12 @@
                                              "holidayId":  "GET /holidays?officeId=1 -\u003e HTTP 200 (no value for [0].id)"
                                          },
                     "baselineChanges":  [
-                                            "NEW   /treasury/settings/tenant: 200",
-                                            "NEW   /treasury/setup/checklist: 200",
-                                            "NEW   /treasury/setup/templates: 200"
+                                            "NEW   /treasury/trust/accounts: 200",
+                                            "NEW   /treasury/trust/holdings: 200",
+                                            "NEW   /treasury/trust/emoney-balances: 200",
+                                            "NEW   /treasury/trust/reconciliations/{trsTrustReconRunId}: 200",
+                                            "NEW   /treasury/trust/asset-breakdown?asOfDate=2026-10-16: 200",
+                                            "NEW   /treasury/trust/interest: 200"
                                         ]
                 },
     "results":  [
@@ -42,7 +45,7 @@
                         "resolved":  "/accountingrules",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  29,
                         "errorCode":  [
                                           null,
                                           null
@@ -54,7 +57,7 @@
                         "resolved":  "/accountingrules/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -63,7 +66,7 @@
                         "resolved":  "/accountingrules/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  71,
+                        "ms":  72,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -72,7 +75,7 @@
                         "resolved":  "/accountnumberformats",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null
@@ -84,7 +87,7 @@
                         "resolved":  "/accountnumberformats/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -102,7 +105,7 @@
                         "resolved":  "/accounttransfers/template?fromAccountType=2\u0026fromOfficeId=1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  28,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -111,7 +114,7 @@
                         "resolved":  "/adhocquery",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -129,7 +132,7 @@
                         "resolved":  "/adhocquery/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  35,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -138,7 +141,7 @@
                         "resolved":  "/audits?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  94,
+                        "ms":  96,
                         "errorCode":  [
                                           null,
                                           null,
@@ -345,10 +348,10 @@
                     },
                     {
                         "path":  "/audits/{auditId}",
-                        "resolved":  "/audits/3094",
+                        "resolved":  "/audits/3162",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  39,
+                        "ms":  53,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -357,7 +360,7 @@
                         "resolved":  "/audits/searchtemplate",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  45,
+                        "ms":  52,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -366,7 +369,7 @@
                         "resolved":  "/businessdate",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  30,
+                        "ms":  32,
                         "errorCode":  [
                                           null,
                                           null
@@ -378,7 +381,7 @@
                         "resolved":  "/centers?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -405,7 +408,7 @@
                         "resolved":  "/centers/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -441,7 +444,7 @@
                         "resolved":  "/charges/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  82,
+                        "ms":  80,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -450,7 +453,7 @@
                         "resolved":  "/client/47/addresses",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  32,
+                        "ms":  33,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -459,7 +462,7 @@
                         "resolved":  "/client/addresses/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  31,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -468,7 +471,7 @@
                         "resolved":  "/clients?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  52,
+                        "ms":  53,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -477,7 +480,7 @@
                         "resolved":  "/clients/47",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  32,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -486,7 +489,7 @@
                         "resolved":  "/clients/47/accounts",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  94,
+                        "ms":  92,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -495,7 +498,7 @@
                         "resolved":  "/clients/47/collaterals",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -504,7 +507,7 @@
                         "resolved":  "/clients/47/collaterals/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -513,7 +516,7 @@
                         "resolved":  "/clients/47/complianceprofile",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  27,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -522,7 +525,7 @@
                         "resolved":  "/clients/47/contacts",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  28,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -531,7 +534,7 @@
                         "resolved":  "/clients/47/contacts/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -540,7 +543,7 @@
                         "resolved":  "/clients/47/documents",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  96,
+                        "ms":  120,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -549,7 +552,7 @@
                         "resolved":  "/clients/47/familymembers",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -558,7 +561,7 @@
                         "resolved":  "/clients/47/identifiers",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -567,7 +570,7 @@
                         "resolved":  "/clients/47/identifiers/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  22,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -576,7 +579,7 @@
                         "resolved":  "/clients/47/incomesources",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -585,7 +588,7 @@
                         "resolved":  "/clients/47/incomesources/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  33,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -594,7 +597,7 @@
                         "resolved":  "/clients/47/notes",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  34,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -603,7 +606,7 @@
                         "resolved":  "/clients/47/obligeedetails",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  28,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -612,7 +615,7 @@
                         "resolved":  "/clients/47/transferproposaldate",
                         "owner":  "upstream",
                         "status":  204,
-                        "ms":  18,
+                        "ms":  24,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -621,7 +624,7 @@
                         "resolved":  "/clients/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  58,
+                        "ms":  75,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -630,7 +633,7 @@
                         "resolved":  "/clienttitles",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  23,
                         "errorCode":  [
                                           null,
                                           null,
@@ -647,7 +650,7 @@
                         "resolved":  "/clienttitles/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -656,7 +659,7 @@
                         "resolved":  "/clienttitles/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  24,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -665,7 +668,7 @@
                         "resolved":  "/codes",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  19,
                         "errorCode":  [
                                           null,
                                           null,
@@ -734,7 +737,7 @@
                         "resolved":  "/codes/29",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  17,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -743,7 +746,7 @@
                         "resolved":  "/codes/29/codevalues",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  22,
                         "errorCode":  [
                                           null,
                                           null,
@@ -757,7 +760,7 @@
                         "resolved":  "/collateral-management",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -766,7 +769,7 @@
                         "resolved":  "/collateral-management/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  23,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -775,7 +778,7 @@
                         "resolved":  "/collateral-management/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  48,
+                        "ms":  39,
                         "errorCode":  [
                                           null,
                                           null,
@@ -949,7 +952,7 @@
                         "resolved":  "/configurations",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  54,
+                        "ms":  43,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -958,7 +961,7 @@
                         "resolved":  "/configurations/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  23,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -967,7 +970,7 @@
                         "resolved":  "/contacttypes",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  20,
                         "errorCode":  [
                                           null,
                                           null,
@@ -981,7 +984,7 @@
                         "resolved":  "/contacttypes/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -990,7 +993,7 @@
                         "resolved":  "/contacttypes/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -999,7 +1002,7 @@
                         "resolved":  "/currencies",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  33,
+                        "ms":  34,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1008,7 +1011,7 @@
                         "resolved":  "/currencies/UGX/legal-tenders",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  33,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1029,7 +1032,7 @@
                         "resolved":  "/customerclasses",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  31,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1056,7 +1059,7 @@
                         "resolved":  "/customerclasses/17",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  22,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1065,7 +1068,7 @@
                         "resolved":  "/customerclasses/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1074,7 +1077,7 @@
                         "resolved":  "/datatables",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  31,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1083,7 +1086,7 @@
                         "resolved":  "/datatables/test_data_table",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  36,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1092,7 +1095,7 @@
                         "resolved":  "/delinquency/buckets",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1110,7 +1113,7 @@
                         "resolved":  "/delinquency/buckets/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  34,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1119,7 +1122,7 @@
                         "resolved":  "/delinquency/ranges",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1137,7 +1140,7 @@
                         "resolved":  "/departments",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  19,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1151,7 +1154,7 @@
                         "resolved":  "/departments/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1160,7 +1163,7 @@
                         "resolved":  "/entityDatatableChecks",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  23,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1178,7 +1181,7 @@
                         "resolved":  "/entitytoentitymapping",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  23,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1194,7 +1197,7 @@
                         "resolved":  "/externalevents/configuration",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  32,
+                        "ms":  31,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1203,7 +1206,7 @@
                         "resolved":  "/externalservice/SMTP",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  26,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1220,7 +1223,7 @@
                         "resolved":  "/fieldconfiguration/ADDRESS",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1248,7 +1251,7 @@
                         "resolved":  "/financialactivityaccounts",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  19,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1275,7 +1278,7 @@
                         "resolved":  "/financialactivityaccounts/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  73,
+                        "ms":  82,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1284,7 +1287,7 @@
                         "resolved":  "/fixeddepositproducts",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1293,7 +1296,7 @@
                         "resolved":  "/fixeddepositproducts/3",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  47,
+                        "ms":  59,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1302,7 +1305,7 @@
                         "resolved":  "/fixeddepositproducts/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  106,
+                        "ms":  92,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1311,7 +1314,7 @@
                         "resolved":  "/floatingrates",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1347,8 +1350,13 @@
                         "resolved":  "/glaccounts",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  69,
+                        "ms":  85,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -1527,7 +1535,7 @@
                         "resolved":  "/glaccounts/39",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1536,7 +1544,7 @@
                         "resolved":  "/glaccounts/39/ledger",
                         "owner":  "micropay",
                         "status":  400,
-                        "ms":  46,
+                        "ms":  48,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1545,7 +1553,7 @@
                         "resolved":  "/glaccounts/enquiry",
                         "owner":  "micropay",
                         "status":  400,
-                        "ms":  20,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1554,7 +1562,7 @@
                         "resolved":  "/glaccounts/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  32,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1563,7 +1571,7 @@
                         "resolved":  "/glclosures",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1581,7 +1589,7 @@
                         "resolved":  "/groups?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1608,7 +1616,7 @@
                         "resolved":  "/groups/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1617,7 +1625,7 @@
                         "resolved":  "/holidays?officeId=1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1635,7 +1643,7 @@
                         "resolved":  "/holidays/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null
@@ -1647,7 +1655,7 @@
                         "resolved":  "/hooks",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  15,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1665,7 +1673,7 @@
                         "resolved":  "/hooks/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  43,
+                        "ms":  75,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1674,7 +1682,7 @@
                         "resolved":  "/identitytypes",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  35,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1689,7 +1697,7 @@
                         "resolved":  "/identitytypes/5",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1698,7 +1706,7 @@
                         "resolved":  "/identitytypes/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  24,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1707,7 +1715,7 @@
                         "resolved":  "/imports?entityType=client",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  23,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1716,7 +1724,7 @@
                         "resolved":  "/industries",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1762,7 +1770,7 @@
                         "resolved":  "/industries/26",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1771,7 +1779,7 @@
                         "resolved":  "/industries/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1780,8 +1788,9 @@
                         "resolved":  "/jobs",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  62,
+                        "ms":  64,
                         "errorCode":  [
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -1841,7 +1850,7 @@
                         "resolved":  "/jobs/2",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1850,7 +1859,7 @@
                         "resolved":  "/jobs/2/runhistory",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  43,
+                        "ms":  61,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1859,7 +1868,7 @@
                         "resolved":  "/jobs/names",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1868,7 +1877,7 @@
                         "resolved":  "/jobsequences",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1877,7 +1886,7 @@
                         "resolved":  "/jobsequences/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1886,7 +1895,7 @@
                         "resolved":  "/jobsequences/1/runs",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  80,
+                        "ms":  88,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1928,7 +1937,7 @@
                         "resolved":  "/journalentries?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  54,
+                        "ms":  50,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1937,7 +1946,7 @@
                         "resolved":  "/journalentries/openingbalance?officeId=1\u0026currencyCode=UGX",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  64,
+                        "ms":  58,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1946,7 +1955,7 @@
                         "resolved":  "/journalentries/provisioning?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1973,7 +1982,7 @@
                         "resolved":  "/loan-originators/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  30,
+                        "ms":  33,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -1982,7 +1991,7 @@
                         "resolved":  "/loanproducts",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  62,
+                        "ms":  61,
                         "errorCode":  [
                                           null,
                                           null,
@@ -1998,7 +2007,7 @@
                         "resolved":  "/loanproducts/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  49,
+                        "ms":  51,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2007,7 +2016,7 @@
                         "resolved":  "/loanproducts/1/productmix",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  59,
+                        "ms":  69,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2016,7 +2025,7 @@
                         "resolved":  "/loanproducts/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  98,
+                        "ms":  99,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2025,7 +2034,7 @@
                         "resolved":  "/loans?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  732,
+                        "ms":  609,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2034,7 +2043,7 @@
                         "resolved":  "/loans/88?associations=all",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  186,
+                        "ms":  207,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2043,7 +2052,7 @@
                         "resolved":  "/loans/88/charges/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2052,7 +2061,7 @@
                         "resolved":  "/loans/88/collaterals",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  33,
+                        "ms":  52,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2061,7 +2070,7 @@
                         "resolved":  "/loans/88/delinquency-actions",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  35,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2070,7 +2079,7 @@
                         "resolved":  "/loans/88/delinquencytags",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2079,7 +2088,7 @@
                         "resolved":  "/loans/88/documents",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2088,7 +2097,7 @@
                         "resolved":  "/loans/88/guarantors",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  27,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2097,7 +2106,7 @@
                         "resolved":  "/loans/88/guarantors/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  28,
+                        "ms":  40,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2115,7 +2124,7 @@
                         "resolved":  "/loans/88/notes",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  17,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2124,7 +2133,7 @@
                         "resolved":  "/loans/88/originators",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2142,7 +2151,7 @@
                         "resolved":  "/loans/88/transactions/template?command=repayment",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  32,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2151,7 +2160,7 @@
                         "resolved":  "/loans/is-catch-up-running",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2160,7 +2169,7 @@
                         "resolved":  "/loans/loanreassignment/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  30,
+                        "ms":  24,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2169,7 +2178,7 @@
                         "resolved":  "/loans/locked",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  59,
+                        "ms":  24,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2178,7 +2187,7 @@
                         "resolved":  "/loans/template?clientId=47\u0026templateType=individual",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  71,
+                        "ms":  57,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2187,7 +2196,7 @@
                         "resolved":  "/makercheckers?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  68,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2196,7 +2205,7 @@
                         "resolved":  "/notifications",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  50,
+                        "ms":  36,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2205,7 +2214,7 @@
                         "resolved":  "/offices",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null,
@@ -2219,7 +2228,7 @@
                         "resolved":  "/offices/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  17,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2228,7 +2237,7 @@
                         "resolved":  "/offices/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -2237,7 +2246,7 @@
                         "resolved":  "/passwordpreferences/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  22,
                         "errorCode":  [
                                           null,
                                           null,
@@ -2250,7 +2259,7 @@
                         "resolved":  "/paymenttypes",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  20,
                         "errorCode":  [
                                           null,
                                           null,
@@ -2279,8 +2288,17 @@
                         "resolved":  "/permissions",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  106,
+                        "ms":  150,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -3226,7 +3244,7 @@
                         "resolved":  "/products/share",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3235,7 +3253,7 @@
                         "resolved":  "/products/share/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  56,
+                        "ms":  64,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3244,7 +3262,7 @@
                         "resolved":  "/provisioningcategory",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  22,
                         "errorCode":  [
                                           null,
                                           null,
@@ -3258,7 +3276,7 @@
                         "resolved":  "/provisioningcriteria",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3276,7 +3294,7 @@
                         "resolved":  "/provisioningcriteria/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  74,
+                        "ms":  88,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3285,7 +3303,7 @@
                         "resolved":  "/provisioningentries",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  23,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3312,7 +3330,7 @@
                         "resolved":  "/recurringdepositproducts/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  72,
+                        "ms":  90,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3321,8 +3339,10 @@
                         "resolved":  "/reports",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  61,
+                        "ms":  78,
                         "errorCode":  [
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -3419,7 +3439,7 @@
                         "resolved":  "/reports/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  17,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3437,7 +3457,7 @@
                         "resolved":  "/rescheduleloans?command=pending",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  27,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3446,7 +3466,7 @@
                         "resolved":  "/rescheduleloans/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3455,8 +3475,9 @@
                         "resolved":  "/roles",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  27,
                         "errorCode":  [
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -3561,7 +3582,7 @@
                         "resolved":  "/roles/1/permissions",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  170,
+                        "ms":  180,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3570,7 +3591,7 @@
                         "resolved":  "/runreports/FullParameterList?R_reportListing=%27Client%20Listing%27\u0026parameterType=true",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  42,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3579,7 +3600,7 @@
                         "resolved":  "/runreports/GroupSummaryCounts?R_officeId=1\u0026genericResultSet=false",
                         "owner":  "upstream",
                         "status":  403,
-                        "ms":  12,
+                        "ms":  15,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3588,7 +3609,7 @@
                         "resolved":  "/savingsaccounts?limit=5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  60,
+                        "ms":  71,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3597,7 +3618,7 @@
                         "resolved":  "/savingsaccounts/27?associations=all",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  404,
+                        "ms":  522,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3606,7 +3627,7 @@
                         "resolved":  "/savingsaccounts/27/charges",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3615,7 +3636,7 @@
                         "resolved":  "/savingsaccounts/27/charges/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  32,
+                        "ms":  37,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3624,7 +3645,7 @@
                         "resolved":  "/savingsaccounts/27/paymentchannels",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  67,
+                        "ms":  76,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3633,7 +3654,7 @@
                         "resolved":  "/savingsaccounts/27/transactions/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  35,
+                        "ms":  48,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3642,7 +3663,7 @@
                         "resolved":  "/savingsaccounts/27/onholdtransactions",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  35,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3651,7 +3672,7 @@
                         "resolved":  "/savingsaccounts/template?clientId=47",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  40,
+                        "ms":  47,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3660,7 +3681,7 @@
                         "resolved":  "/savingsproducts",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  33,
                         "errorCode":  [
                                           null,
                                           null,
@@ -3674,7 +3695,7 @@
                         "resolved":  "/savingsproducts/13",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3683,7 +3704,7 @@
                         "resolved":  "/savingsproducts/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  86,
+                        "ms":  89,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3692,7 +3713,7 @@
                         "resolved":  "/scheduler",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3701,7 +3722,7 @@
                         "resolved":  "/search?query=a\u0026resource=clients",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  41,
+                        "ms":  40,
                         "errorCode":  [
                                           null,
                                           null,
@@ -3734,7 +3755,7 @@
                         "resolved":  "/search/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  56,
+                        "ms":  69,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3768,7 +3789,7 @@
                         "resolved":  "/sectors/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3777,7 +3798,7 @@
                         "resolved":  "/sectors/template",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3786,7 +3807,7 @@
                         "resolved":  "/subindustries",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  37,
+                        "ms":  40,
                         "errorCode":  [
                                           null,
                                           null,
@@ -3862,7 +3883,7 @@
                         "resolved":  "/smscampaigns",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3880,7 +3901,7 @@
                         "resolved":  "/smscampaigns/template",
                         "owner":  "upstream",
                         "status":  403,
-                        "ms":  59,
+                        "ms":  53,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3889,7 +3910,7 @@
                         "resolved":  "/staff",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null,
@@ -3906,7 +3927,7 @@
                         "resolved":  "/staff/5",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3915,7 +3936,7 @@
                         "resolved":  "/standinginstructionrunhistory",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  45,
+                        "ms":  37,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3924,7 +3945,7 @@
                         "resolved":  "/standinginstructions",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  34,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3933,7 +3954,7 @@
                         "resolved":  "/standinginstructions/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  34,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3942,7 +3963,7 @@
                         "resolved":  "/standinginstructions/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  45,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3951,7 +3972,7 @@
                         "resolved":  "/surveys",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  22,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3969,7 +3990,7 @@
                         "resolved":  "/taxes/component",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3987,7 +4008,7 @@
                         "resolved":  "/taxes/component/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  75,
+                        "ms":  109,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -3996,7 +4017,7 @@
                         "resolved":  "/taxes/group",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  15,
+                        "ms":  38,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4014,7 +4035,7 @@
                         "resolved":  "/taxes/group/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  35,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4023,7 +4044,7 @@
                         "resolved":  "/tellers",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  32,
                         "errorCode":  [
                                           null,
                                           null
@@ -4035,7 +4056,7 @@
                         "resolved":  "/tellers/1",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  35,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4044,7 +4065,7 @@
                         "resolved":  "/tellers/1/cashiers",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  49,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4053,7 +4074,7 @@
                         "resolved":  "/templates",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  15,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4071,7 +4092,7 @@
                         "resolved":  "/templates/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4080,7 +4101,7 @@
                         "resolved":  "/twofactor/configure",
                         "owner":  "upstream",
                         "status":  404,
-                        "ms":  72,
+                        "ms":  116,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4089,7 +4110,7 @@
                         "resolved":  "/twofactor",
                         "owner":  "upstream",
                         "status":  404,
-                        "ms":  8,
+                        "ms":  13,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4098,7 +4119,7 @@
                         "resolved":  "/userdetails",
                         "owner":  "upstream",
                         "status":  404,
-                        "ms":  9,
+                        "ms":  12,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4107,8 +4128,11 @@
                         "resolved":  "/users",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  67,
+                        "ms":  78,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -4231,7 +4255,7 @@
                         "resolved":  "/users/template",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4249,7 +4273,7 @@
                         "resolved":  "/workflow-definitions",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  32,
+                        "ms":  43,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4265,7 +4289,7 @@
                         "resolved":  "/workflow-definitions/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  28,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4274,7 +4298,7 @@
                         "resolved":  "/workflow-instances/by-command/1",
                         "owner":  "micropay",
                         "status":  404,
-                        "ms":  11,
+                        "ms":  14,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4283,7 +4307,7 @@
                         "resolved":  "/workingdays",
                         "owner":  "upstream",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  35,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4292,8 +4316,10 @@
                         "resolved":  "/treasury/accounts",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  24,
                         "errorCode":  [
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -4319,7 +4345,7 @@
                         "resolved":  "/treasury/accounts/4",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4328,7 +4354,7 @@
                         "resolved":  "/treasury/accounts/4/position",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  28,
+                        "ms":  32,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4337,7 +4363,7 @@
                         "resolved":  "/treasury/positions",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  43,
+                        "ms":  44,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4350,7 +4376,7 @@
                         "resolved":  "/treasury/accounts/4/reconciliation",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4359,7 +4385,7 @@
                         "resolved":  "/treasury/agent-floats",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4368,7 +4394,7 @@
                         "resolved":  "/treasury/agent-floats/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  29,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4377,7 +4403,7 @@
                         "resolved":  "/treasury/agent-floats/1/requests",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  29,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4403,7 +4429,7 @@
                         "resolved":  "/treasury/float-requests/3",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4412,7 +4438,7 @@
                         "resolved":  "/treasury/counterparties",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  26,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4448,7 +4474,7 @@
                         "resolved":  "/treasury/counterparties/25",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  27,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4457,7 +4483,7 @@
                         "resolved":  "/treasury/counterparties/25/exposure",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  43,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4466,7 +4492,7 @@
                         "resolved":  "/treasury/deal-types",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  26,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4501,7 +4527,7 @@
                         "resolved":  "/treasury/deal-types/5",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4510,7 +4536,7 @@
                         "resolved":  "/treasury/deals",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  110,
+                        "ms":  94,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4682,7 +4708,7 @@
                         "resolved":  "/treasury/deals/11",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  35,
+                        "ms":  37,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4691,7 +4717,7 @@
                         "resolved":  "/treasury/fx-rates",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  25,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4717,7 +4743,7 @@
                         "resolved":  "/treasury/fx/positions?asOfDate=2026-10-16",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  31,
+                        "ms":  32,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4726,7 +4752,7 @@
                         "resolved":  "/treasury/fx/revaluation-config",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null
@@ -4738,7 +4764,7 @@
                         "resolved":  "/treasury/fx/revaluations",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  20,
+                        "ms":  23,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4783,7 +4809,7 @@
                         "resolved":  "/treasury/ecl-parameters",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  25,
                         "errorCode":  [
                                           null,
                                           null
@@ -4795,7 +4821,7 @@
                         "resolved":  "/treasury/portfolio",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  50,
+                        "ms":  52,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4804,7 +4830,7 @@
                         "resolved":  "/treasury/prices?instrumentId=BM-423046",
                         "owner":  "micropay",
                         "status":  403,
-                        "ms":  13,
+                        "ms":  15,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4813,7 +4839,7 @@
                         "resolved":  "/treasury/prices/history?instrumentId=BM-423046\u0026from=2026-01-01\u0026to=2026-10-16",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  24,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4822,8 +4848,12 @@
                         "resolved":  "/treasury/breaches",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  31,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -4841,10 +4871,10 @@
                     },
                     {
                         "path":  "/treasury/breaches/{trsBreachId}",
-                        "resolved":  "/treasury/breaches/12",
+                        "resolved":  "/treasury/breaches/16",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4853,8 +4883,13 @@
                         "resolved":  "/treasury/limit-evaluations",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  27,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -4890,10 +4925,10 @@
                     },
                     {
                         "path":  "/treasury/limit-evaluations/{trsLimitEvaluationId}",
-                        "resolved":  "/treasury/limit-evaluations/30",
+                        "resolved":  "/treasury/limit-evaluations/35",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4902,8 +4937,11 @@
                         "resolved":  "/treasury/limits",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  36,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -4939,7 +4977,7 @@
                         "resolved":  "/treasury/limits/8",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4948,7 +4986,7 @@
                         "resolved":  "/treasury/assumptions",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  28,
+                        "ms":  25,
                         "errorCode":  [
                                           null,
                                           null,
@@ -4964,7 +5002,7 @@
                         "resolved":  "/treasury/assumptions/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4973,7 +5011,7 @@
                         "resolved":  "/treasury/ladder-items",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  18,
+                        "ms":  16,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -4991,8 +5029,9 @@
                         "resolved":  "/treasury/rule-sets",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  68,
+                        "ms":  80,
                         "errorCode":  [
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -5008,7 +5047,7 @@
                         "resolved":  "/treasury/rule-sets/2",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  26,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5017,7 +5056,7 @@
                         "resolved":  "/treasury/rule-sets/2/asset-classes",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5034,7 +5073,7 @@
                         "resolved":  "/treasury/rule-sets/2/ratios",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  27,
+                        "ms":  28,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5048,7 +5087,7 @@
                         "resolved":  "/treasury/runs",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  49,
+                        "ms":  50,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5065,20 +5104,141 @@
                     },
                     {
                         "path":  "/treasury/runs/{trsLadderRunId}",
-                        "resolved":  "/treasury/runs/66",
+                        "resolved":  "/treasury/runs/73",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
                     {
                         "path":  "/treasury/runs/{trsLadderRunId}/lines",
-                        "resolved":  "/treasury/runs/66/lines",
+                        "resolved":  "/treasury/runs/73/lines",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  45,
                         "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
+                                          null,
                                           null,
                                           null,
                                           null,
@@ -5095,7 +5255,7 @@
                         "resolved":  "/treasury/runs/68/repricing-summary",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  36,
+                        "ms":  30,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5104,7 +5264,7 @@
                         "resolved":  "/treasury/runs/14/return",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  35,
+                        "ms":  21,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5122,7 +5282,7 @@
                         "resolved":  "/treasury/reconciliation/matches",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  19,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5143,7 +5303,7 @@
                         "resolved":  "/treasury/reconciliation/matches/14",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5152,7 +5312,7 @@
                         "resolved":  "/treasury/reconciliation/unmatched",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  31,
+                        "ms":  34,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5161,7 +5321,7 @@
                         "resolved":  "/treasury/statement-formats",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  24,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5188,7 +5348,7 @@
                         "resolved":  "/treasury/statements/1",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  16,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5197,7 +5357,7 @@
                         "resolved":  "/treasury/statements/1/lines",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  20,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5213,7 +5373,7 @@
                         "resolved":  "/treasury/cfp/activations",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  19,
+                        "ms":  22,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5227,7 +5387,7 @@
                         "resolved":  "/treasury/cfp/activations/4",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  25,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5236,7 +5396,7 @@
                         "resolved":  "/treasury/cfp/summary",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  29,
+                        "ms":  39,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5245,7 +5405,7 @@
                         "resolved":  "/treasury/cfp/triggers",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  18,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5261,7 +5421,7 @@
                         "resolved":  "/treasury/cfp/triggers/6",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  23,
+                        "ms":  18,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5270,7 +5430,7 @@
                         "resolved":  "/treasury/funding-lines",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  30,
+                        "ms":  22,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5296,7 +5456,7 @@
                         "resolved":  "/treasury/funding-lines/26",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  16,
+                        "ms":  19,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5305,7 +5465,7 @@
                         "resolved":  "/treasury/scenarios",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  41,
+                        "ms":  43,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5334,7 +5494,7 @@
                         "resolved":  "/treasury/scenarios/3",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  26,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5343,7 +5503,7 @@
                         "resolved":  "/treasury/settings",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  22,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5352,7 +5512,7 @@
                         "resolved":  "/treasury/transfers",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  17,
+                        "ms":  22,
                         "errorCode":  [
                                           null,
                                           null,
@@ -5369,7 +5529,7 @@
                         "resolved":  "/treasury/transfers/in-transit",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5378,7 +5538,7 @@
                         "resolved":  "/treasury/transfers/9",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  24,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5387,7 +5547,7 @@
                         "resolved":  "/treasury/settings/tenant",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  21,
+                        "ms":  20,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5396,7 +5556,7 @@
                         "resolved":  "/treasury/setup/checklist",
                         "owner":  "micropay",
                         "status":  200,
-                        "ms":  22,
+                        "ms":  25,
                         "errorCode":  null,
                         "outcome":  "PASS"
                     },
@@ -5412,6 +5572,68 @@
                                           null,
                                           null
                                       ],
+                        "outcome":  "PASS"
+                    },
+                    {
+                        "path":  "/treasury/trust/accounts",
+                        "resolved":  "/treasury/trust/accounts",
+                        "owner":  "micropay",
+                        "status":  200,
+                        "ms":  21,
+                        "errorCode":  [
+                                          null,
+                                          null
+                                      ],
+                        "outcome":  "PASS"
+                    },
+                    {
+                        "path":  "/treasury/trust/holdings",
+                        "resolved":  "/treasury/trust/holdings",
+                        "owner":  "micropay",
+                        "status":  200,
+                        "ms":  20,
+                        "errorCode":  null,
+                        "outcome":  "PASS"
+                    },
+                    {
+                        "path":  "/treasury/trust/emoney-balances",
+                        "resolved":  "/treasury/trust/emoney-balances",
+                        "owner":  "micropay",
+                        "status":  200,
+                        "ms":  21,
+                        "errorCode":  [
+                                          null,
+                                          null,
+                                          null,
+                                          null
+                                      ],
+                        "outcome":  "PASS"
+                    },
+                    {
+                        "path":  "/treasury/trust/reconciliations/{trsTrustReconRunId}",
+                        "resolved":  "/treasury/trust/reconciliations/72",
+                        "owner":  "micropay",
+                        "status":  200,
+                        "ms":  25,
+                        "errorCode":  null,
+                        "outcome":  "PASS"
+                    },
+                    {
+                        "path":  "/treasury/trust/asset-breakdown?asOfDate=2026-10-16",
+                        "resolved":  "/treasury/trust/asset-breakdown?asOfDate=2026-10-16",
+                        "owner":  "micropay",
+                        "status":  200,
+                        "ms":  21,
+                        "errorCode":  null,
+                        "outcome":  "PASS"
+                    },
+                    {
+                        "path":  "/treasury/trust/interest",
+                        "resolved":  "/treasury/trust/interest",
+                        "owner":  "micropay",
+                        "status":  200,
+                        "ms":  23,
+                        "errorCode":  null,
                         "outcome":  "PASS"
                     }
                 ]

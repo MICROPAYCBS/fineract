@@ -79,7 +79,8 @@
     "trsRatiosRunId": { "from": "/treasury/runs?type=RATIOS", "select": ["[0].id", "pageItems[0].id"] },
     "trsStressRunId": { "from": "/treasury/runs?type=STRESS", "select": ["[0].id", "pageItems[0].id"] },
     "trsRepricingRunId": { "from": "/treasury/runs?type=REPRICING", "select": ["[0].id", "pageItems[0].id"] },
-    "trsReturnRunId": { "from": "/treasury/runs?type=RETURN", "select": ["[0].id", "pageItems[0].id"] }
+    "trsReturnRunId": { "from": "/treasury/runs?type=RETURN", "select": ["[0].id", "pageItems[0].id"] },
+    "trsTrustReconRunId": { "from": "/treasury/runs?type=TRUST_RECON", "select": ["[0].id", "pageItems[0].id"] }
   },
   "endpoints": [
     { "path": "/authentication", "method": "POST", "note": "login with JSON body; performed by the script to obtain the session key" },
@@ -381,6 +382,12 @@
     { "path": "/treasury/transfers/{trsTransferId}", "owner": "micropay" },
     { "path": "/treasury/settings/tenant", "owner": "micropay" },
     { "path": "/treasury/setup/checklist", "owner": "micropay" },
-    { "path": "/treasury/setup/templates", "owner": "micropay" }
+    { "path": "/treasury/setup/templates", "owner": "micropay" },
+    { "path": "/treasury/trust/accounts", "owner": "micropay" },
+    { "path": "/treasury/trust/holdings", "owner": "micropay" },
+    { "path": "/treasury/trust/emoney-balances", "owner": "micropay" },
+    { "path": "/treasury/trust/reconciliations/{trsTrustReconRunId}", "owner": "micropay" },
+    { "path": "/treasury/trust/asset-breakdown?asOfDate=2026-10-16", "owner": "micropay" },
+    { "path": "/treasury/trust/interest", "owner": "micropay" }
   ]
 }

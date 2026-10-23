@@ -69,6 +69,12 @@ public final class TreasuryFxApiConstants {
             LOCALE_PARAM);
     public static final Set<String> NOTE_PARAMS = Set.of(NOTE_PARAM, LOCALE_PARAM);
     public static final String CLIENT_TYPE_PARAM = "clientType";
+    public static final String EMONEY_SOURCE_PARAM = "emoneySource";
+    public static final String EMONEY_CUSTOMER_PRODUCTS_PARAM = "emoneyCustomerProductIds";
+    public static final String EMONEY_AGENT_PRODUCTS_PARAM = "emoneyAgentProductIds";
+    public static final String EMONEY_OTHER_PRODUCTS_PARAM = "emoneyOtherProductIds";
+    public static final String TRUST_INTEREST_GL_PARAM = "trustInterestGlAccountId";
     public static final Set<String> TENANT_SETTING_PARAMS = Set.of(BASE_CURRENCY_PARAM, FX_MAX_RATE_AGE_DAYS_PARAM, NOP_CAPITAL_BASIS_PARAM,
-            CLIENT_TYPE_PARAM, LOCALE_PARAM);
+            CLIENT_TYPE_PARAM, EMONEY_SOURCE_PARAM, EMONEY_CUSTOMER_PRODUCTS_PARAM, EMONEY_AGENT_PRODUCTS_PARAM,
+            EMONEY_OTHER_PRODUCTS_PARAM, TRUST_INTEREST_GL_PARAM, LOCALE_PARAM);
 }

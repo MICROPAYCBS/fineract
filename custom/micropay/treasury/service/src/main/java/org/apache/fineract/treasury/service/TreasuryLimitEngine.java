@@ -185,6 +185,7 @@ public class TreasuryLimitEngine {
             case RATIOS -> EnumSet.of(LimitMetric.RATIO);
             case STRESS -> EnumSet.of(LimitMetric.SURVIVAL_DAYS);
             case REPRICING -> EnumSet.of(LimitMetric.REPRICING_GAP_PCT, LimitMetric.EAR_PCT);
+            case TRUST_RECON -> EnumSet.of(LimitMetric.TRUST_COVERAGE, LimitMetric.TRUST_BANK_CONCENTRATION, LimitMetric.TRUST_SHORTFALL);
             default -> null;
         };
         if (metrics == null) {

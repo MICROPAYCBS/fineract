@@ -70,7 +70,16 @@ public enum LimitMetric {
      * capital, for the shock in basis points named by {@code metricKey}, or the worst of its shocks.
      */
     EAR_PCT(EnumSet.of(LimitScopeType.INSTITUTION, LimitScopeType.CURRENCY, LimitScopeType.OFFICE), EnumSet.of(LimitUnit.PERCENT), false,
-            false); //
+            false), //
+    /** A TRUST_RECON run's eligible trust assets as a percentage of e-money outstanding (NPS Act 2020 s.60). */
+    TRUST_COVERAGE(EnumSet.of(LimitScopeType.INSTITUTION), EnumSet.of(LimitUnit.PERCENT), false, false), //
+    /**
+     * A TRUST_RECON run's trust money at each institution as a percentage of e-money, one observation per institution;
+     * it does not apply while e-money is at most UGX 500m (NPS Regulations 2021 reg 15(2)-(3)).
+     */
+    TRUST_BANK_CONCENTRATION(EnumSet.of(LimitScopeType.INSTITUTION), EnumSet.of(LimitUnit.PERCENT), false, false), //
+    /** A TRUST_RECON run's shortfall: e-money less the eligible trust assets, when positive (s.47(1)(a)). */
+    TRUST_SHORTFALL(EnumSet.of(LimitScopeType.INSTITUTION), EnumSet.of(LimitUnit.AMOUNT), false, false); //
 
     private final Set<LimitScopeType> scopes;
     private final Set<LimitUnit> units;

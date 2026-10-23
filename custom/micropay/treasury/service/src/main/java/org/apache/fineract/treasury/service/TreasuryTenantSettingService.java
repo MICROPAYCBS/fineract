@@ -20,10 +20,14 @@ package org.apache.fineract.treasury.service;
 
 import static org.apache.fineract.treasury.api.TreasuryApiConstants.MODULE_ENABLED_PROPERTY;
 
+import java.util.Arrays;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
@@ -37,6 +41,8 @@ import org.apache.fineract.treasury.fx.NopCapitalBasis;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator.TenantSettingRequest;
 import org.apache.fineract.treasury.setup.ClientType;
+import org.apache.fineract.treasury.trust.EMoneyCategory;
+import org.apache.fineract.treasury.trust.EMoneySourceType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -64,7 +70,37 @@ public class TreasuryTenantSettingService {
                 this.fxConfig.maxRateAgeDays(), s.getFxMaxRateAgeDays(), this.fxConfig.defaultMaxRateAgeDays(),
                 this.fxConfig.nopCapitalBasis().name(), s.getNopCapitalBasis() == null ? null : s.getNopCapitalBasis().name(),
                 NopCapitalBasis.PRECEDING_QUARTER.name(), s.getLastModifiedBy(), s.getLastModifiedOnUtc(),
-                s.getClientType() == null ? null : s.getClientType().name());
+                s.getClientType() == null ? null : s.getClientType().name(), emoneySource(s).name(), ids(s.getEmoneyCustomerProducts()),
+                ids(s.getEmoneyAgentProducts()), ids(s.getEmoneyOtherProducts()), s.getTrustInterestGlAccountId());
+    }
+
+    /** Where the tenant's e-money outstanding comes from; Fineract savings unless set. */
+    public static EMoneySourceType emoneySource(final TreasuryTenantSetting s) {
+        return s.getEmoneySource() == null ? EMoneySourceType.FINERACT_SAVINGS : s.getEmoneySource();
+    }
+
+    /** The e-money savings products of each category. */
+    public static Map<EMoneyCategory, List<Long>> emoneyProducts(final TreasuryTenantSetting s) {
+        final Map<EMoneyCategory, List<Long>> products = new EnumMap<>(EMoneyCategory.class);
+        products.put(EMoneyCategory.CUSTOMER, ids(s.getEmoneyCustomerProducts()));
+        products.put(EMoneyCategory.AGENT, ids(s.getEmoneyAgentProducts()));
+        products.put(EMoneyCategory.OTHER, ids(s.getEmoneyOtherProducts()));
+        return products;
+    }
+
+    /** The tenant's settings row, or an empty one. */
+    @Transactional(readOnly = true)
+    public TreasuryTenantSetting setting() {
+        return this.repository.findFirstByOrderByIdAsc().orElseGet(TreasuryTenantSetting::new);
+    }
+
+    static List<Long> ids(final String list) {
+        return list == null || list.isBlank() ? List.of()
+                : Arrays.stream(list.split(",")).map(String::trim).filter(x -> !x.isEmpty()).map(Long::valueOf).toList();
+    }
+
+    private static String join(final List<Long> ids) {
+        return ids == null || ids.isEmpty() ? null : ids.stream().map(String::valueOf).collect(Collectors.joining(","));
     }
 
     /** The tenant's client type, if set. */
@@ -110,6 +146,32 @@ public class TreasuryTenantSettingService {
             setting.setNopCapitalBasis(request.nopCapitalBasis());
             changes.put("nopCapitalBasis", request.nopCapitalBasis() == null ? null : request.nopCapitalBasis().name());
         }
+        if (request.emoneySourceSent() && request.emoneySource() != setting.getEmoneySource()) {
+            setting.setEmoneySource(request.emoneySource());
+            changes.put("emoneySource", request.emoneySource() == null ? null : request.emoneySource().name());
+        }
+        for (final Map.Entry<EMoneyCategory, List<Long>> e : request.emoneyProducts().entrySet()) {
+            final String joined = join(e.getValue());
+            switch (e.getKey()) {
+                case CUSTOMER -> setting.setEmoneyCustomerProducts(joined);
+                case AGENT -> setting.setEmoneyAgentProducts(joined);
+                case OTHER -> setting.setEmoneyOtherProducts(joined);
+            }
+            changes.put("emoney" + e.getKey().name().charAt(0) + e.getKey().name().substring(1).toLowerCase() + "ProductIds", e.getValue());
+        }
+        if (!request.emoneyProducts().isEmpty()) {
+            requireSavingsProducts(request.emoneyProducts());
+        }
+        if (request.trustInterestGlSent() && !Objects.equals(request.trustInterestGlAccountId(), setting.getTrustInterestGlAccountId())) {
+            if (request.trustInterestGlAccountId() != null
+                    && this.jdbcTemplate.queryForObject("SELECT COUNT(1) FROM acc_gl_account WHERE id = ?", Integer.class,
+                            request.trustInterestGlAccountId()) == 0) {
+                throw new TreasuryWorkflowException(ENTITY, "gl.account.not.found",
+                        "GL account " + request.trustInterestGlAccountId() + " does not exist", request.trustInterestGlAccountId());
+            }
+            setting.setTrustInterestGlAccountId(request.trustInterestGlAccountId());
+            changes.put("trustInterestGlAccountId", request.trustInterestGlAccountId());
+        }
         if (request.clientTypeSent() && request.clientType() != setting.getClientType()) {
             setting.setClientType(request.clientType());
             changes.put("clientType", request.clientType() == null ? null : request.clientType().name());
@@ -120,6 +182,17 @@ public class TreasuryTenantSettingService {
             this.repository.saveAndFlush(setting);
         }
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(setting.getId()).with(changes).build();
+    }
+
+    private void requireSavingsProducts(final Map<EMoneyCategory, List<Long>> products) {
+        for (final List<Long> ids : products.values()) {
+            for (final Long id : ids) {
+                if (this.jdbcTemplate.queryForObject("SELECT COUNT(1) FROM m_savings_product WHERE id = ?", Integer.class, id) == 0) {
+                    throw new TreasuryWorkflowException(ENTITY, "savings.product.not.found", "Savings product " + id + " does not exist",
+                            id);
+                }
+            }
+        }
     }
 
     private void requireBaseCurrencyUnused(final String before, final String after) {

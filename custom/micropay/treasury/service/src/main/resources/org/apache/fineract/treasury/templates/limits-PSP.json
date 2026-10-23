@@ -1,0 +1,38 @@
+[
+  {
+    "code": "TRUST_COVERAGE_MIN",
+    "name": "E-money covered 100% by unencumbered liquid trust assets (NPS Act 2020 s.60)",
+    "description": "Regulatory hard limit: eligible trust assets at least 100% of e-money outstanding. The warning at 102% is a placeholder.",
+    "metric": "TRUST_COVERAGE",
+    "scopeType": "INSTITUTION",
+    "comparison": "MIN",
+    "hardLevel": 100,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 102
+  },
+  {
+    "code": "TRUST_BANK_CONCENTRATION_MAX",
+    "name": "At most 20% of e-money held at one institution (NPS Regulations 2021 reg 15(2)-(3))",
+    "description": "Regulatory hard limit per institution; it does not apply while total e-money is at most UGX 500m. The warning at 18% is a placeholder.",
+    "metric": "TRUST_BANK_CONCENTRATION",
+    "scopeType": "INSTITUTION",
+    "comparison": "MAX",
+    "hardLevel": 20,
+    "unit": "PERCENT",
+    "locale": "en",
+    "warningLevel": 18
+  },
+  {
+    "code": "TRUST_SHORTFALL_MAX",
+    "name": "No trust shortfall (NPS Act 2020 s.47(1)(a); report at once, reg 24)",
+    "description": "Regulatory hard limit: any e-money not matched by eligible trust assets breaches.",
+    "metric": "TRUST_SHORTFALL",
+    "scopeType": "INSTITUTION",
+    "comparison": "MAX",
+    "hardLevel": 0,
+    "unit": "AMOUNT",
+    "locale": "en",
+    "currencyCode": "UGX"
+  }
+]
