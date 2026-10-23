@@ -186,6 +186,8 @@ class TreasuryLiquidityDataValidatorTest {
         assertEquals(List.of("scenarioId"),
                 parameters(() -> this.validator.validateRun("{\"type\": \"STRESS\", \"currencyCode\": \"UGX\"}")));
         assertEquals(List.of("scenarioId"), parameters(() -> this.validator.validateRun("{\"currencyCode\": \"UGX\", \"scenarioId\": 2}")));
+        assertNull(this.validator.validateRun("{\"type\": \"STRESS\", \"sourceRunId\": 15, \"scenarioId\": 2}").currencyCode(),
+                "the source run's currency");
         assertThrows(UnsupportedParameterException.class, () -> this.validator.validateActivate("{\"force\": true}"));
     }
 

@@ -546,7 +546,7 @@ P3.4 (TR-26, TR-27) adds stress scenarios run as shocks over the ladder, with th
 
 ### Stress runs
 
-`POST /runs?type=stress&scenarioId=&ladderRunId=` (or `asOfDate`, `currency`, `officeId`: the scope's ladder run, built when missing) applies an active scenario version to a ladder run and stores it as a `STRESS` run: `GET /runs/{id}/stress`. A run replaces the scope's earlier run of the same scenario, and goes with its ladder run; a submitted return locks the scope, as for every run. The "Treasury Liquidity Run" job (`TRS_LIQ`) now runs every active scenario after the ladder and the ratios.
+`POST /runs?type=stress&scenarioId=&ladderRunId=` (its date, currency and office; or `asOfDate`, `currency`, `officeId`: the scope's ladder run, built when missing; a source run without a currency gives its scope to any run type) applies an active scenario version to a ladder run and stores it as a `STRESS` run: `GET /runs/{id}/stress`. A run replaces the scope's earlier run of the same scenario, and goes with its ladder run; a submitted return locks the scope, as for every run. The "Treasury Liquidity Run" job (`TRS_LIQ`) now runs every active scenario after the ladder and the ratios.
 
 What is stored:
 

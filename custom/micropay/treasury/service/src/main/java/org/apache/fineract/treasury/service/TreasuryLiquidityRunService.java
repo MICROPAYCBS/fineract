@@ -117,7 +117,7 @@ public class TreasuryLiquidityRunService {
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
-        final RunRequest request = this.validator.validateRun(command.json());
+        final RunRequest request = withSourceScope(this.validator.validateRun(command.json()));
         final LocalDate asOf = request.asOfDate() == null ? DateUtils.getBusinessLocalDate() : request.asOfDate();
         if (DateUtils.isAfterBusinessDate(asOf)) {
             throw new TreasuryWorkflowException(ENTITY, "future.date", "The as-of date " + asOf + " is after the business date", asOf);
@@ -160,6 +160,17 @@ public class TreasuryLiquidityRunService {
             changes.put("limitBreaches", e.getBreachesCreated() + e.getBreachesEscalated() + e.getBreachesRepeated());
         });
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(run.getId()).with(changes).build();
+    }
+
+    /** With a source run and no currency, the source run's date, currency and office. */
+    private RunRequest withSourceScope(final RunRequest request) {
+        if (request.sourceRunId() == null || request.currencyCode() != null) {
+            return request;
+        }
+        final TreasuryRun source = find(request.sourceRunId());
+        return new RunRequest(request.type(), request.asOfDate() == null ? source.getAsOfDate() : request.asOfDate(),
+                source.getCurrencyCode(), request.officeId() == null ? source.getOfficeId() : request.officeId(), request.ruleSetId(),
+                request.assumptionSetId(), request.sourceRunId(), request.scenarioId());
     }
 
     /** Submits a return: it and every run of its scope are then locked. Not by who made the return. */

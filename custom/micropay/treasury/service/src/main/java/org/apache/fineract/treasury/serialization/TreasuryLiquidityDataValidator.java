@@ -459,7 +459,10 @@ public class TreasuryLiquidityDataValidator {
             v.reset().parameter(SCENARIO_ID_PARAM).value(scenario).failWithCode("only.for.stress");
         }
         v.reset().parameter(TYPE_PARAM).value(type).ignoreIfNull().isOneOfTheseStringValues(names(RunType.values()));
-        v.reset().parameter(CURRENCY_CODE_PARAM).value(currency).notBlank().matchesRegularExpression("^[A-Z]{3}$",
+        if (sourceRun == null) {
+            v.reset().parameter(CURRENCY_CODE_PARAM).value(currency).notBlank();
+        }
+        v.reset().parameter(CURRENCY_CODE_PARAM).value(currency).ignoreIfNull().matchesRegularExpression("^[A-Z]{3}$",
                 "The parameter `currencyCode` is a three-letter code");
         v.reset().parameter(OFFICE_ID_PARAM).value(office).ignoreIfNull().longGreaterThanZero();
         v.reset().parameter(RULE_SET_ID_PARAM).value(ruleSet).ignoreIfNull().longGreaterThanZero();
