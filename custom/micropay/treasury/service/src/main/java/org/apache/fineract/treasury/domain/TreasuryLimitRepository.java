@@ -18,10 +18,14 @@
  */
 package org.apache.fineract.treasury.domain;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import org.apache.fineract.treasury.limits.LimitStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 public interface TreasuryLimitRepository extends JpaRepository<TreasuryLimit, Long> {
 
@@ -30,4 +34,9 @@ public interface TreasuryLimitRepository extends JpaRepository<TreasuryLimit, Lo
     List<TreasuryLimit> findByStatusOrderByCodeAsc(LimitStatus status);
 
     List<TreasuryLimit> findAllByOrderByCodeAsc();
+
+    /** The limit locked for update, so that evaluations of it record their breaches one at a time. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM TreasuryLimit l WHERE l.id = :id")
+    Optional<TreasuryLimit> lockById(@Param("id") Long id);
 }

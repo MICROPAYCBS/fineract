@@ -49,6 +49,7 @@ import org.apache.fineract.treasury.domain.TreasuryLimitEvaluationRepository;
 import org.apache.fineract.treasury.domain.TreasuryLimitRepository;
 import org.apache.fineract.treasury.domain.TreasuryRun;
 import org.apache.fineract.treasury.domain.TreasuryRunRepository;
+import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.limits.BreachAction;
 import org.apache.fineract.treasury.limits.BreachStatus;
 import org.apache.fineract.treasury.limits.CounterpartyExposureLimitEvaluator;
@@ -61,6 +62,8 @@ import org.apache.fineract.treasury.limits.Observation;
 import org.apache.fineract.treasury.liquidity.RunType;
 import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.orm.jpa.JpaSystemException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -101,6 +104,8 @@ public class TreasuryLimitEngine {
     static final List<BreachStatus> OPEN = List.of(BreachStatus.OPEN, BreachStatus.ACKNOWLEDGED);
 
     private final Map<LimitMetric, LimitEvaluator> evaluators = new EnumMap<>(LimitMetric.class);
+    private static final String UNIQUE_OPEN_BREACH = "uq_treasury_breach_open";
+
     private final TreasuryLimitRepository limitRepository;
     private final TreasuryBreachRepository breachRepository;
     private final TreasuryBreachCommentRepository commentRepository;
@@ -331,6 +336,8 @@ public class TreasuryLimitEngine {
 
     private void record(final TreasuryLimit limit, final EvaluationContext context, final Observation observation,
             final TreasuryLimitEvaluation evaluation, final Tally tally, final Long userId) {
+        // An evaluation of the limit running at the same time waits here, then reads the breach the other one saved
+        this.limitRepository.lockById(limit.getId());
         final Optional<TreasuryBreach> open = this.breachRepository.findByLimitIdAndStatusIn(limit.getId(), OPEN).stream()
                 .filter(b -> b.getScopeType() == observation.subjectType() && Objects.equals(b.getScopeId(), observation.subjectId())
                         && Objects.equals(b.getCurrencyCode(), context.currencyCode()))
@@ -347,13 +354,29 @@ public class TreasuryLimitEngine {
             }
         }
         if (breach != null && action != BreachAction.NONE) {
-            this.breachRepository.saveAndFlush(breach);
+            save(breach);
         }
         this.lineRepository.save(line(evaluation, ++tally.seq, limit, observation, action, breach == null ? null : breach.getId()));
         tally.count(action, breach);
         if (action.notifies()) {
             tally.notified += this.notifier.notify(limit, breach, action, userId);
             this.cfpService.breachRaised(limit, breach, userId);
+        }
+    }
+
+    /** Saves the breach; the open key taken meanwhile by another breach (a writer that skipped the lock) is refused. */
+    private void save(final TreasuryBreach breach) {
+        try {
+            this.breachRepository.saveAndFlush(breach);
+        } catch (DataIntegrityViolationException | JpaSystemException e) {
+            // EclipseLink reports the unique violation as a JpaSystemException; anything else is not ours to explain
+            if (e instanceof JpaSystemException && !String.valueOf(e.getMessage()).contains(UNIQUE_OPEN_BREACH)) {
+                throw e;
+            }
+            // the cause is taken from the arguments and left out of them
+            throw new TreasuryWorkflowException("breach", "concurrent", "Limit " + breach.getLimitCode()
+                    + " already has a breach in progress for " + breach.getScopeType() + " " + breach.getScopeId() + "; evaluate it again",
+                    breach.getLimitId(), e);
         }
     }
 

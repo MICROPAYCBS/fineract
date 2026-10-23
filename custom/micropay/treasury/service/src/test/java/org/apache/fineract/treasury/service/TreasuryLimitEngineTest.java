@@ -24,10 +24,13 @@ import static org.apache.fineract.treasury.limits.LimitFixtures.own;
 import static org.apache.fineract.treasury.limits.LimitFixtures.run;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -60,6 +63,7 @@ import org.apache.fineract.treasury.domain.TreasuryLimitEvaluationLineRepository
 import org.apache.fineract.treasury.domain.TreasuryLimitEvaluationRepository;
 import org.apache.fineract.treasury.domain.TreasuryLimitRepository;
 import org.apache.fineract.treasury.domain.TreasuryRunRepository;
+import org.apache.fineract.treasury.exception.TreasuryWorkflowException;
 import org.apache.fineract.treasury.limits.BreachAction;
 import org.apache.fineract.treasury.limits.BreachStatus;
 import org.apache.fineract.treasury.limits.EvaluationContext;
@@ -76,6 +80,8 @@ import org.apache.fineract.useradministration.domain.AppUserRepositoryWrapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.InOrder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.transaction.PlatformTransactionManager;
 
 /**
@@ -314,5 +320,34 @@ class TreasuryLimitEngineTest {
         this.value.set(observed == null ? null : new BigDecimal(observed));
         final EvaluationContext context = new EvaluationContext(AS_OF, "UGX", null, null, run(13L, RunType.RATIOS, null), 2);
         return this.engine.evaluate(context, null, TreasuryLimitEngine.TRIGGER_MANUAL, null, 7L, false);
+    }
+
+    @Test
+    void theLimitIsLockedBeforeItsBreachesAreRead() {
+        observe("76");
+        final InOrder order = inOrder(this.limits, this.breaches);
+        order.verify(this.limits).lockById(4L);
+        order.verify(this.breaches).findByLimitIdAndStatusIn(eq(4L), any());
+    }
+
+    @Test
+    void aBreachInProgressSavedMeanwhileIsRefusedAsConcurrent() {
+        doThrow(new DataIntegrityViolationException("uq_treasury_breach_open")).when(this.breaches).saveAndFlush(any());
+        final TreasuryWorkflowException e = assertThrows(TreasuryWorkflowException.class, () -> observe("76"));
+        assertEquals("error.msg.treasury.breach.concurrent", e.getGlobalisationMessageCode());
+    }
+
+    @Test
+    void theOpenKeyIsHeldUntilTheBreachIsResolved() {
+        observe("76");
+        final TreasuryBreach breach = this.stored.getFirst();
+        breach.openKey();
+        assertEquals("4|INSTITUTION|0|UGX", breach.getOpenKey());
+        breach.setStatus(BreachStatus.ACKNOWLEDGED);
+        breach.openKey();
+        assertEquals("4|INSTITUTION|0|UGX", breach.getOpenKey());
+        breach.setStatus(BreachStatus.RESOLVED);
+        breach.openKey();
+        assertNull(breach.getOpenKey());
     }
 }

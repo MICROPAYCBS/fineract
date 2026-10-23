@@ -22,6 +22,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -163,4 +165,22 @@ public class TreasuryBreach extends AbstractPersistableCustom<Long> {
 
     @Column(name = "created_on_utc", nullable = false)
     private OffsetDateTime createdOnUtc;
+
+    /**
+     * Limit, subject and currency while the breach is OPEN or ACKNOWLEDGED, null once resolved: unique, so a limit has
+     * one breach in progress per subject and currency (a portable stand-in for a partial unique index).
+     */
+    @Column(name = "open_key", length = 120)
+    private String openKey;
+
+    @PrePersist
+    @PreUpdate
+    public void openKey() {
+        this.openKey = this.status == BreachStatus.RESOLVED ? null : openKey(this.limitId, this.scopeType, this.scopeId, this.currencyCode);
+    }
+
+    /** The open key of a breach of the limit for the subject and currency; as changelog 0017 backfills it. */
+    public static String openKey(final Long limitId, final LimitScopeType scopeType, final Long scopeId, final String currencyCode) {
+        return limitId + "|" + scopeType.name() + "|" + (scopeId == null ? 0L : scopeId) + "|" + (currencyCode == null ? "" : currencyCode);
+    }
 }
