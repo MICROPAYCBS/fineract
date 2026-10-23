@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: treasury P5.1. The tenant's own treasury settings (base currency, FX rate age, NOP capital basis) with
+  their permissions, and the FX open position limits aligned with the FI (Foreign Exchange Business) Rules 2010 r.6.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/treasury/parts/0018_fx_limit_tenant_settings.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <property name="treasury.datetime.type" value="DATETIME" dbms="mysql,mariadb"/>
+    <property name="treasury.datetime.type" value="TIMESTAMP WITH TIME ZONE" dbms="postgresql"/>
+    <property name="current_datetime" value="NOW()"/>
+
+    <changeSet id="treasury-tenant-setting-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="m_treasury_tenant_setting"/>
+            </not>
+        </preConditions>
+        <createTable tableName="m_treasury_tenant_setting">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="base_currency" type="VARCHAR(3)"/>
+            <column name="fx_max_rate_age_days" type="INT"/>
+            <column name="nop_capital_basis" type="VARCHAR(20)"/>
+            <column name="last_modified_by" type="BIGINT"/>
+            <column name="last_modified_on_utc" type="${treasury.datetime.type}"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="treasury-tenant-setting-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYTENANTSETTING'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="READ_TREASURYTENANTSETTING"/>
+            <column name="entity_name" value="TREASURYTENANTSETTING"/>
+            <column name="action_name" value="READ"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-tenant-setting-perm-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYTENANTSETTING'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="UPDATE_TREASURYTENANTSETTING"/>
+            <column name="entity_name" value="TREASURYTENANTSETTING"/>
+            <column name="action_name" value="UPDATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-tenant-setting-perm-003" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYTENANTSETTING_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_fx"/>
+            <column name="code" value="UPDATE_TREASURYTENANTSETTING_CHECKER"/>
+            <column name="entity_name" value="TREASURYTENANTSETTING"/>
+            <column name="action_name" value="UPDATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <!-- Only while the seeded levels are unchanged: a tenant's own levels are kept -->
+    <changeSet id="treasury-fx-limit-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM m_treasury_limit WHERE code = 'FX_AGGREGATE_NOP_MAX' AND hard_level = 20 AND warning_level IS NULL</sqlCheck>
+        </preConditions>
+        <update tableName="m_treasury_limit">
+            <column name="name" value="Aggregate net open position within 25% of core capital"/>
+            <column name="description" value="FI (Foreign Exchange Business) Rules 2010 r.6: the daily open position within (+/-) 25% of core capital as at the preceding quarter; the aggregate by the shorthand method (the greater of the sums of the long and of the short positions) at mid-rate. The warning at 20% is a placeholder. Inactive: activate once core capital is recorded."/>
+            <column name="warning_level" valueNumeric="20"/>
+            <column name="hard_level" valueNumeric="25"/>
+            <column name="version" valueComputed="version + 1"/>
+            <column name="last_modified_on_utc" valueDate="${current_datetime}"/>
+            <where>code = 'FX_AGGREGATE_NOP_MAX'</where>
+        </update>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'FX_AGGREGATE_NOP_MAX')"/>
+            <column name="version" valueComputed="(SELECT version FROM m_treasury_limit WHERE code = 'FX_AGGREGATE_NOP_MAX')"/>
+            <column name="action" value="UPDATE"/>
+            <column name="snapshot" value='{"code":"FX_AGGREGATE_NOP_MAX","name":"Aggregate net open position within 25% of core capital","description":"FI (Foreign Exchange Business) Rules 2010 r.6: the daily open position within (+/-) 25% of core capital as at the preceding quarter; the aggregate by the shorthand method (the greater of the sums of the long and of the short positions) at mid-rate. The warning at 20% is a placeholder. Inactive: activate once core capital is recorded.","metric":"FX_AGGREGATE_NOP","scopeType":"INSTITUTION","comparison":"MAX","warningLevel":"20","hardLevel":"25","unit":"PERCENT","status":"INACTIVE"}'/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+    <!-- Only while the seeded levels are unchanged: a tenant's own levels are kept -->
+    <changeSet id="treasury-fx-limit-002" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">SELECT COUNT(1) FROM m_treasury_limit WHERE code = 'FX_SINGLE_NOP_MAX' AND hard_level = 10 AND warning_level IS NULL</sqlCheck>
+        </preConditions>
+        <update tableName="m_treasury_limit">
+            <column name="name" value="Single currency net open position at most 10% of core capital (optional, internal)"/>
+            <column name="description" value="Each foreign currency's net open position, long or short, in base at MID, against core capital. OPTIONAL, internal: the FX Business Rules 2010 set no single-currency limit; the regulatory limit is FX_AGGREGATE_NOP_MAX. Inactive."/>
+            <column name="hard_level" valueNumeric="10"/>
+            <column name="version" valueComputed="version + 1"/>
+            <column name="last_modified_on_utc" valueDate="${current_datetime}"/>
+            <where>code = 'FX_SINGLE_NOP_MAX'</where>
+        </update>
+        <insert tableName="m_treasury_limit_history">
+            <column name="limit_id" valueComputed="(SELECT id FROM m_treasury_limit WHERE code = 'FX_SINGLE_NOP_MAX')"/>
+            <column name="version" valueComputed="(SELECT version FROM m_treasury_limit WHERE code = 'FX_SINGLE_NOP_MAX')"/>
+            <column name="action" value="UPDATE"/>
+            <column name="snapshot" value="{&quot;code&quot;:&quot;FX_SINGLE_NOP_MAX&quot;,&quot;name&quot;:&quot;Single currency net open position at most 10% of core capital (optional, internal)&quot;,&quot;description&quot;:&quot;Each foreign currency's net open position, long or short, in base at MID, against core capital. OPTIONAL, internal: the FX Business Rules 2010 set no single-currency limit; the regulatory limit is FX_AGGREGATE_NOP_MAX. Inactive.&quot;,&quot;metric&quot;:&quot;FX_SINGLE_NOP&quot;,&quot;scopeType&quot;:&quot;INSTITUTION&quot;,&quot;comparison&quot;:&quot;MAX&quot;,&quot;hardLevel&quot;:&quot;10&quot;,&quot;unit&quot;:&quot;PERCENT&quot;,&quot;status&quot;:&quot;INACTIVE&quot;}"/>
+            <column name="changed_on_utc" valueDate="${current_datetime}"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

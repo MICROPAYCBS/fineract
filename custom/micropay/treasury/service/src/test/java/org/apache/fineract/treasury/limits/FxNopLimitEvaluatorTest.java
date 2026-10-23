@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.treasury.data.TreasuryFxPositionData;
 import org.apache.fineract.treasury.service.TreasuryFxConfig;
@@ -80,7 +81,7 @@ class FxNopLimitEvaluatorTest {
                                 BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, new BigDecimal("4000"), AS_OF, false,
                                 new BigDecimal("-24000000"), "SHORT", capital == null ? null : new BigDecimal("2.4000"))),
                 new BigDecimal("125000000"), new BigDecimal("24000000"), new BigDecimal("125000000"),
-                capital == null ? null : new BigDecimal("15.0000"));
+                capital == null ? null : new BigDecimal("15.0000"), "PRECEDING_QUARTER", LocalDate.of(2026, 9, 30));
     }
 
     private static final class TreasuryLimitFixture {

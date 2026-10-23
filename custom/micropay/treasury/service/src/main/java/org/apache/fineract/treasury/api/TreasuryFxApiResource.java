@@ -27,6 +27,7 @@ import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_F
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_RATE_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_REVALUATION_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_REVAL_CONFIG_RESOURCE_NAME;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_TENANT_SETTING_RESOURCE_NAME;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -65,9 +66,11 @@ import org.apache.fineract.treasury.data.TreasuryFxPositionData;
 import org.apache.fineract.treasury.data.TreasuryFxRateData;
 import org.apache.fineract.treasury.data.TreasuryFxRevalConfigData;
 import org.apache.fineract.treasury.data.TreasuryFxRevaluationData;
+import org.apache.fineract.treasury.data.TreasuryTenantSettingData;
 import org.apache.fineract.treasury.service.TreasuryFxPositionService;
 import org.apache.fineract.treasury.service.TreasuryFxRateService;
 import org.apache.fineract.treasury.service.TreasuryFxRevaluationService;
+import org.apache.fineract.treasury.service.TreasuryTenantSettingService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -82,6 +85,7 @@ public class TreasuryFxApiResource {
     private final TreasuryFxRateService rateService;
     private final TreasuryFxRevaluationService revaluationService;
     private final TreasuryFxPositionService positionService;
+    private final TreasuryTenantSettingService tenantSettingService;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
 
     // ---------- rates ----------
@@ -250,6 +254,28 @@ public class TreasuryFxApiResource {
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult createCoreCapital(@Parameter(hidden = true) final String body) {
         return command(TREASURY_CORE_CAPITAL_RESOURCE_NAME, "CREATE", null, "/treasury/settings/core-capital", body);
+    }
+
+    // ---------- tenant settings ----------
+
+    @GET
+    @Path("settings/tenant")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "The tenant's treasury settings", description = "Base currency, FX rate age and NOP capital basis: in effect, as set for the tenant, and the deployment default")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TreasuryTenantSettingData.class)))
+    public TreasuryTenantSettingData retrieveTenantSetting() {
+        this.context.authenticatedUser().validateHasReadPermission(TREASURY_TENANT_SETTING_RESOURCE_NAME);
+        return this.tenantSettingService.retrieve();
+    }
+
+    @PUT
+    @Path("settings/tenant")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Set the tenant's treasury settings", description = "Any of baseCurrency (an organisation currency), fxMaxRateAgeDays (0 to 30), nopCapitalBasis (PRECEDING_QUARTER, LATEST); null goes back to the deployment default; maker-checker capable")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
+    public CommandProcessingResult updateTenantSetting(@Parameter(hidden = true) final String body) {
+        return command(TREASURY_TENANT_SETTING_RESOURCE_NAME, "UPDATE", null, "/treasury/settings/tenant", body);
     }
 
     // ---------- helpers ----------

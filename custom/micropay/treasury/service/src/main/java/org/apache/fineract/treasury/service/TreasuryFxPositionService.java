@@ -52,6 +52,7 @@ import org.apache.fineract.treasury.domain.TreasuryRunLineRepository;
 import org.apache.fineract.treasury.domain.TreasuryRunRepository;
 import org.apache.fineract.treasury.fx.FxRates;
 import org.apache.fineract.treasury.fx.NetOpenPosition;
+import org.apache.fineract.treasury.fx.NopCapitalBasis;
 import org.apache.fineract.treasury.liquidity.LadderSourceCode;
 import org.apache.fineract.treasury.liquidity.RunType;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator;
@@ -131,7 +132,11 @@ public class TreasuryFxPositionService {
                 .pending(accounts.stream().map(TreasuryAccount::getId).toList(), asOf);
         final TreeSet<String> currencies = new TreeSet<>(this.referenceDataLookup.organisationCurrencies());
         currencies.addAll(gl.keySet());
-        final Optional<TreasuryCoreCapital> capital = coreCapital(asOf);
+        // FI (Foreign Exchange Business) Rules 2010 r.6(1): core capital as at the preceding quarter, unless the tenant
+        // chose LATEST
+        final NopCapitalBasis basis = this.fxConfig.nopCapitalBasis();
+        final LocalDate capitalAsOf = basis.capitalDate(asOf);
+        final Optional<TreasuryCoreCapital> capital = nopCoreCapital(asOf);
         final BigDecimal coreCapital = capital.map(TreasuryCoreCapital::getAmount).orElse(null);
         final int scale = this.referenceDataLookup.decimalPlaces(base);
         final List<TreasuryFxPositionData.Currency> rows = new ArrayList<>();
@@ -164,7 +169,7 @@ public class TreasuryFxPositionService {
         final NetOpenPosition.Aggregate aggregate = NetOpenPosition.aggregate(foreign, coreCapital);
         return new TreasuryFxPositionData(asOf, base, officeId, coreCapital,
                 capital.map(TreasuryCoreCapital::getEffectiveDate).orElse(null), rows, aggregate.longs(), aggregate.shorts(),
-                aggregate.nop(), aggregate.percent());
+                aggregate.nop(), aggregate.percent(), basis.name(), capitalAsOf);
     }
 
     // ---------- core capital ----------
@@ -185,6 +190,11 @@ public class TreasuryFxPositionService {
         changes.put("amount", capital.getAmount());
         changes.put("currencyCode", capital.getCurrencyCode());
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withEntityId(capital.getId()).with(changes).build();
+    }
+
+    /** The core capital the net open position of the date is measured against, by the tenant's NOP capital basis. */
+    public Optional<TreasuryCoreCapital> nopCoreCapital(final LocalDate asOf) {
+        return coreCapital(this.fxConfig.nopCapitalBasis().capitalDate(asOf));
     }
 
     /** The core capital in effect: the latest from an effective date on or before the date. */

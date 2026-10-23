@@ -67,7 +67,7 @@ public class SavingsLadderSource implements LadderSource {
 
     @Override
     public List<LadderFlow> flows(final LadderContext context) {
-        final List<ProductBalance> balances = this.jdbcTemplate.query(SQL,
+        final List<ProductBalance> balances = StreamingQueries.query(this.jdbcTemplate, SQL,
                 new MapSqlParameterSource().addValue("currency", context.currencyCode()).addValue("officeId", context.officeId(),
                         java.sql.Types.BIGINT),
                 (rs, i) -> new ProductBalance(rs.getLong("product_id"), rs.getString("product_name"), rs.getBigDecimal("balance")));

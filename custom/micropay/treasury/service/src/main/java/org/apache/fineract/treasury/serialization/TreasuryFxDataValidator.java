@@ -29,9 +29,11 @@ import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CORE_CAPIT
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.CURRENCY_CODE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.DATE_FORMAT_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.EFFECTIVE_DATE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.FX_MAX_RATE_AGE_DAYS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.GAIN_GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.GL_ACCOUNT_ID_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.LOSS_GL_ACCOUNT_ID_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.NOP_CAPITAL_BASIS_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.NOTE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.NOTE_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.QUOTE_CURRENCY_PARAM;
@@ -42,10 +44,12 @@ import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.RATE_PARAM
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.RATE_TYPE_PARAM;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.RUN_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.SOURCE_PARAM;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TENANT_SETTING_PARAMS;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_CORE_CAPITAL_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_RATE_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_REVALUATION_RESOURCE_NAME;
 import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_FX_REVAL_CONFIG_RESOURCE_NAME;
+import static org.apache.fineract.treasury.api.TreasuryFxApiConstants.TREASURY_TENANT_SETTING_RESOURCE_NAME;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -68,6 +72,7 @@ import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidati
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.treasury.fx.FxRateSource;
 import org.apache.fineract.treasury.fx.FxRateType;
+import org.apache.fineract.treasury.fx.NopCapitalBasis;
 import org.springframework.stereotype.Component;
 
 /**
@@ -94,6 +99,11 @@ public class TreasuryFxDataValidator {
     }
 
     public record CoreCapitalRequest(LocalDate effectiveDate, BigDecimal amount, String note) {
+    }
+
+    /** The settings sent; a setting sent as null goes back to the deployment default, one not sent stays. */
+    public record TenantSettingRequest(boolean baseCurrencySent, String baseCurrency, boolean fxMaxRateAgeDaysSent,
+            Integer fxMaxRateAgeDays, boolean nopCapitalBasisSent, NopCapitalBasis nopCapitalBasis) {
     }
 
     /** One rate, or {@code rates}: a batch, each rate IMPORT unless it names its source. */
@@ -208,6 +218,23 @@ public class TreasuryFxDataValidator {
         v.reset().parameter(NOTE_PARAM).value(note).ignoreIfNull().notExceedingLengthOf(500);
         throwIfAny(errors);
         return new CoreCapitalRequest(effective, amount, note);
+    }
+
+    public TenantSettingRequest validateTenantSetting(final String json, final List<String> organisationCurrencies) {
+        final JsonObject object = parse(json, TENANT_SETTING_PARAMS);
+        final List<ApiParameterError> errors = new ArrayList<>();
+        final DataValidatorBuilder v = new DataValidatorBuilder(errors).resource(TREASURY_TENANT_SETTING_RESOURCE_NAME);
+        final String base = upper(text(object, BASE_CURRENCY_PARAM));
+        v.reset().parameter(BASE_CURRENCY_PARAM).value(base).ignoreIfNull().isOneOfTheseStringValues(organisationCurrencies);
+        Integer age = null;
+        if (object.has(FX_MAX_RATE_AGE_DAYS_PARAM) && !object.get(FX_MAX_RATE_AGE_DAYS_PARAM).isJsonNull()) {
+            age = this.fromApiJsonHelper.extractIntegerSansLocaleNamed(FX_MAX_RATE_AGE_DAYS_PARAM, object);
+            v.reset().parameter(FX_MAX_RATE_AGE_DAYS_PARAM).value(age).notNull().inMinMaxRange(0, 30);
+        }
+        final NopCapitalBasis basis = enumValue(object, NOP_CAPITAL_BASIS_PARAM, NopCapitalBasis.class, v, "");
+        throwIfAny(errors);
+        return new TenantSettingRequest(object.has(BASE_CURRENCY_PARAM), base, object.has(FX_MAX_RATE_AGE_DAYS_PARAM), age,
+                object.has(NOP_CAPITAL_BASIS_PARAM), basis);
     }
 
     public String validateNote(final String json) {

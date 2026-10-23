@@ -30,6 +30,7 @@ public final class TreasuryFxApiConstants {
     public static final String TREASURY_FX_REVALUATION_RESOURCE_NAME = "TREASURYFXREVALUATION";
     public static final String TREASURY_FX_POSITION_RESOURCE_NAME = "TREASURYFXPOSITION";
     public static final String TREASURY_CORE_CAPITAL_RESOURCE_NAME = "TREASURYCORECAPITAL";
+    public static final String TREASURY_TENANT_SETTING_RESOURCE_NAME = "TREASURYTENANTSETTING";
 
     public static final String COMMAND_CANCEL = "cancel";
     public static final String COMMAND_RUN = "run";
@@ -54,6 +55,8 @@ public final class TreasuryFxApiConstants {
     public static final String AMOUNT_PARAM = "amount";
     public static final String DATE_FORMAT_PARAM = "dateFormat";
     public static final String LOCALE_PARAM = "locale";
+    public static final String FX_MAX_RATE_AGE_DAYS_PARAM = "fxMaxRateAgeDays";
+    public static final String NOP_CAPITAL_BASIS_PARAM = "nopCapitalBasis";
 
     public static final Set<String> RATE_PARAMS = Set.of(BASE_CURRENCY_PARAM, QUOTE_CURRENCY_PARAM, RATE_DATE_PARAM, RATE_TYPE_PARAM,
             RATE_PARAM, SOURCE_PARAM, NOTE_PARAM, RATES_PARAM, DATE_FORMAT_PARAM, LOCALE_PARAM);
@@ -65,4 +68,6 @@ public final class TreasuryFxApiConstants {
     public static final Set<String> CORE_CAPITAL_PARAMS = Set.of(EFFECTIVE_DATE_PARAM, AMOUNT_PARAM, NOTE_PARAM, DATE_FORMAT_PARAM,
             LOCALE_PARAM);
     public static final Set<String> NOTE_PARAMS = Set.of(NOTE_PARAM, LOCALE_PARAM);
+    public static final Set<String> TENANT_SETTING_PARAMS = Set.of(BASE_CURRENCY_PARAM, FX_MAX_RATE_AGE_DAYS_PARAM, NOP_CAPITAL_BASIS_PARAM,
+            LOCALE_PARAM);
 }

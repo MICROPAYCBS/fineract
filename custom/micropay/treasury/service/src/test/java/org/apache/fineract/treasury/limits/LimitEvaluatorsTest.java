@@ -55,6 +55,9 @@ import org.apache.fineract.treasury.liquidity.RunType;
 import org.apache.fineract.treasury.service.TreasuryBalanceReader;
 import org.apache.fineract.treasury.service.TreasuryCounterpartyService;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcOperations;
+import org.springframework.jdbc.core.PreparedStatementCreator;
+import org.springframework.jdbc.core.ResultSetExtractor;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -159,7 +162,10 @@ class LimitEvaluatorsTest {
     @SuppressWarnings("unchecked")
     void depositorConcentrationOfTheTopN() {
         final NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
-        when(jdbc.query(eq(DepositorConcentrationLimitEvaluator.SQL), any(MapSqlParameterSource.class), any(RowMapper.class))).thenReturn(
+        final JdbcOperations operations = mock(JdbcOperations.class);
+        when(jdbc.getJdbcOperations()).thenReturn(operations);
+        // read in batches (StreamingQueries): a fetch-size statement and a row-mapper extractor
+        when(operations.query(any(PreparedStatementCreator.class), any(ResultSetExtractor.class))).thenReturn(
                 List.of(holder("client 7", "600"), holder("client 3", "250"), holder("group 2", "100"), holder("client 9", "50")));
         final DepositorConcentrationLimitEvaluator evaluator = new DepositorConcentrationLimitEvaluator(jdbc);
         final TreasuryLimit top2 = limit(1L, LimitMetric.DEPOSITOR_CONCENTRATION, LimitComparison.MAX, "75", "80", LimitUnit.PERCENT);

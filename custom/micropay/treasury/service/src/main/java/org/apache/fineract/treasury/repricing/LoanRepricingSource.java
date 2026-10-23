@@ -33,6 +33,7 @@ import org.apache.fineract.treasury.liquidity.AssumptionType;
 import org.apache.fineract.treasury.liquidity.Assumptions;
 import org.apache.fineract.treasury.liquidity.LadderContext;
 import org.apache.fineract.treasury.liquidity.LadderSourceCode;
+import org.apache.fineract.treasury.liquidity.StreamingQueries;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.RowCallbackHandler;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -101,7 +102,7 @@ public class LoanRepricingSource implements RepricingSource {
         // Streamed a loan at a time (the rows come ordered by loan), the positions summed as they are made
         final Map<RepricingPosition, BigDecimal> totals = new LinkedHashMap<>();
         final List<Installment> loan = new ArrayList<>();
-        this.jdbcTemplate.query(SQL, params, (RowCallbackHandler) rs -> {
+        StreamingQueries.query(this.jdbcTemplate, SQL, params, (RowCallbackHandler) rs -> {
             final Installment installment = new Installment(rs.getLong("loan_id"), rs.getLong("product_id"), rs.getString("product_name"),
                     rs.getBoolean("is_npa"), rs.getBoolean("is_floating_interest_rate"), rs.getObject("next_reset", LocalDate.class),
                     rs.getObject("duedate", LocalDate.class), rs.getBigDecimal("principal"), rs.getBigDecimal("owed"));

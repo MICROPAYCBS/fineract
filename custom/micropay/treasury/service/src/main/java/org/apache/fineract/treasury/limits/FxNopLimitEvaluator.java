@@ -43,13 +43,14 @@ abstract class FxNopLimitEvaluator implements LimitEvaluator {
         }
         final TreasuryFxPositionData positions = this.positionService.positions(context.asOfDate(), null);
         if (positions.coreCapital() == null) {
-            return List.of(
-                    LimitSubjects.unavailable(limit, context, "FX_POSITION", null, "No core capital in effect on " + context.asOfDate()));
+            return List.of(LimitSubjects.unavailable(limit, context, "FX_POSITION", null, "No core capital in effect on "
+                    + positions.coreCapitalAsOf() + " (" + positions.coreCapitalBasis() + " of " + context.asOfDate() + ")"));
         }
         if (base) {
             return List.of(LimitSubjects.observe(limit, context, positions.aggregateNopPercent(), "FX_POSITION", null,
                     "Longs " + LimitSubjects.amount(positions.sumOfLongs()) + ", shorts " + LimitSubjects.amount(positions.sumOfShorts())
-                            + " " + positions.baseCurrency() + " against core capital " + LimitSubjects.amount(positions.coreCapital())));
+                            + " " + positions.baseCurrency() + " against core capital " + LimitSubjects.amount(positions.coreCapital())
+                            + " as at " + positions.coreCapitalAsOf()));
         }
         final TreasuryFxPositionData.Currency currency = positions.currencies().stream()
                 .filter(c -> c.currencyCode().equals(context.currencyCode())).findFirst().orElse(null);
@@ -60,6 +61,6 @@ abstract class FxNopLimitEvaluator implements LimitEvaluator {
                 "Net " + LimitSubjects.amount(currency.netPosition()) + " " + currency.currencyCode() + " = "
                         + LimitSubjects.amount(currency.netBase()) + " " + positions.baseCurrency() + " at "
                         + LimitSubjects.amount(currency.midRate()) + (currency.rateStale() ? " (stale rate)" : "") + ", core capital "
-                        + LimitSubjects.amount(positions.coreCapital())));
+                        + LimitSubjects.amount(positions.coreCapital()) + " as at " + positions.coreCapitalAsOf()));
     }
 }

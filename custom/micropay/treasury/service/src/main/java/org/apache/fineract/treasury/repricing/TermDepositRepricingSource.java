@@ -26,6 +26,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.treasury.liquidity.LadderContext;
 import org.apache.fineract.treasury.liquidity.LadderSourceCode;
+import org.apache.fineract.treasury.liquidity.StreamingQueries;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -58,7 +59,7 @@ public class TermDepositRepricingSource implements RepricingSource {
 
     @Override
     public List<RepricingPosition> positions(final LadderContext context) {
-        return this.jdbcTemplate.query(SQL,
+        return StreamingQueries.query(this.jdbcTemplate, SQL,
                 new MapSqlParameterSource().addValue("currency", context.currencyCode()).addValue("officeId", context.officeId(),
                         Types.BIGINT),
                 (rs, i) -> new RepricingPosition(LadderSourceCode.TERM_DEPOSITS,

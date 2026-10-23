@@ -25,6 +25,7 @@ import java.sql.Types;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.treasury.domain.TreasuryLimit;
+import org.apache.fineract.treasury.liquidity.StreamingQueries;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
@@ -62,8 +63,8 @@ public class DepositorConcentrationLimitEvaluator implements LimitEvaluator {
 
     @Override
     public List<Observation> observe(final TreasuryLimit limit, final EvaluationContext context) {
-        final List<Holder> holders = this.jdbcTemplate.query(SQL, new MapSqlParameterSource().addValue("currency", context.currencyCode())
-                .addValue("officeId", context.officeId(), Types.BIGINT),
+        final List<Holder> holders = StreamingQueries.query(this.jdbcTemplate, SQL, new MapSqlParameterSource()
+                .addValue("currency", context.currencyCode()).addValue("officeId", context.officeId(), Types.BIGINT),
                 (rs, i) -> new Holder(rs.getString("depositor"), rs.getBigDecimal("balance")));
         return List.of(observe(limit, context, holders, "DEPOSITS", "depositors"));
     }

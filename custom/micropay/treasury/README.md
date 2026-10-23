@@ -635,6 +635,16 @@ The design's "Dr foreign currency account / Cr FX revaluation gain" becomes "Dr 
 
 Deals in a foreign currency are revalued when their GL accounts are configured, at their GL balance. Their carrying value from P2.3 is not used.
 
+### Tenant settings
+
+`GET /treasury/settings/tenant` shows the tenant's own treasury settings next to the deployment defaults; `PUT /treasury/settings/tenant` sets any of them (maker-checker capable, `UPDATE_TREASURYTENANTSETTING`), and `null` puts one back to the default. Every institution hosted on the deployment is a tenant with its own settings; they are read from the tenant's database on each use, nothing is cached across tenants.
+
+| Setting | Default | Meaning |
+| --- | --- | --- |
+| `baseCurrency` | `fineract.module.treasury.base-currency` (`UGX`) | The currency positions, revaluations and core capital are measured in; an organisation currency. It cannot change while posted revaluations or core capital records are in another currency. |
+| `fxMaxRateAgeDays` | `fineract.module.treasury.fx.max-rate-age-days` (3) | How old a MID rate may be before it is stale (0 to 30 days). |
+| `nopCapitalBasis` | `PRECEDING_QUARTER` | The core capital the net open position is measured against: the figure in effect at the end of the preceding calendar quarter (FI (Foreign Exchange Business) Rules 2010 r.6(1)), or `LATEST`, the figure in effect on the date. |
+
 ### Currency positions and the NOP
 
 `GET /treasury/fx/positions?asOfDate=&officeId=` gives, per currency:
@@ -643,7 +653,7 @@ Deals in a foreign currency are revalued when their GL accounts are configured, 
 - the MID rate in effect (flagged `rateStale` when it is older than the maximum age) and the net position in base, `LONG` or `SHORT`;
 - as memo items, not added to the net: transfers pending between treasury accounts, and approved or confirmed deals not yet settled. Neither changes the net position once it is in the GL.
 
-The NOP of a currency is its net base position, long or short, as a percentage of core capital. The **aggregate NOP** uses the shorthand method: the greater of the sum of the longs and the sum of the shorts.
+The NOP of a currency is its net base position, long or short, as a percentage of core capital (see `coreCapitalBasis` and `coreCapitalAsOf` in the answer). The **aggregate NOP** uses the shorthand method: the greater of the sum of the longs and the sum of the shorts.
 
 Core capital, in the base currency, is set from an effective date with `POST /treasury/settings/core-capital` (`CREATE_TREASURYCORECAPITAL`, maker-checker capable); `GET` lists it.
 
@@ -652,7 +662,12 @@ Two limit metrics use it:
 - `FX_SINGLE_NOP`: evaluated in each foreign currency's evaluation. A `CURRENCY` scope picks one currency.
 - `FX_AGGREGATE_NOP`: evaluated in the base currency's evaluation.
 
-Both are `MAX` and `PERCENT`, institution only. Seeded inactive as placeholders: `FX_SINGLE_NOP_MAX` (10%) and `FX_AGGREGATE_NOP_MAX` (20%). `TRS_LIM` and `TRS_FXR` evaluate them.
+Both are `MAX` and `PERCENT`, institution only, measured against the core capital of the tenant's `nopCapitalBasis` (by default the figure in effect at the end of the preceding calendar quarter). Seeded inactive:
+
+- `FX_AGGREGATE_NOP_MAX`, the regulatory limit: the FI (Foreign Exchange Business) Rules 2010 r.6 keep the daily open position within (+/-) 25% of core capital as at the preceding quarter, the aggregate by the shorthand method at mid-rate. Hard at 25%, a placeholder warning at 20% (0018 moved it from the P4.1 placeholder of 20% hard while its levels were unchanged).
+- `FX_SINGLE_NOP_MAX` (10%), optional and internal: the rules set no single-currency limit.
+
+`TRS_LIM` and `TRS_FXR` evaluate them.
 
 ### Ladders in several currencies
 
@@ -943,6 +958,7 @@ Grouping `treasury_fx`, each write with a `_CHECKER` variant:
 - `READ_TREASURYFXREVALUATION`, `RUN_TREASURYFXREVALUATION`, `REVERSE_TREASURYFXREVALUATION`
 - `READ_TREASURYCORECAPITAL`, `CREATE_TREASURYCORECAPITAL`
 - `READ_TREASURYFXPOSITION` (positions and the consolidated ladder)
+- `READ_TREASURYTENANTSETTING`, `UPDATE_TREASURYTENANTSETTING`
 - report: `READ_Treasury Currency Position and NOP`; repricing runs use the run permissions, and the report `READ_Treasury Repricing Gap`
 
 Maker-checker is off by default; switch it on per action with `PUT /v1/permissions`. Users with `CHECKER_SUPER_USER` (such as `mifos`) skip maker-checker for every command, as upstream.

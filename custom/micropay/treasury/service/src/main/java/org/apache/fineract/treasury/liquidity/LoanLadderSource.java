@@ -94,7 +94,7 @@ public class LoanLadderSource implements LadderSource {
         // Streamed a loan at a time (the rows come ordered by loan), the flows summed as they are made
         final Map<LadderFlow, BigDecimal> totals = new LinkedHashMap<>();
         final List<Installment> loan = new ArrayList<>();
-        this.jdbcTemplate.query(SQL, params, (RowCallbackHandler) rs -> {
+        StreamingQueries.query(this.jdbcTemplate, SQL, params, (RowCallbackHandler) rs -> {
             final Installment installment = new Installment(rs.getLong("loan_id"), rs.getLong("product_id"), rs.getString("product_name"),
                     rs.getObject("duedate", LocalDate.class), rs.getBigDecimal("principal"), rs.getBigDecimal("interest"));
             if (!loan.isEmpty() && !loan.getFirst().loanId().equals(installment.loanId())) {

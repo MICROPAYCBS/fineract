@@ -51,6 +51,7 @@ import org.apache.fineract.treasury.fx.FxRevaluationCalculator;
 import org.apache.fineract.treasury.fx.FxRevaluationCalculator.Movement;
 import org.apache.fineract.treasury.fx.FxRevaluationStatus;
 import org.apache.fineract.treasury.limits.LimitMetric;
+import org.apache.fineract.treasury.liquidity.StreamingQueries;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator.ConfigRequest;
 import org.apache.fineract.treasury.serialization.TreasuryFxDataValidator.RunRequest;
@@ -195,7 +196,7 @@ public class TreasuryFxRevaluationService {
             }
             final FxRates.Rate closing = this.rateService.closingMid(config.getCurrencyCode(), asOf);
             final Map<Long, List<Movement>> byOffice = new LinkedHashMap<>();
-            this.jdbcTemplate.query(MOVEMENTS_SQL, new MapSqlParameterSource("gl", config.getGlAccountId())
+            StreamingQueries.query(this.jdbcTemplate, MOVEMENTS_SQL, new MapSqlParameterSource("gl", config.getGlAccountId())
                     .addValue("currency", config.getCurrencyCode()).addValue("asOf", asOf), rs -> {
                         byOffice.computeIfAbsent(rs.getLong("office_id"), o -> new ArrayList<>())
                                 .add(new Movement(rs.getDate("entry_date").toLocalDate(), rs.getBigDecimal("net")));

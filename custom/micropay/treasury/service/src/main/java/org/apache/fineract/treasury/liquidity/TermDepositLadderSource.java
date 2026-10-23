@@ -69,7 +69,7 @@ public class TermDepositLadderSource implements LadderSource {
 
     @Override
     public List<LadderFlow> flows(final LadderContext context) {
-        final List<Deposit> deposits = this.jdbcTemplate.query(SQL,
+        final List<Deposit> deposits = StreamingQueries.query(this.jdbcTemplate, SQL,
                 new MapSqlParameterSource().addValue("currency", context.currencyCode()).addValue("officeId", context.officeId(),
                         java.sql.Types.BIGINT),
                 (rs, i) -> new Deposit(rs.getLong("product_id"), rs.getString("product_name"), rs.getInt("deposit_type_enum") == 300,

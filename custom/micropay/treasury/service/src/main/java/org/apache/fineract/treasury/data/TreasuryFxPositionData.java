@@ -29,7 +29,7 @@ import java.util.List;
  */
 public record TreasuryFxPositionData(LocalDate asOfDate, String baseCurrency, Long officeId, BigDecimal coreCapital,
         LocalDate coreCapitalEffectiveDate, List<Currency> currencies, BigDecimal sumOfLongs, BigDecimal sumOfShorts,
-        BigDecimal aggregateNop, BigDecimal aggregateNopPercent) {
+        BigDecimal aggregateNop, BigDecimal aggregateNopPercent, String coreCapitalBasis, LocalDate coreCapitalAsOf) {
 
     public record Currency(String currencyCode, boolean base, BigDecimal assets, BigDecimal liabilities, BigDecimal netPosition,
             BigDecimal pendingIn, BigDecimal pendingOut, BigDecimal unsettledDeals, BigDecimal midRate, LocalDate rateDate,
