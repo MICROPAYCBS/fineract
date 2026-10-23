@@ -882,6 +882,32 @@
 
     <changeSet id="treasury-stress-perm-010" author="micropay">
         <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYSCENARIO'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DEACTIVATE_TREASURYSCENARIO"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="DEACTIVATE"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-011" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYSCENARIO_CHECKER'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission">
+            <column name="grouping" value="treasury_risk"/>
+            <column name="code" value="DEACTIVATE_TREASURYSCENARIO_CHECKER"/>
+            <column name="entity_name" value="TREASURYSCENARIO"/>
+            <column name="action_name" value="DEACTIVATE_CHECKER"/>
+            <column name="can_maker_checker" valueBoolean="false"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="treasury-stress-perm-012" author="micropay">
+        <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYFUNDINGLINE'</sqlCheck>
         </preConditions>
         <insert tableName="m_permission">
@@ -893,7 +919,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-011" author="micropay">
+    <changeSet id="treasury-stress-perm-013" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYFUNDINGLINE'</sqlCheck>
         </preConditions>
@@ -906,7 +932,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-012" author="micropay">
+    <changeSet id="treasury-stress-perm-014" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYFUNDINGLINE_CHECKER'</sqlCheck>
         </preConditions>
@@ -919,7 +945,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-013" author="micropay">
+    <changeSet id="treasury-stress-perm-015" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYFUNDINGLINE'</sqlCheck>
         </preConditions>
@@ -932,7 +958,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-014" author="micropay">
+    <changeSet id="treasury-stress-perm-016" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYFUNDINGLINE_CHECKER'</sqlCheck>
         </preConditions>
@@ -945,7 +971,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-015" author="micropay">
+    <changeSet id="treasury-stress-perm-017" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYCFPTRIGGER'</sqlCheck>
         </preConditions>
@@ -958,7 +984,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-016" author="micropay">
+    <changeSet id="treasury-stress-perm-018" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCFPTRIGGER'</sqlCheck>
         </preConditions>
@@ -971,7 +997,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-017" author="micropay">
+    <changeSet id="treasury-stress-perm-019" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CREATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
         </preConditions>
@@ -984,7 +1010,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-018" author="micropay">
+    <changeSet id="treasury-stress-perm-020" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYCFPTRIGGER'</sqlCheck>
         </preConditions>
@@ -997,7 +1023,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-019" author="micropay">
+    <changeSet id="treasury-stress-perm-021" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'UPDATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
         </preConditions>
@@ -1010,7 +1036,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-020" author="micropay">
+    <changeSet id="treasury-stress-perm-022" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYCFPTRIGGER'</sqlCheck>
         </preConditions>
@@ -1023,7 +1049,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-021" author="micropay">
+    <changeSet id="treasury-stress-perm-023" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'ACTIVATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
         </preConditions>
@@ -1036,7 +1062,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-022" author="micropay">
+    <changeSet id="treasury-stress-perm-024" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYCFPTRIGGER'</sqlCheck>
         </preConditions>
@@ -1049,7 +1075,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-023" author="micropay">
+    <changeSet id="treasury-stress-perm-025" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'DEACTIVATE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
         </preConditions>
@@ -1062,7 +1088,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-024" author="micropay">
+    <changeSet id="treasury-stress-perm-026" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'FIRE_TREASURYCFPTRIGGER'</sqlCheck>
         </preConditions>
@@ -1075,7 +1101,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-025" author="micropay">
+    <changeSet id="treasury-stress-perm-027" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'FIRE_TREASURYCFPTRIGGER_CHECKER'</sqlCheck>
         </preConditions>
@@ -1088,7 +1114,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-026" author="micropay">
+    <changeSet id="treasury-stress-perm-028" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TREASURYCFPACTIVATION'</sqlCheck>
         </preConditions>
@@ -1101,7 +1127,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-027" author="micropay">
+    <changeSet id="treasury-stress-perm-029" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'COMPLETEACTION_TREASURYCFPACTIVATION'</sqlCheck>
         </preConditions>
@@ -1114,7 +1140,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-028" author="micropay">
+    <changeSet id="treasury-stress-perm-030" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'COMPLETEACTION_TREASURYCFPACTIVATION_CHECKER'</sqlCheck>
         </preConditions>
@@ -1127,7 +1153,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-029" author="micropay">
+    <changeSet id="treasury-stress-perm-031" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CLOSE_TREASURYCFPACTIVATION'</sqlCheck>
         </preConditions>
@@ -1140,7 +1166,7 @@
         </insert>
     </changeSet>
 
-    <changeSet id="treasury-stress-perm-030" author="micropay">
+    <changeSet id="treasury-stress-perm-032" author="micropay">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'CLOSE_TREASURYCFPACTIVATION_CHECKER'</sqlCheck>
         </preConditions>

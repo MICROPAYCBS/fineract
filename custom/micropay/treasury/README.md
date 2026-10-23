@@ -532,7 +532,7 @@ P3.4 (TR-26, TR-27) adds stress scenarios run as shocks over the ladder, with th
 
 ### Scenarios
 
-`/treasury/scenarios`: versioned like assumption sets (one `DRAFT` per code; activating it supersedes the code's `ACTIVE` version; only a draft is changed or deleted; `copyFromId` starts a draft from another version, of its code or a new one). Fields: `code`, `name`, `scenarioType` (`IDIOSYNCRATIC`, `MARKET_WIDE`, `COMBINED`), `severity` (a label), `effectiveDate`, `description`, `shocks`, applied in order:
+`/treasury/scenarios`: versioned like assumption sets (one `DRAFT` per code; activating it supersedes the code's `ACTIVE` version, `?command=deactivate` retires the active one; only a draft is changed or deleted; `copyFromId` starts a draft from another version, of its code or a new one). Fields: `code`, `name`, `scenarioType` (`IDIOSYNCRATIC`, `MARKET_WIDE`, `COMBINED`), `severity` (a label), `effectiveDate`, `description`, `shocks`, applied in order:
 
 | `type` | Target | `factor` | Effect |
 | --- | --- | --- | --- |
@@ -684,7 +684,7 @@ Grouping `treasury_risk` (risk and compliance), each write with a `_CHECKER` var
 - `READ_TREASURYRUN` (also the return), `CREATE_TREASURYRUN`, `SUBMIT_TREASURYRUN`
 - `READ_TREASURYLIMIT` (also the evaluations), `CREATE_TREASURYLIMIT`, `UPDATE_TREASURYLIMIT`, `ACTIVATE_TREASURYLIMIT`, `DEACTIVATE_TREASURYLIMIT`, `EVALUATE_TREASURYLIMIT`
 - `READ_TREASURYBREACH`, `ACKNOWLEDGE_TREASURYBREACH`, `RESOLVE_TREASURYBREACH`, `COMMENT_TREASURYBREACH`
-- `READ_TREASURYSCENARIO`, `CREATE_TREASURYSCENARIO`, `UPDATE_TREASURYSCENARIO`, `DELETE_TREASURYSCENARIO`, `ACTIVATE_TREASURYSCENARIO`
+- `READ_TREASURYSCENARIO`, `CREATE_TREASURYSCENARIO`, `UPDATE_TREASURYSCENARIO`, `DELETE_TREASURYSCENARIO`, `ACTIVATE_TREASURYSCENARIO`, `DEACTIVATE_TREASURYSCENARIO`
 - `READ_TREASURYFUNDINGLINE` (also the CFP summary, with `READ_TREASURYCFPACTIVATION`), `CREATE_TREASURYFUNDINGLINE`, `UPDATE_TREASURYFUNDINGLINE`
 - `READ_TREASURYCFPTRIGGER`, `CREATE_TREASURYCFPTRIGGER`, `UPDATE_TREASURYCFPTRIGGER`, `ACTIVATE_TREASURYCFPTRIGGER`, `DEACTIVATE_TREASURYCFPTRIGGER`, `FIRE_TREASURYCFPTRIGGER`
 - `READ_TREASURYCFPACTIVATION`, `COMPLETEACTION_TREASURYCFPACTIVATION`, `CLOSE_TREASURYCFPACTIVATION`

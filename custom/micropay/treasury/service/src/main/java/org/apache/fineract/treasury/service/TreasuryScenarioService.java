@@ -50,9 +50,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Stress scenarios, versioned like assumption sets: a code has at most one DRAFT; activating a draft supersedes the
- * code's ACTIVE version; only a draft is changed or deleted. {@code copyFromId} starts a draft from another version
- * (its code's next version, or a new code), the fields sent replacing those copied. Create, update and activate can be
- * put under maker-checker.
+ * code's ACTIVE version, and deactivating an active version retires it; only a draft is changed or deleted.
+ * {@code copyFromId} starts a draft from another version (its code's next version, or a new code), the fields sent
+ * replacing those copied. Create, update and activate can be put under maker-checker.
  */
 @Service
 @RequiredArgsConstructor
@@ -172,6 +172,22 @@ public class TreasuryScenarioService {
         this.scenarioRepository.saveAndFlush(scenario);
         changes.put("status", ConfigStatus.ACTIVE.name());
         return result(command, scenarioId, changes);
+    }
+
+    /** Retires the active version: SUPERSEDED with no active version of the code, so no stress run uses it. */
+    @Transactional
+    public CommandProcessingResult deactivate(final Long scenarioId, final JsonCommand command) {
+        this.validator.validateNote(command.json());
+        final TreasuryScenario scenario = find(scenarioId);
+        if (scenario.getStatus() != ConfigStatus.ACTIVE) {
+            throw new TreasuryWorkflowException(ENTITY, "not.active",
+                    "Scenario " + scenario.getCode() + " version " + scenario.getVersion() + " is " + scenario.getStatus(), scenarioId);
+        }
+        scenario.setStatus(ConfigStatus.SUPERSEDED);
+        scenario.setLastModifiedBy(this.actor.userId(command));
+        scenario.setLastModifiedOnUtc(DateUtils.getAuditOffsetDateTime());
+        this.scenarioRepository.saveAndFlush(scenario);
+        return result(command, scenarioId, Map.of("status", ConfigStatus.SUPERSEDED.name()));
     }
 
     // ---------- reads ----------

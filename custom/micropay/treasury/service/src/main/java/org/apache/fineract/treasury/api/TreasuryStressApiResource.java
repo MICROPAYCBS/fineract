@@ -136,10 +136,13 @@ public class TreasuryStressApiResource {
     @Path("scenarios/{id}")
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
-    @Operation(summary = "Activate a draft scenario", description = "command=activate; supersedes the code's active version")
+    @Operation(summary = "Activate a draft scenario, or retire the active one", description = "command=activate (supersedes the code's active version) or deactivate (the active version is SUPERSEDED)")
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = CommandProcessingResult.class)))
     public CommandProcessingResult activateScenario(@PathParam("id") final Long id, @QueryParam("command") final String commandParam,
             @Parameter(hidden = true) final String body) {
+        if (COMMAND_DEACTIVATE.equalsIgnoreCase(commandParam)) {
+            return command(TREASURY_SCENARIO_RESOURCE_NAME, "DEACTIVATE", id, "/treasury/scenarios/" + id + "?command=deactivate", body);
+        }
         only(commandParam, COMMAND_ACTIVATE);
         return command(TREASURY_SCENARIO_RESOURCE_NAME, "ACTIVATE", id, "/treasury/scenarios/" + id + "?command=activate", body);
     }
