@@ -33,7 +33,10 @@ public final class TreasuryContextData {
     public record Template(LocalDate businessDate, String baseCurrencyCode) {
     }
 
-    /** A treasury command the signed-in user made that awaits a checker. */
+    /**
+     * A treasury command the signed-in user made that awaits a checker; madeOnDate is UTC. A create has no resourceId
+     * until approved.
+     */
     public record PendingCommand(Long id, String actionName, String entityName, Long resourceId, Long subresourceId, String href,
             LocalDateTime madeOnDate, String commandAsJson) {
     }
