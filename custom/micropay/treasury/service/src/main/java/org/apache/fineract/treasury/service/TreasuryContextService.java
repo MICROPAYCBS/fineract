@@ -18,7 +18,7 @@
  */
 package org.apache.fineract.treasury.service;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Locale;
 import lombok.RequiredArgsConstructor;
@@ -50,11 +50,11 @@ public class TreasuryContextService {
      * The treasury commands the user made that await a checker, newest first; optionally of one entity (e.g.
      * TREASURYDEAL) and resource. Only the user's own: the maker-checker inbox lists what a user may approve, not what
      * they asked for. A held create has no record yet: the id Fineract gave it in its rolled-back trial run is not
-     * returned, and it never matches a resource filter. The time made is in UTC.
+     * returned, and it never matches a resource filter.
      */
     public List<TreasuryContextData.PendingCommand> pendingCommands(final Long userId, final String entityName, final Long resourceId) {
         final StringBuilder sql = new StringBuilder("SELECT id, action_name, entity_name, resource_id, subresource_id, api_get_url,"
-                + " COALESCE(made_on_date_utc, made_on_date) AS made_on, command_as_json FROM m_portfolio_command_source"
+                + " made_on_date_utc, command_as_json FROM m_portfolio_command_source"
                 + " WHERE maker_id = :userId AND status = :status AND entity_name LIKE 'TREASURY%'");
         final MapSqlParameterSource params = new MapSqlParameterSource().addValue("userId", userId).addValue("status",
                 CommandProcessingResultType.AWAITING_APPROVAL.getValue());
@@ -71,7 +71,7 @@ public class TreasuryContextService {
             final boolean create = "CREATE".equals(rs.getString("action_name"));
             return new TreasuryContextData.PendingCommand(rs.getLong("id"), rs.getString("action_name"), rs.getString("entity_name"),
                     create ? null : rs.getObject("resource_id", Long.class), create ? null : rs.getObject("subresource_id", Long.class),
-                    rs.getString("api_get_url"), rs.getObject("made_on", LocalDateTime.class), rs.getString("command_as_json"));
+                    rs.getString("api_get_url"), rs.getObject("made_on_date_utc", OffsetDateTime.class), rs.getString("command_as_json"));
         });
     }
 }

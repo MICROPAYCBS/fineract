@@ -19,7 +19,7 @@
 package org.apache.fineract.treasury.data;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 /** What treasury forms need from the platform, and the signed-in user's own commands awaiting a checker. */
 public final class TreasuryContextData {
@@ -34,10 +34,9 @@ public final class TreasuryContextData {
     }
 
     /**
-     * A treasury command the signed-in user made that awaits a checker; madeOnDate is UTC. A create has no resourceId
-     * until approved.
+     * A treasury command the signed-in user made that awaits a checker. A create has no resourceId until approved.
      */
     public record PendingCommand(Long id, String actionName, String entityName, Long resourceId, Long subresourceId, String href,
-            LocalDateTime madeOnDate, String commandAsJson) {
+            OffsetDateTime madeOnDate, String commandAsJson) {
     }
 }
