@@ -23,6 +23,7 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_MARKASNPA;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_OVERRIDE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RELEASE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RESETTOTP;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_RETIRE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_REVOKE;
@@ -45,6 +46,7 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_CONTACTTYPE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_CUSTOMERCLASS;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_DEPARTMENT;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_FRAUD_HOLD;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_IDENTITYTYPE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_INCOMESOURCES;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_INDUSTRY;
@@ -949,6 +951,21 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = entity;
         this.entityId = entityId;
         this.href = href;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createFraudHold() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_FRAUD_HOLD;
+        this.href = "/fraud/holds";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder releaseFraudHold(final Long holdId) {
+        this.actionName = ACTION_RELEASE;
+        this.entityName = ENTITY_FRAUD_HOLD;
+        this.entityId = holdId;
+        this.href = "/fraud/holds/" + holdId + "?command=release";
         return this;
     }
 }

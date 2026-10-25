@@ -83,4 +83,6 @@ public final class MicropayCommandWrapperConstants {
     public static final String ENTITY_TREASURYCOUNTERPARTY = "TREASURYCOUNTERPARTY";
     public static final String ENTITY_TREASURYDEALTYPE = "TREASURYDEALTYPE";
     public static final String ENTITY_TREASURYDEAL = "TREASURYDEAL";
+    public static final String ENTITY_FRAUD_HOLD = "FRAUD_HOLD";
+    public static final String ACTION_RELEASE = "RELEASE";
 }
