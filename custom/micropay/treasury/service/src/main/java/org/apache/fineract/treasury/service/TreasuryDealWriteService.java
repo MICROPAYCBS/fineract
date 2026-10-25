@@ -50,6 +50,7 @@ import org.apache.fineract.infrastructure.core.api.JsonCommand;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
+import org.apache.fineract.treasury.data.TreasuryDealPreviewData;
 import org.apache.fineract.treasury.deal.DealCalculator.Flow;
 import org.apache.fineract.treasury.deal.DealClassification;
 import org.apache.fineract.treasury.deal.DealPricer;
@@ -133,6 +134,35 @@ public class TreasuryDealWriteService {
         changes.put("status", deal.getStatus().name());
         changes.put("consideration", deal.getConsideration());
         return result(command, deal, changes);
+    }
+
+    /**
+     * The deal as it would be captured, without saving it or recording anything: validated, priced and scheduled the
+     * way {@link #capture} does, with the counterparty limit check. A deal above the limit is shown, not refused.
+     */
+    @Transactional(readOnly = true)
+    public TreasuryDealPreviewData preview(final String json) {
+        final Request request = this.validator.validateDeal(json, true);
+        final TreasuryDeal deal = new TreasuryDeal();
+        deal.setStatus(DealStatus.CAPTURED);
+        deal.setFees(BigDecimal.ZERO);
+        deal.setClassification(DealClassification.AMORTISED_COST);
+        apply(deal, request);
+        final List<Flow> flows = price(deal);
+        TreasuryDealPreviewData.Limit limit = null;
+        if (deal.getExposureAmount() != null && deal.getExposureAmount().signum() != 0) {
+            final TreasuryCounterparty counterparty = this.counterpartyService.find(deal.getCounterpartyId());
+            final LimitCheck.Result result = this.counterpartyService.check(counterparty, deal);
+            limit = new TreasuryDealPreviewData.Limit(result.outcome().name(), result.exposureAfter(), result.utilisation(),
+                    result.available(), counterparty.getExposureLimit(), counterparty.getWarningPercent(),
+                    this.settingService.settingsFor(deal.getCurrencyCode()).isAllowLimitReferral());
+        }
+        return new TreasuryDealPreviewData(deal.getCurrencyCode(), deal.getOfficeId(),
+                deal.getDayCount() == null ? null : deal.getDayCount().name(), deal.getFrequency(), deal.getConsideration(),
+                deal.getAccruedInterestPurchased(), deal.getPremium(), deal.getDiscount(), deal.getExposureAmount(),
+                flows.stream().map(f -> new TreasuryDealPreviewData.Cashflow(f.sequence(), f.type().name(), f.periodStart(), f.periodEnd(),
+                        f.dueDate(), f.amount(), f.outstanding())).toList(),
+                limit);
     }
 
     /** Only a CAPTURED deal can be edited; the cash flows are generated again and the limit checked again. */

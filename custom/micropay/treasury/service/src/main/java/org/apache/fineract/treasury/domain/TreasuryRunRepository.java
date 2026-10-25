@@ -30,4 +30,7 @@ public interface TreasuryRunRepository extends JpaRepository<TreasuryRun, Long> 
     List<TreasuryRun> findByAsOfDateAndCurrencyCode(LocalDate asOfDate, String currencyCode);
 
     List<TreasuryRun> findBySourceRunId(Long sourceRunId);
+
+    List<TreasuryRun> findByRunTypeAndCurrencyCodeAndAsOfDateBetweenOrderByAsOfDateDescIdDesc(RunType runType, String currencyCode,
+            LocalDate from, LocalDate to);
 }

@@ -59,6 +59,12 @@ public final class TreasuryTrustData {
             LocalDate submittedOnDate) {
     }
 
+    /** A reconciliation in the list: its date, status and headline figures (the statement has the detail). */
+    public record ReconciliationSummary(Long runId, LocalDate asOfDate, String currencyCode, String status, String emoneySource,
+            BigDecimal emoneyTotal, BigDecimal trustTotal, BigDecimal eligibleTotal, BigDecimal difference, BigDecimal shortfall,
+            BigDecimal coveragePercent, Long createdBy, Long submittedBy, LocalDate submittedOnDate) {
+    }
+
     public record BreakdownRow(Long institutionId, String institutionName, String assetType, BigDecimal amount, BigDecimal eligible) {
     }
 

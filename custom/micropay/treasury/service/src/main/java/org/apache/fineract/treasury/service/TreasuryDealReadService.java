@@ -25,7 +25,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.ToIntFunction;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.fineract.infrastructure.core.domain.JdbcSupport;
@@ -35,6 +38,7 @@ import org.apache.fineract.treasury.data.TreasuryMaturityData;
 import org.apache.fineract.treasury.deal.DealClassification;
 import org.apache.fineract.treasury.deal.DealStatus;
 import org.apache.fineract.treasury.deal.InstrumentKind;
+import org.apache.fineract.treasury.deal.InterestMethod;
 import org.apache.fineract.treasury.domain.TreasuryDealAccrualRepository;
 import org.apache.fineract.treasury.domain.TreasuryDealCashflowRepository;
 import org.apache.fineract.treasury.domain.TreasuryDealEclRepository;
@@ -82,6 +86,7 @@ public class TreasuryDealReadService {
     private final TreasuryPledgeRepository pledgeRepository;
     private final TreasuryDealValuationRepository valuationRepository;
     private final TreasuryDealEclRepository eclRepository;
+    private final TreasurySettingService settingService;
 
     public record DealFilter(String status, Long dealTypeId, Long counterpartyId, LocalDate maturityFrom, LocalDate maturityTo) {
     }
@@ -110,8 +115,9 @@ public class TreasuryDealReadService {
             params.addValue("maturityTo", filter.maturityTo());
         }
         final String where = conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
+        final ToIntFunction<String> windows = rolloverWindowDays();
         return this.jdbcTemplate.query(DEAL_SQL + where + " ORDER BY d.maturity_date, d.id", params,
-                (rs, rowNum) -> map(rs, new Details(List.of(), List.of(), List.of(), List.of(), List.of(), List.of())));
+                (rs, rowNum) -> map(rs, new Details(List.of(), List.of(), List.of(), List.of(), List.of(), List.of()), windows));
     }
 
     public TreasuryDealData retrieveDeal(final Long dealId) {
@@ -145,7 +151,7 @@ public class TreasuryDealReadService {
         final Details details = new Details(cashflows, events, accruals, pledges, valuations, ecl);
         final List<TreasuryDealData> rows = this.jdbcTemplate.query(DEAL_SQL + " WHERE d.id = :id",
                 new MapSqlParameterSource("id", dealId).addValue("asOf", DateUtils.getBusinessLocalDate()),
-                (rs, rowNum) -> map(rs, details));
+                (rs, rowNum) -> map(rs, details, rolloverWindowDays()));
         if (rows.isEmpty()) {
             throw new TreasuryWorkflowException("deal", "not.found", "Treasury deal " + dealId + " does not exist", dealId);
         }
@@ -191,14 +197,36 @@ public class TreasuryDealReadService {
                 JdbcSupport.getLocalDate(rs, "ecl_calculated_on_date"), stage == 3, pledged, unencumbered);
     }
 
-    private static TreasuryDealData map(final ResultSet rs, final Details details) throws SQLException {
+    /** The roll-over window of each currency's settings, looked up once per currency. */
+    private ToIntFunction<String> rolloverWindowDays() {
+        final Map<String, Integer> days = new HashMap<>();
+        return currency -> days.computeIfAbsent(currency, c -> this.settingService.settingsFor(c).getRolloverWindowDays());
+    }
+
+    /**
+     * The dates a settled deal can be rolled over: from the currency's roll-over window before maturity to maturity.
+     * Null when it cannot be (not settled, already rolled, or a bill or bond, which is bought again as a new deal).
+     */
+    private static LocalDate[] rolloverWindow(final ResultSet rs, final ToIntFunction<String> windowDays) throws SQLException {
+        final InstrumentKind kind = InstrumentKind.valueOf(rs.getString("instrument_kind"));
+        final LocalDate maturity = JdbcSupport.getLocalDate(rs, "maturity_date");
+        if (kind.interestMethod() != InterestMethod.SIMPLE || !DealStatus.SETTLED.name().equals(rs.getString("status"))
+                || JdbcSupport.getLong(rs, "rolled_to_deal_id") != null || maturity == null) {
+            return new LocalDate[] { null, null };
+        }
+        return new LocalDate[] { maturity.minusDays(windowDays.applyAsInt(rs.getString("currency_code"))), maturity };
+    }
+
+    private static TreasuryDealData map(final ResultSet rs, final Details details, final ToIntFunction<String> windowDays)
+            throws SQLException {
+        final LocalDate[] window = rolloverWindow(rs, windowDays);
         final TreasuryDealData.Lifecycle lifecycle = new TreasuryDealData.Lifecycle(JdbcSupport.getLocalDate(rs, "accrued_to_date"),
                 rs.getBigDecimal("interest_accrued"), rs.getBigDecimal("amortisation_accrued"), rs.getBigDecimal("fee_deferred"),
                 rs.getBigDecimal("fee_amortised"), rs.getBigDecimal("interest_settled"), rs.getBigDecimal("principal_settled"),
                 JdbcSupport.getLocalDate(rs, "matured_on_date"), JdbcSupport.getLocalDate(rs, "terminated_on_date"),
                 rs.getBigDecimal("termination_proceeds"), rs.getBigDecimal("break_cost"), rs.getBigDecimal("realised_result"),
                 rs.getBoolean("rollover_pre_approved"), JdbcSupport.getLong(rs, "rolled_from_deal_id"),
-                JdbcSupport.getLong(rs, "rolled_to_deal_id"));
+                JdbcSupport.getLong(rs, "rolled_to_deal_id"), window[0], window[1]);
         return new TreasuryDealData(rs.getLong("id"), rs.getLong("deal_type_id"), rs.getString("type_code"),
                 rs.getString("instrument_kind"), rs.getString("direction"), rs.getLong("counterparty_id"),
                 rs.getString("counterparty_code"), rs.getLong("settlement_account_id"), rs.getString("account_code"),

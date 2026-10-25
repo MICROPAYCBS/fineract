@@ -143,6 +143,17 @@ public class TreasuryTrustApiResource {
     }
 
     @GET
+    @Path("reconciliations")
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Trust reconciliations", description = "from, to (default the last 30 days), currency (default the base): each date's institution-wide reconciliation with its status and headline figures, newest first")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = TreasuryTrustData.ReconciliationSummary.class))))
+    public List<TreasuryTrustData.ReconciliationSummary> reconciliations(@QueryParam("from") final String from,
+            @QueryParam("to") final String to, @QueryParam("currency") final String currency) {
+        read();
+        return this.trustService.reconciliations(date("from", from), date("to", to), currency);
+    }
+
+    @GET
     @Path("reconciliations/{runId}")
     @Produces({ MediaType.APPLICATION_JSON, "text/csv" })
     @Operation(summary = "The daily reconciliation statement", description = "format=csv for CSV (NPS Regulations 2021 reg 22(5))")

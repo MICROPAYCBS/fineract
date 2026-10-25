@@ -19,6 +19,7 @@
 package org.apache.fineract.treasury.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -28,6 +29,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -42,6 +44,7 @@ import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenant;
 import org.apache.fineract.infrastructure.core.domain.FineractPlatformTenantConnection;
 import org.apache.fineract.infrastructure.core.serialization.FromJsonHelper;
 import org.apache.fineract.infrastructure.core.service.ThreadLocalContextUtil;
+import org.apache.fineract.treasury.data.TreasuryDealPreviewData;
 import org.apache.fineract.treasury.deal.DayCount;
 import org.apache.fineract.treasury.deal.DealClassification;
 import org.apache.fineract.treasury.deal.DealStatus;
@@ -85,11 +88,13 @@ class TreasuryDealWriteServiceTest {
     private final TreasuryJournalPoster journalPoster = mock(TreasuryJournalPoster.class);
     private final TreasuryReferenceDataLookup lookup = mock(TreasuryReferenceDataLookup.class);
     private final AppUserRepository appUserRepository = mock(AppUserRepository.class);
+    private final TreasuryDealCashflowRepository cashflowRepository = mock(TreasuryDealCashflowRepository.class);
+    private final TreasuryDealEventRepository eventRepository = mock(TreasuryDealEventRepository.class);
+    private final TreasuryLimitEngine limitEngine = mock(TreasuryLimitEngine.class);
     private final TreasuryDealWriteService service = new TreasuryDealWriteService(this.actor,
-            new TreasuryDealDataValidator(new FromJsonHelper()), this.dealRepository, mock(TreasuryDealCashflowRepository.class),
-            mock(TreasuryDealEventRepository.class), this.accountRepository, this.dealTypeService, this.counterpartyService,
-            this.settingService, this.balanceReader, this.journalPoster, this.lookup, this.appUserRepository,
-            mock(TreasuryLimitEngine.class));
+            new TreasuryDealDataValidator(new FromJsonHelper()), this.dealRepository, this.cashflowRepository, this.eventRepository,
+            this.accountRepository, this.dealTypeService, this.counterpartyService, this.settingService, this.balanceReader,
+            this.journalPoster, this.lookup, this.appUserRepository, this.limitEngine);
     private final TreasurySetting setting = new TreasurySetting();
     private final TreasuryCounterparty counterparty = new TreasuryCounterparty();
 
@@ -177,6 +182,23 @@ class TreasuryDealWriteServiceTest {
         actAs(CAPTURER);
 
         assertTrue(String.valueOf(this.service.capture(captureCommand()).getChanges().get("warning")).contains("85.00%"));
+    }
+
+    @Test
+    void previewPricesTheDealWithoutSavingAnything() {
+        limit(LimitCheck.Outcome.EXCEEDED, "120.00");
+
+        final TreasuryDealPreviewData preview = this.service.preview(captureCommand().json());
+
+        assertEquals(new BigDecimal("500000000"), preview.consideration());
+        assertEquals("UGX", preview.currencyCode());
+        assertFalse(preview.cashflows().isEmpty());
+        assertEquals("EXCEEDED", preview.limit().outcome());
+        assertFalse(preview.limit().referralAllowed());
+        verify(this.dealRepository, never()).saveAndFlush(any());
+        verify(this.cashflowRepository, never()).save(any());
+        verify(this.eventRepository, never()).save(any());
+        verifyNoInteractions(this.limitEngine);
     }
 
     @Test

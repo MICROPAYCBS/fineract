@@ -633,6 +633,30 @@ public class TreasuryTrustService {
                 .toList();
     }
 
+    /**
+     * The institution-wide reconciliations of the currency between the dates (default the last 30 days), newest first.
+     */
+    @Transactional(readOnly = true)
+    public List<TreasuryTrustData.ReconciliationSummary> reconciliations(final LocalDate from, final LocalDate to,
+            final String currencyCode) {
+        final String currency = currencyCode == null ? this.fxConfig.baseCurrency() : currencyCode.toUpperCase();
+        final LocalDate end = to == null ? DateUtils.getBusinessLocalDate() : to;
+        final LocalDate start = from == null ? end.minusDays(30) : from;
+        if (start.isAfter(end)) {
+            throw new TreasuryWorkflowException(ENTITY, "invalid.period", "The period from " + start + " to " + end + " is empty", start,
+                    end);
+        }
+        return this.runRepository
+                .findByRunTypeAndCurrencyCodeAndAsOfDateBetweenOrderByAsOfDateDescIdDesc(RunType.TRUST_RECON, currency, start, end).stream()
+                .filter(r -> r.getOfficeId() == null)
+                .flatMap(r -> this.runTrustRepository.findByRunId(r.getId()).stream()
+                        .map(t -> new TreasuryTrustData.ReconciliationSummary(r.getId(), r.getAsOfDate(), r.getCurrencyCode(),
+                                r.getStatus(), t.getEmoneySource(), t.getEmoneyTotal(), t.getTrustTotal(), t.getEligibleTotal(),
+                                t.getDifference(), t.getShortfall(), t.getCoveragePercent(), r.getCreatedBy(), r.getSubmittedBy(),
+                                r.getSubmittedOnDate())))
+                .toList();
+    }
+
     /** The stored statement of a reconciliation, as it was computed. */
     @Transactional(readOnly = true)
     public TreasuryTrustData.Statement statement(final Long runId) {

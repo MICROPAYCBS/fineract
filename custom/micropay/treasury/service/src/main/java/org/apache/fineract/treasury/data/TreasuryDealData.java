@@ -44,7 +44,8 @@ public record TreasuryDealData(Long id, Long dealTypeId, String dealTypeCode, St
     public record Lifecycle(LocalDate accruedToDate, BigDecimal interestAccrued, BigDecimal amortisationAccrued, BigDecimal feeDeferred,
             BigDecimal feeAmortised, BigDecimal interestSettled, BigDecimal principalSettled, LocalDate maturedOnDate,
             LocalDate terminatedOnDate, BigDecimal terminationProceeds, BigDecimal breakCost, BigDecimal realisedResult,
-            boolean rolloverPreApproved, Long rolledFromDealId, Long rolledToDealId) {
+            boolean rolloverPreApproved, Long rolledFromDealId, Long rolledToDealId, LocalDate rolloverWindowFrom,
+            LocalDate rolloverWindowTo) {
     }
 
     /**

@@ -63,9 +63,11 @@ import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformS
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
+import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
 import org.apache.fineract.infrastructure.security.service.PlatformSecurityContext;
 import org.apache.fineract.treasury.data.TreasuryCounterpartyData;
 import org.apache.fineract.treasury.data.TreasuryDealData;
+import org.apache.fineract.treasury.data.TreasuryDealPreviewData;
 import org.apache.fineract.treasury.data.TreasuryDealTypeData;
 import org.apache.fineract.treasury.data.TreasuryExposureData;
 import org.apache.fineract.treasury.data.TreasuryMaturityData;
@@ -73,6 +75,7 @@ import org.apache.fineract.treasury.service.TreasuryCounterpartyService;
 import org.apache.fineract.treasury.service.TreasuryDealReadService;
 import org.apache.fineract.treasury.service.TreasuryDealReadService.DealFilter;
 import org.apache.fineract.treasury.service.TreasuryDealTypeService;
+import org.apache.fineract.treasury.service.TreasuryDealWriteService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -87,6 +90,7 @@ public class TreasuryDealApiResource {
     private final TreasuryCounterpartyService counterpartyService;
     private final TreasuryDealTypeService dealTypeService;
     private final TreasuryDealReadService dealReadService;
+    private final TreasuryDealWriteService dealWriteService;
     private final PortfolioCommandSourceWritePlatformService commandsSourceWritePlatformService;
 
     // ---------- counterparties ----------
@@ -240,6 +244,19 @@ public class TreasuryDealApiResource {
     public TreasuryDealData retrieveDeal(@PathParam("dealId") final Long dealId) {
         this.context.authenticatedUser().validateHasReadPermission(TREASURY_DEAL_RESOURCE_NAME);
         return this.dealReadService.retrieveDeal(dealId);
+    }
+
+    @POST
+    @Path("deals/preview")
+    @Consumes({ MediaType.APPLICATION_JSON })
+    @Produces({ MediaType.APPLICATION_JSON })
+    @Operation(summary = "Preview a deal", description = "The capture body; returns the pricing, the cash flows and the counterparty limit check without saving anything. Needs CREATE_TREASURYDEAL or UPDATE_TREASURYDEAL")
+    @ApiResponse(responseCode = "200", description = "OK", content = @Content(schema = @Schema(implementation = TreasuryDealPreviewData.class)))
+    public TreasuryDealPreviewData previewDeal(@Parameter(hidden = true) final String apiRequestBodyAsJson) {
+        if (this.context.authenticatedUser().hasNotPermissionForAnyOf("ALL_FUNCTIONS", "CREATE_TREASURYDEAL", "UPDATE_TREASURYDEAL")) {
+            throw new NoAuthorizationException("User has no authority to capture or edit treasury deals");
+        }
+        return this.dealWriteService.preview(apiRequestBodyAsJson);
     }
 
     @POST
