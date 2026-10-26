@@ -205,4 +205,25 @@
             <column name="entry_uid"/>
         </createIndex>
     </changeSet>
+    <changeSet id="fe-006-alert-history" author="micropay">
+        <createTable tableName="fe_alert_history">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="alert_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fe_alert_history_alert" referencedTableName="fe_alert" referencedColumnNames="id"/>
+            </column>
+            <column name="changed_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="actor" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="verdict" type="VARCHAR(20)"/>
+            <column name="assigned_to" type="VARCHAR(100)"/>
+            <column name="note" type="VARCHAR(1000)"/>
+        </createTable>
+        <createIndex tableName="fe_alert_history" indexName="idx_fe_alert_history_alert">
+            <column name="alert_id"/>
+        </createIndex>
+        <createIndex tableName="fe_alert" indexName="idx_fe_alert_created">
+            <column name="tenant_id"/>
+            <column name="created_at"/>
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>

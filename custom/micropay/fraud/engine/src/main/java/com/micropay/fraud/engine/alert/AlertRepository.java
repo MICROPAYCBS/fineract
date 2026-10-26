@@ -30,7 +30,10 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -149,16 +152,35 @@ public class AlertRepository {
 
     public Optional<AlertData> findById(Long id) {
         return jdbcTemplate.query("SELECT " + COLUMNS + " FROM fe_alert WHERE id = ?", MAPPER, id).stream().findFirst()
-                .map(alert -> alert.withDetails(reasons(alert.id()), watchlistMatches(alert.id())));
+                .map(alert -> alert.withDetails(reasons(alert.id()), watchlistMatches(alert.id()), history(alert.id())));
     }
 
     public List<AlertData> find(AlertFilter filter, int offset, int limit) {
+        return find(filter, AlertSort.SCORE, offset, limit);
+    }
+
+    /**
+     * One page of the queue, each alert with its strongest reason.
+     */
+    public List<AlertData> find(AlertFilter filter, AlertSort sort, int offset, int limit) {
         final List<Object> params = new ArrayList<>();
         final String where = where(filter, params);
         params.add(limit);
         params.add(offset);
-        return jdbcTemplate.query("SELECT " + COLUMNS + " FROM fe_alert" + where + " ORDER BY risk_score DESC, id DESC LIMIT ? OFFSET ?",
+        final String order = sort == AlertSort.NEWEST ? " ORDER BY created_at DESC, id DESC" : " ORDER BY risk_score DESC, id DESC";
+        final List<AlertData> page = jdbcTemplate.query("SELECT " + COLUMNS + " FROM fe_alert" + where + order + " LIMIT ? OFFSET ?",
                 MAPPER, params.toArray());
+        if (page.isEmpty()) {
+            return page;
+        }
+        final Map<Long, RuleHit> top = new HashMap<>();
+        final String ids = String.join(",", Collections.nCopies(page.size(), "?"));
+        jdbcTemplate.query(
+                "SELECT alert_id, code, score, detail FROM fe_alert_reason WHERE alert_id IN (" + ids + ") ORDER BY score DESC, id",
+                (ResultSet rs) -> {
+                    top.putIfAbsent(rs.getLong("alert_id"), new RuleHit(rs.getString("code"), rs.getInt("score"), rs.getString("detail")));
+                }, page.stream().map(AlertData::id).toArray());
+        return page.stream().map(a -> a.withTopReason(top.get(a.id()))).toList();
     }
 
     public long count(AlertFilter filter) {
@@ -168,9 +190,24 @@ public class AlertRepository {
         return count == null ? 0 : count;
     }
 
-    public void update(Long id, AlertStatus status, AlertVerdict verdict, String assignedTo, String note, Instant now) {
+    public void update(Long id, AlertStatus status, AlertVerdict verdict, String assignedTo, String note, String actor, Instant now) {
+        final String verdictName = verdict == null ? null : verdict.name();
         jdbcTemplate.update("UPDATE fe_alert SET status = ?, verdict = ?, assigned_to = ?, note = ?, updated_at = ? WHERE id = ?",
-                status.name(), verdict == null ? null : verdict.name(), assignedTo, note, Timestamp.from(now), id);
+                status.name(), verdictName, assignedTo, note, Timestamp.from(now), id);
+        jdbcTemplate.update(
+                "INSERT INTO fe_alert_history (alert_id, changed_at, actor, status, verdict, assigned_to, note) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                id, Timestamp.from(now), actor, status.name(), verdictName, assignedTo, note);
+    }
+
+    private List<AlertHistoryEntry> history(Long alertId) {
+        return jdbcTemplate.query(
+                "SELECT changed_at, actor, status, verdict, assigned_to, note FROM fe_alert_history WHERE alert_id = ? ORDER BY changed_at, id",
+                (rs, rowNum) -> {
+                    final String verdict = rs.getString("verdict");
+                    return new AlertHistoryEntry(rs.getTimestamp("changed_at").toInstant(), rs.getString("actor"),
+                            AlertStatus.valueOf(rs.getString("status")), verdict == null ? null : AlertVerdict.valueOf(verdict),
+                            rs.getString("assigned_to"), rs.getString("note"));
+                }, alertId);
     }
 
     public void recordHold(Long id, Long holdId, Instant now) {
@@ -204,6 +241,10 @@ public class AlertRepository {
             sql.append(" AND client_id = ?");
             params.add(filter.clientId());
         }
+        if (filter.assignedTo() != null) {
+            sql.append(" AND assigned_to = ?");
+            params.add(filter.assignedTo());
+        }
         if (filter.from() != null) {
             sql.append(" AND occurred_at >= ?");
             params.add(Timestamp.from(filter.from()));
@@ -226,6 +267,6 @@ public class AlertRepository {
                 rs.getTimestamp("occurred_at").toInstant(), rs.getInt("risk_score"), Severity.valueOf(rs.getString("severity")),
                 AlertStatus.valueOf(rs.getString("status")), verdict == null ? null : AlertVerdict.valueOf(verdict),
                 rs.getString("assigned_to"), rs.getString("note"), rs.getObject("fineract_hold_id", Long.class),
-                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), List.of(), List.of());
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), List.of(), List.of(), List.of());
     }
 }

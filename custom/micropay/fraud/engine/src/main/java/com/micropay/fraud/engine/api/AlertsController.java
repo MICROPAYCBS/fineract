@@ -21,6 +21,7 @@ package com.micropay.fraud.engine.api;
 import com.micropay.fraud.engine.alert.AlertData;
 import com.micropay.fraud.engine.alert.AlertFilter;
 import com.micropay.fraud.engine.alert.AlertService;
+import com.micropay.fraud.engine.alert.AlertSort;
 import com.micropay.fraud.engine.alert.AlertStatus;
 import com.micropay.fraud.engine.alert.AlertType;
 import com.micropay.fraud.engine.alert.AlertUpdate;
@@ -49,10 +50,11 @@ public class AlertsController {
     @GetMapping
     public AlertService.Page list(@RequestParam(required = false) String tenantId, @RequestParam(required = false) AlertType type,
             @RequestParam(required = false) AlertStatus status, @RequestParam(required = false) Severity severity,
-            @RequestParam(required = false) Long clientId, @RequestParam(required = false) Instant from,
-            @RequestParam(required = false) Instant to, @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) Long clientId, @RequestParam(required = false) String assignedTo,
+            @RequestParam(required = false) Instant from, @RequestParam(required = false) Instant to,
+            @RequestParam(defaultValue = "SCORE") AlertSort sort, @RequestParam(defaultValue = "0") int offset,
             @RequestParam(defaultValue = "50") int limit) {
-        return alertService.list(new AlertFilter(tenantId, type, status, severity, clientId, from, to), offset, limit);
+        return alertService.list(new AlertFilter(tenantId, type, status, severity, clientId, from, to, assignedTo), sort, offset, limit);
     }
 
     @GetMapping("/{id}")

@@ -75,6 +75,7 @@ class FraudEngineIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        jdbcTemplate.update("DELETE FROM fe_alert_history");
         jdbcTemplate.update("DELETE FROM fe_alert_reason");
         jdbcTemplate.update("DELETE FROM fe_watchlist_match");
         jdbcTemplate.update("DELETE FROM fe_alert");
@@ -148,5 +149,32 @@ class FraudEngineIntegrationTest {
                 .andExpect(status().isOk()).andExpect(content().string(org.hamcrest.Matchers.containsString("\"status\":\"CLOSED\"")));
 
         mvc.perform(get("/api/v1/alerts/999999").header(ApiKeyFilter.HEADER, "test-key")).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void historyStatsAndQueueOrderForTheDashboard() throws Exception {
+        processor.process(TestEvents.savings(TransactionKind.WITHDRAWAL, 5L, 50L, 60_000_000, Instant.parse("2026-09-30T22:00:00Z")));
+        processor.process(TestEvents.savings(TransactionKind.WITHDRAWAL, 6L, 60L, 90_000_000, Instant.parse("2026-09-30T23:00:00Z")));
+        final Long alertId = jdbcTemplate.queryForObject("SELECT MIN(id) FROM fe_alert", Long.class);
+
+        mvc.perform(patch("/api/v1/alerts/" + alertId).header(ApiKeyFilter.HEADER, "test-key").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\":\"IN_REVIEW\",\"assignedTo\":\"jane\",\"actor\":\"jane\"}")).andExpect(status().isOk());
+        mvc.perform(patch("/api/v1/alerts/" + alertId).header(ApiKeyFilter.HEADER, "test-key").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"verdict\":\"FRAUD\",\"note\":\"Confirmed\",\"actor\":\"jane\"}")).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"history\":[{")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"verdict\":\"FRAUD\",\"assignedTo\":\"jane\"")));
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM fe_alert_history WHERE alert_id = ?", Integer.class, alertId))
+                .isEqualTo(2);
+
+        mvc.perform(get("/api/v1/alerts?assignedTo=jane&sort=NEWEST").header(ApiKeyFilter.HEADER, "test-key")).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"total\":1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"reasons\":[{\"code\"")));
+
+        mvc.perform(get("/api/v1/stats?from=2000-01-01T00:00:00Z").header(ApiKeyFilter.HEADER, "test-key")).andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"total\":2")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"byVerdict\":{\"FRAUD\":1,\"NONE\":1}")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"open\":{\"total\":1")))
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"fraud\":1")));
+        mvc.perform(get("/api/v1/stats")).andExpect(status().isUnauthorized());
     }
 }

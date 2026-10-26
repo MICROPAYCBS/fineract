@@ -123,16 +123,22 @@ Loan reversals and adjustments are stored but not scored. Client events record w
 All calls need the `X-API-Key` header.
 
 ```http
-GET   /api/v1/alerts?type=TRANSACTION&status=NEW&severity=HIGH&tenantId=default&clientId=42&from=2026-10-01T00:00:00Z&offset=0&limit=50
+GET   /api/v1/alerts?type=TRANSACTION&status=NEW&severity=HIGH&tenantId=default&clientId=42&assignedTo=jane&from=2026-10-01T00:00:00Z&sort=SCORE&offset=0&limit=50
 GET   /api/v1/alerts/17
 PATCH /api/v1/alerts/17
-{ "status": "IN_REVIEW", "assignedTo": "jane", "note": "Calling the customer" }
+{ "status": "IN_REVIEW", "assignedTo": "jane", "note": "Calling the customer", "actor": "jane" }
 
 PATCH /api/v1/alerts/17
-{ "verdict": "FRAUD", "note": "Confirmed account takeover" }
+{ "verdict": "FRAUD", "note": "Confirmed account takeover", "actor": "jane" }
+
+GET   /api/v1/stats?tenantId=default&from=2026-10-01T00:00:00Z&to=2026-11-01T00:00:00Z
 ```
 
-`type` is `TRANSACTION` or `WATCHLIST`. `status` is `NEW`, `IN_REVIEW` or `CLOSED`; setting a `verdict` (`FRAUD` or `NOT_FRAUD`) closes the alert. A transaction alert carries the transaction, its score and severity, and every reason. A watchlist alert has no transaction fields; it carries the client, the screening time in `occurredAt`, and its `watchlistMatches`.
+`type` is `TRANSACTION` or `WATCHLIST`. `status` is `NEW`, `IN_REVIEW` or `CLOSED`; setting a `verdict` (`FRAUD` or `NOT_FRAUD`) closes the alert. `sort` is `SCORE` (highest first, the default) or `NEWEST`; `from` and `to` filter on when the transaction happened. A transaction alert carries the transaction, its score and severity, and every reason. A watchlist alert has no transaction fields; it carries the client, the screening time in `occurredAt`, and its `watchlistMatches`. In the list only the strongest reason is included; `GET /api/v1/alerts/{id}` returns them all.
+
+Every change is kept in the alert's `history`, with the `actor` who made it (the fraud dashboard sends the signed-in user).
+
+`/api/v1/stats` is what the dashboard's overview and reports are built from: alerts raised in the period (default the last 30 days) by type, severity, status and verdict, per day (UTC), and per reason with how many were judged fraud or not fraud, plus the open backlog by severity whatever its age.
 
 ### Engine limits
 

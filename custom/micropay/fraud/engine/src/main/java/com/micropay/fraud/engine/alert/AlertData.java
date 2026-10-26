@@ -29,15 +29,26 @@ import java.util.List;
 /**
  * An alert as the dashboard sees it. Transaction fields ({@code transactionRef} to {@code currency}) are null on a
  * watchlist alert, whose {@code occurredAt} is when the client was screened and whose matches are in
- * {@code watchlistMatches}.
+ * {@code watchlistMatches}. In the queue listing {@code reasons} holds only the strongest reason, and
+ * {@code watchlistMatches} and {@code history} are empty.
  */
 public record AlertData(Long id, String tenantId, AlertType type, Long transactionRef, AccountType accountType, Long accountId,
         Long clientId, TransactionKind kind, BigDecimal amount, String currency, Instant occurredAt, int riskScore, Severity severity,
         AlertStatus status, AlertVerdict verdict, String assignedTo, String note, Long fineractHoldId, Instant createdAt, Instant updatedAt,
-        List<RuleHit> reasons, List<WatchlistMatchData> watchlistMatches) {
+        List<RuleHit> reasons, List<WatchlistMatchData> watchlistMatches, List<AlertHistoryEntry> history) {
 
-    public AlertData withDetails(List<RuleHit> newReasons, List<WatchlistMatchData> newMatches) {
+    public AlertData withDetails(List<RuleHit> newReasons, List<WatchlistMatchData> newMatches, List<AlertHistoryEntry> newHistory) {
         return new AlertData(id, tenantId, type, transactionRef, accountType, accountId, clientId, kind, amount, currency, occurredAt,
-                riskScore, severity, status, verdict, assignedTo, note, fineractHoldId, createdAt, updatedAt, newReasons, newMatches);
+                riskScore, severity, status, verdict, assignedTo, note, fineractHoldId, createdAt, updatedAt, newReasons, newMatches,
+                newHistory);
+    }
+
+    /**
+     * The alert as listed in the queue: only its strongest reason, no matches or history.
+     */
+    public AlertData withTopReason(RuleHit topReason) {
+        return new AlertData(id, tenantId, type, transactionRef, accountType, accountId, clientId, kind, amount, currency, occurredAt,
+                riskScore, severity, status, verdict, assignedTo, note, fineractHoldId, createdAt, updatedAt,
+                topReason == null ? List.of() : List.of(topReason), List.of(), List.of());
     }
 }

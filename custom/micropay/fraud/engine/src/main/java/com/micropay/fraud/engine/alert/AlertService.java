@@ -25,7 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The analyst side of alerts: the queue, one alert's detail, and updating status and verdict.
+ * The analyst side of alerts: the queue, one alert's detail, and updating status and verdict. Every update is kept in
+ * the alert's history.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,9 +41,13 @@ public class AlertService {
     }
 
     public Page list(AlertFilter filter, int offset, int limit) {
+        return list(filter, AlertSort.SCORE, offset, limit);
+    }
+
+    public Page list(AlertFilter filter, AlertSort sort, int offset, int limit) {
         final int pageSize = Math.max(1, Math.min(limit, MAX_PAGE_SIZE));
         final int start = Math.max(0, offset);
-        return new Page(alerts.find(filter, start, pageSize), alerts.count(filter), start, pageSize);
+        return new Page(alerts.find(filter, sort == null ? AlertSort.SCORE : sort, start, pageSize), alerts.count(filter), start, pageSize);
     }
 
     public AlertData get(Long id) {
@@ -62,7 +67,7 @@ public class AlertService {
         }
         final String assignedTo = update.assignedTo() != null ? update.assignedTo() : current.assignedTo();
         final String note = update.note() != null ? update.note() : current.note();
-        alerts.update(id, status, verdict, assignedTo, note, clock.instant());
+        alerts.update(id, status, verdict, assignedTo, note, update.actor(), clock.instant());
         return get(id);
     }
 }

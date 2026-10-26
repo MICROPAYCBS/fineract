@@ -22,6 +22,10 @@ import jakarta.validation.constraints.Size;
 
 /**
  * An analyst's change to an alert. Fields left null keep their current value.
+ *
+ * @param actor
+ *            who is making the change, recorded in the alert's history
  */
-public record AlertUpdate(AlertStatus status, AlertVerdict verdict, @Size(max = 100) String assignedTo, @Size(max = 1000) String note) {
+public record AlertUpdate(AlertStatus status, AlertVerdict verdict, @Size(max = 100) String assignedTo, @Size(max = 1000) String note,
+        @Size(max = 100) String actor) {
 }

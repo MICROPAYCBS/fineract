@@ -24,5 +24,10 @@ import java.time.Instant;
 /**
  * Optional filters for the alert queue; null means "any".
  */
-public record AlertFilter(String tenantId, AlertType type, AlertStatus status, Severity severity, Long clientId, Instant from, Instant to) {
+public record AlertFilter(String tenantId, AlertType type, AlertStatus status, Severity severity, Long clientId, Instant from, Instant to,
+        String assignedTo) {
+
+    public AlertFilter(String tenantId, AlertType type, AlertStatus status, Severity severity, Long clientId, Instant from, Instant to) {
+        this(tenantId, type, status, severity, clientId, from, to, null);
+    }
 }
