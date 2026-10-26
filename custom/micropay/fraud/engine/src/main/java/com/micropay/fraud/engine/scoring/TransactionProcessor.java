@@ -34,6 +34,7 @@ import com.micropay.fraud.engine.store.ClientProfileRepository;
 import com.micropay.fraud.engine.store.ProcessedEventRepository;
 import com.micropay.fraud.engine.store.TransactionRecord;
 import com.micropay.fraud.engine.store.TransactionRepository;
+import com.micropay.fraud.engine.watchlist.WatchlistService;
 import java.time.Clock;
 import java.util.Optional;
 import java.util.OptionalDouble;
@@ -44,7 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * The pipeline for one event: skip duplicates, find the client, compute features against history, score, store, and
- * raise an alert when the score reaches the threshold.
+ * raise an alert when the score reaches the threshold. Client events are stored and screened against the watchlists.
  */
 @Slf4j
 @Service
@@ -60,6 +61,7 @@ public class TransactionProcessor {
     private final AnomalyDetector anomalyDetector;
     private final RiskScorer riskScorer;
     private final FineractClient fineract;
+    private final WatchlistService watchlist;
     private final FraudEngineProperties properties;
     private final Clock clock;
 
@@ -75,6 +77,9 @@ public class TransactionProcessor {
         return switch (event) {
             case ClientEvent client -> {
                 clients.save(client, clock.instant());
+                if (watchlist.isEnabled()) {
+                    clients.findSubject(client.tenantId(), client.clientId()).ifPresent(watchlist::screenClient);
+                }
                 yield Optional.empty();
             }
             case TransactionEvent txn -> processTransaction(txn);
@@ -109,7 +114,7 @@ public class TransactionProcessor {
         }
         final String entityType = event.accountType() == AccountType.SAVINGS ? "SAVINGS_ACCOUNT" : "LOAN";
         final String reason = "Fraud engine alert " + alertId + " (score " + risk.score() + "): " + risk.reasons().get(0).detail();
-        fineract.placeHold(event.tenantId(), entityType, event.accountId(), reason, "fraud-alert-" + alertId)
+        fineract.placeHold(event.tenantId(), entityType, event.accountId(), reason, "FRAUD_ENGINE", "fraud-alert-" + alertId)
                 .ifPresent(holdId -> alerts.recordHold(alertId, holdId, clock.instant()));
     }
 }

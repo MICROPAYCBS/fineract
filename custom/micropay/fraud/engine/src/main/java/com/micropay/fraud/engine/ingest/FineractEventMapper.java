@@ -20,6 +20,7 @@ package com.micropay.fraud.engine.ingest;
 
 import com.micropay.fraud.engine.event.AccountType;
 import com.micropay.fraud.engine.event.ClientEvent;
+import com.micropay.fraud.engine.event.ClientNames;
 import com.micropay.fraud.engine.event.FineractEvent;
 import com.micropay.fraud.engine.event.TransactionEvent;
 import com.micropay.fraud.engine.event.TransactionKind;
@@ -57,8 +58,12 @@ public class FineractEventMapper {
     public Optional<FineractEvent> map(String tenantId, String eventKey, String type, Object payload, String createdAt,
             String businessDate) {
         if (CLIENT_EVENTS.contains(type) && payload instanceof ClientDataV1 client) {
+            final Long legalForm = client.getLegalForm() == null || client.getLegalForm().getId() == null ? null
+                    : client.getLegalForm().getId().longValue();
             return Optional.of(new ClientEvent(tenantId, eventKey, type, client.getId(), parseDate(client.getActivationDate()),
-                    client.getOfficeId(), client.getDisplayName()));
+                    client.getOfficeId(), client.getDisplayName(), ClientNames.fullName(client.getFirstname(), client.getMiddlename(),
+                            client.getLastname(), client.getFullname(), client.getDisplayName()),
+                    parseDate(client.getDateOfBirth()), ClientNames.partyType(legalForm)));
         }
         final Instant occurredAt = parseTimestamp(createdAt);
         final LocalDate business = parseDate(businessDate);

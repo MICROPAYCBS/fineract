@@ -21,9 +21,11 @@ package com.micropay.fraud.engine.event;
 import java.time.LocalDate;
 
 /**
- * A client being created or activated. Kept so rules can tell how new a client is; watchlist screening (step 3) will
- * also start from these.
+ * A client being created or activated. Kept so rules can tell how new a client is, and screened against the watchlists.
+ *
+ * @param fullName
+ *            the name to screen: first, middle and last name for a person, the full name for an entity
  */
 public record ClientEvent(String tenantId, String eventKey, String eventType, Long clientId, LocalDate activationDate, Long officeId,
-        String displayName) implements FineractEvent {
+        String displayName, String fullName, LocalDate dateOfBirth, PartyType partyType) implements FineractEvent {
 }

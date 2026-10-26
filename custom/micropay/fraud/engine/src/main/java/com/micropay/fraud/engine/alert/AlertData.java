@@ -26,13 +26,18 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
-public record AlertData(Long id, String tenantId, Long transactionRef, AccountType accountType, Long accountId, Long clientId,
-        TransactionKind kind, BigDecimal amount, String currency, Instant occurredAt, int riskScore, Severity severity, AlertStatus status,
-        AlertVerdict verdict, String assignedTo, String note, Long fineractHoldId, Instant createdAt, Instant updatedAt,
-        List<RuleHit> reasons) {
+/**
+ * An alert as the dashboard sees it. Transaction fields ({@code transactionRef} to {@code currency}) are null on a
+ * watchlist alert, whose {@code occurredAt} is when the client was screened and whose matches are in
+ * {@code watchlistMatches}.
+ */
+public record AlertData(Long id, String tenantId, AlertType type, Long transactionRef, AccountType accountType, Long accountId,
+        Long clientId, TransactionKind kind, BigDecimal amount, String currency, Instant occurredAt, int riskScore, Severity severity,
+        AlertStatus status, AlertVerdict verdict, String assignedTo, String note, Long fineractHoldId, Instant createdAt, Instant updatedAt,
+        List<RuleHit> reasons, List<WatchlistMatchData> watchlistMatches) {
 
-    public AlertData withReasons(List<RuleHit> newReasons) {
-        return new AlertData(id, tenantId, transactionRef, accountType, accountId, clientId, kind, amount, currency, occurredAt, riskScore,
-                severity, status, verdict, assignedTo, note, fineractHoldId, createdAt, updatedAt, newReasons);
+    public AlertData withDetails(List<RuleHit> newReasons, List<WatchlistMatchData> newMatches) {
+        return new AlertData(id, tenantId, type, transactionRef, accountType, accountId, clientId, kind, amount, currency, occurredAt,
+                riskScore, severity, status, verdict, assignedTo, note, fineractHoldId, createdAt, updatedAt, newReasons, newMatches);
     }
 }

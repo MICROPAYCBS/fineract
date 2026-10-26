@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!-- Made-up test data in the published format; not real list content. -->
+<export xmlns="http://eu.europa.ec/fpi/fsd/export" generationDate="2026-10-24T00:00:00.000+02:00" globalFileId="1">
+  <sanctionEntity designationDate="2022-02-25" logicalId="77001" euReferenceNumber="EU.900.1">
+    <regulation regulationType="regulation" programme="RUS" numberTitle="2022/330"/>
+    <subjectType code="person" classificationCode="P"/>
+    <nameAlias firstName="Ivan" middleName="Petrovich" lastName="Sidorov" wholeName="Ivan Petrovich Sidorov" strong="true" logicalId="1"/>
+    <nameAlias wholeName="Иван Петрович Сидоров" strong="true" logicalId="2"/>
+    <nameAlias wholeName="Vanya" strong="false" logicalId="3"/>
+    <birthdate circa="false" birthdate="1970-06-01" year="1970" logicalId="4"/>
+  </sanctionEntity>
+  <sanctionEntity designationDate="2022-02-25" logicalId="77002" euReferenceNumber="EU.900.2">
+    <regulation regulationType="regulation" programme="RUS" numberTitle="2022/330"/>
+    <subjectType code="enterprise" classificationCode="E"/>
+    <nameAlias wholeName="Volga Export Company" strong="true" logicalId="5"/>
+  </sanctionEntity>
+</export>

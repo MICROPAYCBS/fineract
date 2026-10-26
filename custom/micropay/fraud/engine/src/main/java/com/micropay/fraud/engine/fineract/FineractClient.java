@@ -21,8 +21,13 @@ package com.micropay.fraud.engine.fineract;
 import com.micropay.fraud.engine.config.FraudEngineProperties;
 import com.micropay.fraud.engine.event.AccountType;
 import java.nio.charset.StandardCharsets;
+import java.time.DateTimeException;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -78,7 +83,8 @@ public class FineractClient {
     /**
      * @return the new hold's id, or empty when Fineract refused (for example an active hold already exists)
      */
-    public Optional<Long> placeHold(String tenantId, String entityType, Long entityId, String reason, String externalReference) {
+    public Optional<Long> placeHold(String tenantId, String entityType, Long entityId, String reason, String source,
+            String externalReference) {
         if (!isEnabled()) {
             return Optional.empty();
         }
@@ -86,7 +92,7 @@ public class FineractClient {
         request.put("entityType", entityType);
         request.put("entityId", entityId);
         request.put("reason", reason);
-        request.put("source", "FRAUD_ENGINE");
+        request.put("source", source);
         request.put("externalReference", externalReference);
         try {
             final Map<String, Object> body = restClient.post().uri("/fraud/holds").header("Fineract-Platform-TenantId", tenantId)
@@ -97,5 +103,69 @@ public class FineractClient {
             log.warn("Could not place a fraud hold on {} {} in tenant {}: {}", entityType, entityId, tenantId, e.getMessage());
             return Optional.empty();
         }
+    }
+
+    /**
+     * One page of a tenant's clients, from {@code GET /clients}.
+     *
+     * @return the page's clients, empty when there are no more or the call failed
+     */
+    public List<ClientSummary> listClients(String tenantId, int offset, int limit) {
+        if (!isEnabled()) {
+            return List.of();
+        }
+        final Map<String, Object> body = restClient.get()
+                .uri("/clients?offset={offset}&limit={limit}&orderBy=id&sortOrder=ASC", offset, limit)
+                .header("Fineract-Platform-TenantId", tenantId).retrieve().body(JSON_MAP);
+        if (body == null || !(body.get("pageItems") instanceof List<?> items)) {
+            return List.of();
+        }
+        final List<ClientSummary> clients = new ArrayList<>();
+        for (Object item : items) {
+            if (item instanceof Map<?, ?> client && client.get("id") instanceof Number id) {
+                clients.add(new ClientSummary(id.longValue(), string(client.get("firstname")), string(client.get("middlename")),
+                        string(client.get("lastname")), string(client.get("fullname")), string(client.get("displayName")),
+                        date(client.get("dateOfBirth")), date(client.get("activationDate")), legalFormId(client.get("legalForm")),
+                        client.get("officeId") instanceof Number office ? office.longValue() : null));
+            }
+        }
+        return clients;
+    }
+
+    /**
+     * The fields of a Fineract client the engine screens.
+     */
+    public record ClientSummary(Long id, String firstname, String middlename, String lastname, String fullname, String displayName,
+            LocalDate dateOfBirth, LocalDate activationDate, Long legalFormId, Long officeId) {
+    }
+
+    private static String string(Object value) {
+        return value instanceof String s && !s.isBlank() ? s : null;
+    }
+
+    /**
+     * Fineract writes dates as {@code [yyyy, m, d]} unless a date format is requested; accept that and ISO strings.
+     */
+    static LocalDate date(Object value) {
+        if (value instanceof List<?> parts && parts.size() == 3 && parts.stream().allMatch(Number.class::isInstance)) {
+            try {
+                return LocalDate.of(((Number) parts.get(0)).intValue(), ((Number) parts.get(1)).intValue(),
+                        ((Number) parts.get(2)).intValue());
+            } catch (DateTimeException e) {
+                return null;
+            }
+        }
+        if (value instanceof String s) {
+            try {
+                return LocalDate.parse(s);
+            } catch (DateTimeParseException e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private static Long legalFormId(Object value) {
+        return value instanceof Map<?, ?> legalForm && legalForm.get("id") instanceof Number id ? id.longValue() : null;
     }
 }

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.micropay.fraud.engine.event.AccountType;
 import com.micropay.fraud.engine.event.ClientEvent;
 import com.micropay.fraud.engine.event.FineractEvent;
+import com.micropay.fraud.engine.event.PartyType;
 import com.micropay.fraud.engine.event.TransactionEvent;
 import com.micropay.fraud.engine.event.TransactionKind;
 import java.io.IOException;
@@ -33,6 +34,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import org.apache.fineract.avro.client.v1.ClientDataV1;
+import org.apache.fineract.avro.generic.v1.EnumOptionDataV1;
 import org.junit.jupiter.api.Test;
 
 class FineractMessageDecoderTest {
@@ -83,6 +85,21 @@ class FineractMessageDecoderTest {
         final List<FineractEvent> events = decoder.decode(bulk);
 
         assertThat(events).singleElement().extracting(FineractEvent::eventKey).isEqualTo("bulk-1#1");
+    }
+
+    @Test
+    void clientEventsCarryWhatScreeningNeeds() throws IOException {
+        final ClientDataV1 client = ClientDataV1.newBuilder(AvroMessages.client(5L, "2026-10-02")).setFirstname("Brian")
+                .setMiddlename("Mugisha").setLastname("Okello").setDateOfBirth("1985-11-20")
+                .setLegalForm(EnumOptionDataV1.newBuilder().setId(1).setCode("legalFormType.person").setValue("PERSON").build()).build();
+
+        final List<FineractEvent> events = decoder.decode(AvroMessages.clientEvent("c-5", client));
+
+        assertThat(events).singleElement().isInstanceOfSatisfying(ClientEvent.class, e -> {
+            assertThat(e.fullName()).isEqualTo("Brian Mugisha Okello");
+            assertThat(e.dateOfBirth()).isEqualTo(LocalDate.of(1985, 11, 20));
+            assertThat(e.partyType()).isEqualTo(PartyType.PERSON);
+        });
     }
 
     @Test

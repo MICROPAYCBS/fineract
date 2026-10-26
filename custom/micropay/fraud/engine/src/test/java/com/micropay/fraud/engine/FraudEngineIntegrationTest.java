@@ -52,7 +52,8 @@ import org.springframework.web.context.WebApplicationContext;
 
 @SpringBootTest(properties = { "spring.config.name=" + FraudEngineApplication.CONFIG_NAME,
         "spring.datasource.url=jdbc:h2:mem:fraud;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "spring.datasource.username=sa",
-        "spring.datasource.password=", "fraud.kafka.enabled=false", "fraud.api.key=test-key", "fraud.anomaly.min-training-samples=100000" })
+        "spring.datasource.password=", "fraud.kafka.enabled=false", "fraud.api.key=test-key", "fraud.anomaly.min-training-samples=100000",
+        "fraud.watchlist.enabled=false" })
 class FraudEngineIntegrationTest {
 
     private static final Instant START = Instant.parse("2026-10-01T07:00:00Z");
@@ -75,6 +76,7 @@ class FraudEngineIntegrationTest {
     @BeforeEach
     void setUp() {
         jdbcTemplate.update("DELETE FROM fe_alert_reason");
+        jdbcTemplate.update("DELETE FROM fe_watchlist_match");
         jdbcTemplate.update("DELETE FROM fe_alert");
         jdbcTemplate.update("DELETE FROM fe_transaction");
         jdbcTemplate.update("DELETE FROM fe_processed_event");
@@ -89,7 +91,7 @@ class FraudEngineIntegrationTest {
             assertThat(processor.process(TestEvents.savings(TransactionKind.DEPOSIT, 1L, 1L, 150_000 + day * 1_000, at))).isPresent();
             processor.process(TestEvents.savings(TransactionKind.WITHDRAWAL, 1L, 1L, 60_000, at.plus(Duration.ofHours(3))));
         }
-        assertThat(alerts.count(new AlertFilter(null, null, null, null, null, null))).isZero();
+        assertThat(alerts.count(new AlertFilter(null, null, null, null, null, null, null))).isZero();
     }
 
     @Test
@@ -108,7 +110,7 @@ class FraudEngineIntegrationTest {
             assertThat(r.alert()).isTrue();
             assertThat(r.reasons()).extracting(RuleHit::code).contains(FraudRules.RAPID_IN_OUT, FraudRules.LARGE_AMOUNT);
         });
-        assertThat(alerts.count(new AlertFilter("default", AlertStatus.NEW, null, 20L, null, null))).isGreaterThanOrEqualTo(1);
+        assertThat(alerts.count(new AlertFilter("default", null, AlertStatus.NEW, null, 20L, null, null))).isGreaterThanOrEqualTo(1);
     }
 
     @Test

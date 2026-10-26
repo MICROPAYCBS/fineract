@@ -1,0 +1,79 @@
+<?xml version="1.0" standalone="yes"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!-- Made-up test data in the published format; not real list content. -->
+<sdnList xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="https://sanctionslistservice.ofac.treas.gov/api/PublicationPreview/exports/XML">
+  <publshInformation>
+    <Publish_Date>10/24/2026</Publish_Date>
+    <Record_Count>3</Record_Count>
+  </publshInformation>
+  <sdnEntry>
+    <uid>9001</uid>
+    <firstName>Joseph</firstName>
+    <lastName>KONY</lastName>
+    <sdnType>Individual</sdnType>
+    <programList>
+      <program>CAR</program>
+      <program>SDGT</program>
+    </programList>
+    <akaList>
+      <aka>
+        <uid>9101</uid>
+        <type>a.k.a.</type>
+        <category>strong</category>
+        <lastName>KONI</lastName>
+        <firstName>Joseph</firstName>
+      </aka>
+      <aka>
+        <uid>9102</uid>
+        <type>a.k.a.</type>
+        <category>weak</category>
+        <lastName>Lakwena</lastName>
+      </aka>
+    </akaList>
+    <dateOfBirthList>
+      <dateOfBirthItem>
+        <uid>9201</uid>
+        <dateOfBirth>circa 1961</dateOfBirth>
+      </dateOfBirthItem>
+      <dateOfBirthItem>
+        <uid>9202</uid>
+        <dateOfBirth>18 Sep 1964</dateOfBirth>
+      </dateOfBirthItem>
+    </dateOfBirthList>
+  </sdnEntry>
+  <sdnEntry>
+    <uid>9002</uid>
+    <lastName>NILE BASIN TRADING LIMITED</lastName>
+    <sdnType>Entity</sdnType>
+    <programList>
+      <program>SDGT</program>
+    </programList>
+  </sdnEntry>
+  <sdnEntry>
+    <uid>9003</uid>
+    <lastName>OCEAN STAR</lastName>
+    <sdnType>Vessel</sdnType>
+    <programList>
+      <program>IRAN</program>
+    </programList>
+  </sdnEntry>
+</sdnList>

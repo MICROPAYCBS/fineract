@@ -139,4 +139,70 @@
             <column name="alert_id"/>
         </createIndex>
     </changeSet>
+    <changeSet id="fe-005-watchlist" author="micropay">
+        <createTable tableName="fe_watchlist_source">
+            <column name="source" type="VARCHAR(50)"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="version" type="VARCHAR(100)"/>
+            <column name="entry_count" type="INT"><constraints nullable="false"/></column>
+            <column name="loaded_at" type="TIMESTAMP"/>
+            <column name="checked_at" type="TIMESTAMP"/>
+            <column name="last_error" type="VARCHAR(500)"/>
+        </createTable>
+        <createTable tableName="fe_watchlist_entry">
+            <column name="source" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="entry_uid" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="party_type" type="VARCHAR(10)"><constraints nullable="false"/></column>
+            <column name="primary_name" type="VARCHAR(500)"><constraints nullable="false"/></column>
+            <column name="birth_dates" type="VARCHAR(500)"/>
+            <column name="programs" type="VARCHAR(500)"/>
+        </createTable>
+        <addPrimaryKey tableName="fe_watchlist_entry" columnNames="source, entry_uid" constraintName="pk_fe_watchlist_entry"/>
+        <createTable tableName="fe_watchlist_name">
+            <column name="source" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="entry_uid" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="name" type="VARCHAR(500)"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="fe_watchlist_name" indexName="idx_fe_watchlist_name_entry">
+            <column name="source"/>
+            <column name="entry_uid"/>
+        </createIndex>
+        <addColumn tableName="fe_client_profile">
+            <column name="full_name" type="VARCHAR(300)"/>
+            <column name="date_of_birth" type="DATE"/>
+            <column name="party_type" type="VARCHAR(10)"/>
+            <column name="screened_at" type="TIMESTAMP"/>
+            <column name="screened_version" type="VARCHAR(100)"/>
+        </addColumn>
+        <!-- Watchlist alerts concern a client, not a transaction -->
+        <addColumn tableName="fe_alert">
+            <column name="alert_type" type="VARCHAR(20)" defaultValue="TRANSACTION"><constraints nullable="false"/></column>
+        </addColumn>
+        <dropNotNullConstraint tableName="fe_alert" columnName="transaction_ref" columnDataType="BIGINT"/>
+        <dropNotNullConstraint tableName="fe_alert" columnName="account_type" columnDataType="VARCHAR(20)"/>
+        <dropNotNullConstraint tableName="fe_alert" columnName="account_id" columnDataType="BIGINT"/>
+        <dropNotNullConstraint tableName="fe_alert" columnName="kind" columnDataType="VARCHAR(30)"/>
+        <dropNotNullConstraint tableName="fe_alert" columnName="amount" columnDataType="DECIMAL(27,8)"/>
+        <createTable tableName="fe_watchlist_match">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="alert_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fe_watchlist_match_alert" referencedTableName="fe_alert" referencedColumnNames="id"/>
+            </column>
+            <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="source" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="entry_uid" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="entry_name" type="VARCHAR(500)"><constraints nullable="false"/></column>
+            <column name="matched_name" type="VARCHAR(500)"><constraints nullable="false"/></column>
+            <column name="client_name" type="VARCHAR(300)"><constraints nullable="false"/></column>
+            <column name="score" type="INT"><constraints nullable="false"/></column>
+            <column name="birth_date_check" type="VARCHAR(10)"><constraints nullable="false"/></column>
+            <column name="programs" type="VARCHAR(500)"/>
+        </createTable>
+        <createIndex tableName="fe_watchlist_match" indexName="idx_fe_watchlist_match_pair">
+            <column name="tenant_id"/>
+            <column name="client_id"/>
+            <column name="source"/>
+            <column name="entry_uid"/>
+        </createIndex>
+    </changeSet>
 </databaseChangeLog>

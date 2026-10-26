@@ -44,7 +44,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class AlertRepository {
 
-    private static final String COLUMNS = "id, tenant_id, transaction_ref, account_type, account_id, client_id, kind, amount, currency, occurred_at, "
+    private static final String COLUMNS = "id, tenant_id, alert_type, transaction_ref, account_type, account_id, client_id, kind, amount, currency, occurred_at, "
             + "risk_score, severity, status, verdict, assigned_to, note, fineract_hold_id, created_at, updated_at";
     private static final RowMapper<AlertData> MAPPER = AlertRepository::map;
     private static final int MAX_DETAIL = 500;
@@ -53,7 +53,7 @@ public class AlertRepository {
 
     public Long insert(Long transactionRef, TransactionEvent e, RiskAssessment risk, Instant now) {
         final String sql = "INSERT INTO fe_alert (tenant_id, transaction_ref, account_type, account_id, client_id, kind, amount, currency, "
-                + "occurred_at, risk_score, severity, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                + "occurred_at, risk_score, severity, status, created_at, updated_at, alert_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         final KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(con -> {
             final PreparedStatement ps = con.prepareStatement(sql, new String[] { "id" });
@@ -71,21 +71,85 @@ public class AlertRepository {
             ps.setString(12, AlertStatus.NEW.name());
             ps.setTimestamp(13, Timestamp.from(now));
             ps.setTimestamp(14, Timestamp.from(now));
+            ps.setString(15, AlertType.TRANSACTION.name());
             return ps;
         }, keyHolder);
         final Long alertId = Objects.requireNonNull(keyHolder.getKey()).longValue();
-        for (RuleHit reason : risk.reasons()) {
-            final String detail = reason.detail() == null || reason.detail().length() <= MAX_DETAIL ? reason.detail()
-                    : reason.detail().substring(0, MAX_DETAIL);
-            jdbcTemplate.update("INSERT INTO fe_alert_reason (alert_id, code, score, detail) VALUES (?, ?, ?, ?)", alertId, reason.code(),
-                    reason.score(), detail);
+        insertReasons(alertId, risk.reasons());
+        return alertId;
+    }
+
+    /**
+     * A watchlist alert for one client, with one reason and one match row per listed entry it matched.
+     */
+    public Long insertWatchlist(String tenantId, Long clientId, int score, Severity severity, List<RuleHit> reasons,
+            List<WatchlistMatchData> matches, Instant now) {
+        final String sql = "INSERT INTO fe_alert (tenant_id, alert_type, client_id, occurred_at, risk_score, severity, status, created_at, "
+                + "updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        final KeyHolder keyHolder = new GeneratedKeyHolder();
+        jdbcTemplate.update(con -> {
+            final PreparedStatement ps = con.prepareStatement(sql, new String[] { "id" });
+            ps.setString(1, tenantId);
+            ps.setString(2, AlertType.WATCHLIST.name());
+            ps.setLong(3, clientId);
+            ps.setTimestamp(4, Timestamp.from(now));
+            ps.setInt(5, score);
+            ps.setString(6, severity.name());
+            ps.setString(7, AlertStatus.NEW.name());
+            ps.setTimestamp(8, Timestamp.from(now));
+            ps.setTimestamp(9, Timestamp.from(now));
+            return ps;
+        }, keyHolder);
+        final Long alertId = Objects.requireNonNull(keyHolder.getKey()).longValue();
+        insertReasons(alertId, reasons);
+        for (WatchlistMatchData m : matches) {
+            jdbcTemplate.update(
+                    "INSERT INTO fe_watchlist_match (alert_id, tenant_id, client_id, source, entry_uid, entry_name, matched_name, client_name, "
+                            + "score, birth_date_check, programs) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    alertId, tenantId, clientId, m.source(), m.entryUid(), cut(m.entryName(), MAX_DETAIL), cut(m.matchedName(), MAX_DETAIL),
+                    cut(m.clientName(), 300), m.score(), m.birthDateCheck(),
+                    m.programs().isEmpty() ? null : cut(String.join("|", m.programs()), MAX_DETAIL));
         }
         return alertId;
     }
 
+    /**
+     * Whether this client was already alerted on this listed entry. Each pair is alerted once, so a match an analyst
+     * cleared as a false positive does not come back after every refresh.
+     */
+    public boolean watchlistPairAlerted(String tenantId, Long clientId, String source, String entryUid) {
+        final Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM fe_watchlist_match WHERE tenant_id = ? AND client_id = ? AND source = ? AND entry_uid = ?",
+                Integer.class, tenantId, clientId, source, entryUid);
+        return count != null && count > 0;
+    }
+
+    private void insertReasons(Long alertId, List<RuleHit> reasons) {
+        for (RuleHit reason : reasons) {
+            jdbcTemplate.update("INSERT INTO fe_alert_reason (alert_id, code, score, detail) VALUES (?, ?, ?, ?)", alertId, reason.code(),
+                    reason.score(), cut(reason.detail(), MAX_DETAIL));
+        }
+    }
+
+    private List<WatchlistMatchData> watchlistMatches(Long alertId) {
+        return jdbcTemplate.query(
+                "SELECT source, entry_uid, entry_name, matched_name, client_name, score, birth_date_check, programs FROM fe_watchlist_match "
+                        + "WHERE alert_id = ? ORDER BY score DESC, id",
+                (rs, rowNum) -> {
+                    final String programs = rs.getString("programs");
+                    return new WatchlistMatchData(rs.getString("source"), rs.getString("entry_uid"), rs.getString("entry_name"),
+                            rs.getString("matched_name"), rs.getString("client_name"), rs.getInt("score"), rs.getString("birth_date_check"),
+                            programs == null ? List.of() : List.of(programs.split("\\|")));
+                }, alertId);
+    }
+
+    private static String cut(String value, int max) {
+        return value == null || value.length() <= max ? value : value.substring(0, max);
+    }
+
     public Optional<AlertData> findById(Long id) {
         return jdbcTemplate.query("SELECT " + COLUMNS + " FROM fe_alert WHERE id = ?", MAPPER, id).stream().findFirst()
-                .map(alert -> alert.withReasons(reasons(alert.id())));
+                .map(alert -> alert.withDetails(reasons(alert.id()), watchlistMatches(alert.id())));
     }
 
     public List<AlertData> find(AlertFilter filter, int offset, int limit) {
@@ -124,6 +188,10 @@ public class AlertRepository {
             sql.append(" AND tenant_id = ?");
             params.add(filter.tenantId());
         }
+        if (filter.type() != null) {
+            sql.append(" AND alert_type = ?");
+            params.add(filter.type().name());
+        }
         if (filter.status() != null) {
             sql.append(" AND status = ?");
             params.add(filter.status().name());
@@ -149,12 +217,15 @@ public class AlertRepository {
 
     private static AlertData map(ResultSet rs, int rowNum) throws SQLException {
         final String verdict = rs.getString("verdict");
-        return new AlertData(rs.getLong("id"), rs.getString("tenant_id"), rs.getLong("transaction_ref"),
-                AccountType.valueOf(rs.getString("account_type")), rs.getLong("account_id"), rs.getObject("client_id", Long.class),
-                TransactionKind.valueOf(rs.getString("kind")), rs.getBigDecimal("amount"), rs.getString("currency"),
+        final String accountType = rs.getString("account_type");
+        final String kind = rs.getString("kind");
+        return new AlertData(rs.getLong("id"), rs.getString("tenant_id"), AlertType.valueOf(rs.getString("alert_type")),
+                rs.getObject("transaction_ref", Long.class), accountType == null ? null : AccountType.valueOf(accountType),
+                rs.getObject("account_id", Long.class), rs.getObject("client_id", Long.class),
+                kind == null ? null : TransactionKind.valueOf(kind), rs.getBigDecimal("amount"), rs.getString("currency"),
                 rs.getTimestamp("occurred_at").toInstant(), rs.getInt("risk_score"), Severity.valueOf(rs.getString("severity")),
                 AlertStatus.valueOf(rs.getString("status")), verdict == null ? null : AlertVerdict.valueOf(verdict),
                 rs.getString("assigned_to"), rs.getString("note"), rs.getObject("fineract_hold_id", Long.class),
-                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), List.of());
+                rs.getTimestamp("created_at").toInstant(), rs.getTimestamp("updated_at").toInstant(), List.of(), List.of());
     }
 }

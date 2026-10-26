@@ -20,6 +20,7 @@ package com.micropay.fraud.engine.config;
 
 import java.math.BigDecimal;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
@@ -30,7 +31,7 @@ import org.springframework.boot.context.properties.bind.DefaultValue;
 @ConfigurationProperties(prefix = "fraud")
 public record FraudEngineProperties(@DefaultValue("Africa/Kampala") ZoneId timeZone, @DefaultValue Kafka kafka, @DefaultValue Alerts alerts,
         @DefaultValue Rules rules, @DefaultValue Anomaly anomaly, @DefaultValue Fineract fineract, @DefaultValue AutoHold autoHold,
-        @DefaultValue Api api) {
+        @DefaultValue Api api, @DefaultValue Watchlist watchlist) {
 
     public record Kafka(@DefaultValue("external-events") String topic, @DefaultValue("fraud-engine") String groupId,
             @DefaultValue("true") boolean enabled) {
@@ -99,5 +100,41 @@ public record FraudEngineProperties(@DefaultValue("Africa/Kampala") ZoneId timeZ
      * The alerts API is closed unless {@code key} is set; callers send it in the X-API-Key header.
      */
     public record Api(@DefaultValue("") String key) {
+    }
+
+    /**
+     * Watchlist screening. Clients are screened when Fineract reports them created or activated, and all clients again
+     * after each refresh ({@code refreshCron}, in {@code fraud.time-zone}). A name scoring {@code matchThreshold} (0 to
+     * 100) or more against a listed name raises an alert. {@code files} maps a list name to a local CSV file.
+     *
+     * @param tenants
+     *            the Fineract tenants whose clients the nightly run copies from Fineract when {@code syncClients} is on
+     * @param loadOnStartup
+     *            run at startup when a configured list was never loaded, instead of waiting for the night
+     * @param minRetainedShare
+     *            a downloaded list with fewer entries than this share of the stored one is refused as a likely broken
+     *            download
+     */
+    public record Watchlist(@DefaultValue("true") boolean enabled, @DefaultValue("85") int matchThreshold,
+            @DefaultValue("0 0 2 * * *") String refreshCron, @DefaultValue Feed ofac, @DefaultValue Feed un, @DefaultValue Feed eu,
+            Map<String, String> files, @DefaultValue("0.5") double minRetainedShare, @DefaultValue("true") boolean syncClients,
+            @DefaultValue("default") List<String> tenants, @DefaultValue WatchlistHold autoHold,
+            @DefaultValue("true") boolean loadOnStartup) {
+
+        public Map<String, String> files() {
+            return files == null ? Map.of() : files;
+        }
+    }
+
+    /**
+     * One published list. The URLs are set in fraud-engine.properties.
+     */
+    public record Feed(@DefaultValue("true") boolean enabled, String url) {
+    }
+
+    /**
+     * Off by default. When on, a watchlist alert at {@code minScore} or above puts a fraud hold on the client.
+     */
+    public record WatchlistHold(@DefaultValue("false") boolean enabled, @DefaultValue("95") int minScore) {
     }
 }

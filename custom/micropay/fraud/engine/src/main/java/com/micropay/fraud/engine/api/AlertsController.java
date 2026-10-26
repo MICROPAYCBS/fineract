@@ -22,6 +22,7 @@ import com.micropay.fraud.engine.alert.AlertData;
 import com.micropay.fraud.engine.alert.AlertFilter;
 import com.micropay.fraud.engine.alert.AlertService;
 import com.micropay.fraud.engine.alert.AlertStatus;
+import com.micropay.fraud.engine.alert.AlertType;
 import com.micropay.fraud.engine.alert.AlertUpdate;
 import com.micropay.fraud.engine.scoring.Severity;
 import jakarta.validation.Valid;
@@ -46,11 +47,12 @@ public class AlertsController {
     private final AlertService alertService;
 
     @GetMapping
-    public AlertService.Page list(@RequestParam(required = false) String tenantId, @RequestParam(required = false) AlertStatus status,
-            @RequestParam(required = false) Severity severity, @RequestParam(required = false) Long clientId,
-            @RequestParam(required = false) Instant from, @RequestParam(required = false) Instant to,
-            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "50") int limit) {
-        return alertService.list(new AlertFilter(tenantId, status, severity, clientId, from, to), offset, limit);
+    public AlertService.Page list(@RequestParam(required = false) String tenantId, @RequestParam(required = false) AlertType type,
+            @RequestParam(required = false) AlertStatus status, @RequestParam(required = false) Severity severity,
+            @RequestParam(required = false) Long clientId, @RequestParam(required = false) Instant from,
+            @RequestParam(required = false) Instant to, @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "50") int limit) {
+        return alertService.list(new AlertFilter(tenantId, type, status, severity, clientId, from, to), offset, limit);
     }
 
     @GetMapping("/{id}")
