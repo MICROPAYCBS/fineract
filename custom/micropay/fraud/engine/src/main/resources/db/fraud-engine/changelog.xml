@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  Fraud engine's own database (not Fineract's). Kept under db/fraud-engine so Fineract's custom-changelog scan never sees it.
+-->
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="fe-001-processed-event" author="micropay">
+        <createTable tableName="fe_processed_event">
+            <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="event_key" type="VARCHAR(200)"><constraints nullable="false"/></column>
+            <column name="processed_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="fe_processed_event" columnNames="tenant_id, event_key" constraintName="pk_fe_processed_event"/>
+    </changeSet>
+
+    <changeSet id="fe-002-client-and-owner" author="micropay">
+        <createTable tableName="fe_client_profile">
+            <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="activation_date" type="DATE"/>
+            <column name="office_id" type="BIGINT"/>
+            <column name="display_name" type="VARCHAR(200)"/>
+            <column name="updated_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="fe_client_profile" columnNames="tenant_id, client_id" constraintName="pk_fe_client_profile"/>
+        <createTable tableName="fe_account_owner">
+            <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="account_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="account_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="client_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="resolved_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <addPrimaryKey tableName="fe_account_owner" columnNames="tenant_id, account_type, account_id" constraintName="pk_fe_account_owner"/>
+    </changeSet>
+
+    <changeSet id="fe-003-transaction" author="micropay">
+        <createTable tableName="fe_transaction">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="event_key" type="VARCHAR(200)"><constraints nullable="false"/></column>
+            <column name="event_type" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="kind" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="debit" type="BOOLEAN"><constraints nullable="false"/></column>
+            <column name="account_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="account_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="client_id" type="BIGINT"/>
+            <column name="transaction_id" type="BIGINT"/>
+            <column name="amount" type="DECIMAL(27,8)"><constraints nullable="false"/></column>
+            <column name="currency" type="VARCHAR(10)"/>
+            <column name="occurred_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="business_date" type="DATE"/>
+            <column name="channel" type="VARCHAR(100)"/>
+            <column name="risk_score" type="INT"><constraints nullable="false"/></column>
+            <column name="anomaly_score" type="DOUBLE"/>
+            <column name="features" type="VARCHAR(500)"/>
+        </createTable>
+        <createIndex tableName="fe_transaction" indexName="idx_fe_transaction_client">
+            <column name="tenant_id"/>
+            <column name="client_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="fe_transaction" indexName="idx_fe_transaction_account">
+            <column name="tenant_id"/>
+            <column name="account_type"/>
+            <column name="account_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+        <createIndex tableName="fe_transaction" indexName="idx_fe_transaction_tenant_time">
+            <column name="tenant_id"/>
+            <column name="occurred_at"/>
+        </createIndex>
+    </changeSet>
+
+    <changeSet id="fe-004-alert" author="micropay">
+        <createTable tableName="fe_alert">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="tenant_id" type="VARCHAR(100)"><constraints nullable="false"/></column>
+            <column name="transaction_ref" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fe_alert_transaction" referencedTableName="fe_transaction" referencedColumnNames="id"/>
+            </column>
+            <column name="account_type" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="account_id" type="BIGINT"><constraints nullable="false"/></column>
+            <column name="client_id" type="BIGINT"/>
+            <column name="kind" type="VARCHAR(30)"><constraints nullable="false"/></column>
+            <column name="amount" type="DECIMAL(27,8)"><constraints nullable="false"/></column>
+            <column name="currency" type="VARCHAR(10)"/>
+            <column name="occurred_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="risk_score" type="INT"><constraints nullable="false"/></column>
+            <column name="severity" type="VARCHAR(10)"><constraints nullable="false"/></column>
+            <column name="status" type="VARCHAR(20)"><constraints nullable="false"/></column>
+            <column name="verdict" type="VARCHAR(20)"/>
+            <column name="assigned_to" type="VARCHAR(100)"/>
+            <column name="note" type="VARCHAR(1000)"/>
+            <column name="fineract_hold_id" type="BIGINT"/>
+            <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="updated_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+        </createTable>
+        <createIndex tableName="fe_alert" indexName="idx_fe_alert_queue">
+            <column name="tenant_id"/>
+            <column name="status"/>
+            <column name="risk_score"/>
+        </createIndex>
+        <createIndex tableName="fe_alert" indexName="idx_fe_alert_client">
+            <column name="tenant_id"/>
+            <column name="client_id"/>
+        </createIndex>
+        <createTable tableName="fe_alert_reason">
+            <column name="id" type="BIGINT" autoIncrement="true"><constraints primaryKey="true" nullable="false"/></column>
+            <column name="alert_id" type="BIGINT">
+                <constraints nullable="false" foreignKeyName="fk_fe_alert_reason_alert" referencedTableName="fe_alert" referencedColumnNames="id"/>
+            </column>
+            <column name="code" type="VARCHAR(50)"><constraints nullable="false"/></column>
+            <column name="score" type="INT"><constraints nullable="false"/></column>
+            <column name="detail" type="VARCHAR(500)"/>
+        </createTable>
+        <createIndex tableName="fe_alert_reason" indexName="idx_fe_alert_reason_alert">
+            <column name="alert_id"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

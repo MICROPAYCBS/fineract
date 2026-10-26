@@ -70,7 +70,8 @@ jib {
                 file("${rootDir}/custom/${companyDir.name}").eachDir { categoryDir ->
                     if('build' != categoryDir.name) {
                         file("${rootDir}/custom/${companyDir.name}/${categoryDir.name}").eachDir { moduleDir ->
-                            if('build' != moduleDir.name && file("${moduleDir}/build.gradle").exists()) {
+                            // MICROPAY: standalone services (custom/micropay/fraud/engine) run beside Fineract, not inside it
+                            if('build' != moduleDir.name && file("${moduleDir}/build.gradle").exists() && !file("${moduleDir}/STANDALONE_SERVICE").exists()) {
                                 implementation project(":custom:${companyDir.name}:${categoryDir.name}:${moduleDir.name}")
                             }
                         }

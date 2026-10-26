@@ -228,6 +228,9 @@ collection sheet, financial activity account), bulk-import handlers (+4/-3 total
 - `buildSrc` (+3: Sentry dependency versions in the BOM, consumed only by `monitoring/sentry`;
   Boot 4 uses `io.sentry:sentry-spring-boot-4:8.46.0`), `fineract-security/dependencies.gradle`
   (+4: `com.eatthepath:java-otp:0.4.0` for TOTP).
+- `custom/docker/build.gradle` (+2): skips modules with a `STANDALONE_SERVICE` marker file, so the fraud engine
+  (`custom/micropay/fraud/engine`, a separate Spring Boot service) is not put inside the Fineract image.
+  `custom/micropay/app/boot` skips them the same way.
 - `config/docker/env`, `fineract-war/setenv.sh`, `kubernetes/fineract-server-deployment.yml`: default tenant timezone `Africa/Kampala`, Sentry env placeholders.
 - `README.md` (+14, "Create an additional tenant" section; it still names `:fineract-provider:createNewTenant`, the task now lives at `:custom:micropay:app:boot:createNewTenant`), `.gitignore` (+3), `.gitattributes` (new).
 - `fineract-provider/src/main/resources/db/changelog/tenant/parts/0217_force_withdrawal_configs.xml`: one `validCheckSum` line, needed by databases migrated before the custom changelog existed. Keep.

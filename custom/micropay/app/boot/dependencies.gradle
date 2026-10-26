@@ -21,12 +21,14 @@ dependencies {
     implementation(project(':fineract-core'))
     implementation(project(':fineract-provider'))
 
-    // NOTE: every custom/micropay/<category>/<module> except this one is pulled in automatically
+    // NOTE: every custom/micropay/<category>/<module> except this one is pulled in automatically, unless the module
+    // carries a STANDALONE_SERVICE marker file: those (custom/micropay/fraud/engine) are their own Spring Boot services
+    // that run beside Fineract and must not be on this classpath. custom/docker/build.gradle skips them the same way.
     file("${rootDir}/custom/micropay").eachDir { categoryDir ->
         if ('build' != categoryDir.name) {
             file("${rootDir}/custom/micropay/${categoryDir.name}").eachDir { moduleDir ->
                 def path = ":custom:micropay:${categoryDir.name}:${moduleDir.name}"
-                if ('build' != moduleDir.name && path != project.path) {
+                if ('build' != moduleDir.name && path != project.path && !file("${moduleDir}/STANDALONE_SERVICE").exists()) {
                     implementation project(path)
                 }
             }
