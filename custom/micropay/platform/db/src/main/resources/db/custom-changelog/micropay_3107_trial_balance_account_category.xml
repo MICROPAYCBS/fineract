@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: Trial Balance Table returns an account category (BalanceType)
+  so the statement can group Assets, Liability, Equity, Income, and Expense.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/micropay/parts/3107_trial_balance_account_category.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet author="micropay" id="3107-postgresql-trial-balance-account-category" context="postgresql">
+        <sqlFile path="db/custom-sql/micropay/V3107__trial_balance_account_category.postgresql.sql"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+    <changeSet author="micropay" id="3107-mysql-trial-balance-account-category" context="mysql">
+        <sqlFile path="db/custom-sql/micropay/V3107__trial_balance_account_category.mysql.sql"
+            splitStatements="false"
+            stripComments="false"/>
+    </changeSet>
+
+</databaseChangeLog>
