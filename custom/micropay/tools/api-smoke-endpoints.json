@@ -388,6 +388,10 @@
     { "path": "/treasury/trust/emoney-balances", "owner": "micropay" },
     { "path": "/treasury/trust/reconciliations/{trsTrustReconRunId}", "owner": "micropay" },
     { "path": "/treasury/trust/asset-breakdown?asOfDate=2026-10-16", "owner": "micropay" },
-    { "path": "/treasury/trust/interest", "owner": "micropay" }
+    { "path": "/treasury/trust/interest", "owner": "micropay" },
+    { "path": "/transactionbatches/template", "owner": "micropay" },
+    { "path": "/transactionbatches/settings", "owner": "micropay" },
+    { "path": "/transactionbatches/accounts?search=0", "owner": "micropay" },
+    { "path": "/transactionbatches", "owner": "micropay" }
   ]
 }

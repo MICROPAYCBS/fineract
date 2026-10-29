@@ -85,4 +85,11 @@ public final class MicropayCommandWrapperConstants {
     public static final String ENTITY_TREASURYDEAL = "TREASURYDEAL";
     public static final String ENTITY_FRAUD_HOLD = "FRAUD_HOLD";
     public static final String ACTION_RELEASE = "RELEASE";
+    public static final String ENTITY_TRANSACTIONBATCH = "TRANSACTIONBATCH";
+    public static final String ENTITY_TRANSACTIONBATCHITEM = "TRANSACTIONBATCHITEM";
+    public static final String ENTITY_TRANSACTIONBATCHSETTING = "TRANSACTIONBATCHSETTING";
+    public static final String ENTITY_TRANSACTIONBATCHCONFIG = "TRANSACTIONBATCHCONFIG";
+    public static final String ACTION_COPY = "COPY";
+    public static final String ACTION_REPAIR = "REPAIR";
+    public static final String ACTION_IMPORT = "IMPORT";
 }

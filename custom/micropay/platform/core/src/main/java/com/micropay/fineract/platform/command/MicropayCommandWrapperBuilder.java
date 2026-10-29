@@ -19,6 +19,9 @@
 package com.micropay.fineract.platform.command;
 
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_ACCRUE;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_COPY;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_IMPORT;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_REPAIR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_DEACTIVATE;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_GL_TO_SAVINGS;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ACTION_MARKASNPA;
@@ -61,6 +64,9 @@ import static com.micropay.fineract.platform.command.MicropayCommandWrapperConst
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SCORING_PRODUCT_CONFIG;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SECTOR;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_SUBINDUSTRY;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TRANSACTIONBATCH;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TRANSACTIONBATCHITEM;
+import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TRANSACTIONBATCHSETTING;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYACCOUNT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYAGENTFLOAT;
 import static com.micropay.fineract.platform.command.MicropayCommandWrapperConstants.ENTITY_TREASURYFLOATREQUEST;
@@ -966,6 +972,87 @@ public class MicropayCommandWrapperBuilder {
         this.entityName = ENTITY_FRAUD_HOLD;
         this.entityId = holdId;
         this.href = "/fraud/holds/" + holdId + "?command=release";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTransactionBatch() {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TRANSACTIONBATCH;
+        this.href = "/transactionbatches";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTransactionBatch(final Long batchId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TRANSACTIONBATCH;
+        this.entityId = batchId;
+        this.href = "/transactionbatches/" + batchId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder deleteTransactionBatch(final Long batchId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_TRANSACTIONBATCH;
+        this.entityId = batchId;
+        this.href = "/transactionbatches/" + batchId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder copyTransactionBatch(final Long batchId) {
+        this.actionName = ACTION_COPY;
+        this.entityName = ENTITY_TRANSACTIONBATCH;
+        this.entityId = batchId;
+        this.href = "/transactionbatches/" + batchId + "?command=copy";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder submitTransactionBatch(final Long batchId) {
+        this.actionName = ACTION_SUBMIT;
+        this.entityName = ENTITY_TRANSACTIONBATCH;
+        this.entityId = batchId;
+        this.href = "/transactionbatches/" + batchId + "?command=submit";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder createTransactionBatchItem(final Long batchId) {
+        this.actionName = ACTION_CREATE;
+        this.entityName = ENTITY_TRANSACTIONBATCHITEM;
+        this.entityId = batchId;
+        this.href = "/transactionbatches/" + batchId + "/items";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTransactionBatchItem(final Long batchId, final Long itemId) {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TRANSACTIONBATCHITEM;
+        this.entityId = itemId;
+        this.subentityId = batchId;
+        this.href = "/transactionbatches/" + batchId + "/items/" + itemId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder deleteTransactionBatchItem(final Long batchId, final Long itemId) {
+        this.actionName = ACTION_DELETE;
+        this.entityName = ENTITY_TRANSACTIONBATCHITEM;
+        this.entityId = itemId;
+        this.subentityId = batchId;
+        this.href = "/transactionbatches/" + batchId + "/items/" + itemId;
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder repairTransactionBatchItem(final Long batchId, final Long itemId, final Long postingId) {
+        this.actionName = ACTION_REPAIR;
+        this.entityName = ENTITY_TRANSACTIONBATCHITEM;
+        this.entityId = itemId;
+        this.subentityId = postingId;
+        this.href = "/transactionbatches/" + batchId + "/items/" + itemId + "/postings/" + postingId + "?command=repair";
+        return this;
+    }
+
+    public MicropayCommandWrapperBuilder updateTransactionBatchSettings() {
+        this.actionName = ACTION_UPDATE;
+        this.entityName = ENTITY_TRANSACTIONBATCHSETTING;
+        this.href = "/transactionbatches/settings";
         return this;
     }
 }

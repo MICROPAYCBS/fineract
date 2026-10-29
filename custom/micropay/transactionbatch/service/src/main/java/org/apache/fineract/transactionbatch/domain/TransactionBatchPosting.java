@@ -1,0 +1,86 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements. See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership. The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+package org.apache.fineract.transactionbatch.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Table;
+import java.time.LocalDate;
+import java.time.OffsetDateTime;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.apache.fineract.infrastructure.core.domain.AbstractPersistableCustom;
+
+@Getter
+@Setter
+@Entity
+@NoArgsConstructor
+@Table(name = "m_txn_batch_posting")
+public class TransactionBatchPosting extends AbstractPersistableCustom<Long> {
+
+    @Column(name = "run_id", nullable = false)
+    private Long runId;
+
+    @Column(name = "item_id", nullable = false)
+    private Long itemId;
+
+    @Column(name = "status", nullable = false)
+    private Integer status;
+
+    @Column(name = "error", length = 1000)
+    private String error;
+
+    @Column(name = "journal_transaction_id", length = 50)
+    private String journalTransactionId;
+
+    @Column(name = "savings_transaction_id")
+    private Long savingsTransactionId;
+
+    @Column(name = "suspense_transaction_id", length = 50)
+    private String suspenseTransactionId;
+
+    @Column(name = "repair_journal_transaction_id", length = 50)
+    private String repairJournalTransactionId;
+
+    @Column(name = "repair_savings_transaction_id")
+    private Long repairSavingsTransactionId;
+
+    @Column(name = "repaired_by")
+    private Long repairedBy;
+
+    @Column(name = "repaired_on")
+    private LocalDate repairedOn;
+
+    @Column(name = "created_by")
+    private Long createdBy;
+
+    @Column(name = "created_on_utc")
+    private OffsetDateTime createdOnUtc;
+
+    @Column(name = "last_modified_by")
+    private Long lastModifiedBy;
+
+    @Column(name = "last_modified_on_utc")
+    private OffsetDateTime lastModifiedOnUtc;
+
+    public boolean isSuspended() {
+        return TransactionBatchPostingStatus.SUSPENDED.getValue().equals(this.status);
+    }
+}

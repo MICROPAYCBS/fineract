@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+
+    Licensed to the Apache Software Foundation (ASF) under one
+    or more contributor license agreements. See the NOTICE file
+    distributed with this work for additional information
+    regarding copyright ownership. The ASF licenses this file
+    to you under the Apache License, Version 2.0 (the
+    "License"); you may not use this file except in compliance
+    with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing,
+    software distributed under the License is distributed on an
+    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+    KIND, either express or implied. See the License for the
+    specific language governing permissions and limitations
+    under the License.
+
+-->
+<!--
+  MICROPAY CBS: transaction batch permissions. Maker-checker is off by default; every write has a _CHECKER twin.
+  The setup guide turns maker-checker on for SUBMIT_TRANSACTIONBATCH.
+-->
+<databaseChangeLog logicalFilePath="db/changelog/tenant/module/transactionbatch/parts/0002_permissions.xml" xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.3.xsd">
+
+    <changeSet id="txnbatch-perm-001" author="micropay">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT COUNT(1) FROM m_permission WHERE code = 'READ_TRANSACTIONBATCH'</sqlCheck>
+        </preConditions>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="READ_TRANSACTIONBATCH"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="CREATE_TRANSACTIONBATCH"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="CREATE_TRANSACTIONBATCH_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="CREATE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="UPDATE_TRANSACTIONBATCH"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="UPDATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="UPDATE_TRANSACTIONBATCH_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="UPDATE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="DELETE_TRANSACTIONBATCH"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="DELETE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="DELETE_TRANSACTIONBATCH_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="DELETE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="COPY_TRANSACTIONBATCH"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="COPY"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="COPY_TRANSACTIONBATCH_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="COPY_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="SUBMIT_TRANSACTIONBATCH"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="SUBMIT"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="SUBMIT_TRANSACTIONBATCH_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCH"/><column name="action_name" value="SUBMIT_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="CREATE_TRANSACTIONBATCHITEM"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="CREATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="CREATE_TRANSACTIONBATCHITEM_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="CREATE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="UPDATE_TRANSACTIONBATCHITEM"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="UPDATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="UPDATE_TRANSACTIONBATCHITEM_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="UPDATE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="DELETE_TRANSACTIONBATCHITEM"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="DELETE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="DELETE_TRANSACTIONBATCHITEM_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="DELETE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="IMPORT_TRANSACTIONBATCHITEM"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="IMPORT"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="IMPORT_TRANSACTIONBATCHITEM_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="IMPORT_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="REPAIR_TRANSACTIONBATCHITEM"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="REPAIR"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="REPAIR_TRANSACTIONBATCHITEM_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCHITEM"/><column name="action_name" value="REPAIR_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="READ_TRANSACTIONBATCHSETTING"/><column name="entity_name" value="TRANSACTIONBATCHSETTING"/><column name="action_name" value="READ"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="UPDATE_TRANSACTIONBATCHSETTING"/><column name="entity_name" value="TRANSACTIONBATCHSETTING"/><column name="action_name" value="UPDATE"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+        <insert tableName="m_permission"><column name="grouping" value="transactionbatch"/><column name="code" value="UPDATE_TRANSACTIONBATCHSETTING_CHECKER"/><column name="entity_name" value="TRANSACTIONBATCHSETTING"/><column name="action_name" value="UPDATE_CHECKER"/><column name="can_maker_checker" valueBoolean="false"/></insert>
+    </changeSet>
+
+</databaseChangeLog>

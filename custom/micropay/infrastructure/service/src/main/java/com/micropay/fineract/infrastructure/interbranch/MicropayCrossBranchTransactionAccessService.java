@@ -20,6 +20,7 @@ package com.micropay.fineract.infrastructure.interbranch;
 
 import com.micropay.fineract.platform.configuration.MicropayConfigurationService;
 import java.util.Optional;
+import java.util.function.Supplier;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.interbranch.api.CrossBranchServicingConstants;
 import org.apache.fineract.infrastructure.interbranch.service.CrossBranchTransactionAccessService;
@@ -35,8 +36,35 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class MicropayCrossBranchTransactionAccessService implements CrossBranchTransactionAccessService {
 
+    private static final ThreadLocal<Office> SERVICING_OFFICE_OVERRIDE = new ThreadLocal<>();
+
     private final MicropayConfigurationService micropayConfigurationService;
     private final PlatformSecurityContext context;
+
+    /**
+     * Names the office that services the next savings post. A no-op when cross-branch servicing is off, so the line
+     * falls back to the authenticated user's office. Callers clear the override in a finally block.
+     */
+    public void setServicingOfficeOverride(final Office office) {
+        if (office == null || !this.micropayConfigurationService.isCrossBranchServicingEnabled()) {
+            SERVICING_OFFICE_OVERRIDE.remove();
+            return;
+        }
+        SERVICING_OFFICE_OVERRIDE.set(office);
+    }
+
+    public void clearServicingOfficeOverride() {
+        SERVICING_OFFICE_OVERRIDE.remove();
+    }
+
+    public <T> T withServicingOffice(final Office office, final Supplier<T> action) {
+        setServicingOfficeOverride(office);
+        try {
+            return action.get();
+        } finally {
+            clearServicingOfficeOverride();
+        }
+    }
 
     @Override
     public boolean isCrossBranchTransactionEnabledForCurrentUser() {
@@ -54,7 +82,8 @@ public class MicropayCrossBranchTransactionAccessService implements CrossBranchT
             return Optional.empty();
         }
 
-        final Office servicingOffice = user.getOffice();
+        final Office override = SERVICING_OFFICE_OVERRIDE.get();
+        final Office servicingOffice = override != null ? override : user.getOffice();
         if (servicingOffice.getId().equals(homeOffice.getId())) {
             return Optional.empty();
         }

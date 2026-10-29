@@ -217,7 +217,9 @@ the file to seam.
 ### 3.5 Validators, deserializers, bulk import, misc
 
 `ClientDataValidator`, `LoanTransactionValidatorImpl`, `ProgressiveLoanTransactionValidatorImpl`,
-`LoanProductDataValidator`, `SavingsProductDataValidator`, `ShareAccountDataSerializer`,
+`LoanProductDataValidator`, `SavingsProductDataValidator`, `SavingsAccountTransactionDataValidator`
+(payment type optional on GL substitution; `SavingsAccountConstant` already lists `glAccountId`),
+`ShareAccountDataSerializer`,
 `*CommandFromApiJsonDeserializer` (address, charge, guarantor, journal entry, teller, office,
 collection sheet, financial activity account), bulk-import handlers (+4/-3 total),
 `AccountingConstants`, `DepositsApiConstants`, `SavingsApiConstants`, `ClientApiConstants`,

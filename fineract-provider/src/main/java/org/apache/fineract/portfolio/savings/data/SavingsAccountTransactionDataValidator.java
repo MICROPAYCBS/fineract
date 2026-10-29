@@ -142,7 +142,12 @@ public class SavingsAccountTransactionDataValidator {
         baseDataValidator.reset().parameter(externalIdParamName).value(externalId).ignoreIfNull().notExceedingLengthOf(100);
 
         final Integer paymentType = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(paymentTypeIdParamName, element);
-        baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).notNull();
+        // A GL substitution already names the account, so a payment type is optional. Deposits and withdrawals still require one.
+        if (requireGlAccount) {
+            baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).ignoreIfNull();
+        } else {
+            baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).notNull();
+        }
 
         validatePaymentTypeDetails(baseDataValidator, element);
 

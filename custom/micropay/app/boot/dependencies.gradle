@@ -28,7 +28,8 @@ dependencies {
         if ('build' != categoryDir.name) {
             file("${rootDir}/custom/micropay/${categoryDir.name}").eachDir { moduleDir ->
                 def path = ":custom:micropay:${categoryDir.name}:${moduleDir.name}"
-                if ('build' != moduleDir.name && path != project.path && !file("${moduleDir}/STANDALONE_SERVICE").exists()) {
+                if ('build' != moduleDir.name && path != project.path && file("${moduleDir}/build.gradle").exists()
+                        && !file("${moduleDir}/STANDALONE_SERVICE").exists()) {
                     implementation project(path)
                 }
             }
