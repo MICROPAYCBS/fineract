@@ -97,8 +97,13 @@ class GlAccountEnquiryDataValidatorTest {
     }
 
     @Test
-    void rejectsNonPositiveDepartmentId() {
-        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().departmentId(0L).build()))
+    void acceptsUnassignedDepartmentId() {
+        validator.validate(GlAccountEnquiryRequest.builder().departmentId(0L).build());
+    }
+
+    @Test
+    void rejectsNegativeDepartmentId() {
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().departmentId(-1L).build()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
     }
 }

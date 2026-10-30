@@ -29,6 +29,7 @@ public class GlAccountEnquiryRequest {
     private final String glPrefix;
     private final String ledgerNumber;
     private final Long officeId;
+    /** Null = all departments; 0 = unassigned only. */
     private final Long departmentId;
     private final String currencyCode;
     private final Boolean disabled;

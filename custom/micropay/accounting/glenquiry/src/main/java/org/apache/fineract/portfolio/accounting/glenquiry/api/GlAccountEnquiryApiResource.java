@@ -78,13 +78,13 @@ public class GlAccountEnquiryApiResource {
             Balance is as-of the tenant business date (no date parameter).
             """)
     @ApiResponse(responseCode = "200", description = "OK", content = @Content(array = @ArraySchema(schema = @Schema(implementation = GlAccountEnquiryApiResourceSwagger.GetGlAccountEnquiryResponse.class))))
-    @ApiResponse(responseCode = "400", description = "No search filter was given (validation.msg.GLACCOUNT.filters.at.least.one.required), officeId or departmentId is not positive, or a text filter is too long.")
+    @ApiResponse(responseCode = "400", description = "No search filter was given (validation.msg.GLACCOUNT.filters.at.least.one.required), officeId is not positive, departmentId is negative, or a text filter is too long.")
     @ApiResponse(responseCode = "403", description = "The user lacks READ_GLACCOUNT permission.")
     public String enquire(@Context final UriInfo uriInfo,
             @QueryParam("glPrefix") @Parameter(description = "GL code prefix (starts-with)") final String glPrefix,
             @QueryParam("ledgerNumber") @Parameter(description = "Partial GL code match") final String ledgerNumber,
             @QueryParam("officeId") @Parameter(description = "Branch office id") final Long officeId,
-            @QueryParam("departmentId") @Parameter(description = "Department id") final Long departmentId,
+            @QueryParam("departmentId") @Parameter(description = "Department id. Omit for every department. 0 is unassigned only.") final Long departmentId,
             @QueryParam("currencyCode") @Parameter(description = "Currency code") final String currencyCode,
             @QueryParam("disabled") @Parameter(description = "Account disabled status") final Boolean disabled,
             @QueryParam("description") @Parameter(description = "Case-insensitive contains match on GL account name or description") final String description,
