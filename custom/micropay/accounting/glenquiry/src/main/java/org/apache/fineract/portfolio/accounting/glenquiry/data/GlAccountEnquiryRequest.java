@@ -18,6 +18,7 @@
  */
 package org.apache.fineract.portfolio.accounting.glenquiry.data;
 
+import java.time.LocalDate;
 import lombok.Builder;
 import lombok.Getter;
 import org.apache.commons.lang3.StringUtils;
@@ -36,6 +37,13 @@ public class GlAccountEnquiryRequest {
     private final String description;
     /** Result modifier only — omitted/true excludes zero balances; false includes them. Not a search criterion. */
     private final Boolean excludeZeroBalance;
+    /**
+     * Balance cut-off. Null means the tenant business date. Entries on or before this day are included.
+     * Not a search criterion.
+     */
+    private final LocalDate asOfDate;
+    /** Chart classification 1–5. Null means every type. A search criterion. */
+    private final Integer type;
 
     public boolean hasAnyFilter() {
         return StringUtils.isNotBlank(this.glPrefix) //
@@ -44,7 +52,8 @@ public class GlAccountEnquiryRequest {
                 || this.departmentId != null //
                 || StringUtils.isNotBlank(this.currencyCode) //
                 || this.disabled != null //
-                || StringUtils.isNotBlank(this.description);
+                || StringUtils.isNotBlank(this.description) //
+                || this.type != null;
     }
 
     /** Default ON: exclude zeros unless the client explicitly sends false. */

@@ -36,4 +36,6 @@ public class GlAccountEnquiryData {
     private final String currencyCode;
     private final BigDecimal balance;
     private final Boolean disabled;
+    /** Chart classification: 1 asset, 2 liability, 3 equity, 4 income, 5 expense. */
+    private final Integer type;
 }

@@ -169,4 +169,22 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
         assertThat(paramsCaptor.getValue()).contains(Date.valueOf(LocalDate.of(2026, 7, 19)));
         assertThat(paramsCaptor.getValue()).doesNotContain("DAILY", "MONTHLY");
     }
+
+    @Test
+    void enquireUsesRequestedAsOfDateAndAccountType() {
+        when(this.jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(), any(), any())).thenReturn(null);
+        when(this.jdbcTemplate.queryForObject(anyString(), any(RowMapper.class), any(), any())).thenReturn(null);
+        when(this.jdbcTemplate.query(anyString(), any(RowMapper.class), any(Object[].class))).thenReturn(Collections.emptyList());
+
+        this.service.enquire(GlAccountEnquiryRequest.builder().officeId(1L).asOfDate(LocalDate.of(2026, 5, 31)).type(4).build());
+
+        final ArgumentCaptor<String> sqlCaptor = ArgumentCaptor.forClass(String.class);
+        final ArgumentCaptor<Object[]> paramsCaptor = ArgumentCaptor.forClass(Object[].class);
+        verify(this.jdbcTemplate).query(sqlCaptor.capture(), any(RowMapper.class), paramsCaptor.capture());
+
+        assertThat(sqlCaptor.getValue()).contains("aga.classification_enum = ?");
+        assertThat(paramsCaptor.getValue()).contains(Date.valueOf(LocalDate.of(2026, 5, 31)));
+        assertThat(paramsCaptor.getValue()).contains(4);
+        assertThat(paramsCaptor.getValue()).doesNotContain(Date.valueOf(LocalDate.of(2026, 7, 19)));
+    }
 }

@@ -106,4 +106,24 @@ class GlAccountEnquiryDataValidatorTest {
         assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().departmentId(-1L).build()))
                 .isInstanceOf(PlatformApiDataValidationException.class);
     }
+
+    @Test
+    void rejectsAsOfDateAlone() {
+        assertThatThrownBy(
+                () -> validator.validate(GlAccountEnquiryRequest.builder().asOfDate(java.time.LocalDate.of(2026, 5, 31)).build()))
+                        .isInstanceOf(PlatformApiDataValidationException.class);
+    }
+
+    @Test
+    void acceptsAccountTypeOnly() {
+        validator.validate(GlAccountEnquiryRequest.builder().type(4).build());
+    }
+
+    @Test
+    void rejectsAccountTypeOutsideChart() {
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().type(0).build()))
+                .isInstanceOf(PlatformApiDataValidationException.class);
+        assertThatThrownBy(() -> validator.validate(GlAccountEnquiryRequest.builder().type(6).build()))
+                .isInstanceOf(PlatformApiDataValidationException.class);
+    }
 }

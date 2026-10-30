@@ -50,5 +50,7 @@ final class GlAccountEnquiryApiResourceSwagger {
         public BigDecimal balance;
         @Schema(example = "false")
         public Boolean disabled;
+        @Schema(example = "1", description = "1 asset, 2 liability, 3 equity, 4 income, 5 expense")
+        public Integer type;
     }
 }

@@ -48,7 +48,7 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
     public List<GlAccountEnquiryData> enquire(final GlAccountEnquiryRequest request) {
         this.dataValidator.validate(request);
 
-        final LocalDate asOfDate = DateUtils.getBusinessLocalDate();
+        final LocalDate asOfDate = request.getAsOfDate() != null ? request.getAsOfDate() : DateUtils.getBusinessLocalDate();
         final SnapshotWatermark watermark = resolveWatermark(asOfDate);
 
         final StringBuilder sql = new StringBuilder();
@@ -135,6 +135,10 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
             sql.append(" AND aga.disabled = ? ");
             params.add(request.getDisabled());
         }
+        if (request.getType() != null) {
+            sql.append(" AND aga.classification_enum = ? ");
+            params.add(request.getType());
+        }
         if (StringUtils.isNotBlank(request.getDescription())) {
             final String descriptionPattern = "%" + request.getDescription().trim().toLowerCase(Locale.ROOT) + "%";
             sql.append(" AND (LOWER(aga.name) LIKE ? OR LOWER(COALESCE(aga.description, '')) LIKE ?) ");
@@ -202,6 +206,7 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
                     .currencyCode(rs.getString("currencyCode")) //
                     .balance(balance) //
                     .disabled(rs.getBoolean("disabled")) //
+                    .type(classification) //
                     .build();
         }
 
