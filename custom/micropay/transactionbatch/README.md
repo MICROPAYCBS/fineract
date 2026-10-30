@@ -1,6 +1,6 @@
 # Transaction batches
 
-Branch batches of GL and customer (savings deposit) lines. A batch is entered Inactive, submitted for a second person to approve, and posted by the Transaction Batch Posting job. Customer lines go through the existing GL-to-savings and savings-to-GL posts. GL lines are system journal entries in the batch's origin branch. Nothing here replaces an upstream service. One upstream change is required: a payment type is optional when a GL substitution already names the account (`SavingsAccountTransactionDataValidator`, recorded in the fork patch set).
+Branch batches of GL and customer (savings deposit) lines. A batch is entered Inactive, submitted, and posted by the Transaction Batch Posting job. When maker-checker is on for `SUBMIT_TRANSACTIONBATCH`, submit waits for a second person to approve. Customer lines go through the existing GL-to-savings and savings-to-GL posts. GL lines are system journal entries in the batch's origin branch. Nothing here replaces an upstream service. One upstream change is required: a payment type is optional when a GL substitution already names the account (`SavingsAccountTransactionDataValidator`, recorded in the fork patch set).
 
 - `service`: domain, validation, read and write services, command handlers and the API (package `org.apache.fineract.transactionbatch`).
 - `starter`: auto-configuration, `micropay-transactionbatch.properties`, the posting job and the Liquibase changelogs.
@@ -14,7 +14,7 @@ Run the server with `:custom:micropay:app:boot:devRun`.
 Do this once per tenant, in order.
 
 1. Turn the module on (the default) and start the server so the changelogs create the tables, the permissions and the inactive job.
-2. Give operators the `transactionbatch` permissions. Maker-checker is off for every one of them, including `SUBMIT_TRANSACTIONBATCH`. Turn maker-checker on for `SUBMIT_TRANSACTIONBATCH` only. A checker super-user, or a tenant with maker-checker left off, cannot activate a batch: submit answers "Batch approval is not configured".
+2. Give operators the `transactionbatch` permissions. Maker-checker is off for every one of them, including `SUBMIT_TRANSACTIONBATCH`. Submit then activates the batch immediately and does not start a workflow. Turn maker-checker on for `SUBMIT_TRANSACTIONBATCH` when a second person must approve: submit then holds like any other maker-checker task, and a workflow runs only if one is configured for that permission. A checker super-user still activates immediately.
 3. `PUT /v1/transactionbatches/settings` with a code prefix, an import row cap, and for each organisation currency a clearing GL and a different suspense GL. Both must be enabled detail accounts that allow manual entries.
 4. For customer lines in another branch, turn on cross-branch servicing, give the scheduler user `TRANSACT_CROSSOFFICE`, and configure an inter-branch clearing account for the origin branch, the account branch and the currency. When cross-branch servicing is off, a customer line posts at the account's home branch. A missing inter-branch clearing account suspends the line.
 5. Switch on the job "Transaction Batch Posting" (short name `TXN_BTCH`, Spring Batch name `TXN_BATCH_POST`). The suggested cron is every five minutes. It is inserted inactive.
@@ -32,7 +32,7 @@ Base path `/v1/transactionbatches`. Writes go through the command pipeline excep
 | `GET /{id}?associations=items,summary` | Header, and items or the summary when asked. |
 | `PUT /{id}`, `DELETE /{id}` | Inactive only, and not while a submit is awaiting approval. |
 | `POST /{id}?command=copy` | New Inactive batch, new code, new references. |
-| `POST /{id}?command=submit` | Validates the lines and holds for a different approver. Approval sets Active. Rejection sets Rejected. |
+| `POST /{id}?command=submit` | Validates the lines. Activates immediately unless maker-checker is on for `SUBMIT_TRANSACTIONBATCH` and the caller is not a checker super-user, in which case it holds for a different approver. Approval sets Active. Rejection sets Rejected. |
 | `GET /{id}/items`, `POST /{id}/items`, `PUT/DELETE /{id}/items/{itemId}` | Lines. Account type `GL` or `CUSTOMER`, side `DEBIT` or `CREDIT`. |
 | `GET /{id}/summary` | Totals per currency and value date. |
 | `POST /{id}/items/import` | Multipart field `file`, CSV or XLSX. Permission `IMPORT_TRANSACTIONBATCHITEM`. All or nothing. |
@@ -68,7 +68,7 @@ The job skips a run, and does not suspend lines, when the posting date is in a c
 
 ## Troubleshooting
 
-- Submit says "Batch approval is not configured": maker-checker is off for `SUBMIT_TRANSACTIONBATCH`, or the caller is a checker super-user.
+- Submit activates the batch at once: maker-checker is off for `SUBMIT_TRANSACTIONBATCH`, or the caller is a checker super-user. Turn maker-checker on for that permission when submit should wait for approval.
 - Submit says the batch is awaiting approval: a submit command is still held. Approve or reject it; the header cannot change until then.
 - A customer line suspends with a cross-branch or clearing-account error: cross-branch servicing is on, the account is outside the origin branch, and the inter-branch clearing account or `TRANSACT_CROSSOFFICE` on the job user is missing.
 - A line suspends with "accounting closed": the value date, or the run date, is in a closed period. Reopen is not required for the skip path; a closure found before the run starts leaves the batch Active and tries again next time.

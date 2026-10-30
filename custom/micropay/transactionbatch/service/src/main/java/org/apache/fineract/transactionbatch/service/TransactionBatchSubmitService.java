@@ -4,7 +4,6 @@
  */
 package org.apache.fineract.transactionbatch.service;
 
-import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.APPROVAL_NOT_CONFIGURED;
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.MODULE_ENABLED_PROPERTY;
 
 import java.util.ArrayList;
@@ -47,22 +46,35 @@ public class TransactionBatchSubmitService {
         validateContents(batch);
         if (command.commandId() == null) {
             final boolean makerChecker = this.configurationDomainService.isMakerCheckerEnabledForTask("SUBMIT_TRANSACTIONBATCH");
-            if (!makerChecker || this.access.user().isCheckerSuperUser()) {
-                throw new TransactionBatchRuleException("approval.not.configured", APPROVAL_NOT_CONFIGURED);
+            // Same gate as CommandSourceService.validateMakerChecker: hold only when this task is maker-checker
+            // enabled and the caller is not a checker super-user. Otherwise the pipeline commits this result and
+            // does not start a workflow.
+            if (makerChecker && !this.access.user().isCheckerSuperUser()) {
+                return result(batch);
             }
-            return new CommandProcessingResultBuilder().withEntityId(batch.getId()).withOfficeId(batch.getOfficeId()).build();
+            final Long userId = this.access.user().getId();
+            activate(batch, userId, userId);
+            return result(batch);
         }
         final CommandSource held = this.commandSourceRepository.findById(command.commandId())
                 .orElseThrow(() -> new TransactionBatchRuleException("command.missing", "The submit command was not found"));
         if (held.getMaker() != null && held.getMaker().getId().equals(this.access.user().getId())) {
             throw new TransactionBatchRuleException("maker.is.approver", "The maker of a batch cannot approve it");
         }
+        activate(batch, held.getMaker() == null ? null : held.getMaker().getId(), this.access.user().getId());
+        return result(batch);
+    }
+
+    private void activate(final TransactionBatch batch, final Long submittedBy, final Long decidedBy) {
         batch.setStatus(TransactionBatchStatus.ACTIVE.getValue());
-        batch.setSubmittedBy(held.getMaker() == null ? null : held.getMaker().getId());
+        batch.setSubmittedBy(submittedBy);
         batch.setSubmittedOn(DateUtils.getBusinessLocalDate());
-        batch.setDecidedBy(this.access.user().getId());
+        batch.setDecidedBy(decidedBy);
         batch.setDecidedOn(DateUtils.getBusinessLocalDate());
         this.access.touch(batch);
+    }
+
+    private CommandProcessingResult result(final TransactionBatch batch) {
         return new CommandProcessingResultBuilder().withEntityId(batch.getId()).withOfficeId(batch.getOfficeId()).build();
     }
 

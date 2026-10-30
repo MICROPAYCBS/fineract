@@ -121,7 +121,7 @@ entries" is the UI pager and is not stored.
 | --- | --- | --- |
 | Inactive | yes | Save (UC-02), copy (UC-10). |
 | Submitted | **derived** | A `SUBMIT` command for the batch is awaiting approval in `m_portfolio_command_source`. |
-| Active | yes | The approved submit command executes. |
+| Active | yes | Submit executes: immediately when maker-checker is off for `SUBMIT_TRANSACTIONBATCH` or the caller is a checker super-user, otherwise when the held command is approved. |
 | Rejected | yes | The held submit command is rejected (final, BR-15). |
 | Posted | yes | Last run ends with no unrepaired suspended record, or the last one is repaired (BR-18). |
 | Partially Posted | yes | Last run ends with at least one unrepaired suspended record. |
@@ -177,24 +177,25 @@ accounts with client name, so loans and term deposits never appear (BR-07).
 ### 5.2 Submit, approve, reject (UC-07, UC-08)
 
 `POST /v1/transactionbatches/{id}?command=submit`, action `SUBMIT`, entity `TRANSACTIONBATCH`, permission
-`SUBMIT_TRANSACTIONBATCH`. Maker-checker is switched on for this permission, and a workflow definition is anchored to it
-(the workflow module selects definitions by task permission code).
+`SUBMIT_TRANSACTIONBATCH`. Maker-checker for this permission is optional and follows the same gate as any other task.
+When it is on, and the caller is not a checker super-user, a workflow definition anchored to the permission governs
+approval (the workflow module selects definitions by task permission code). When maker-checker is off for the task, or
+the caller is a checker super-user, submit commits immediately and no workflow starts.
 
 1. Maker calls submit. The handler validates: batch Inactive, at least one item, total debits equal total credits for
    every value date within every currency (BR-13, D11), every line in its account's currency (D10), every item still valid, settings exist for every currency used.
-2. Fineract holds the command (handler result rolled back). `WorkflowApprovalHookImpl.onCommandAwaitingApproval` creates the
-   workflow instance. The batch now reads as Submitted.
-3. Checkers act on `/makercheckers/{commandId}?command=approve|reject`. The workflow decides stage by stage.
-4. **Final approval** re-runs the handler with the stored command. It re-validates (accounts may have changed while waiting),
+2. If maker-checker is enabled for `SUBMIT_TRANSACTIONBATCH` and the caller is not a checker super-user, the handler
+   returns without changing status. Fineract holds the command (handler result rolled back).
+   `WorkflowApprovalHookImpl.onCommandAwaitingApproval` creates the workflow instance when one is configured for that
+   permission. The batch now reads as Submitted.
+3. Otherwise the same call sets `ACTIVE` and stamps submitted and decided by/on as the current user. The command
+   commits. There is no maker-checker hold and no workflow.
+4. Checkers act on `/makercheckers/{commandId}?command=approve|reject` only for a held command. The workflow decides stage by stage.
+5. **Final approval** re-runs the handler with the stored command. It re-validates (accounts may have changed while waiting),
    enforces maker ≠ final approver (spec 8, Security), then sets `ACTIVE`, stamps submitted and decided by/on. Posting is
    left to the job (D7).
-5. **Rejection**: upstream calls every `CleanupService` bean after marking the command rejected. A
+6. **Rejection**: upstream calls every `CleanupService` bean after marking the command rejected. A
    `TransactionBatchRejectionCleanupService` sets the batch `REJECTED` and stamps decided by/on, in the reject transaction.
-
-Guard against bypassing approval: if the handler is about to execute without an approval (no `commandId` on the command)
-and maker-checker is not enabled for `SUBMIT_TRANSACTIONBATCH`, or the user is a checker super-user, it refuses with
-"Batch approval is not configured". This enforces the precondition "a workflow is configured for batch approval" and stops a
-super-user from activating a batch alone.
 
 The list screen's Reject button (UC-08) calls the same `/makercheckers/{commandId}?command=reject`; the batch read model
 returns `pendingCommandId` for this.

@@ -16,8 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Header, search and the submit guard. The seeded user is a checker super-user and maker-checker for submit is off, so
- * submit must refuse rather than activate the batch.
+ * Header, search and an empty submit. An empty batch is refused before any maker-checker decision.
  */
 public class TransactionBatchIntegrationTest {
 

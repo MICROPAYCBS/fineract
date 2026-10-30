@@ -69,9 +69,11 @@ Paths are relative to the repo root.
    stored. Do not try to write it from a `REQUIRES_NEW` transaction during the hold: it would wait on the batch row the
    handler has just locked.
 2. **Approval bypass.** A checker super-user's command executes straight away, and so does any command when maker-checker
-   is off for the permission. The submit handler must refuse to activate a batch unless it is executing an approved
-   command (`command.commandId() != null`) whose maker is not the current user. In the hold pass (`commandId` null,
-   maker-checker on, not a super-user) it validates and returns normally, because the result is rolled back anyway.
+   is off for the permission. On that first pass (`commandId` null) the submit handler activates the batch: status
+   `ACTIVE`, submitted and decided by/on stamped as the current user. The pipeline then commits and does not start a
+   workflow. In the hold pass (`commandId` null, maker-checker on, not a super-user) it validates and returns without
+   changing status, because the result is rolled back anyway. Activation of a held command happens on the approval
+   replay (`command.commandId() != null`), and the maker still cannot be the final approver.
 3. **GL substitution needs manual-entry GLs, and today a payment type.** `resolveManualGlAccount` rejects a GL that is
    disabled or does not allow manual entries, and the savings product must have cash or accrual accounting. Validate the
    clearing and suspense GLs for this when settings are saved, and check the product when a customer line is saved.
@@ -150,8 +152,9 @@ remove.
 - Read model exposes derived `SUBMITTED` and `pendingCommandId`; search can filter on it.
 
 **Done when** an integration test with a two-stage workflow definition on `SUBMIT_TRANSACTIONBATCH` shows
-Inactive → Submitted → Active, a rejection gives Rejected, the maker cannot approve their own submit, a checker
-super-user cannot activate a batch alone, and withdrawing the held command returns the batch to Inactive.
+Inactive → Submitted → Active, a rejection gives Rejected, the maker cannot approve their own submit, and withdrawing
+the held command returns the batch to Inactive. With maker-checker off for that permission, or with a checker
+super-user, submit activates the batch immediately and starts no workflow.
 
 ### T5. Posting job (UC-13)
 - Job "Transaction Batch Posting" (`TXN_BATCH_POST`), created inactive.

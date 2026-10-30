@@ -45,5 +45,4 @@ public final class TransactionBatchApiConstants {
     public static final String SUSPENSE_GL_ACCOUNT_ID = "suspenseGlAccountId";
 
     public static final String CROSS_CURRENCY_MESSAGE = "Cross-currency lines are not allowed";
-    public static final String APPROVAL_NOT_CONFIGURED = "Batch approval is not configured";
 }
