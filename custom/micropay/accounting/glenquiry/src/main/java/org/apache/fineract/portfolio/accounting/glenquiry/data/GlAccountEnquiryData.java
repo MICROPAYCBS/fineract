@@ -38,4 +38,8 @@ public class GlAccountEnquiryData {
     private final Boolean disabled;
     /** Chart classification: 1 asset, 2 liability, 3 equity, 4 income, 5 expense. */
     private final Integer type;
+    /** Immediate chart parent. Null when the account has no parent. */
+    private final Long parentGlAccountId;
+    private final String parentGlCode;
+    private final String parentGlAccountName;
 }

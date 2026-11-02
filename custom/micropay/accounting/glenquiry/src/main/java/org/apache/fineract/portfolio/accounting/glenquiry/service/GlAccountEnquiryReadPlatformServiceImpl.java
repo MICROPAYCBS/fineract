@@ -58,7 +58,8 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
         sql.append("d.department_name AS departmentName, aga.id AS glAccountId, aga.gl_code AS glCode, ");
         sql.append("aga.name AS glAccountName, aga.classification_enum AS classification, aga.disabled AS disabled, ");
         sql.append("balances.currency_code AS currencyCode, ");
-        sql.append("COALESCE(balances.signed_net, 0) AS signedNet ");
+        sql.append("COALESCE(balances.signed_net, 0) AS signedNet, ");
+        sql.append("parent.id AS parentGlAccountId, parent.gl_code AS parentGlCode, parent.name AS parentGlAccountName ");
         sql.append("FROM ( ");
         sql.append("  SELECT grain.office_id, grain.department_id, grain.gl_account_id, grain.currency_code, ");
         sql.append("         COALESCE(snap.net_balance, 0) + COALESCE(delta.net_balance, 0) AS signed_net ");
@@ -99,6 +100,7 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
         sql.append("         AND delta.gl_account_id = grain.gl_account_id AND delta.currency_code = grain.currency_code ");
         sql.append(") balances ");
         sql.append("INNER JOIN acc_gl_account aga ON aga.id = balances.gl_account_id ");
+        sql.append("LEFT JOIN acc_gl_account parent ON parent.id = aga.parent_id ");
         sql.append("INNER JOIN m_office o ON o.id = balances.office_id ");
         sql.append("LEFT JOIN m_department d ON d.id = balances.department_id ");
         sql.append("WHERE 1 = 1 ");
@@ -207,6 +209,9 @@ public class GlAccountEnquiryReadPlatformServiceImpl implements GlAccountEnquiry
                     .balance(balance) //
                     .disabled(rs.getBoolean("disabled")) //
                     .type(classification) //
+                    .parentGlAccountId(JdbcSupport.getLong(rs, "parentGlAccountId")) //
+                    .parentGlCode(rs.getString("parentGlCode")) //
+                    .parentGlAccountName(rs.getString("parentGlAccountName")) //
                     .build();
         }
 

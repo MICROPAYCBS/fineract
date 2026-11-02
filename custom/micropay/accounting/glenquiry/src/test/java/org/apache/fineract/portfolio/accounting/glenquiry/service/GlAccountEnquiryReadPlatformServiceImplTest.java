@@ -103,6 +103,10 @@ class GlAccountEnquiryReadPlatformServiceImplTest {
         final String sql = sqlCaptor.getValue();
         assertThat(sql).contains("m_gl_balance_snapshot");
         assertThat(sql).contains("acc_gl_journal_entry");
+        assertThat(sql).contains("LEFT JOIN acc_gl_account parent ON parent.id = aga.parent_id");
+        assertThat(sql).contains("parent.id AS parentGlAccountId");
+        assertThat(sql).contains("parent.gl_code AS parentGlCode");
+        assertThat(sql).contains("parent.name AS parentGlAccountName");
         assertThat(sql).contains("m_department");
         assertThat(sql).contains("COALESCE(department_id, 0)");
         assertThat(sql).contains("aga.gl_code LIKE ?");

@@ -52,5 +52,11 @@ final class GlAccountEnquiryApiResourceSwagger {
         public Boolean disabled;
         @Schema(example = "1", description = "1 asset, 2 liability, 3 equity, 4 income, 5 expense")
         public Integer type;
+        @Schema(example = "10", description = "Immediate chart parent. Null when the account has no parent.")
+        public Long parentGlAccountId;
+        @Schema(example = "4000")
+        public String parentGlCode;
+        @Schema(example = "Sales of product income")
+        public String parentGlAccountName;
     }
 }
