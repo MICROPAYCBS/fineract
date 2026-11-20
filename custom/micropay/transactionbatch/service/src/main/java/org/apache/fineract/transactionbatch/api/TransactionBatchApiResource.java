@@ -82,8 +82,9 @@ public class TransactionBatchApiResource {
     @GET
     @Path("accounts")
     @Produces({ MediaType.APPLICATION_JSON })
-    public List<TransactionBatchAccountData> accounts(@QueryParam("search") final String search) {
-        return this.reads.accounts(search);
+    public List<TransactionBatchAccountData> accounts(@QueryParam("search") final String search,
+            @QueryParam("currencyCode") final String currencyCode) {
+        return this.reads.accounts(search, currencyCode);
     }
 
     @GET

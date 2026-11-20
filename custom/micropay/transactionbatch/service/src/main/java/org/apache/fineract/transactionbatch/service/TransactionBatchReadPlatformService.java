@@ -14,6 +14,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.DataValidatorBuilder;
@@ -220,10 +221,16 @@ public class TransactionBatchReadPlatformService {
         return new TransactionBatchSettingsData(config.getCodePrefix(), config.getImportRowCap(), currencies);
     }
 
-    public List<TransactionBatchAccountData> accounts(final String search) {
+    /**
+     * Active savings deposit accounts in the user's office hierarchy whose number or holder name contains {@code search}
+     * (case-insensitive). {@code currencyCode}, when given, keeps only accounts in that currency, since a customer line
+     * must use the account's own currency.
+     */
+    public List<TransactionBatchAccountData> accounts(final String search, final String currencyCode) {
         this.access.user().validateHasReadPermission("TRANSACTIONBATCH");
         final String hierarchy = this.access.user().getOffice().getHierarchy();
-        final String like = "%" + (search == null ? "" : search.trim()) + "%";
+        final String like = "%" + (search == null ? "" : search.trim().toLowerCase(Locale.ROOT)) + "%";
+        final boolean byCurrency = currencyCode != null && !currencyCode.isBlank();
         final String sql = """
                 select sa.id, sa.account_no, sa.currency_code, sa.office_id, coalesce(c.display_name, g.display_name) as client_name
                 from m_savings_account sa
@@ -231,14 +238,17 @@ public class TransactionBatchReadPlatformService {
                 left join m_client c on c.id = sa.client_id
                 left join m_group g on g.id = sa.group_id
                 where sa.status_enum = 300 and sa.deposit_type_enum = 100 and o.hierarchy like ?
-                and (sa.account_no like ? or c.display_name like ? or g.display_name like ?)
-                order by sa.account_no
+                and (lower(sa.account_no) like ? or lower(c.display_name) like ? or lower(g.display_name) like ?)
                 """
-                + this.sqlGenerator.limit(50, 0);
+                + (byCurrency ? " and sa.currency_code = ?" : "") + " order by sa.account_no " + this.sqlGenerator.limit(50, 0);
+        final List<Object> params = new ArrayList<>(List.of(hierarchy + "%", like, like, like));
+        if (byCurrency) {
+            params.add(currencyCode.trim().toUpperCase(Locale.ROOT));
+        }
         return this.jdbcTemplate.query(sql,
                 (rs, row) -> new TransactionBatchAccountData(rs.getLong("id"), rs.getString("account_no"), rs.getString("client_name"),
                         rs.getString("currency_code"), rs.getLong("office_id")),
-                hierarchy + "%", like, like, like);
+                params.toArray());
     }
 
     private TransactionBatchData one(final Long batchId) {

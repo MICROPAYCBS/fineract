@@ -26,7 +26,7 @@ Base path `/v1/transactionbatches`. Writes go through the command pipeline excep
 | Call | Permission |
 | --- | --- |
 | `GET /template` | `READ_TRANSACTIONBATCH` |
-| `GET /accounts?search=` | `READ_TRANSACTIONBATCH`. Active savings deposit accounts in the user's office hierarchy. |
+| `GET /accounts?search=&currencyCode=` | `READ_TRANSACTIONBATCH`. Up to 50 active savings deposit accounts in the user's office hierarchy whose number or holder name contains `search` (case-insensitive). `currencyCode` is optional and keeps only accounts in that currency. |
 | `GET /` | Search. `officeId`, `createdBy`, `batchNumber`, `code`, `fromDate`, `toDate` (created date, from inclusive, to exclusive), `status` (`SUBMITTED` is derived), `offset`, `limit`, `orderBy`, `sortOrder`. |
 | `POST /` | Create an Inactive batch in the user's office. |
 | `GET /{id}?associations=items,summary` | Header, and items or the summary when asked. |
