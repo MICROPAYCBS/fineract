@@ -108,14 +108,22 @@ public class SavingsAccountTransactionDataValidator {
     }
 
     public void validate(final JsonCommand command) {
-        validate(command, false);
+        validate(command, true, false);
     }
 
     public void validateGlSubstitution(final JsonCommand command) {
-        validate(command, true);
+        validate(command, false, true);
     }
 
-    private void validate(final JsonCommand command, final boolean requireGlAccount) {
+    /**
+     * Editing a GL to Savings or Savings to GL transaction: like {@link #validateGlSubstitution}, the payment type is
+     * optional, and the GL account may be left out to keep the one already stored.
+     */
+    public void validateGlSubstitutionAdjustment(final JsonCommand command) {
+        validate(command, false, false);
+    }
+
+    private void validate(final JsonCommand command, final boolean requirePaymentType, final boolean requireGlAccount) {
         final String json = command.json();
 
         if (StringUtils.isBlank(json)) {
@@ -143,10 +151,10 @@ public class SavingsAccountTransactionDataValidator {
 
         final Integer paymentType = this.fromApiJsonHelper.extractIntegerWithLocaleNamed(paymentTypeIdParamName, element);
         // A GL substitution already names the account, so a payment type is optional. Deposits and withdrawals still require one.
-        if (requireGlAccount) {
-            baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).ignoreIfNull();
-        } else {
+        if (requirePaymentType) {
             baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).notNull();
+        } else {
+            baseDataValidator.reset().parameter(paymentTypeIdParamName).value(paymentType).ignoreIfNull();
         }
 
         validatePaymentTypeDetails(baseDataValidator, element);
@@ -154,6 +162,10 @@ public class SavingsAccountTransactionDataValidator {
         if (requireGlAccount) {
             final Long glAccountId = this.fromApiJsonHelper.extractLongNamed(glAccountIdParamName, element);
             baseDataValidator.reset().parameter(glAccountIdParamName).value(glAccountId).notNull().longGreaterThanZero();
+        } else if (!requirePaymentType) {
+            // GL substitution adjustment: a GL account is optional (the stored one is kept) but must be valid when sent.
+            final Long glAccountId = this.fromApiJsonHelper.extractLongNamed(glAccountIdParamName, element);
+            baseDataValidator.reset().parameter(glAccountIdParamName).value(glAccountId).ignoreIfNull().longGreaterThanZero();
         }
 
         throwExceptionIfValidationWarningsExist(dataValidationErrors);

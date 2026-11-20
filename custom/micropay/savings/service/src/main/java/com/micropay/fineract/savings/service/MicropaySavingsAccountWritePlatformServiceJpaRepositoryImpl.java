@@ -1034,7 +1034,11 @@ public class MicropaySavingsAccountWritePlatformServiceJpaRepositoryImpl impleme
                     transactionId);
         }
 
-        this.savingsAccountTransactionDataValidator.validate(command);
+        if (savingsAccountTransaction.isGlToSavings() || savingsAccountTransaction.isSavingsToGl()) {
+            this.savingsAccountTransactionDataValidator.validateGlSubstitutionAdjustment(command);
+        } else {
+            this.savingsAccountTransactionDataValidator.validate(command);
+        }
 
         final LocalDate today = DateUtils.getBusinessLocalDate();
 
