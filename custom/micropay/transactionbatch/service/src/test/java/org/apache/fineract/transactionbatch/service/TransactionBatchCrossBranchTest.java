@@ -13,23 +13,18 @@ class TransactionBatchCrossBranchTest {
 
     @Test
     void sameBranchIsNotCrossBranch() {
-        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(".1.2.", ".1.2."));
+        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(2L, 2L));
     }
 
     @Test
-    void subBranchIsNotCrossBranch() {
-        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(".1.", ".1.2."));
+    void anyOtherBranchIsCrossBranchSubBranchesIncluded() {
+        assertTrue(TransactionBatchReadPlatformService.isCrossBranch(1L, 2L));
+        assertTrue(TransactionBatchReadPlatformService.isCrossBranch(2L, 3L));
     }
 
     @Test
-    void siblingOrParentBranchIsCrossBranch() {
-        assertTrue(TransactionBatchReadPlatformService.isCrossBranch(".1.2.", ".1.3."));
-        assertTrue(TransactionBatchReadPlatformService.isCrossBranch(".1.2.", ".1."));
-    }
-
-    @Test
-    void unknownHierarchyIsNotCrossBranch() {
-        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(null, ".1."));
-        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(".1.", null));
+    void unknownBranchIsNotCrossBranch() {
+        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(null, 1L));
+        assertFalse(TransactionBatchReadPlatformService.isCrossBranch(1L, null));
     }
 }

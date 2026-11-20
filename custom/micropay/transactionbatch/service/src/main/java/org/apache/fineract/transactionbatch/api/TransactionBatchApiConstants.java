@@ -31,6 +31,7 @@ public final class TransactionBatchApiConstants {
     public static final String ACCOUNT_TYPE = "accountType";
     public static final String GL_ACCOUNT_ID = "glAccountId";
     public static final String SAVINGS_ACCOUNT_ID = "savingsAccountId";
+    public static final String OFFICE_ID = "officeId";
     public static final String SIDE = "side";
     public static final String CURRENCY_CODE = "currencyCode";
     public static final String AMOUNT = "amount";

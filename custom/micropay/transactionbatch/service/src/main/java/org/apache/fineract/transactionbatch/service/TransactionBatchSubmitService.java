@@ -36,6 +36,7 @@ public class TransactionBatchSubmitService {
     private final TransactionBatchAccess access;
     private final TransactionBatchItemRepository itemRepository;
     private final TransactionBatchAccountRules accountRules;
+    private final TransactionBatchBranchRules branchRules;
     private final ConfigurationDomainService configurationDomainService;
     private final CommandSourceRepository commandSourceRepository;
 
@@ -91,6 +92,8 @@ public class TransactionBatchSubmitService {
             } else {
                 this.accountRules.requireSavings(item.getSavingsAccountId(), item.side(), item.getCurrencyCode());
             }
+            // Runs for the maker at submit and for the checker at approval.
+            this.branchRules.requireLineBranch(batch, item);
             lines.add(new Line(item.getCurrencyCode(), item.getValueDate(), item.side() == TransactionBatchSide.DEBIT, item.getAmount()));
         }
         final List<Row> rows = TransactionBatchSummaryCalculator.summarise(lines);

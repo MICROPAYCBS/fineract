@@ -26,6 +26,8 @@ import org.apache.fineract.accounting.glaccount.domain.GLAccount;
 import org.apache.fineract.accounting.glaccount.domain.GLAccountRepository;
 import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
+import org.apache.fineract.infrastructure.core.service.ExternalIdFactory;
+import org.apache.fineract.organisation.office.domain.OfficeRepository;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepository;
 import org.apache.fineract.transactionbatch.data.TransactionBatchImportResult;
@@ -55,7 +57,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionBatchImportService {
 
     private static final String[] COLUMNS = { "Account Type", "Account Number", "Transaction Type", "Amount", "Currency", "Narrative",
-            "Reference", "Value Date" };
+            "Reference", "Value Date", "Branch" };
 
     private final TransactionBatchAccess access;
     private final TransactionBatchWritePlatformService writes;
@@ -63,6 +65,7 @@ public class TransactionBatchImportService {
     private final GLAccountRepository glAccountRepository;
     private final SavingsAccountRepository savingsAccountRepository;
     private final TransactionBatchAccountRules accountRules;
+    private final OfficeRepository officeRepository;
 
     @Transactional
     public TransactionBatchImportResult importFile(final Long batchId, final String fileName, final InputStream input) {
@@ -117,6 +120,8 @@ public class TransactionBatchImportService {
         final String narrative = blankToNull(cell(row, 5));
         final String reference = blankToNull(cell(row, 6));
         final String valueDateText = cell(row, 7);
+        // Optional: branch external ID for a GL line in another branch than the batch. Customer lines use the holder's branch.
+        final String branchExternalId = cell(row, 8);
         if (accountTypeText == null || accountNumber == null || sideText == null || amountText == null || currency == null) {
             throw new TransactionBatchRuleException("import.row", "Row " + rowNumber + " is missing a required column");
         }
@@ -153,6 +158,7 @@ public class TransactionBatchImportService {
         }
         Long glAccountId = null;
         Long savingsAccountId = null;
+        Long officeId = null;
         if (accountType.isGl()) {
             final GLAccount glAccount = this.glAccountRepository.findOneByGlCode(accountNumber)
                     .orElseThrow(() -> new TransactionBatchRuleException("import.account",
@@ -160,7 +166,17 @@ public class TransactionBatchImportService {
             this.accountRules.requirePostableGl(glAccount.getId());
             this.accountRules.requireOrganisationCurrency(currency);
             glAccountId = glAccount.getId();
+            if (branchExternalId != null) {
+                officeId = this.officeRepository.findByExternalId(ExternalIdFactory.produce(branchExternalId))
+                        .orElseThrow(() -> new TransactionBatchRuleException("import.branch",
+                                "Row " + rowNumber + " branch " + branchExternalId + " was not found"))
+                        .getId();
+            }
         } else {
+            if (branchExternalId != null) {
+                throw new TransactionBatchRuleException("import.branch.customer",
+                        "Row " + rowNumber + " is a customer line: leave Branch blank, it posts in the customer's branch");
+            }
             final SavingsAccount savings = this.savingsAccountRepository.findSavingsAccountByAccountNumber(accountNumber);
             if (savings == null) {
                 throw new TransactionBatchRuleException("import.account",
@@ -169,7 +185,7 @@ public class TransactionBatchImportService {
             this.accountRules.requireSavings(savings.getId(), side, currency);
             savingsAccountId = savings.getId();
         }
-        return new ItemFields(accountType.getCode(), glAccountId, savingsAccountId, side.getCode(), currency, amount, narrative, reference,
+        return new ItemFields(accountType.getCode(), glAccountId, savingsAccountId, officeId, side.getCode(), currency, amount, narrative, reference,
                 valueDate);
     }
 

@@ -20,6 +20,7 @@ import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConsta
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.MODULE_ENABLED_PROPERTY;
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.NARRATIVE;
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.NEXT_POSTING_DATE;
+import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.OFFICE_ID;
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.RECURRING;
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.REFERENCE;
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.SAVINGS_ACCOUNT_ID;
@@ -100,6 +101,10 @@ public class TransactionBatchValidator {
         validator.reset().parameter(ACCOUNT_TYPE).value(accountType).notBlank();
         final Long glAccountId = this.jsonHelper.extractLongNamed(GL_ACCOUNT_ID, element);
         final Long savingsAccountId = this.jsonHelper.extractLongNamed(SAVINGS_ACCOUNT_ID, element);
+        final Long officeId = this.jsonHelper.extractLongNamed(OFFICE_ID, element);
+        if (officeId != null) {
+            validator.reset().parameter(OFFICE_ID).value(officeId).longGreaterThanZero();
+        }
         final String side = this.jsonHelper.extractStringNamed(SIDE, element);
         validator.reset().parameter(SIDE).value(side).notBlank();
         final String currency = this.jsonHelper.extractStringNamed(CURRENCY_CODE, element);
@@ -119,7 +124,7 @@ public class TransactionBatchValidator {
         final LocalDate valueDate = this.jsonHelper.parameterExists(VALUE_DATE, element)
                 && !element.getAsJsonObject().get(VALUE_DATE).isJsonNull() ? this.jsonHelper.extractLocalDateNamed(VALUE_DATE, element) : null;
         throwIf(errors);
-        return new ItemFields(accountType, glAccountId, savingsAccountId, side, currency, amount,
+        return new ItemFields(accountType, glAccountId, savingsAccountId, officeId, side, currency, amount,
                 StringUtils.isBlank(narrative) ? null : narrative.trim(), StringUtils.isBlank(reference) ? null : reference.trim(), valueDate);
     }
 
@@ -171,8 +176,9 @@ public class TransactionBatchValidator {
     public record Header(String description, boolean recurring, LocalDate effectiveDate, Integer frequencyNumber,
             TransactionBatchFrequency frequencyUnit, LocalDate nextPostingDate, LocalDate expiryDate) {}
 
-    public record ItemFields(String accountType, Long glAccountId, Long savingsAccountId, String side, String currencyCode, BigDecimal amount,
-            String narrative, String reference, LocalDate valueDate) {}
+    /** {@code officeId} is the GL line's branch (null: the batch's branch); customer lines ignore it. */
+    public record ItemFields(String accountType, Long glAccountId, Long savingsAccountId, Long officeId, String side, String currencyCode,
+            BigDecimal amount, String narrative, String reference, LocalDate valueDate) {}
 
     public record CurrencySetting(String currencyCode, Long clearingGlAccountId, Long suspenseGlAccountId) {}
 

@@ -42,6 +42,7 @@ public class TransactionBatchWritePlatformService {
     private final TransactionBatchValidator validator;
     private final TransactionBatchAccountRules accountRules;
     private final TransactionBatchReferenceGenerator references;
+    private final TransactionBatchBranchRules branchRules;
 
     @Transactional
     public CommandProcessingResult create(final JsonCommand command) {
@@ -103,6 +104,7 @@ public class TransactionBatchWritePlatformService {
             item.setAccountType(sourceItem.getAccountType());
             item.setGlAccountId(sourceItem.getGlAccountId());
             item.setSavingsAccountId(sourceItem.getSavingsAccountId());
+            item.setOfficeId(sourceItem.getOfficeId());
             item.setSide(sourceItem.getSide());
             item.setCurrencyCode(sourceItem.getCurrencyCode());
             item.setAmount(sourceItem.getAmount());
@@ -214,11 +216,15 @@ public class TransactionBatchWritePlatformService {
             this.accountRules.requireOrganisationCurrency(fields.currencyCode());
             item.setGlAccountId(fields.glAccountId());
             item.setSavingsAccountId(null);
+            // The batch's own branch is stored as null so a line follows the batch.
+            item.setOfficeId(fields.officeId() == null || fields.officeId().equals(batch.getOfficeId()) ? null : fields.officeId());
         } else {
             this.accountRules.requireSavings(fields.savingsAccountId(), side, fields.currencyCode());
             item.setSavingsAccountId(fields.savingsAccountId());
             item.setGlAccountId(null);
+            item.setOfficeId(null);
         }
+        this.branchRules.requireLineBranch(batch, item);
         if (fields.reference() != null) {
             if (referenceTaken(batch, item, fields.reference())) {
                 throw new PlatformApiDataValidationException(

@@ -22,6 +22,31 @@ import org.junit.jupiter.api.Test;
 class MicropayCrossBranchServicingOfficeOverrideTest {
 
     @Test
+    void forcedOfficeServicesASubBranchEvenWithServicingOffAndNoPermission() {
+        final MicropayCrossBranchTransactionAccessService service = service(false);
+        final Optional<Office> resolved = service.withForcedServicingOffice(office(10L, ".2."),
+                () -> service.resolveTransactionOffice(office(11L, ".2.5.")));
+        assertTrue(resolved.isPresent());
+        assertEquals(10L, resolved.get().getId());
+    }
+
+    @Test
+    void forcedOfficeIsNotCrossBranchForItsOwnAccounts() {
+        final MicropayCrossBranchTransactionAccessService service = service(true);
+        assertTrue(service.withForcedServicingOffice(office(10L, ".2."), () -> service.resolveTransactionOffice(office(10L, ".2.")))
+                .isEmpty());
+    }
+
+    @Test
+    void forcedOfficeIsClearedAfterTheCall() {
+        final MicropayCrossBranchTransactionAccessService service = service(false);
+        assertThrows(IllegalStateException.class, () -> service.withForcedServicingOffice(office(10L, ".2."), () -> {
+            throw new IllegalStateException("line failed");
+        }));
+        assertTrue(service.resolveTransactionOffice(office(11L, ".2.5.")).isEmpty());
+    }
+
+    @Test
     void overrideNamesTheOriginBranchWhenCrossBranchServicingIsOn() {
         final MicropayCrossBranchTransactionAccessService service = service(true);
         final Office origin = office(10L, ".2.");

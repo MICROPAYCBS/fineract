@@ -53,6 +53,10 @@ public class TransactionBatchItem extends AbstractPersistableCustom<Long> {
     @Column(name = "savings_account_id")
     private Long savingsAccountId;
 
+    /** Branch a GL line posts in; null means the batch's branch. A customer line posts in the holder's branch. */
+    @Column(name = "office_id")
+    private Long officeId;
+
     @Column(name = "side", nullable = false)
     private Integer side;
 

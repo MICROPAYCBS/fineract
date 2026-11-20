@@ -74,15 +74,16 @@ public class TransactionBatchRepairService {
         final String transactionId = TransactionBatchJournalPoster.transactionId("TBR", batch.getId(), run.getRunNo(), item.getId());
         final var businessDate = DateUtils.getBusinessLocalDate();
         if (item.accountType().isGl()) {
-            if (item.isDebit()) {
-                this.journalPoster.postPair(transactionId, batch.getOfficeId(), item.getCurrencyCode(), businessDate, item.getNarrative(),
-                        item.getReference(), item.getGlAccountId(), setting.getSuspenseGlAccountId(), item.getAmount());
-            } else {
-                this.journalPoster.postPair(transactionId, batch.getOfficeId(), item.getCurrencyCode(), businessDate, item.getNarrative(),
-                        item.getReference(), setting.getSuspenseGlAccountId(), item.getGlAccountId(), item.getAmount());
-            }
+            // Suspense was posted in the batch's branch, so it is cleared there; the line's own account posts in its branch.
+            final Long lineOfficeId = this.accountRules.postingOfficeId(batch, item);
+            this.access.assertLineBranchAllowed(lineOfficeId);
+            this.access.requireCrossBranchServicingForPosting(batch.getOfficeId(), lineOfficeId);
+            this.journalPoster.postAcross(transactionId, item.getCurrencyCode(), businessDate, item.getNarrative(), item.getReference(),
+                    batch.getOfficeId(), setting.getSuspenseGlAccountId(), lineOfficeId, item.getGlAccountId(), item.isDebit(),
+                    item.getAmount());
             posting.setRepairJournalTransactionId(transactionId);
         } else {
+            this.access.assertLineBranchAllowed(this.accountRules.postingOfficeId(batch, item));
             posting.setRepairSavingsTransactionId(
                     this.customerPoster.post(batch, item, setting.getSuspenseGlAccountId(), businessDate, transactionId));
         }

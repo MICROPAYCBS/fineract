@@ -37,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicropayCrossBranchTransactionAccessService implements CrossBranchTransactionAccessService {
 
     private static final ThreadLocal<Office> SERVICING_OFFICE_OVERRIDE = new ThreadLocal<>();
+    private static final ThreadLocal<Office> FORCED_SERVICING_OFFICE = new ThreadLocal<>();
 
     private final MicropayConfigurationService micropayConfigurationService;
     private final PlatformSecurityContext context;
@@ -66,6 +67,25 @@ public class MicropayCrossBranchTransactionAccessService implements CrossBranchT
         }
     }
 
+    /**
+     * Transaction batches: the next savings post is serviced by {@code office} whenever the account's home office is a
+     * different office, even a sub-office, so the batch's clearing entry stays in the batch's office and inter-branch
+     * entries bridge the two. Skips the cross-branch configuration and user permission checks: the batch enforces them
+     * when lines are saved, submitted and approved, because the posting job runs as the system user.
+     */
+    public <T> T withForcedServicingOffice(final Office office, final Supplier<T> action) {
+        FORCED_SERVICING_OFFICE.set(office);
+        try {
+            return action.get();
+        } finally {
+            FORCED_SERVICING_OFFICE.remove();
+        }
+    }
+
+    public boolean isCrossBranchServicingEnabled() {
+        return this.micropayConfigurationService.isCrossBranchServicingEnabled();
+    }
+
     @Override
     public boolean isCrossBranchTransactionEnabledForCurrentUser() {
         if (!this.micropayConfigurationService.isCrossBranchServicingEnabled()) {
@@ -77,6 +97,10 @@ public class MicropayCrossBranchTransactionAccessService implements CrossBranchT
 
     @Override
     public Optional<Office> resolveTransactionOffice(final Office homeOffice) {
+        final Office forced = FORCED_SERVICING_OFFICE.get();
+        if (forced != null && homeOffice != null) {
+            return forced.getId().equals(homeOffice.getId()) ? Optional.empty() : Optional.of(forced);
+        }
         final AppUser user = this.context.getAuthenticatedUserIfPresent();
         if (user == null || homeOffice == null) {
             return Optional.empty();

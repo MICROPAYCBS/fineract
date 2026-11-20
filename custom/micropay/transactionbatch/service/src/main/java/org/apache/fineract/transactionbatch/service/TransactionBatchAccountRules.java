@@ -16,6 +16,8 @@ import org.apache.fineract.portfolio.savings.DepositAccountType;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccount;
 import org.apache.fineract.portfolio.savings.domain.SavingsAccountRepository;
 import org.apache.fineract.portfolio.savings.exception.SavingsAccountNotFoundException;
+import org.apache.fineract.transactionbatch.domain.TransactionBatch;
+import org.apache.fineract.transactionbatch.domain.TransactionBatchItem;
 import org.apache.fineract.transactionbatch.domain.TransactionBatchSide;
 import org.apache.fineract.transactionbatch.exception.TransactionBatchRuleException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -29,6 +31,19 @@ public class TransactionBatchAccountRules {
     private final GLAccountRepository glAccountRepository;
     private final OrganisationCurrencyRepository currencyRepository;
     private final SavingsAccountRepository savingsAccountRepository;
+
+    /**
+     * Branch a line posts its own account in: a GL line's chosen branch (the batch's when none), a customer line's
+     * holder branch.
+     */
+    public Long postingOfficeId(final TransactionBatch batch, final TransactionBatchItem item) {
+        if (item.accountType().isGl()) {
+            return item.getOfficeId() == null ? batch.getOfficeId() : item.getOfficeId();
+        }
+        final SavingsAccount account = this.savingsAccountRepository.findById(item.getSavingsAccountId())
+                .orElseThrow(() -> new SavingsAccountNotFoundException(item.getSavingsAccountId()));
+        return account.officeId() == null ? batch.getOfficeId() : account.officeId();
+    }
 
     public GLAccount requirePostableGl(final Long glAccountId) {
         if (glAccountId == null) {

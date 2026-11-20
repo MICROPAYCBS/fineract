@@ -39,12 +39,17 @@ public class TransactionBatchCustomerPoster {
     private final MicropayCrossBranchTransactionAccessService crossBranch;
     private final OfficeRepositoryWrapper officeRepository;
     private final FromJsonHelper jsonHelper;
+    private final TransactionBatchAccess access;
+    private final TransactionBatchAccountRules accountRules;
 
     public Long post(final TransactionBatch batch, final TransactionBatchItem item, final Long glAccountId, final LocalDate date,
             final String externalId) {
+        this.access.requireCrossBranchServicingForPosting(batch.getOfficeId(), this.accountRules.postingOfficeId(batch, item));
         final Office origin = this.officeRepository.findOneWithNotFoundDetection(batch.getOfficeId());
         final JsonCommand command = command(item, glAccountId, date, externalId);
-        final CommandProcessingResult result = this.crossBranch.withServicingOffice(origin,
+        // The batch's branch services every customer line, sub-branches included, so the clearing (or suspense) entry stays
+        // in the batch's branch and inter-branch entries bridge to the customer's branch.
+        final CommandProcessingResult result = this.crossBranch.withForcedServicingOffice(origin,
                 () -> item.isDebit() ? this.savingsAccountWritePlatformService.savingsToGl(item.getSavingsAccountId(), command)
                         : this.savingsAccountWritePlatformService.glToSavings(item.getSavingsAccountId(), command));
         return result.getResourceId();

@@ -8,10 +8,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * A batch line. {@code officeId}/{@code officeName} are the branch the line posts in: the batch's branch for a GL line,
- * the account holder's branch for a customer line. {@code crossBranch} is true for a customer line whose branch is
- * outside the batch's branch and its sub-branches: its clearing entry then posts in the batch's branch, balanced by
- * inter-branch entries.
+ * A batch line. {@code officeId}/{@code officeName} are the branch the line's own account posts in: the chosen branch
+ * (else the batch's) for a GL line, the account holder's branch for a customer line. {@code crossBranch} is true when
+ * that is not the batch's branch: the clearing entry still posts in the batch's branch, bridged by inter-branch
+ * entries.
  */
 public record TransactionBatchItemData(Long id, Long batchId, String accountType, Long glAccountId, Long savingsAccountId,
         String accountNumber, String accountTitle, String side, String currencyCode, BigDecimal amount, BigDecimal debitAmount,

@@ -166,11 +166,13 @@ public class TransactionBatchReadPlatformService {
                 case when i.account_type = 1 then gl.name else coalesce(c.display_name, g.display_name) end as account_title,
                 (select count(p.id) from m_txn_batch_posting p where p.item_id = i.id and p.status = ?) as suspended_runs,
                 (select min(p.id) from m_txn_batch_posting p where p.item_id = i.id and p.status = ?) as repair_posting_id,
-                bo.id as batch_office_id, bo.name as batch_office_name, bo.hierarchy as batch_office_hierarchy,
-                ho.id as holder_office_id, ho.name as holder_office_name, ho.hierarchy as holder_office_hierarchy
+                bo.id as batch_office_id, bo.name as batch_office_name,
+                lo.id as line_office_id, lo.name as line_office_name,
+                ho.id as holder_office_id, ho.name as holder_office_name
                 from m_txn_batch_item i
                 join m_txn_batch b on b.id = i.batch_id
                 join m_office bo on bo.id = b.office_id
+                left join m_office lo on lo.id = i.office_id
                 left join acc_gl_account gl on gl.id = i.gl_account_id
                 left join m_savings_account sa on sa.id = i.savings_account_id
                 left join m_client c on c.id = sa.client_id
@@ -234,15 +236,13 @@ public class TransactionBatchReadPlatformService {
      */
     public List<TransactionBatchAccountData> accounts(final String search, final String currencyCode, final Long batchId) {
         this.access.user().validateHasReadPermission("TRANSACTIONBATCH");
-        final String batchHierarchy = batchId == null ? null
-                : this.jdbcTemplate.queryForObject("select o.hierarchy from m_office o where o.id = ?", String.class,
-                        this.access.requireBatch(batchId).getOfficeId());
+        final Long batchOfficeId = batchId == null ? null : this.access.requireBatch(batchId).getOfficeId();
         final String hierarchy = this.access.user().getOffice().getHierarchy();
         final String like = "%" + (search == null ? "" : search.trim().toLowerCase(Locale.ROOT)) + "%";
         final boolean byCurrency = currencyCode != null && !currencyCode.isBlank();
         // m_savings_account has no office_id: the account's office is its holder's (client, else group).
         final String sql = """
-                select sa.id, sa.account_no, sa.currency_code, o.id as office_id, o.name as office_name, o.hierarchy as office_hierarchy,
+                select sa.id, sa.account_no, sa.currency_code, o.id as office_id, o.name as office_name,
                 coalesce(c.display_name, g.display_name) as client_name
                 from m_savings_account sa
                 left join m_client c on c.id = sa.client_id
@@ -258,16 +258,16 @@ public class TransactionBatchReadPlatformService {
         return this.jdbcTemplate.query(sql,
                 (rs, row) -> new TransactionBatchAccountData(rs.getLong("id"), rs.getString("account_no"), rs.getString("client_name"),
                         rs.getString("currency_code"), rs.getLong("office_id"), rs.getString("office_name"),
-                        batchHierarchy == null ? null : isCrossBranch(batchHierarchy, rs.getString("office_hierarchy"))),
+                        batchOfficeId == null ? null : isCrossBranch(batchOfficeId, rs.getLong("office_id"))),
                 params.toArray());
     }
 
     /**
-     * Mirrors MicropayCrossBranchTransactionAccessService: an account in the batch's branch or a sub-branch posts
-     * wholly in the account's branch; any other branch is serviced cross-branch from the batch's branch.
+     * A line in another branch than its batch, sub-branches included, is bridged through inter-branch clearing: its own
+     * account posts in its branch and the clearing entry in the batch's branch.
      */
-    static boolean isCrossBranch(final String batchHierarchy, final String accountHierarchy) {
-        return batchHierarchy != null && accountHierarchy != null && !accountHierarchy.startsWith(batchHierarchy);
+    static boolean isCrossBranch(final Long batchOfficeId, final Long lineOfficeId) {
+        return batchOfficeId != null && lineOfficeId != null && !batchOfficeId.equals(lineOfficeId);
     }
 
     private TransactionBatchData one(final Long batchId) {
@@ -306,14 +306,13 @@ public class TransactionBatchReadPlatformService {
         final BigDecimal amount = rs.getBigDecimal("amount");
         final OffsetDateTime created = JdbcSupport.getOffsetDateTime(rs, "created_on_utc");
         final boolean customer = !TransactionBatchAccountType.fromInt(rs.getInt("account_type")).isGl();
-        final Long holderOfficeId = longOrNull(rs, "holder_office_id");
-        // A customer line posts in the holder's branch; a GL line (or a customer line whose holder is gone) in the
-        // batch's.
-        final boolean byHolder = customer && holderOfficeId != null;
-        final Long officeId = byHolder ? holderOfficeId : rs.getLong("batch_office_id");
-        final String officeName = rs.getString(byHolder ? "holder_office_name" : "batch_office_name");
-        final boolean crossBranch = byHolder
-                && isCrossBranch(rs.getString("batch_office_hierarchy"), rs.getString("holder_office_hierarchy"));
+        // A customer line posts in the holder's branch, a GL line in its chosen branch; otherwise the batch's.
+        final String source = customer ? "holder" : "line";
+        final Long ownOfficeId = longOrNull(rs, source + "_office_id");
+        final Long batchOfficeId = rs.getLong("batch_office_id");
+        final Long officeId = ownOfficeId == null ? batchOfficeId : ownOfficeId;
+        final String officeName = rs.getString((ownOfficeId == null ? "batch" : source) + "_office_name");
+        final boolean crossBranch = isCrossBranch(batchOfficeId, officeId);
         return new TransactionBatchItemData(rs.getLong("id"), rs.getLong("batch_id"),
                 TransactionBatchAccountType.fromInt(rs.getInt("account_type")).getCode(), longOrNull(rs, "gl_account_id"),
                 longOrNull(rs, "savings_account_id"), rs.getString("account_number"), rs.getString("account_title"),

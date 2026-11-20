@@ -39,6 +39,7 @@ public class TransactionBatchItemPoster {
     private final TransactionBatchJournalPoster journalPoster;
     private final TransactionBatchCustomerPoster customerPoster;
     private final TransactionBatchAccess access;
+    private final TransactionBatchAccountRules accountRules;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void post(final Long runId, final Long itemId, final LocalDate runDate) {
@@ -58,13 +59,12 @@ public class TransactionBatchItemPoster {
         final String transactionId = TransactionBatchJournalPoster.transactionId("TB", batch.getId(), run.getRunNo(), item.getId());
         final TransactionBatchPosting posting = newPosting(runId, itemId);
         if (item.accountType().isGl()) {
-            if (item.isDebit()) {
-                this.journalPoster.postPair(transactionId, batch.getOfficeId(), item.getCurrencyCode(), date, item.getNarrative(),
-                        item.getReference(), item.getGlAccountId(), setting.getClearingGlAccountId(), item.getAmount());
-            } else {
-                this.journalPoster.postPair(transactionId, batch.getOfficeId(), item.getCurrencyCode(), date, item.getNarrative(),
-                        item.getReference(), setting.getClearingGlAccountId(), item.getGlAccountId(), item.getAmount());
-            }
+            // The clearing entry stays in the batch's branch; a line in another branch is bridged through inter-branch clearing.
+            final Long lineOfficeId = this.accountRules.postingOfficeId(batch, item);
+            this.access.requireCrossBranchServicingForPosting(batch.getOfficeId(), lineOfficeId);
+            this.journalPoster.postAcross(transactionId, item.getCurrencyCode(), date, item.getNarrative(), item.getReference(),
+                    batch.getOfficeId(), setting.getClearingGlAccountId(), lineOfficeId, item.getGlAccountId(), item.isDebit(),
+                    item.getAmount());
             posting.setJournalTransactionId(transactionId);
         } else {
             posting.setSavingsTransactionId(this.customerPoster.post(batch, item, setting.getClearingGlAccountId(), date, transactionId));

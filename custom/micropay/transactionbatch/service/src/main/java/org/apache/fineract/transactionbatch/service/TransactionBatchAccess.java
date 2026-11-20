@@ -6,6 +6,7 @@ package org.apache.fineract.transactionbatch.service;
 
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.MODULE_ENABLED_PROPERTY;
 
+import com.micropay.fineract.infrastructure.interbranch.MicropayCrossBranchTransactionAccessService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.time.OffsetDateTime;
@@ -39,6 +40,7 @@ public class TransactionBatchAccess {
     private final TransactionBatchItemRepository itemRepository;
     private final TransactionBatchConfigRepository configRepository;
     private final OfficeRepositoryWrapper officeRepository;
+    private final MicropayCrossBranchTransactionAccessService crossBranch;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -90,6 +92,45 @@ public class TransactionBatchAccess {
         final String userHierarchy = user().getOffice().getHierarchy();
         if (office.getHierarchy() == null || !office.getHierarchy().startsWith(userHierarchy)) {
             throw new NoAuthorizationException("The user cannot work with batches of office " + officeId);
+        }
+    }
+
+    /**
+     * A user may put a line in a branch outside their own branch and its sub-branches only with cross-branch servicing
+     * and the cross-office permission, as for manual inter-branch journal entries. Checked for the maker (saving and
+     * submitting lines) and the checker (approving); the posting job does not repeat it.
+     */
+    public Office assertLineBranchAllowed(final Long officeId) {
+        final Office office = this.officeRepository.findOneWithNotFoundDetection(officeId);
+        final String userHierarchy = user().getOffice().getHierarchy();
+        if (office.getHierarchy() != null && office.getHierarchy().startsWith(userHierarchy)) {
+            return office;
+        }
+        if (!this.crossBranch.isCrossBranchTransactionEnabledForCurrentUser()) {
+            throw new TransactionBatchRuleException("branch.not.allowed", office.getName()
+                    + " is outside your branch: lines there need cross-branch servicing and the cross-office permission", officeId);
+        }
+        return office;
+    }
+
+    /**
+     * At posting: a line in a branch outside the batch's branch and its sub-branches is cross-branch servicing, so the
+     * setting must still be on. The job runs as the system user, so user permissions were checked at save, submit and
+     * approval instead.
+     */
+    public void requireCrossBranchServicingForPosting(final Long batchOfficeId, final Long lineOfficeId) {
+        if (lineOfficeId == null || lineOfficeId.equals(batchOfficeId)) {
+            return;
+        }
+        final Office batchOffice = this.officeRepository.findOneWithNotFoundDetection(batchOfficeId);
+        final Office lineOffice = this.officeRepository.findOneWithNotFoundDetection(lineOfficeId);
+        final boolean subBranch = lineOffice.getHierarchy() != null && batchOffice.getHierarchy() != null
+                && lineOffice.getHierarchy().startsWith(batchOffice.getHierarchy());
+        if (!subBranch && !this.crossBranch.isCrossBranchServicingEnabled()) {
+            throw new TransactionBatchRuleException("crossbranch.disabled",
+                    "Cross-branch servicing is turned off, so a line in " + lineOffice.getName() + " cannot post from a batch in "
+                            + batchOffice.getName(),
+                    batchOfficeId, lineOfficeId);
         }
     }
 

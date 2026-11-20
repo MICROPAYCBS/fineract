@@ -21,7 +21,8 @@ import org.junit.jupiter.api.Test;
 class TransactionBatchCustomerPosterTest {
 
     private final TransactionBatchCustomerPoster poster = new TransactionBatchCustomerPoster(mock(SavingsAccountWritePlatformService.class),
-            mock(MicropayCrossBranchTransactionAccessService.class), mock(OfficeRepositoryWrapper.class), new FromJsonHelper());
+            mock(MicropayCrossBranchTransactionAccessService.class), mock(OfficeRepositoryWrapper.class), new FromJsonHelper(),
+            mock(TransactionBatchAccess.class), mock(TransactionBatchAccountRules.class));
 
     private static TransactionBatchItem item() {
         final TransactionBatchItem item = new TransactionBatchItem();
