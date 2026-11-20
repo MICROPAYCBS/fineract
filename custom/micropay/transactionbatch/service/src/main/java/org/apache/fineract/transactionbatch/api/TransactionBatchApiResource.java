@@ -32,8 +32,8 @@ import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.exception.UnrecognizedQueryParamException;
 import org.apache.fineract.transactionbatch.data.TransactionBatchAccountData;
-import org.apache.fineract.transactionbatch.data.TransactionBatchImportResult;
 import org.apache.fineract.transactionbatch.data.TransactionBatchData;
+import org.apache.fineract.transactionbatch.data.TransactionBatchImportResult;
 import org.apache.fineract.transactionbatch.data.TransactionBatchItemData;
 import org.apache.fineract.transactionbatch.data.TransactionBatchPageData;
 import org.apache.fineract.transactionbatch.data.TransactionBatchSettingsData;
@@ -76,15 +76,16 @@ public class TransactionBatchApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public CommandProcessingResult updateSettings(final String body) {
-        return this.commands.logCommandSource(new MicropayCommandWrapperBuilder().updateTransactionBatchSettings().withJson(json(body)).build());
+        return this.commands
+                .logCommandSource(new MicropayCommandWrapperBuilder().updateTransactionBatchSettings().withJson(json(body)).build());
     }
 
     @GET
     @Path("accounts")
     @Produces({ MediaType.APPLICATION_JSON })
     public List<TransactionBatchAccountData> accounts(@QueryParam("search") final String search,
-            @QueryParam("currencyCode") final String currencyCode) {
-        return this.reads.accounts(search, currencyCode);
+            @QueryParam("currencyCode") final String currencyCode, @QueryParam("batchId") final Long batchId) {
+        return this.reads.accounts(search, currencyCode, batchId);
     }
 
     @GET
@@ -177,8 +178,8 @@ public class TransactionBatchApiResource {
         if (!COMMAND_REPAIR.equalsIgnoreCase(command)) {
             throw new UnrecognizedQueryParamException("command", command, COMMAND_REPAIR);
         }
-        return this.commands.logCommandSource(new MicropayCommandWrapperBuilder().repairTransactionBatchItem(batchId, itemId, postingId)
-                .withJson(json(body)).build());
+        return this.commands.logCommandSource(
+                new MicropayCommandWrapperBuilder().repairTransactionBatchItem(batchId, itemId, postingId).withJson(json(body)).build());
     }
 
     @POST

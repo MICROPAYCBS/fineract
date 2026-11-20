@@ -151,8 +151,8 @@ public class TransactionBatchReadPlatformService {
         return new TransactionBatchData(header.id(), header.code(), header.description(), header.officeId(), header.officeName(),
                 header.recurring(), header.effectiveDate(), header.frequencyNumber(), header.frequencyUnit(), header.nextPostingDate(),
                 header.expiryDate(), header.status(), header.pendingCommandId(), header.submittedBy(), header.submittedOn(),
-                header.decidedBy(), header.decidedOn(), header.postedBy(), header.postedOn(), header.copiedFromBatchId(), header.createdBy(),
-                header.createdByUsername(), header.createdOn(), header.lastModifiedBy(), header.lastModifiedOn(),
+                header.decidedBy(), header.decidedOn(), header.postedBy(), header.postedOn(), header.copiedFromBatchId(),
+                header.createdBy(), header.createdByUsername(), header.createdOn(), header.lastModifiedBy(), header.lastModifiedOn(),
                 items ? items(batchId) : null, summary ? summary(batchId) : null);
     }
 
@@ -165,12 +165,17 @@ public class TransactionBatchReadPlatformService {
                 case when i.account_type = 1 then gl.gl_code else sa.account_no end as account_number,
                 case when i.account_type = 1 then gl.name else coalesce(c.display_name, g.display_name) end as account_title,
                 (select count(p.id) from m_txn_batch_posting p where p.item_id = i.id and p.status = ?) as suspended_runs,
-                (select min(p.id) from m_txn_batch_posting p where p.item_id = i.id and p.status = ?) as repair_posting_id
+                (select min(p.id) from m_txn_batch_posting p where p.item_id = i.id and p.status = ?) as repair_posting_id,
+                bo.id as batch_office_id, bo.name as batch_office_name, bo.hierarchy as batch_office_hierarchy,
+                ho.id as holder_office_id, ho.name as holder_office_name, ho.hierarchy as holder_office_hierarchy
                 from m_txn_batch_item i
+                join m_txn_batch b on b.id = i.batch_id
+                join m_office bo on bo.id = b.office_id
                 left join acc_gl_account gl on gl.id = i.gl_account_id
                 left join m_savings_account sa on sa.id = i.savings_account_id
                 left join m_client c on c.id = sa.client_id
                 left join m_group g on g.id = sa.group_id
+                left join m_office ho on ho.id = coalesce(c.office_id, g.office_id)
                 where i.batch_id = ? order by i.id
                 """;
         final Integer suspended = TransactionBatchPostingStatus.SUSPENDED.getValue();
@@ -222,34 +227,47 @@ public class TransactionBatchReadPlatformService {
     }
 
     /**
-     * Active savings deposit accounts in the user's office hierarchy whose number or holder name contains {@code search}
-     * (case-insensitive). {@code currencyCode}, when given, keeps only accounts in that currency, since a customer line
-     * must use the account's own currency.
+     * Active savings deposit accounts in the user's office hierarchy whose number or holder name contains
+     * {@code search} (case-insensitive). {@code currencyCode}, when given, keeps only accounts in that currency, since
+     * a customer line must use the account's own currency. {@code batchId}, when given, sets {@code crossBranch} on
+     * each account relative to that batch's branch.
      */
-    public List<TransactionBatchAccountData> accounts(final String search, final String currencyCode) {
+    public List<TransactionBatchAccountData> accounts(final String search, final String currencyCode, final Long batchId) {
         this.access.user().validateHasReadPermission("TRANSACTIONBATCH");
+        final String batchHierarchy = batchId == null ? null
+                : this.jdbcTemplate.queryForObject("select o.hierarchy from m_office o where o.id = ?", String.class,
+                        this.access.requireBatch(batchId).getOfficeId());
         final String hierarchy = this.access.user().getOffice().getHierarchy();
         final String like = "%" + (search == null ? "" : search.trim().toLowerCase(Locale.ROOT)) + "%";
         final boolean byCurrency = currencyCode != null && !currencyCode.isBlank();
         // m_savings_account has no office_id: the account's office is its holder's (client, else group).
         final String sql = """
-                select sa.id, sa.account_no, sa.currency_code, o.id as office_id, coalesce(c.display_name, g.display_name) as client_name
+                select sa.id, sa.account_no, sa.currency_code, o.id as office_id, o.name as office_name, o.hierarchy as office_hierarchy,
+                coalesce(c.display_name, g.display_name) as client_name
                 from m_savings_account sa
                 left join m_client c on c.id = sa.client_id
                 left join m_group g on g.id = sa.group_id
                 join m_office o on o.id = coalesce(c.office_id, g.office_id)
                 where sa.status_enum = 300 and sa.deposit_type_enum = 100 and o.hierarchy like ?
                 and (lower(sa.account_no) like ? or lower(c.display_name) like ? or lower(g.display_name) like ?)
-                """
-                + (byCurrency ? " and sa.currency_code = ?" : "") + " order by sa.account_no " + this.sqlGenerator.limit(50, 0);
+                """ + (byCurrency ? " and sa.currency_code = ?" : "") + " order by sa.account_no " + this.sqlGenerator.limit(50, 0);
         final List<Object> params = new ArrayList<>(List.of(hierarchy + "%", like, like, like));
         if (byCurrency) {
             params.add(currencyCode.trim().toUpperCase(Locale.ROOT));
         }
         return this.jdbcTemplate.query(sql,
                 (rs, row) -> new TransactionBatchAccountData(rs.getLong("id"), rs.getString("account_no"), rs.getString("client_name"),
-                        rs.getString("currency_code"), rs.getLong("office_id")),
+                        rs.getString("currency_code"), rs.getLong("office_id"), rs.getString("office_name"),
+                        batchHierarchy == null ? null : isCrossBranch(batchHierarchy, rs.getString("office_hierarchy"))),
                 params.toArray());
+    }
+
+    /**
+     * Mirrors MicropayCrossBranchTransactionAccessService: an account in the batch's branch or a sub-branch posts
+     * wholly in the account's branch; any other branch is serviced cross-branch from the batch's branch.
+     */
+    static boolean isCrossBranch(final String batchHierarchy, final String accountHierarchy) {
+        return batchHierarchy != null && accountHierarchy != null && !accountHierarchy.startsWith(batchHierarchy);
     }
 
     private TransactionBatchData one(final Long batchId) {
@@ -279,21 +297,31 @@ public class TransactionBatchReadPlatformService {
                 longOrNull(rs, "submitted_by"), JdbcSupport.getLocalDate(rs, "submitted_on"), longOrNull(rs, "decided_by"),
                 JdbcSupport.getLocalDate(rs, "decided_on"), longOrNull(rs, "posted_by"), JdbcSupport.getLocalDate(rs, "posted_on"),
                 longOrNull(rs, "copied_from_batch_id"), rs.getLong("created_by"), rs.getString("created_by_username"),
-                created == null ? null : created.toString(), longOrNull(rs, "last_modified_by"), modified == null ? null : modified.toString(),
-                null, null);
+                created == null ? null : created.toString(), longOrNull(rs, "last_modified_by"),
+                modified == null ? null : modified.toString(), null, null);
     }
 
     private TransactionBatchItemData mapItem(final ResultSet rs) throws SQLException {
         final boolean debit = TransactionBatchSide.DEBIT.getValue().equals(rs.getInt("side"));
         final BigDecimal amount = rs.getBigDecimal("amount");
         final OffsetDateTime created = JdbcSupport.getOffsetDateTime(rs, "created_on_utc");
+        final boolean customer = !TransactionBatchAccountType.fromInt(rs.getInt("account_type")).isGl();
+        final Long holderOfficeId = longOrNull(rs, "holder_office_id");
+        // A customer line posts in the holder's branch; a GL line (or a customer line whose holder is gone) in the
+        // batch's.
+        final boolean byHolder = customer && holderOfficeId != null;
+        final Long officeId = byHolder ? holderOfficeId : rs.getLong("batch_office_id");
+        final String officeName = rs.getString(byHolder ? "holder_office_name" : "batch_office_name");
+        final boolean crossBranch = byHolder
+                && isCrossBranch(rs.getString("batch_office_hierarchy"), rs.getString("holder_office_hierarchy"));
         return new TransactionBatchItemData(rs.getLong("id"), rs.getLong("batch_id"),
                 TransactionBatchAccountType.fromInt(rs.getInt("account_type")).getCode(), longOrNull(rs, "gl_account_id"),
                 longOrNull(rs, "savings_account_id"), rs.getString("account_number"), rs.getString("account_title"),
                 TransactionBatchSide.fromInt(rs.getInt("side")).getCode(), rs.getString("currency_code"), amount, debit ? amount : null,
                 debit ? null : amount, rs.getString("narrative"), rs.getString("reference"), JdbcSupport.getLocalDate(rs, "value_date"),
                 TransactionBatchItemStatus.fromInt(rs.getInt("status")).getCode(), rs.getString("last_error"), rs.getLong("created_by"),
-                created == null ? null : created.toString(), rs.getLong("suspended_runs"), longOrNull(rs, "repair_posting_id"));
+                created == null ? null : created.toString(), rs.getLong("suspended_runs"), longOrNull(rs, "repair_posting_id"), officeId,
+                officeName, crossBranch);
     }
 
     private static Long longOrNull(final ResultSet rs, final String column) throws SQLException {
