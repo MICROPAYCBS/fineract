@@ -51,7 +51,8 @@ public class TransactionBatchRepairService {
         final TransactionBatch batch = item.getBatch();
         this.access.assertOffice(batch.getOfficeId());
         if (!batch.isActiveStatus() && !batch.isPartiallyPosted()) {
-            throw new TransactionBatchRuleException("repair.status", "A line can be repaired only while the batch is Active or Partially Posted");
+            throw new TransactionBatchRuleException("repair.status",
+                    "A line can be repaired only while the batch is Active or Partially Posted");
         }
         final TransactionBatchPosting posting = this.postingRepository.findByIdAndItemId(command.subentityId(), item.getId())
                 .orElseThrow(() -> TransactionBatchNotFoundException.posting(command.subentityId()));
@@ -82,7 +83,8 @@ public class TransactionBatchRepairService {
             }
             posting.setRepairJournalTransactionId(transactionId);
         } else {
-            posting.setRepairSavingsTransactionId(this.customerPoster.post(batch, item, setting.getSuspenseGlAccountId(), businessDate));
+            posting.setRepairSavingsTransactionId(
+                    this.customerPoster.post(batch, item, setting.getSuspenseGlAccountId(), businessDate, transactionId));
         }
         posting.setStatus(TransactionBatchPostingStatus.REPAIRED.getValue());
         posting.setRepairedBy(this.access.user().getId());

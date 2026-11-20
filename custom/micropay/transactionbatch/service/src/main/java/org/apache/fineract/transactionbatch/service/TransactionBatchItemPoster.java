@@ -67,7 +67,7 @@ public class TransactionBatchItemPoster {
             }
             posting.setJournalTransactionId(transactionId);
         } else {
-            posting.setSavingsTransactionId(this.customerPoster.post(batch, item, setting.getClearingGlAccountId(), date));
+            posting.setSavingsTransactionId(this.customerPoster.post(batch, item, setting.getClearingGlAccountId(), date, transactionId));
         }
         posting.setStatus(TransactionBatchPostingStatus.POSTED.getValue());
         this.postingRepository.save(posting);

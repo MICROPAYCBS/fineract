@@ -30,5 +30,9 @@ public interface TransactionBatchItemRepository extends JpaRepository<Transactio
 
     long countByBatch_Id(Long batchId);
 
+    boolean existsByBatch_IdAndReference(Long batchId, String reference);
+
+    boolean existsByBatch_IdAndReferenceAndIdNot(Long batchId, String reference, Long id);
+
     void deleteByBatch_Id(Long batchId);
 }

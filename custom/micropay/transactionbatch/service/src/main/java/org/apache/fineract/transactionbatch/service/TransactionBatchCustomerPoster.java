@@ -22,7 +22,14 @@ import org.apache.fineract.transactionbatch.domain.TransactionBatchItem;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
-/** Customer line through glToSavings or savingsToGl. The GL is clearing on a normal post and suspense on a repair. */
+/**
+ * Customer line through glToSavings or savingsToGl. The GL is clearing on a normal post and suspense on a repair.
+ *
+ * <p>
+ * Savings transaction external ids are unique across the tenant ({@code uk_m_sat_external_id}), so each posting uses
+ * its own id ({@code TB-{batch}-{run}-{item}}, {@code TBR-...} on repair), never the line reference: a recurring line
+ * posts once per run and a repair posts again. The line reference goes in the transaction note.
+ */
 @Component
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = MODULE_ENABLED_PROPERTY, havingValue = "true")
@@ -33,24 +40,34 @@ public class TransactionBatchCustomerPoster {
     private final OfficeRepositoryWrapper officeRepository;
     private final FromJsonHelper jsonHelper;
 
-    public Long post(final TransactionBatch batch, final TransactionBatchItem item, final Long glAccountId, final LocalDate date) {
+    public Long post(final TransactionBatch batch, final TransactionBatchItem item, final Long glAccountId, final LocalDate date,
+            final String externalId) {
         final Office origin = this.officeRepository.findOneWithNotFoundDetection(batch.getOfficeId());
-        final JsonCommand command = command(item, glAccountId, date);
-        final CommandProcessingResult result = this.crossBranch.withServicingOffice(origin, () -> item.isDebit()
-                ? this.savingsAccountWritePlatformService.savingsToGl(item.getSavingsAccountId(), command)
-                : this.savingsAccountWritePlatformService.glToSavings(item.getSavingsAccountId(), command));
+        final JsonCommand command = command(item, glAccountId, date, externalId);
+        final CommandProcessingResult result = this.crossBranch.withServicingOffice(origin,
+                () -> item.isDebit() ? this.savingsAccountWritePlatformService.savingsToGl(item.getSavingsAccountId(), command)
+                        : this.savingsAccountWritePlatformService.glToSavings(item.getSavingsAccountId(), command));
         return result.getResourceId();
     }
 
-    private JsonCommand command(final TransactionBatchItem item, final Long glAccountId, final LocalDate date) {
+    static String note(final TransactionBatchItem item) {
+        final String reference = item.getReference();
+        final String narrative = item.getNarrative();
+        if (reference == null || reference.isBlank()) {
+            return narrative;
+        }
+        return narrative == null || narrative.isBlank() ? "Ref " + reference : narrative + " (Ref " + reference + ")";
+    }
+
+    JsonCommand command(final TransactionBatchItem item, final Long glAccountId, final LocalDate date, final String externalId) {
         final JsonObject body = new JsonObject();
         body.addProperty("locale", "en");
         body.addProperty("dateFormat", "yyyy-MM-dd");
         body.addProperty("transactionDate", date.toString());
         body.addProperty("transactionAmount", item.getAmount());
         body.addProperty("glAccountId", glAccountId);
-        body.addProperty("note", item.getNarrative());
-        body.addProperty("externalId", item.getReference());
+        body.addProperty("note", note(item));
+        body.addProperty("externalId", externalId);
         final String json = body.toString();
         final JsonElement parsed = this.jsonHelper.parse(json);
         return JsonCommand.from(json, parsed, this.jsonHelper, null, null, null, null, null, null, item.getSavingsAccountId(), null, null,

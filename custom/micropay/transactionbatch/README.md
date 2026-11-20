@@ -43,7 +43,9 @@ A header is `description`, `recurring`, and when recurring `frequencyNumber` (at
 
 A line is `accountType`, `glAccountId` or `savingsAccountId`, `side`, `currencyCode`, `amount`, and optionally `narrative` (defaults to the batch description), `reference` (generated when omitted) and `valueDate` (defaults to the business date, and cannot be after the effective date). Customer lines are savings deposits only, in the account's own currency. Loans and term deposits are refused. Each line also returns `repairPostingId`, the oldest suspended posting for that line, or null when none is suspended. Repair posts to that id.
 
-The batch code is the prefix plus the id. A generated reference is `{code}{yyMMdd}{sequence}`.
+The batch code is the prefix plus the id. A generated reference is `{code}{yyMMdd}{sequence}`; the sequence starts at the line count plus one and skips any reference still on another line of the batch, so deleting a line never repeats one. A reference is unique within its batch: saving a line, or importing a file, with a reference another line already has is refused (`validation.msg.transactionbatchitem.reference.duplicate` on `reference`, or `validation.msg.transactionbatch.import.reference.duplicate` per row).
+
+Postings are identified per run, never by the line reference. A GL line's journal entries use transaction id `TB-{batch}-{run}-{item}` (`TBR-…` on repair). A customer line's savings transaction uses the same value as its `externalId`, because savings transaction external ids are unique across the tenant (`uk_m_sat_external_id`) and a recurring line posts once per run. The line reference is kept in the savings transaction note as `{narrative} (Ref {reference})`. Customer postings made before this change carry the line reference as their `externalId`.
 
 `SUBMITTED` is not stored. It is an Inactive batch with a `SUBMIT_TRANSACTIONBATCH` command awaiting approval (`pendingCommandId` on the payload).
 

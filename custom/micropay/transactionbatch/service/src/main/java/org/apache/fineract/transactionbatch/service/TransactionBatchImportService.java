@@ -14,8 +14,10 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
@@ -44,7 +46,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** CSV and XLSX import. It does not go through the command pipeline because a batch file does not fit in command JSON. */
+/**
+ * CSV and XLSX import. It does not go through the command pipeline because a batch file does not fit in command JSON.
+ */
 @Service
 @RequiredArgsConstructor
 @ConditionalOnProperty(value = MODULE_ENABLED_PROPERTY, havingValue = "true")
@@ -73,11 +77,21 @@ public class TransactionBatchImportService {
         }
         final List<ApiParameterError> errors = new ArrayList<>();
         final List<ItemFields> ready = new ArrayList<>();
+        final Set<String> fileReferences = new HashSet<>();
         int rowNumber = 1;
         for (final String[] row : rows) {
             rowNumber++;
             try {
-                ready.add(toFields(batch, row, rowNumber));
+                final ItemFields fields = toFields(batch, row, rowNumber);
+                final String reference = fields.reference();
+                if (reference != null
+                        && (!fileReferences.add(reference) || this.itemRepository.existsByBatch_IdAndReference(batch.getId(), reference))) {
+                    errors.add(ApiParameterError.parameterError("validation.msg.transactionbatch.import.reference.duplicate",
+                            "Row " + rowNumber + ": reference " + reference + " is used more than once in this batch", "row", rowNumber,
+                            reference));
+                    continue;
+                }
+                ready.add(fields);
             } catch (final PlatformApiDataValidationException ex) {
                 errors.addAll(ex.getErrors());
             } catch (final RuntimeException ex) {

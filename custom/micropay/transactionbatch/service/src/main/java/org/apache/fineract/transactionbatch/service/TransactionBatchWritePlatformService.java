@@ -5,12 +5,16 @@
 package org.apache.fineract.transactionbatch.service;
 
 import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.MODULE_ENABLED_PROPERTY;
+import static org.apache.fineract.transactionbatch.api.TransactionBatchApiConstants.REFERENCE;
 
 import java.time.LocalDate;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.apache.fineract.infrastructure.core.api.JsonCommand;
+import org.apache.fineract.infrastructure.core.data.ApiParameterError;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResult;
 import org.apache.fineract.infrastructure.core.data.CommandProcessingResultBuilder;
+import org.apache.fineract.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
 import org.apache.fineract.transactionbatch.domain.TransactionBatch;
 import org.apache.fineract.transactionbatch.domain.TransactionBatchAccountType;
@@ -193,8 +197,7 @@ public class TransactionBatchWritePlatformService {
         }
         final LocalDate valueDate = fields.valueDate() == null ? DateUtils.getBusinessLocalDate() : fields.valueDate();
         if (batch.getEffectiveDate() != null && valueDate.isAfter(batch.getEffectiveDate())) {
-            throw new TransactionBatchRuleException("value.date.after.effective",
-                    "Value Date cannot be after the batch Effective Date");
+            throw new TransactionBatchRuleException("value.date.after.effective", "Value Date cannot be after the batch Effective Date");
         }
         final String narrative = fields.narrative() == null ? batch.getDescription() : fields.narrative();
         if (narrative == null || narrative.isBlank()) {
@@ -217,10 +220,26 @@ public class TransactionBatchWritePlatformService {
             item.setGlAccountId(null);
         }
         if (fields.reference() != null) {
+            if (referenceTaken(batch, item, fields.reference())) {
+                throw new PlatformApiDataValidationException(
+                        List.of(ApiParameterError.parameterError("validation.msg.transactionbatchitem.reference.duplicate",
+                                "Reference " + fields.reference() + " is already used by another line in this batch", REFERENCE,
+                                fields.reference())));
+            }
             item.setReference(fields.reference());
         } else if (item.getReference() == null) {
-            final int sequence = (int) this.itemRepository.countByBatch_Id(batch.getId()) + 1;
-            item.setReference(this.references.next(batch.getCode(), DateUtils.getBusinessLocalDate(), sequence));
+            final int start = (int) this.itemRepository.countByBatch_Id(batch.getId()) + 1;
+            item.setReference(this.references.nextUnused(batch.getCode(), DateUtils.getBusinessLocalDate(), start,
+                    candidate -> referenceTaken(batch, item, candidate)));
         }
+    }
+
+    /** True when another line of the batch already carries {@code reference}. */
+    private boolean referenceTaken(final TransactionBatch batch, final TransactionBatchItem item, final String reference) {
+        if (batch.getId() == null) {
+            return false;
+        }
+        return item.getId() == null ? this.itemRepository.existsByBatch_IdAndReference(batch.getId(), reference)
+                : this.itemRepository.existsByBatch_IdAndReferenceAndIdNot(batch.getId(), reference, item.getId());
     }
 }
