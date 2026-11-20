@@ -231,12 +231,13 @@ public class TransactionBatchReadPlatformService {
         final String hierarchy = this.access.user().getOffice().getHierarchy();
         final String like = "%" + (search == null ? "" : search.trim().toLowerCase(Locale.ROOT)) + "%";
         final boolean byCurrency = currencyCode != null && !currencyCode.isBlank();
+        // m_savings_account has no office_id: the account's office is its holder's (client, else group).
         final String sql = """
-                select sa.id, sa.account_no, sa.currency_code, sa.office_id, coalesce(c.display_name, g.display_name) as client_name
+                select sa.id, sa.account_no, sa.currency_code, o.id as office_id, coalesce(c.display_name, g.display_name) as client_name
                 from m_savings_account sa
-                join m_office o on o.id = sa.office_id
                 left join m_client c on c.id = sa.client_id
                 left join m_group g on g.id = sa.group_id
+                join m_office o on o.id = coalesce(c.office_id, g.office_id)
                 where sa.status_enum = 300 and sa.deposit_type_enum = 100 and o.hierarchy like ?
                 and (lower(sa.account_no) like ? or lower(c.display_name) like ? or lower(g.display_name) like ?)
                 """
